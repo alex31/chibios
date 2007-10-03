@@ -64,6 +64,10 @@
  *  in the kernel.*/
 #define CH_USE_SEMAPHORES
 
+/** Configuration option: if specified then the Semaphores atomic Signal+Wait
+ *  APIs are included in the kernel.*/
+#define CH_USE_SEMSW
+
 /** Configuration option: if specified then the Semaphores with timeout APIs
  *  are included in the kernel.
  * @note requires \p CH_USE_SEMAPHORES.
@@ -147,7 +151,7 @@
  *        ChibiOS/RT code <b>must</b> be recompiled with the GCC option \p
  *        -ffixed-\<reg\>.
  */
-#define CH_CURRP_REGISTER_CACHE "reg"
+//#define CH_CURRP_REGISTER_CACHE "reg"
 
 #endif  /* _CHCONF_H_ */
 
