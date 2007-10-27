@@ -91,19 +91,10 @@ void chEvtClear(t_eventmask mask) {
  * @param esp pointer to the \p EventSource structure
  */
 void chEvtSend(EventSource *esp) {
-  EventListener *elp;
 
   chSysLock();
 
-  elp = esp->es_next;
-  while (elp != (EventListener *)esp) {
-    Thread *tp = elp->el_listener;
-
-    tp->p_epending |= EventMask(elp->el_id);
-    if ((tp->p_state == PRWTEVENT) && (tp->p_epending & tp->p_ewmask))
-      chSchReadyI(tp);
-    elp = elp->el_next;
-  }
+  chEvtSendI(esp);
   chSchRescheduleS();
 
   chSysUnlock();
@@ -186,15 +177,13 @@ static void unwait(void *p) {
  *                 have indexes from zero up the higher registered event
  *                 identifier. The array can be NULL or contain NULL elements
  *                 (no callback specified).
- * @param time the number of ticks before the operation timouts, if set to
- *             zero then the function exits immediatly with \p RDY_TIMEOUT if
- *             there are not serviceable events pending
+ * @param time the number of ticks before the operation timouts
  * @return the event identifier or \p RDY_TIMEOUT the specified time expired or
  *         if the timeout was set to zero and no serviceable pending events
  *         were present
  * @note Only a single event is served in the function, the one with the
  *       lowest event id. The function is meant to be invoked into a loop so
- *        that all events are received and served.<br>
+ *       that all events are received and served.<br>
  *       This means that Event Listeners with a lower event identifier have
  *       an higher priority.
  * @note The function is available only if the \p CH_USE_EVENTS_TIMEOUT
@@ -210,12 +199,6 @@ t_eventid chEvtWaitTimeout(t_eventmask ewmask,
 
   if ((currp->p_epending & ewmask) == 0) {
     VirtualTimer vt;
-
-    if (time == 0) {
-
-      chSysUnlock();
-      return RDY_TIMEOUT;
-    }
 
     chVTSetI(&vt, time, unwait, currp);
     currp->p_ewmask = ewmask;

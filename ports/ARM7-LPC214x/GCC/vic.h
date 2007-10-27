@@ -17,28 +17,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ch.h>
+#ifndef _VIC_H_
+#define _VIC_H_
 
-#include <avr/io.h>
+void InitVIC(void);
+void SetVICVector(void *handler, int vector, int source);
 
-void hwinit(void);
-
-static BYTE8 waThread1[UserStackSize(32)];
-
-static t_msg Thread1(void *arg) {
-
-  while (TRUE) {
-    chThdSleep(800);
-  }
-  return 0;
-}
-
-int main(int argc, char **argv) {
-
-  hwinit();
-
-  chSysInit();
-  chThdCreate(NORMALPRIO, 0, waThread1, sizeof(waThread1), Thread1, NULL);
-  chSysPause();
-  return 0;
-}
+#endif /* _VIC_H_*/

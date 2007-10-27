@@ -38,6 +38,22 @@ AVR-AT90CANx-GCC    - Port on AVR AT90CAN128, not complete yet.
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 0.3.5 ***
+- Space optimization in events code.
+- Changed the behavior of chEvtWaitTimeout() when the timeout parameter is
+  set to zero, now it is consistent with all the other syscalls that have a
+  timeout option.
+- Reorganized all the kernel inline definitions into a single file (inline.h).
+- Fixed a minor problem in the interrupt initialization code for the LPC214x
+  demo, regrouped the VIC-specific code into vic.c/vic.h.
+- Fixed a bug into the LPC2148 serial driver (limited to the serial port 2).
+- Implemented HW transmit FIFO preloading in the LPC2142 serial driver in
+  order to minimize the number of interrupts generated, it is possible to
+  disable the feature and return to the old code which is a bit smaller, see
+  the configuration parameters in ./ARM7-LPC214x/GCC/lpc214x_serial.h.
+- Some more work done on the AVR port, it is almost complete but not tested
+  yet because my JTAG probe broke...
+
 *** 0.3.4 ***
 - Fixed a problem in chVTSetI().
 - New API, chVTIsArmedI(), it is a macro in delta.h.

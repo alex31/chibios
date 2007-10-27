@@ -22,8 +22,6 @@
 #include "lpc214x.h"
 #include "lpc214x_serial.h"
 
-#define SERIAL_BUFFERS_SIZE 128
-
 FullDuplexDriver COM1;
 BYTE8 ib1[SERIAL_BUFFERS_SIZE];
 BYTE8 ob1[SERIAL_BUFFERS_SIZE];
@@ -68,42 +66,30 @@ static void ServeInterrupt(UART *u, FullDuplexDriver *com) {
       break;
     case IIR_SRC_TX:
       {
+#ifdef FIFO_PRELOAD
+        int i = FIFO_PRELOAD;
+        do {
+          t_msg b = chOQGetI(&com->sd_oqueue);
+          if (b < Q_OK) {
+            u->UART_IER &= ~IER_THRE;
+            chEvtSendI(&com->sd_oevent);
+            break;
+          }
+          u->UART_THR = b;
+        } while (--i);
+#else
         t_msg b = chFDDRequestDataI(com);
         if (b < Q_OK)
           u->UART_IER &= ~IER_THRE;
         else
           u->UART_THR = b;
+#endif
       }
     default:
       u->UART_THR;
       u->UART_RBR;
-      u->UART_IIR;
     }
   }
-}
-
-/*
- * Invoked by the high driver when one or more bytes are inserted in the
- * output queue.
- */
-static void OutNotify1(void) {
-  UART *u = U0Base;
-
-  if (u->UART_LSR & LSR_THRE)
-    u->UART_THR = chOQGetI(&COM1.sd_oqueue);
-  u->UART_IER |= IER_THRE;
-}
-
-/*
- * Invoked by the high driver when one or more bytes are inserted in the
- * output queue.
- */
-static void OutNotify2(void) {
-  UART *u = U1Base;
-
-  if (u->UART_LSR & LSR_THRE)
-    u->UART_THR = chOQGetI(&COM1.sd_oqueue);
-  u->UART_IER |= IER_THRE;
 }
 
 void UART0Irq(void) {
@@ -114,6 +100,58 @@ void UART0Irq(void) {
 void UART1Irq(void) {
 
   ServeInterrupt(U1Base, &COM2);
+}
+
+#ifdef FIFO_PRELOAD
+static void preload(UART *u, FullDuplexDriver *com) {
+
+  if (u->UART_LSR & LSR_THRE) {
+    int i = FIFO_PRELOAD;
+    do {
+      t_msg b = chOQGetI(&com->sd_oqueue);
+      if (b < Q_OK) {
+        chEvtSendI(&com->sd_oevent);
+        return;
+      }
+      u->UART_THR = b;
+    } while (--i);
+  }
+  u->UART_IER |= IER_THRE;
+}
+#endif
+
+/*
+ * Invoked by the high driver when one or more bytes are inserted in the
+ * output queue.
+ */
+static void OutNotify1(void) {
+#ifdef FIFO_PRELOAD
+
+  preload(U0Base, &COM1);
+#else
+  UART *u = U0Base;
+
+  if (u->UART_LSR & LSR_THRE)
+    u->UART_THR = chOQGetI(&COM1.sd_oqueue);
+  u->UART_IER |= IER_THRE;
+#endif
+}
+
+/*
+ * Invoked by the high driver when one or more bytes are inserted in the
+ * output queue.
+ */
+static void OutNotify2(void) {
+#ifdef FIFO_PRELOAD
+
+  preload(U1Base, &COM2);
+#else
+  UART *u = U1Base;
+
+  if (u->UART_LSR & LSR_THRE)
+    u->UART_THR = chOQGetI(&COM2.sd_oqueue);
+  u->UART_IER |= IER_THRE;
+#endif
 }
 
 /*
@@ -146,5 +184,5 @@ void InitSerial(void) {
   chFDDInit(&COM2, ib2, sizeof ib2, NULL, ob2, sizeof ob2, OutNotify2);
   SetUARTI(U1Base, 38400, LCR_WL8 | LCR_STOP1 | LCR_NOPARITY, FCR_TRIGGER0);
 
-  VICIntEnable |= INTMASK(SOURCE_UART0) | INTMASK(SOURCE_UART1);
+  VICIntEnable = INTMASK(SOURCE_UART0) | INTMASK(SOURCE_UART1);
 }

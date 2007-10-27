@@ -19,26 +19,32 @@
 
 #include <ch.h>
 
-#include <avr/io.h>
+#include "lpc214x.h"
 
-void hwinit(void);
+/*
+ * VIC Initialization.
+ * NOTE: Better reset everything in the VIC, it is a HUGE source of trouble.
+ */
+void InitVIC(void) {
+  int i;
 
-static BYTE8 waThread1[UserStackSize(32)];
-
-static t_msg Thread1(void *arg) {
-
-  while (TRUE) {
-    chThdSleep(800);
+  VIC *vic = VICBase;
+  vic->VIC_IntSelect = 0;               /* All sources assigned to IRQ. */
+  vic->VIC_SoftIntClear = ALLINTMASK;   /* No interrupts enforced */
+  vic->VIC_IntEnClear = ALLINTMASK;     /* All sources disabled. */
+  for (i = 0; i < 16; i++) {
+    vic->VIC_VectCntls[i] = 0;
+    vic->VIC_VectAddrs[i] = 0;
+    vic->VIC_VectAddr = 0;
   }
-  return 0;
 }
 
-int main(int argc, char **argv) {
+/*
+ * Set a vector for an interrupt source, the vector is enabled too.
+ */
+void SetVICVector(void *handler, int vector, int source) {
 
-  hwinit();
-
-  chSysInit();
-  chThdCreate(NORMALPRIO, 0, waThread1, sizeof(waThread1), Thread1, NULL);
-  chSysPause();
-  return 0;
+  VIC *vicp = VICBase;
+  vicp->VIC_VectAddrs[vector] = (IOREG32)handler;
+  vicp->VIC_VectCntls[vector] = (IOREG32)(source | 0x20);
 }
