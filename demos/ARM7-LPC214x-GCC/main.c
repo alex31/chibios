@@ -21,6 +21,7 @@
 
 #include "lpc214x.h"
 #include "lpc214x_serial.h"
+#include "mmcsd.h"
 #include "buzzer.h"
 #include "evtimer.h"
 
@@ -55,9 +56,8 @@ static t_msg Thread2(void *arg) {
 }
 
 static void TimerHandler(t_eventid id) {
-
   t_msg TestThread(void *p);
-  
+
   if (!(IO0PIN & 0x00018000)) { // Both buttons
     TestThread(&COM1);
     PlaySound(500, 100);
@@ -65,23 +65,52 @@ static void TimerHandler(t_eventid id) {
   else {
     if (!(IO0PIN & 0x00008000)) // Button 1
       PlaySound(1000, 100);
-    if (!(IO0PIN & 0x00010000)) // Button 2
+    if (!(IO0PIN & 0x00010000)) { // Button 2
       chFDDWrite(&COM1, (BYTE8 *)"Hello World!\r\n", 14);
+      PlaySound(2000, 100);
+    }
   }
 }
 
-static BYTE8 waThread3[UserStackSize(64)];
+static void InsertHandler(t_eventid id) {
+  static BYTE8 rwbuf[512];
+  MMCCSD data;
+
+  PlaySoundWait(1000, 100);
+  PlaySoundWait(2000, 100);
+  if (mmcInit())
+    return;
+  /* Card ready, do stuff.*/
+  if (mmcGetSize(&data))
+    return;
+  if (mmcRead(rwbuf, 0))
+    return;
+  PlaySound(440, 200);
+}
+
+static void RemoveHandler(t_eventid id) {
+
+  PlaySoundWait(2000, 100);
+  PlaySoundWait(1000, 100);
+}
+
+static BYTE8 waThread3[UserStackSize(128)];
 static EvTimer evt;
-static t_evhandler evhndl[1] = {
-  TimerHandler
+static t_evhandler evhndl[] = {
+  TimerHandler,
+  InsertHandler,
+  RemoveHandler
 };
 
 static t_msg Thread3(void *arg) {
-  struct EventListener el;
+  struct EventListener el0, el1, el2;
 
   evtInit(&evt, 500);
-  evtRegister(&evt, &el, 0);
   evtStart(&evt);
+  mmcStartPolling();
+  evtRegister(&evt, &el0, 0);
+  chEvtRegister(&MMCInsertEventSource, &el1, 1);
+  chEvtRegister(&MMCRemoveEventSource, &el2, 2);
   while (TRUE)
     chEvtWait(ALL_EVENTS, evhndl);
   return 0;

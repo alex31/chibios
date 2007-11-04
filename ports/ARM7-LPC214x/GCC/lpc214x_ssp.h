@@ -17,13 +17,20 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _BUZZER_H_
-#define _BUZZER_H_
+#ifndef _LPC214x_SSP_H_
+#define _LPC214x_SSP_H_
 
-void InitBuzzer(void);
-void PlaySound(int freq, t_time duration);
-void PlaySoundWait(int freq, t_time duration);
+/*
+ * Configuration parameter, if defined this macro enforces mutual exclusion
+ * when invoking \p sspAcquireBus() and \p sspReleaseBus().
+ */
+#define SSP_USE_MUTEX
 
-extern EventSource BuzzerSilentEventSource;
+void InitSSP(void);
+void SetSSP(int cpsr, int cr0, int cr1);
 
-#endif /* _BUZZER_H_ */
+void sspAcquireBus(void);
+void sspReleaseBus(void);
+void sspRW(BYTE8 *in, BYTE8 *out, t_size n);
+
+#endif /* _LPC214x_SSP_H_*/
