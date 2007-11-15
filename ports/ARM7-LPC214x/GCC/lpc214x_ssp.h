@@ -26,11 +26,17 @@
  */
 #define SSP_USE_MUTEX
 
-void InitSSP(void);
-void SetSSP(int cpsr, int cr0, int cr1);
+#ifdef __cplusplus
+}
+#endif
+  void InitSSP(void);
+  void SetSSP(int cpsr, int cr0, int cr1);
 
-void sspAcquireBus(void);
-void sspReleaseBus(void);
-void sspRW(BYTE8 *in, BYTE8 *out, t_size n);
+  void sspAcquireBus(void);
+  void sspReleaseBus(void);
+  void sspRW(BYTE8 *in, BYTE8 *out, t_size n);
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _LPC214x_SSP_H_*/

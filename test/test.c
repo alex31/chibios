@@ -19,6 +19,8 @@
 
 #include <ch.h>
 
+void ChkIntSources(void);
+
 #if defined(WIN32) && defined(_DEBUG)
 static BYTE8 wsT1[UserStackSize(512)];
 static BYTE8 wsT2[UserStackSize(512)];
@@ -46,10 +48,29 @@ static void wait(void) {
   chThdWait(t5);
 }
 
-static void println(char *msgp) {
+static void printn(unsigned int n) {
+  char buf[16], *p;
+
+  if (!n)
+    chFDDPut(comp, '0');
+  else {
+    p = buf;
+    while (n)
+          *p++ = (n % 10) + '0', n /= 10;
+    while (p > buf)
+      chFDDPut(comp, *--p);
+  }
+}
+
+static void print(char *msgp) {
 
   while (*msgp)
     chFDDPut(comp, *msgp++);
+}
+
+static void println(char *msgp) {
+
+  print(msgp);
   chFDDPut(comp, '\r');
   chFDDPut(comp, '\n');
 }
@@ -94,12 +115,20 @@ t_msg Thread5(void *p) {
   return 0;
 }
 
+t_msg Thread6(void *p) {
+
+  while (!chThdShouldTerminate())
+    chMsgRelease(chMsgWait() + 1);
+  return 0;
+}
+
 /**
  * Tester thread, this thread must be created with priority \p NORMALPRIO.
  */
 t_msg TestThread(void *p) {
   t_msg msg;
-  int i;
+  unsigned int i;
+  t_time time;
 
   comp = p;
   println("*****************************");
@@ -111,19 +140,19 @@ t_msg TestThread(void *p) {
    * Ready list ordering test.
    */
   println("*** Ready List, priority enqueuing test #1, you should read ABCDE:");
-  t5 = chThdCreate(NORMALPRIO-5, 0, wsT5, sizeof(wsT5), Thread1, "E");
-  t4 = chThdCreate(NORMALPRIO-4, 0, wsT4, sizeof(wsT4), Thread1, "D");
-  t3 = chThdCreate(NORMALPRIO-3, 0, wsT3, sizeof(wsT3), Thread1, "C");
-  t2 = chThdCreate(NORMALPRIO-2, 0, wsT2, sizeof(wsT2), Thread1, "B");
-  t1 = chThdCreate(NORMALPRIO-1, 0, wsT1, sizeof(wsT1), Thread1, "A");
+  t5 = chThdCreate(chThdGetPriority()-5, 0, wsT5, sizeof(wsT5), Thread1, "E");
+  t4 = chThdCreate(chThdGetPriority()-4, 0, wsT4, sizeof(wsT4), Thread1, "D");
+  t3 = chThdCreate(chThdGetPriority()-3, 0, wsT3, sizeof(wsT3), Thread1, "C");
+  t2 = chThdCreate(chThdGetPriority()-2, 0, wsT2, sizeof(wsT2), Thread1, "B");
+  t1 = chThdCreate(chThdGetPriority()-1, 0, wsT1, sizeof(wsT1), Thread1, "A");
   wait();
   println("");
   println("*** Ready List, priority enqueuing test #2, you should read ABCDE:");
-  t4 = chThdCreate(NORMALPRIO-4, 0, wsT4, sizeof(wsT4), Thread1, "D");
-  t5 = chThdCreate(NORMALPRIO-5, 0, wsT5, sizeof(wsT5), Thread1, "E");
-  t1 = chThdCreate(NORMALPRIO-1, 0, wsT1, sizeof(wsT1), Thread1, "A");
-  t2 = chThdCreate(NORMALPRIO-2, 0, wsT2, sizeof(wsT2), Thread1, "B");
-  t3 = chThdCreate(NORMALPRIO-3, 0, wsT3, sizeof(wsT3), Thread1, "C");
+  t4 = chThdCreate(chThdGetPriority()-4, 0, wsT4, sizeof(wsT4), Thread1, "D");
+  t5 = chThdCreate(chThdGetPriority()-5, 0, wsT5, sizeof(wsT5), Thread1, "E");
+  t1 = chThdCreate(chThdGetPriority()-1, 0, wsT1, sizeof(wsT1), Thread1, "A");
+  t2 = chThdCreate(chThdGetPriority()-2, 0, wsT2, sizeof(wsT2), Thread1, "B");
+  t3 = chThdCreate(chThdGetPriority()-3, 0, wsT3, sizeof(wsT3), Thread1, "C");
   wait();
   println("");
 
@@ -132,11 +161,11 @@ t_msg TestThread(void *p) {
    */
   chSemInit(&sem1, 0);
   println("*** Semaphores, FIFO enqueuing test, you should read ABCDE:");
-  t1 = chThdCreate(NORMALPRIO+5, 0, wsT1, sizeof(wsT1), Thread2, "A");
-  t2 = chThdCreate(NORMALPRIO+1, 0, wsT2, sizeof(wsT2), Thread2, "B");
-  t3 = chThdCreate(NORMALPRIO+3, 0, wsT3, sizeof(wsT3), Thread2, "C");
-  t4 = chThdCreate(NORMALPRIO+4, 0, wsT4, sizeof(wsT4), Thread2, "D");
-  t5 = chThdCreate(NORMALPRIO+2, 0, wsT5, sizeof(wsT5), Thread2, "E");
+  t1 = chThdCreate(chThdGetPriority()+5, 0, wsT1, sizeof(wsT1), Thread2, "A");
+  t2 = chThdCreate(chThdGetPriority()+1, 0, wsT2, sizeof(wsT2), Thread2, "B");
+  t3 = chThdCreate(chThdGetPriority()+3, 0, wsT3, sizeof(wsT3), Thread2, "C");
+  t4 = chThdCreate(chThdGetPriority()+4, 0, wsT4, sizeof(wsT4), Thread2, "D");
+  t5 = chThdCreate(chThdGetPriority()+2, 0, wsT5, sizeof(wsT5), Thread2, "E");
   chSemSignal(&sem1);
   chSemSignal(&sem1);
   chSemSignal(&sem1);
@@ -146,11 +175,11 @@ t_msg TestThread(void *p) {
   println("");
   println("*** Semaphores, priority enqueuing test #1, you should read ABCDE:");
   chSemInit(&sem1, 0);
-  t5 = chThdCreate(NORMALPRIO+1, 0, wsT5, sizeof(wsT5), Thread3, "E");
-  t4 = chThdCreate(NORMALPRIO+2, 0, wsT4, sizeof(wsT4), Thread3, "D");
-  t3 = chThdCreate(NORMALPRIO+3, 0, wsT3, sizeof(wsT3), Thread3, "C");
-  t2 = chThdCreate(NORMALPRIO+4, 0, wsT2, sizeof(wsT2), Thread3, "B");
-  t1 = chThdCreate(NORMALPRIO+5, 0, wsT1, sizeof(wsT1), Thread3, "A");
+  t5 = chThdCreate(chThdGetPriority()+1, 0, wsT5, sizeof(wsT5), Thread3, "E");
+  t4 = chThdCreate(chThdGetPriority()+2, 0, wsT4, sizeof(wsT4), Thread3, "D");
+  t3 = chThdCreate(chThdGetPriority()+3, 0, wsT3, sizeof(wsT3), Thread3, "C");
+  t2 = chThdCreate(chThdGetPriority()+4, 0, wsT2, sizeof(wsT2), Thread3, "B");
+  t1 = chThdCreate(chThdGetPriority()+5, 0, wsT1, sizeof(wsT1), Thread3, "A");
   chSemLowerPrioSignal(&sem1);
   chSemLowerPrioSignal(&sem1);
   chSemLowerPrioSignal(&sem1);
@@ -160,11 +189,11 @@ t_msg TestThread(void *p) {
   println("");
   println("*** Semaphores, priority enqueuing test #2, you should read ABCDE:");
   chSemInit(&sem1, 0);
-  t4 = chThdCreate(NORMALPRIO+2, 0, wsT4, sizeof(wsT4), Thread3, "D");
-  t5 = chThdCreate(NORMALPRIO+1, 0, wsT5, sizeof(wsT5), Thread3, "E");
-  t1 = chThdCreate(NORMALPRIO+5, 0, wsT1, sizeof(wsT1), Thread3, "A");
-  t2 = chThdCreate(NORMALPRIO+4, 0, wsT2, sizeof(wsT2), Thread3, "B");
-  t3 = chThdCreate(NORMALPRIO+3, 0, wsT3, sizeof(wsT3), Thread3, "C");
+  t4 = chThdCreate(chThdGetPriority()+2, 0, wsT4, sizeof(wsT4), Thread3, "D");
+  t5 = chThdCreate(chThdGetPriority()+1, 0, wsT5, sizeof(wsT5), Thread3, "E");
+  t1 = chThdCreate(chThdGetPriority()+5, 0, wsT1, sizeof(wsT1), Thread3, "A");
+  t2 = chThdCreate(chThdGetPriority()+4, 0, wsT2, sizeof(wsT2), Thread3, "B");
+  t3 = chThdCreate(chThdGetPriority()+3, 0, wsT3, sizeof(wsT3), Thread3, "C");
   chSemLowerPrioSignal(&sem1);
   chSemLowerPrioSignal(&sem1);
   chSemLowerPrioSignal(&sem1);
@@ -184,7 +213,7 @@ t_msg TestThread(void *p) {
    * Messages test.
    */
   println("*** Messages, dispatch test, you should read AABBCCDDEE:");
-  t1 = chThdCreate(NORMALPRIO-1, 0, wsT1, sizeof(wsT1), Thread4, chThdSelf());
+  t1 = chThdCreate(chThdGetPriority()-1, 0, wsT1, sizeof(wsT1), Thread4, chThdSelf());
   do {
     chMsgRelease(msg = chMsgWait());
     if (msg)
@@ -193,7 +222,7 @@ t_msg TestThread(void *p) {
   chThdWait(t1);
   println("");
   println("*** Messages, timeout test, you should read ABCDE (slowly):");
-  t1 = chThdCreate(NORMALPRIO-1, 0, wsT1, sizeof(wsT1), Thread5, chThdSelf());
+  t1 = chThdCreate(chThdGetPriority()-1, 0, wsT1, sizeof(wsT1), Thread5, chThdSelf());
   for (i = 0; i < 5; i++) {
     chFDDPut(comp, 'A'+i);
     chMsgSendTimeout(t1, 'A'+i, 500);
@@ -201,6 +230,33 @@ t_msg TestThread(void *p) {
   chMsgSendTimeout(t1, 0, 500);
   chThdWait(t1);
   println("");
+
+  /*
+   * Kernel benchmarks.
+   */
+  println("*** Kernel Benchmark, context switch stress test:");
+  time = chSysGetTime() + 1;
+  while (chSysGetTime() < time) {
+#if defined(WIN32)
+    ChkIntSources();
+#endif
+  }
+  time += 1000;
+  i = 0;
+  t1 = chThdCreate(chThdGetPriority()-1, 0, wsT1, sizeof(wsT1), Thread6, chThdSelf());
+  while (chSysGetTime() < time) {
+    i = chMsgSend(t1, i);
+#if defined(WIN32)
+    ChkIntSources();
+#endif
+  }
+  chThdTerminate(t1);
+  chThdWait(t1);
+  print("Messages throughput = ");
+  printn(i);
+  print(" msg/S, ");
+  printn(i << 1);
+  println(" ctxsw/S");
 
   println("\r\nTest complete");
   return 0;
