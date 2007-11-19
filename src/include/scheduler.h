@@ -38,8 +38,9 @@
  * Ready list header.
  */
 typedef struct {
-  ThreadsQueue      r_queue;
-  t_prio            r_prio;
+  ThreadsQueue  r_queue;
+  t_prio        r_prio;
+  t_cnt         r_preempt;
 } ReadyList;
 
 /*
@@ -49,7 +50,7 @@ typedef struct {
 extern "C" {
 #endif
   void chSchInit(void);
-  Thread *chSchReadyI(Thread *tp);
+  void chSchReadyI(Thread *tp, t_msg msg);
   void chSchGoSleepS(t_tstate newstate);
   void chSchWakeupS(Thread *tp, t_msg msg);
   void chSchRescheduleS(void);

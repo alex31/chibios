@@ -27,7 +27,6 @@
 /** @cond never*/
 
 static ReadyList rlist;
-static t_cnt preempt;
 
 #ifndef CH_CURRP_REGISTER_CACHE
 Thread *currp;
@@ -47,7 +46,7 @@ void chSchInit(void) {
 
   fifo_init(&rlist.r_queue);
   rlist.r_prio = ABSPRIO;
-  preempt = CH_TIME_QUANTUM;
+  rlist.r_preempt = CH_TIME_QUANTUM;
 #ifdef CH_USE_SYSTEMTIME
   stime = 0;
 #endif
@@ -56,25 +55,28 @@ void chSchInit(void) {
 /**
  * Inserts a thread in the Ready List.
  * @param tp the Thread to be made ready
+ * @param msg message to the awakened thread
  * @return the Thread pointer
  * @note The function must be called in the system mutex zone.
  * @note The function does not reschedule, the \p chSchRescheduleI() should
  *       be called soon after.
  * @note The function is not meant to be used in the user code directly.
  */
-Thread *chSchReadyI(Thread *tp) {
-  Thread *cp;
-  t_prio prio = tp->p_prio;
+#ifdef CH_OPTIMIZE_SPEED
+/* NOTE: it is inlined in this module only.*/
+INLINE void chSchReadyI(Thread *tp, t_msg msg) {
+#else
+void chSchReadyI(Thread *tp, t_msg msg) {
+#endif
+  Thread *cp = rlist.r_queue.p_prev;
 
   tp->p_state = PRREADY;
-  tp->p_rdymsg = RDY_OK;
-  cp = rlist.r_queue.p_prev;
-  while (cp->p_prio < prio)
+  tp->p_rdymsg = msg;
+  while (cp->p_prio < tp->p_prio)
     cp = cp->p_prev;
-  // Insertion on p_next
+  /* Insertion on p_next.*/
   tp->p_next = (tp->p_prev = cp)->p_next;
   tp->p_next->p_prev = cp->p_next = tp;
-  return tp;
 }
 
 /*
@@ -89,7 +91,7 @@ static void nextready(void) {
   Thread *otp = currp;
 
   (currp = fifo_remove(&rlist.r_queue))->p_state = PRCURR;
-  preempt = CH_TIME_QUANTUM;
+  rlist.r_preempt = CH_TIME_QUANTUM;
 #ifdef CH_USE_DEBUG
   chDbgTrace(otp, currp);
 #endif
@@ -116,7 +118,7 @@ void chSchGoSleepS(t_tstate newstate) {
  * running directly depending on its relative priority compared to the current
  * thread.
  * @param ntp the Thread to be made ready
- * @param msg wakeup message to the awakened thread
+ * @param msg message to the awakened thread
  * @note The function must be called in the system mutex zone.
  * @note The function is not meant to be used in the user code directly.
  * @note It is equivalent to a \p chSchReadyI() followed by a
@@ -125,13 +127,13 @@ void chSchGoSleepS(t_tstate newstate) {
 void chSchWakeupS(Thread *ntp, t_msg msg) {
 
   if (ntp->p_prio <= currp->p_prio)
-    chSchReadyI(ntp)->p_rdymsg = msg;
+    chSchReadyI(ntp, msg);
   else {
     Thread *otp = currp;
-    chSchReadyI(otp);
+    chSchReadyI(otp, RDY_OK);
     (currp = ntp)->p_state = PRCURR;
     ntp->p_rdymsg = msg;
-    preempt = CH_TIME_QUANTUM;
+    rlist.r_preempt = CH_TIME_QUANTUM;
 #ifdef CH_USE_DEBUG
     chDbgTrace(otp, ntp);
 #endif
@@ -158,7 +160,7 @@ void chSchRescheduleS(void) {
  */
 void chSchDoRescheduleI(void) {
 
-  chSchReadyI(currp);
+  chSchReadyI(currp, RDY_OK);
   nextready();
 }
 
@@ -172,7 +174,7 @@ BOOL chSchRescRequiredI(void) {
   if (isempty(&rlist.r_queue))
     return FALSE;
 
-  if (preempt) {
+  if (rlist.r_preempt) {
     if (firstprio(&rlist.r_queue) <= currp->p_prio)
       return FALSE;
   }
@@ -191,8 +193,8 @@ BOOL chSchRescRequiredI(void) {
  */
 void chSchTimerHandlerI(void) {
 
-  if (preempt)
-    preempt--;
+  if (rlist.r_preempt)
+    rlist.r_preempt--;
 
 #ifdef CH_USE_SYSTEMTIME
   stime++;
