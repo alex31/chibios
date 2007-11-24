@@ -21,11 +21,11 @@
 
 #include "lpc214x.h"
 #include "vic.h"
-#include "lpc214x_serial.h"
-#include "lpc214x_ssp.h"
-#include "mmcsd.h"
+//#include "lpc214x_serial.h"
+//#include "lpc214x_ssp.h"
+//#include "mmcsd.h"
 
-#include "buzzer.h"
+//#include "buzzer.h"
 
 extern void IrqHandler(void);
 extern void T0IrqHandler(void);
@@ -117,8 +117,8 @@ void hwinit(void) {
   InitVIC();
   VICDefVectAddr = (IOREG32)IrqHandler;
   SetVICVector(T0IrqHandler, 0, SOURCE_Timer0);
-  SetVICVector(UART0IrqHandler, 1, SOURCE_UART0);
-  SetVICVector(UART1IrqHandler, 2, SOURCE_UART1);
+//  SetVICVector(UART0IrqHandler, 1, SOURCE_UART0);
+//  SetVICVector(UART1IrqHandler, 2, SOURCE_UART1);
 
   /*
    * System Timer initialization, 1ms intervals.
@@ -134,10 +134,10 @@ void hwinit(void) {
   /*
    * Other subsystems.
    */
-  InitSerial();
-  InitSSP();
-  InitMMC();
-  InitBuzzer();
+//  InitSerial();
+//  InitSSP();
+//  InitMMC();
+//  InitBuzzer();
 }
 
 /*

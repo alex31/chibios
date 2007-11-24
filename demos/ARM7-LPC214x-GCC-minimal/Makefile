@@ -66,10 +66,8 @@ ASRC = chcore.c \
        ../../src/chinit.c ../../src/chdebug.c ../../src/chlists.c ../../src/chdelta.c \
        ../../src/chschd.c ../../src/chthreads.c ../../src/chsem.c ../../src/chevents.c \
        ../../src/chmsg.c ../../src/chsleep.c ../../src/chqueues.c ../../src/chserial.c \
-       ../../ports/ARM7-LPC214x/GCC/vic.c  ../../ports/ARM7-LPC214x/GCC/lpc214x_serial.c  \
-       ../../ports/ARM7-LPC214x/GCC/lpc214x_ssp.c  \
-       ../../src/lib/evtimer.c ../../test/test.c \
-       buzzer.c mmcsd.c main.c
+       ../../ports/ARM7-LPC214x/GCC/vic.c \
+       main.c
 
 
 # List THUMB-mode C sources here

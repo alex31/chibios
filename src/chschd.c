@@ -25,17 +25,7 @@
 #include <ch.h>
 
 /** @cond never*/
-
-static ReadyList rlist;
-
-#ifndef CH_CURRP_REGISTER_CACHE
-Thread *currp;
-#endif
-
-#ifdef CH_USE_SYSTEMTIME
-volatile t_time stime;
-#endif
-
+ReadyList rlist;
 /** @endcond */
 
 /**
@@ -48,7 +38,7 @@ void chSchInit(void) {
   rlist.r_prio = ABSPRIO;
   rlist.r_preempt = CH_TIME_QUANTUM;
 #ifdef CH_USE_SYSTEMTIME
-  stime = 0;
+  rlist.r_stime = 0;
 #endif
 }
 
@@ -58,7 +48,7 @@ void chSchInit(void) {
  * @param msg message to the awakened thread
  * @return the Thread pointer
  * @note The function must be called in the system mutex zone.
- * @note The function does not reschedule, the \p chSchRescheduleI() should
+ * @note The function does not reschedule, the \p chSchRescheduleS() should
  *       be called soon after.
  * @note The function is not meant to be used in the user code directly.
  */
@@ -79,25 +69,6 @@ void chSchReadyI(Thread *tp, t_msg msg) {
   tp->p_next->p_prev = cp->p_next = tp;
 }
 
-/*
- * Switches to the next thread in the ready list, the ready list is assumed
- * to contain at least a thread.
- */
-#ifdef CH_OPTIMIZE_SPEED
-static INLINE void nextready(void) {
-#else
-static void nextready(void) {
-#endif
-  Thread *otp = currp;
-
-  (currp = fifo_remove(&rlist.r_queue))->p_state = PRCURR;
-  rlist.r_preempt = CH_TIME_QUANTUM;
-#ifdef CH_USE_DEBUG
-  chDbgTrace(otp, currp);
-#endif
-  chSysSwitchI(&otp->p_ctx, &currp->p_ctx);
-}
-
 /**
  * Puts the current thread to sleep into the specified state, the next highest
  * priority thread becomes running. The threads states are described into
@@ -107,10 +78,20 @@ static void nextready(void) {
  * @note The function must be called in the system mutex zone.
  * @note The function is not meant to be used in the user code directly.
  */
+#ifdef CH_OPTIMIZE_SPEED
+INLINE void chSchGoSleepS(t_tstate newstate) {
+#else
 void chSchGoSleepS(t_tstate newstate) {
+#endif
+  Thread *otp;
 
-  currp->p_state = newstate;
-  nextready();
+  (otp = currp)->p_state = newstate;
+  (currp = fifo_remove(&rlist.r_queue))->p_state = PRCURR;
+  rlist.r_preempt = CH_TIME_QUANTUM;
+#ifdef CH_USE_DEBUG
+  chDbgTrace(otp, currp);
+#endif
+  chSysSwitchI(&otp->p_ctx, &currp->p_ctx);
 }
 
 /**
@@ -122,7 +103,7 @@ void chSchGoSleepS(t_tstate newstate) {
  * @note The function must be called in the system mutex zone.
  * @note The function is not meant to be used in the user code directly.
  * @note It is equivalent to a \p chSchReadyI() followed by a
- *       \p chSchRescheduleI() but much more efficient.
+ *       \p chSchRescheduleS() but much more efficient.
  */
 void chSchWakeupS(Thread *ntp, t_msg msg) {
 
@@ -161,7 +142,7 @@ void chSchRescheduleS(void) {
 void chSchDoRescheduleI(void) {
 
   chSchReadyI(currp, RDY_OK);
-  nextready();
+  chSchGoSleepS(PRREADY);
 }
 
 /**
@@ -193,11 +174,9 @@ BOOL chSchRescRequiredI(void) {
  */
 void chSchTimerHandlerI(void) {
 
-  if (rlist.r_preempt)
-    rlist.r_preempt--;
-
+  rlist.r_preempt--;
 #ifdef CH_USE_SYSTEMTIME
-  stime++;
+  rlist.r_stime++;
 #endif
 
 #ifdef CH_USE_VIRTUAL_TIMERS
