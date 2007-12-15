@@ -39,6 +39,18 @@ AVR-AT90CANx-GCC       - Port on AVR AT90CAN128, not complete yet.
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 0.4.5 ***
+- Moved the serial IRQ handlers and VIC vectors initialization inside the
+  serial drivers. Now the serial-related code is all inside the driver.
+- Moved all the other interrupt handlers from chcore2.s into chcore.c as
+  inline asm code. The interrupt code now is faster because one less call
+  level.
+- Fixed a minor problem in chSysHalt() now it disables FIQ too and makes sure
+  to keep the processor in the state it had when it was halted.
+  Note: This is not a kernel bug but something specific with the ARM port, the
+        other ports are not affected.
+- Fixed the macro chThdResumeI(), it had a regression.
+
 *** 0.4.4 ***
 - Fixed a very important bug in the preemption ARM code, important enough to
   make this update *mandatory*.
