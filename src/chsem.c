@@ -43,22 +43,15 @@ void chSemInit(Semaphore *sp, t_cnt n) {
  * @param sp pointer to a \p Semaphore structure
  * @param n the new value of the semaphore counter. Must be non-negative.
  * @note The released threads can recognize they were waked up by a reset
- *       instead than a signal because the \p p_rdymsg field is set to
- *       \p RDY_RESET.
+ *       instead than a signal because the \p chSemWait() will return
+ *       \p RDY_RESET instead of \p RDY_OK.
  */
 void chSemReset(Semaphore *sp, t_cnt n) {
-  t_cnt cnt;
 
-  chDbgAssert(n >= 0, "chsem.c, chSemReset()");
   chSysLock();
 
-  cnt = sp->s_cnt;
-  sp->s_cnt = n;
-  if (cnt < 0) {
-    while (cnt++)
-      chSchReadyI(fifo_remove(&sp->s_queue), RDY_RESET);
-    chSchRescheduleS();
-  }
+  chSemResetI(sp, n);
+  chSchRescheduleS();
 
   chSysUnlock();
 }
@@ -68,8 +61,8 @@ void chSemReset(Semaphore *sp, t_cnt n) {
  * @param sp pointer to a \p Semaphore structure
  * @param n the new value of the semaphore counter. Must be non-negative.
  * @note The released threads can recognize they were waked up by a reset
- *       instead than a signal because the \p p_rdymsg field is set to
- *       \p RDY_RESET.
+ *       instead than a signal because the \p chSemWait() will return
+ *       \p RDY_RESET instead of \p RDY_OK.
  * @note This function does not reschedule.
  */
 void chSemResetI(Semaphore *sp, t_cnt n) {
@@ -117,13 +110,6 @@ t_msg chSemWaitS(Semaphore *sp) {
 }
 
 #ifdef CH_USE_SEMAPHORES_TIMEOUT
-static void wakeup(void *p) {
-
-  chDbgAssert(((Thread *)p)->p_state == PRWTSEM, "chsem.c, wakeup()");
-  chSemFastSignalI(((Thread *)p)->p_wtsemp);
-  chSchReadyI(dequeue(p), RDY_TIMEOUT);
-}
-
 /**
  * Performs a wait operation on a semaphore with timeout specification.
  * @param sp pointer to a \p Semaphore structure
@@ -154,20 +140,14 @@ t_msg chSemWaitTimeout(Semaphore *sp, t_time time) {
 t_msg chSemWaitTimeoutS(Semaphore *sp, t_time time) {
 
   if (--sp->s_cnt < 0) {
-    VirtualTimer vt;
-
-    chVTSetI(&vt, time, wakeup, currp);
     fifo_insert(currp, &sp->s_queue);
     currp->p_wtsemp = sp;
-    chSchGoSleepS(PRWTSEM);
-    if (chVTIsArmedI(&vt))
-      chVTResetI(&vt);
-    return currp->p_rdymsg;
+    return chSchGoSleepTimeoutS(PRWTSEM, time);
   }
   return RDY_OK;
 }
-
 #endif /* CH_USE_SEMAPHORES_TIMEOUT */
+
 /**
  * Performs a signal operation on a semaphore.
  * @param sp pointer to a \p Semaphore structure
