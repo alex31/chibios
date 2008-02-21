@@ -33,11 +33,24 @@ ARM7-LPC214x-GCC       - ChibiOS/RT port for ARM7 LPC2148, the demo targets
                          other boards. The demo can be compiled using YAGARTO
                          or any other GCC-based ARM toolchain. Full demo.
 ARM7-LPC214x-GCC-min   - Minimal demo for LPC214X.
+ARM7-AT91SAM7X-GCC     - Port for Atmel AT91SAM7X256. The demo program targets
+                         the Olimex SAM7-EX256 board.
 AVR-AT90CANx-GCC       - Port on AVR AT90CAN128, not complete yet.
 
 *****************************************************************************
 *** Releases                                                              ***
 *****************************************************************************
+
+*** 0.5.4 ***
+- Port for Atmel AT91SAM7X256 introduced, the port should be useable also on
+  SAM7S and SAM7XC but no tests were performed. Other SAM7 processors should
+  also be useable with limited changes.
+  The demo currently just performs basic operations, will be enhanced in next
+  ChibiOS/RT releases, see the demo readme.txt file.
+  The kernel is *unchanged* compared to version 0.5.3, just the new port and
+  the new demo were added.
+- Small fix to the thumb mode IRQ code on the LPC214x port, removed some extra
+  code.
 
 *** 0.5.3 ***
 - Removed the chMsgSendTimeout() API, it was conceptually flawed because,
