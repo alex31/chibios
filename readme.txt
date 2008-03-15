@@ -26,10 +26,6 @@
 *****************************************************************************
 Current ports under ./demos:
 
-Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
-                         MinGW version.
-Win32-MSVS             - ChibiOS/RT simulator and demo into a WIN32 process,
-                         Visual Studio 7 or any later version should work.
 ARM7-LPC214x-GCC       - ChibiOS/RT port for ARM7 LPC2148, the demo targets
                          the Olimex LPC-P2148 board. This port can be easily
                          modified for any processor into the LPC2000 family or
@@ -38,19 +34,21 @@ ARM7-LPC214x-GCC       - ChibiOS/RT port for ARM7 LPC2148, the demo targets
 ARM7-LPC214x-GCC-min   - Minimal demo for LPC214X.
 ARM7-AT91SAM7X-GCC     - Port for Atmel AT91SAM7X256. The demo program targets
                          the Olimex SAM7-EX256 board.
-AVR-AVRmega128-GCC     - Port on AVRmega128, experimental. A special thanks to
-                         Vladimir for the work done on the AVR port. The demo
-                         program targets the Olimex AVR-MT-128 mini terminal
+ARMCM3-ST32F103-GCC    - ARM Cortex-M3 port, work in progress, not complete
+                         yet. The demo will target the Olimex STM32-P103
                          board.
+AVR-AVRmega128-GCC     - Port on AVRmega128. A special thanks to Vladimir for
+                         the work done on the AVR port. The demo program
+                         targets the Olimex AVR-MT-128 mini terminal board.
 AVR-AT90CANx-GCC       - Port on AVR AT90CAN128, not tested on hardware yet.
+Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
+                         MinGW version.
 
 *****************************************************************************
 *** Plans                                                                 ***
 *****************************************************************************
 
 - Look into importing *or* implementing a TCP/IP stack and a File System.
-- Start the work on a Cortex-M3 port as soon GCC 4.3.0 will be released and
-  incorporated in YAGARTO.
 - Evaluate other architectures for a possible ChibiOS/RT port. An important
   selection parameter will be the availability of FOSS toolchains. Currently
   we are evaluating the Cortex-M3 and the MSP430.
@@ -61,6 +59,23 @@ AVR-AT90CANx-GCC       - Port on AVR AT90CAN128, not tested on hardware yet.
 *****************************************************************************
 *** Releases                                                              ***
 *****************************************************************************
+
+*** 0.6.1 ***
+- Removed some redundant checks from the scheduler code: improved threads
+  flyback time, reduced interrupts service time.
+- Nice scheduler speed improvement obtained by removing the 2nd parameter to
+  the chSchReadyI() API and manually assigning the message value only where
+  is really needed (very few points in the code).
+- More space savings and speed improvements obtained by removing the
+  -fno-strict-aliasing option from the makefiles, now the kernel compiles
+  without any warning even without this option.
+- Removed the -falign-functions=16 option from the AT91SAM7X demo makefiles,
+  the Atmel chip does not require it, the option is still present on the
+  LPC21xx demos. This saves significant program space.
+- Started work on ARM Cortex-M3 architecture. The target chip is the STM32F103
+  on a Olimex STM32-P103 board.
+- Added a threads state diagram to the documentation.
+- Various fixes to the doxigen documentation.
 
 *** 0.6.0 ***
 - Code refactory, all the old sized-integer definitions like LONG32, UWORD16
