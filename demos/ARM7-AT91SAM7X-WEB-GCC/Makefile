@@ -61,15 +61,33 @@ UDEFS =
 # Define ASM defines here
 UADEFS =
 
+# List of all the ChibiOS/RT kernel files, there is no need to remove the files
+# from this list, you can disable parts of the kernel by editing chconf.h.
+KSRC = ../../src/chinit.c ../../src/chdebug.c \
+       ../../src/chlists.c ../../src/chdelta.c \
+       ../../src/chschd.c ../../src/chthreads.c \
+       ../../src/chsem.c ../../src/chmtx.c \
+       ../../src/chevents.c ../../src/chmsg.c \
+       ../../src/chsleep.c ../../src/chqueues.c \
+       ../../src/chserial.c
+
+# List of the required uIP source files.
+USRC = ../../ext/uip-1.0/uip/uip_arp.c \
+       ../../ext/uip-1.0/uip/psock.c \
+       ../../ext/uip-1.0/uip/uip.c \
+       ../../ext/uip-1.0/apps/webserver/httpd.c \
+       ../../ext/uip-1.0/apps/webserver/http-strings.c \
+       ../../ext/uip-1.0/apps/webserver/httpd-fs.c \
+       ../../ext/uip-1.0/apps/webserver/httpd-cgi.c
+
 # List ARM-mode C source files here
 ASRC = ../../ports/ARM7-AT91SAM7X/chcore.c \
        ../../ports/ARM7-AT91SAM7X/sam7x_serial.c \
-       ../../src/chinit.c ../../src/chdebug.c ../../src/chlists.c ../../src/chdelta.c \
-       ../../src/chschd.c ../../src/chthreads.c ../../src/chsem.c ../../src/chmtx.c \
-       ../../src/chevents.c ../../src/chmsg.c ../../src/chsleep.c ../../src/chqueues.c \
-       ../../src/chserial.c \
+       ../../ports/ARM7-AT91SAM7X/sam7x_emac.c \
+       ${KSRC} ${USRC} \
        ../../src/lib/evtimer.c ../../test/test.c \
        at91lib/aic.c \
+       web/webthread.c \
        board.c main.c
 
 # List THUMB-mode C sources here
@@ -82,7 +100,8 @@ ASMSRC = ../../ports/ARM7-AT91SAM7X/crt0.s ../../ports/ARM7/chsys.s
 
 # List all user directories here
 UINCDIR = ../../src/include ../../src/lib ../../test \
-          ../../ports/ARM7 ../../ports/ARM7-AT91SAM7X
+          ../../ports/ARM7 ../../ports/ARM7-AT91SAM7X \
+          ./web ../../ext/uip-1.0/uip ../../ext/uip-1.0/apps/webserver
 
 # List the user directory to look for the libraries here
 ULIBDIR =

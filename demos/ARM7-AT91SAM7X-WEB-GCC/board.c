@@ -23,6 +23,7 @@
 #include "at91lib/aic.h"
 
 #include <sam7x_serial.h>
+#include <sam7x_emac.h>
 
 extern void FiqHandler(void);
 
@@ -150,4 +151,9 @@ void hwinit(void) {
   AT91C_BASE_PIOA->PIO_PDR   = AT91C_PA3_RTS0 | AT91C_PA4_CTS0;
   AT91C_BASE_PIOA->PIO_ASR   = AT91C_PIO_PA3 | AT91C_PIO_PA4;
   AT91C_BASE_PIOA->PIO_PPUDR = AT91C_PIO_PA3 | AT91C_PIO_PA4;
+
+  /*
+   * EMAC driver initialization.
+   */
+  InitEMAC(AT91C_AIC_PRIOR_HIGHEST - 3);
 }

@@ -21,19 +21,21 @@
 #include <test.h>
 
 #include "board.h"
-#include "stm32_serial.h"
+#include <sam7x_serial.h>
+#include <sam7x_emac.h>
 
-/*
- * Red LEDs blinker thread, times are in milliseconds.
- */
-static WorkingArea(waThread1, 128);
+#include "web/webthread.h"
+
+static WorkingArea(waWebThread, 512);
+static WorkingArea(waThread1, 64);
+
 static msg_t Thread1(void *arg) {
 
   while (TRUE) {
-    GPIOC->BRR = GPIOC_LED;
-    chThdSleep(500);
-    GPIOC->BSRR = GPIOC_LED;
-    chThdSleep(500);
+    AT91C_BASE_PIOB->PIO_SODR = PIOB_LCD_BL;            // LCD on.
+    chThdSleep(100);
+    AT91C_BASE_PIOB->PIO_CODR = PIOB_LCD_BL;            // LCD off.
+    chThdSleep(900);
   }
   return 0;
 }
@@ -49,19 +51,16 @@ int main(int argc, char **argv) {
    */
   chSysInit();
 
-  /*
-   * Creates the blinker threads.
-   */
   chThdCreate(NORMALPRIO, 0, waThread1, sizeof(waThread1), Thread1, NULL);
+  chThdCreate(NORMALPRIO - 1, 0, waWebThread, sizeof(waWebThread), WebThread, NULL);
 
-  /*
-   * Normal main() thread activity, in this demo it does nothing except
-   * sleeping in a loop and check the button state.
-   */
   while (TRUE) {
-    if (GPIOA->IDR & GPIOA_BUTTON)
-      TestThread(&COM2);
     chThdSleep(500);
+    if (!(AT91C_BASE_PIOB->PIO_PDSR & PIOB_SW1))
+      chFDDWrite(&COM1, (uint8_t *)"Hello World!\r\n", 14);
+    if (!(AT91C_BASE_PIOB->PIO_PDSR & PIOB_SW2))
+      TestThread(&COM1);
   }
+
   return 0;
 }

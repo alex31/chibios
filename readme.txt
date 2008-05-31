@@ -15,6 +15,8 @@
                          directory under ./demos/ and/or ./ports/.
 ./ports/               - Architecture specific portable files.
 ./demos/               - Demo programs for specific archtectures/boards.
+./ext/                 - External libraries or other code not part of
+                         ChibiOS/RT but used in the demo applications.
 ./test/                - Test code, used by some demos.
 ./docs/Doxifile        - Doxigen project file.
 ./docs/html/index.html - ChibiOS/RT documentation (after running doxigen).
@@ -37,6 +39,8 @@ ARM7-LPC214x-G++       - Yet another LPC214X demo but this one is done using
                          ChibiOS/RT users.
 ARM7-AT91SAM7X-GCC     - Port for Atmel AT91SAM7X256. The demo program targets
                          the Olimex SAM7-EX256 board.
+ARM7-AT91SAM7X-WEB-GCC - Port for Atmel AT91SAM7X256. The web demo program
+                         targets the Olimex SAM7-EX256 board.
 ARMCM3-ST32F103-GCC    - ARM Cortex-M3 port. The demo targets the Olimex
                          STM32-P103 board.
 AVR-AVRmega128-GCC     - Port on AVRmega128. A special thanks to Vladimir for
@@ -53,6 +57,10 @@ Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
 *** Plans                                                                 ***
 *****************************************************************************
 
+- We are looking into adding an exception clause to the ChibiOS/RT license in
+  order to allow linking with non-GLP code under certain conditions.
+  The license change will happen before the 1.0.0 release, we are almost
+  there, everything looks very stable now.
 - Look into importing *or* implementing a TCP/IP stack and a File System.
 - Evaluate other architectures for a possible ChibiOS/RT port. An important
   selection parameter will be the availability of FOSS toolchains. Currently
@@ -64,6 +72,14 @@ Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
 *****************************************************************************
 *** Releases                                                              ***
 *****************************************************************************
+
+*** 0.6.5 ***
+- NEW: Web server demo for the AT91SAM7X256, the demo integrates the uIP
+  stack and its demo applications.
+- NEW: EMAC driver added to the AT91SAM7X port.
+- FIX: Small fix to the ARM7 startup files. It used a short jump in the reset
+  vector and that could fail in some memory configurations.
+- Documentation improvements.
 
 *** 0.6.4 ***
 - NEW: MSP430 port, the port code compiles correctly but it is not tested yet.
