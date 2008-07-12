@@ -53,33 +53,32 @@ struct VirtualTimer {
  * Delta List header.
  * @note The delta list is implemented as a double link bidirectional list in
  *       order to make the unlink time constant, the reset of a virtual timer
- *       is often used in the code. An slower implementation using a single
- *       link list is possible and might be added later with a
- *       \p CH_OPTIMIZE_SPACE option.
+ *       is often used in the code.
  */
 typedef struct {
     /** Next timer in the list (the one that will be triggered next).*/
     VirtualTimer    *dl_next;
     /** Last timer in the list.*/
     VirtualTimer    *dl_prev;
-    /** Not used but it must be set to /p MAXDELTA.*/
+    /** Not used but it must be set to -1.*/
     systime_t       dl_dtime;
 } DeltaList;
 
 extern DeltaList dlist;
 
-#define chVTDoTickI() \
+#define chVTDoTickI() {                                                 \
   if (&dlist != (DeltaList *)dlist.dl_next) {                           \
     VirtualTimer *vtp;                                                  \
                                                                         \
     --dlist.dl_next->vt_dtime;                                          \
     while (!(vtp = dlist.dl_next)->vt_dtime) {                          \
       vtfunc_t fn = vtp->vt_func;                                       \
-      vtp->vt_func = 0;                                                 \
+      vtp->vt_func = NULL;                                              \
       (vtp->vt_next->vt_prev = (void *)&dlist)->vt_next = vtp->vt_next; \
       fn(vtp->vt_par);                                                  \
     }                                                                   \
-  }
+  }                                                                     \
+}
 
 /** Infinite time specification.*/
 #define TIME_INFINITE 0

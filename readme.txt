@@ -74,6 +74,19 @@ Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 0.6.7 ***
+- NEW: New chThdCreateFast() API, it is a simplified form of chThdCreate()
+  that allows even faster threads creation. The new API does not support
+  the "mode" and "arg" parameters (still available in the old API).
+- OPT: Removed an unrequired initialization and made other small optimizations
+  to the chThdCreate().
+- OPT: Improvements to the test framework, now a virtual timer is used instead
+  of software loops into the bechmarks in order to have more stable results.
+- New benchmark added to the test suite.
+- Added the C++ wrapper entries to the documentation.
+- Fixed the documentation entry for the chThdCreate() API.
+- Removed redundant ifdefs from the ch.h header.
+
 *** 0.6.6 ***
 - NEW: Improved test suite, now the suite is divided in modules and the code
   is much easier to understand. The new framework simplifies the inclusion of
@@ -83,8 +96,8 @@ Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
   within the specified time window.
 - FIX: Mutex test #1 in the test suite corrected, it failed to... fail.
 - FIX: Fixed a problem in the STM32 port USART1 driver.
+- FIX: Fixed a problem in the MMC/SD driver in the LPC2148 demo.
 - Added the definitions for packed structures to the chtypes.h files.
-- Fixed a problem in the MMC/SD driver in the LPC2148 demo.
 - Improvements to the makefiles, now each source group has its own .mk include
   file. Now it is no more required to rewrite everything in each makefile.
 
