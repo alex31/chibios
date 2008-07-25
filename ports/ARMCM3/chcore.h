@@ -25,6 +25,12 @@
 typedef void *regarm;
 
 /*
+ * Port-related configuration parameters.
+ */
+#define BASEPRI_USER    0       /* User level BASEPRI, 0 = disabled.    */
+#define BASEPRI_KERNEL  0x10    /* BASEPRI level within kernel lock.    */
+
+/*
  * Interrupt saved context, empty in this architecture.
  */
 struct extctx {
@@ -66,6 +72,9 @@ typedef struct {
 
 /*
  * Platform dependent part of the \p chThdCreate() API.
+ *
+ * The top of the workspace is used for the intctx datastructure.
+ *
  */
 #define SETUP_CONTEXT(workspace, wsize, pf, arg) {                      \
   tp->p_ctx.r13 = (struct intctx *)((uint8_t *)workspace +              \
@@ -80,13 +89,11 @@ typedef struct {
 }
 
 #define chSysLock() {                                                   \
-  register uint32_t tmp asm ("r3");                                     \
-  asm volatile ("movs    %0, #0x10" : "=r" (tmp): );                    \
+  register uint32_t tmp asm ("r3") = BASEPRI_KERNEL;                    \
   asm volatile ("msr     BASEPRI, %0" : : "r" (tmp));                   \
 }
 #define chSysUnlock() {                                                 \
-  register uint32_t tmp asm ("r3");                                     \
-  asm volatile ("movs    %0, #0" : "=r" (tmp): );                       \
+  register uint32_t tmp asm ("r3") = BASEPRI_USER;                      \
   asm volatile ("msr     BASEPRI, %0" : : "r" (tmp));                   \
 }
 #define chSysSwitchI(otp, ntp) {                                        \
@@ -104,7 +111,10 @@ typedef struct {
                                     INT_REQUIRED_STACK)
 #define WorkingArea(s, n) uint32_t s[UserStackSize(n) >> 2];
 
+/* called on each interrupt entry, currently nothing is done */
 #define chSysIRQEnterI()
+/* called on each interrupt exit, pends a supervisor handler for
+ * execution after all higher priority interrupts; PendSVVector() */
 #define chSysIRQExitI() {                                               \
   SCB_ICSR = ICSR_PENDSVSET;                                            \
 }
