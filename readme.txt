@@ -74,6 +74,18 @@ Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 0.6.10 ***
+- FIX: Fixed a case-sensitiveness error in lpc214x_ssp.c, it affected only
+  linux/unix users.
+- FIX: Fixed a regression introduced in version 0.6.9, the queues benchmark
+  test case was missing from the tests list.
+- NEW: Added an option to the ARM7 ports, by specifying -DREENTRANT_LOCKS in
+  the makefile options makes the chSysLock() and chSysUnlock() become
+  reentrant. The code becomes a bit larger and slower, use it only if your
+  application really needs to invoke system API under lock.
+- NEW: Added an option to the ARM7 and CM3 makefiles to strip any unused code
+  and data from the binary file (the default is on).
+
 *** 0.6.9 ***
 - NEW: Added an option to exclude the support for the round robin scheduling,
   this can save some extra program space and makes the context switch a bit
