@@ -18,35 +18,24 @@
 */
 
 /**
- * @addtogroup Time
+ * @addtogroup Heap
  * @{
  */
 
-#include <ch.h>
+#ifndef _HEAP_H_
+#define _HEAP_H_
 
-/**
- * Suspends the invoking thread for the specified time.
- * @param time the system ticks number
- */
-void chThdSleep(systime_t time) {
-
-  chSysLock();
-  chSchGoSleepTimeoutS(PRSLEEP, time);
-  chSysUnlock();
+#ifdef __cplusplus
+extern "C" {
+#endif
+  void chHeapInit(void);
+  void *chHeapAlloc(size_t size);
+  void chHeapFree(void *p);
+  size_t chHeapStatus(size_t *sizep);
+#ifdef __cplusplus
 }
+#endif
 
-#ifdef CH_USE_SYSTEMTIME
-/**
- * Checks if the current system time is within the specified time window.
- * @param start the start of the time window (inclusive)
- * @param end the end of the time window (non inclusive)
- */
-bool_t chSysInTimeWindow(systime_t start, systime_t end) {
-
-  systime_t time = chSysGetTime();
-  return end >= start ? (time >= start) && (time < end) :
-                        (time >= start) || (time < end);
-}
-#endif /* CH_USE_SYSTEMTIME */
+#endif  /* _HEAP_H_ */
 
 /** @} */

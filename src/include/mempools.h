@@ -18,35 +18,42 @@
 */
 
 /**
- * @addtogroup Time
+ * @addtogroup MemoryPools
  * @{
  */
 
-#include <ch.h>
+#ifndef _MEMPOOLS_H_
+#define _MEMPOOLS_H_
 
-/**
- * Suspends the invoking thread for the specified time.
- * @param time the system ticks number
- */
-void chThdSleep(systime_t time) {
+#ifdef CH_USE_MEMPOOLS
 
-  chSysLock();
-  chSchGoSleepTimeoutS(PRSLEEP, time);
-  chSysUnlock();
+struct pool_header {
+  struct pool_header *ph_next;
+};
+
+typedef struct {
+  struct pool_header    *mp_next;
+  size_t                mp_object_size;
+#ifdef CH_USE_HEAP
+  bool_t                mp_grow;
+#endif /* CH_USE_HEAP */
+} MemoryPool;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+  void chPoolInit(MemoryPool *mp, size_t size);
+  void *chPoolAlloc(MemoryPool *mp);
+  void chPoolFree(MemoryPool *mp, void *objp);
+#ifdef CH_USE_HEAP
+  void chPoolRelease(MemoryPool *mp);
+#endif
+#ifdef __cplusplus
 }
+#endif
 
-#ifdef CH_USE_SYSTEMTIME
-/**
- * Checks if the current system time is within the specified time window.
- * @param start the start of the time window (inclusive)
- * @param end the end of the time window (non inclusive)
- */
-bool_t chSysInTimeWindow(systime_t start, systime_t end) {
+#endif /* CH_USE_MEMPOOLS */
 
-  systime_t time = chSysGetTime();
-  return end >= start ? (time >= start) && (time < end) :
-                        (time >= start) || (time < end);
-}
-#endif /* CH_USE_SYSTEMTIME */
+#endif /* _MEMPOOLS_H_ */
 
 /** @} */

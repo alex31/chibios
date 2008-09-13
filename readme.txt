@@ -74,6 +74,37 @@ Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 0.7.0 ***
+- NEW: Memory Heap Allocator functionality added. The allocator implements a
+  first-fit strategy but there is an option that allow it to wrap the compiler
+  provided malloc() that may implement a different strategy. The heap
+  allocator is thread-safe and can use both a mutex or a semaphore as
+  internal synchronization primitive.
+- NEW: Memory Pools functionality added, this mechanism allows constant-time
+  allocation/freeing of constant-size objects. It can be used to dynamically
+  allocate kernel objects like Semaphores, Mutexes, Threads etc fully in real
+  time, of course it is also possible to manage application-defined objects.
+  The pool allocator is thread-safe.
+  It is worth remembering that the kernel is still entirely static, it does
+  not use the allocation services internally, it is up to the application
+  code to use the allocators in order to use dynamic system objects.
+  Both the allocators can be disabled and removed from the memory image.
+- NEW: Added option macros in chconf.h to add custom fields and initialization
+  code to the Thread structure.
+- FIX: Corrected the wrong definition of the chThdResumeI() macro.
+- FIX: The API chSemWaitTimeout() was missing in the documentation.
+- CHANGE: Modified the chMtxUnlock() and chMtxUnlockS() APIs to return the
+  pointer to the released mutex instead of void.
+- CHANGE: Now the chThdResume() API asserts that the thread is in PRSUSPEND
+  state rather than test it.
+- CHANGE: Removed the CH_USE_TERMINATE, CH_USE_SLEEP, CH_USE_SUSPEND and
+  CH_USE_RESUME configuration options in order to make the chconf.h file
+  simpler. The related functions are very small and almost always required.
+- CHANGE: The P_MSGBYPRIO thread option has been removed, now the threads
+  always serve messages in priority order if the CH_USE_MESSAGES_PRIORITY
+  configuration option is active.
+- Added new test cases to the test suite.
+
 *** 0.6.10 ***
 - FIX: Fixed a case-sensitiveness error in lpc214x_ssp.c, it affected only
   linux/unix users.

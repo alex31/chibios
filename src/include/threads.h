@@ -67,10 +67,6 @@ struct Thread {
     /** Mutex where the thread is waiting on (only in \p PRWTMTX state). */
     Mutex           *p_wtmtxp;
 #endif
-#ifdef CH_USE_CONDVARS
-    /** CondVar where the thread is waiting on (only in \p PRWTCOND state). */
-    CondVar         *p_wtcondp;
-#endif
 #ifdef CH_USE_MESSAGES
     /** Destination thread for message send (only in \p PRSNDMSG state). */
     Thread          *p_wtthdp;
@@ -110,6 +106,9 @@ struct Thread {
   /** Thread's own, non-inherited, priority. */
   tprio_t           p_realprio;
 #endif
+#ifdef CH_USE_THREAD_EXT
+  THREAD_EXT_FIELDS
+#endif
 };
 
 /** Thread state: Ready to run, waiting on the ready list.*/
@@ -135,18 +134,10 @@ struct Thread {
 /** Thread state: After termination.*/
 #define PREXIT      10
 
-#ifdef CH_USE_TERMINATE
 /** Thread option: Termination requested flag.*/
 #define P_TERMINATE 1
-#endif
-#ifdef CH_USE_RESUME
 /** Thread option: Create suspended thread.*/
 #define P_SUSPENDED 2
-#endif
-#ifdef CH_USE_MESSAGES_PRIORITY
-/** Thread option: Serve messages by priority instead of FIFO order.*/
-#define P_MSGBYPRIO 4
-#endif
 
 /** Pseudo priority used by the ready list header, do not use.*/
 #define NOPRIO      0
@@ -179,15 +170,9 @@ extern "C" {
                           size_t wsize, tfunc_t pf);
   void chThdSetPriority(tprio_t newprio);
   void chThdExit(msg_t msg);
-#ifdef CH_USE_RESUME
   void chThdResume(Thread *tp);
-#endif
-#ifdef CH_USE_SUSPEND
   void chThdSuspend(Thread **tpp);
-#endif
-#ifdef CH_USE_TERMINATE
   void chThdTerminate(Thread *tp);
-#endif
 #ifdef CH_USE_WAITEXIT
   msg_t chThdWait(Thread *tp);
 #endif
@@ -216,6 +201,7 @@ extern "C" {
  * Returns the exit event source for the specified thread. The source is
  * signaled when the thread terminates.
  * @param tp the pointer to the thread
+ * @deprecated
  * @note When registering on a thread termination make sure the thread
  *       is still alive, if you do that after the thread termination
  *       then you would miss the event. There are two ways to ensure
@@ -239,7 +225,7 @@ extern "C" {
  * \p chThdSuspend().
  * @param tp the pointer to the thread
  */
-#define chThdResumeI(tp) chSchReadyI((tp), RDY_OK)
+#define chThdResumeI(tp) chSchReadyI(tp)
 
 #endif  /* _THREADS_H_ */
 

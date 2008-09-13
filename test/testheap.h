@@ -17,36 +17,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/**
- * @addtogroup Time
- * @{
- */
+#ifndef _TESTHEAP_H_
+#define _TESTHEAP_H_
 
-#include <ch.h>
+extern const struct testcase testheap1;
 
-/**
- * Suspends the invoking thread for the specified time.
- * @param time the system ticks number
- */
-void chThdSleep(systime_t time) {
-
-  chSysLock();
-  chSchGoSleepTimeoutS(PRSLEEP, time);
-  chSysUnlock();
-}
-
-#ifdef CH_USE_SYSTEMTIME
-/**
- * Checks if the current system time is within the specified time window.
- * @param start the start of the time window (inclusive)
- * @param end the end of the time window (non inclusive)
- */
-bool_t chSysInTimeWindow(systime_t start, systime_t end) {
-
-  systime_t time = chSysGetTime();
-  return end >= start ? (time >= start) && (time < end) :
-                        (time >= start) || (time < end);
-}
-#endif /* CH_USE_SYSTEMTIME */
-
-/** @} */
+#endif /* _TESTHEAP_H_ */

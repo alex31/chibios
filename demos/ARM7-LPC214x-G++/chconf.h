@@ -34,6 +34,13 @@
  *  that this is not related to the compiler optimization options.*/
 #define CH_OPTIMIZE_SPEED
 
+/** Configuration option: it specified this option enables the \p Thread
+ *  extension fields and initiazation code.
+ * @see THREAD_EXT_FIELDS
+ * @see THREAD_EXT_INIT
+ */
+//#define CH_USE_THREAD_EXT
+
 /** Configuration option: if specified then the Virtual Timers subsystem is
  *  included in the kernel.*/
 #define CH_USE_VIRTUAL_TIMERS
@@ -45,23 +52,6 @@
 /** Configuration option: if specified then the System Timer subsystem is
  *  included in the kernel.*/
 #define CH_USE_SYSTEMTIME
-
-/** Configuration option: if specified then the \p chThdSleep() function is
- *  included in the kernel.
- * @note requires \p CH_USE_VIRTUAL_TIMERS.*/
-#define CH_USE_SLEEP
-
-/** Configuration option: if specified then the \p chThdResume()
- *  function is included in the kernel.*/
-#define CH_USE_RESUME
-
-/** Configuration option: if specified then the \p chThdSuspend()
- *  function is included in the kernel.*/
-#define CH_USE_SUSPEND
-
-/** Configuration option: if specified then the \p chThdTerminate()
- *  and \p chThdShouldTerminate() functions are included in the kernel.*/
-#define CH_USE_TERMINATE
 
 /** Configuration option: if specified then the \p chThdWait() function
  *  is included in the kernel.*/
@@ -137,6 +127,26 @@
  *  are included in the kernel.*/
 #define CH_USE_SERIAL_HALFDUPLEX
 
+/** Configuration option: if specified then the memory heap allocator APIs
+ *  are included in the kernel.*/
+#define CH_USE_HEAP
+
+/** Configuration option: Number of RAM bytes to use as system heap. If set to
+ *  zero then the whole available RAM is used as system heap.
+ * @note In order to use the whole RAM as system heap the linker script must
+ *       provide the \p __heap_base__ and \p __heap_end__ symbols.
+ * @note requires \p CH_USE_HEAP.
+ */
+#define CH_HEAP_SIZE 0
+
+/** Configuration option: enforces the use of the C-runtime \p malloc() and
+ *  \p free() functions as backend for the system heap allocator.*/
+#define CH_USE_MALLOC_HEAP
+
+/** Configuration option: if specified then the memory pools allocator APIs
+ *  are included in the kernel.*/
+#define CH_USE_MEMPOOLS
+
 /** Configuration option: Frequency of the system timer that drives the system
  *  ticks. This also defines the system time unit.*/
 #define CH_FREQUENCY 1000
@@ -168,6 +178,23 @@
 /** Debug option: Includes the threads context switch tracing feature.
  */
 //#define CH_USE_TRACE
+
+/** User fields added to the end of the \p Thread structure if the
+ * \p CH_USE_THREAD_EXT option is enabled.
+ * @see CH_USE_THREAD_EXT
+ */
+#define THREAD_EXT_FIELDS                                               \
+struct {                                                                \
+  /* Add fields here.*/                                                 \
+};
+
+/** User initialization code added to the \p chThdCreate() API if the
+ *  \p CH_USE_THREAD_EXT option is enabled.
+ * @see CH_USE_THREAD_EXT
+ */
+#define THREAD_EXT_INIT(tp) {                                           \
+  /* Add initialization code here.*/                                    \
+}
 
 #endif  /* _CHCONF_H_ */
 

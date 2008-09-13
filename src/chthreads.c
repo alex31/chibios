@@ -50,6 +50,9 @@ void init_thread(tprio_t prio, tmode_t mode, Thread *tp) {
 #ifdef CH_USE_EXIT_EVENT
   chEvtInit(&tp->p_exitesource);
 #endif
+#ifdef CH_USE_THREAD_EXT
+  THREAD_EXT_INIT(tp);
+#endif
 }
 
 #ifdef CH_USE_DEBUG
@@ -173,7 +176,6 @@ void chThdSetPriority(tprio_t newprio) {
   chSysUnlock();
 }
 
-#ifdef CH_USE_SUSPEND
 /**
  * Suspends the invoking thread.
  *
@@ -182,44 +184,29 @@ void chThdSetPriority(tprio_t newprio) {
  *            \p PRSUSPENDED state, it is set to \p NULL after it is resumed.
  *            This allows to implement a "test and resume" on the variable
  *            into interrupt handlers.
- * @note The function is available only if the \p CH_USE_SUSPEND
- *       option is enabled in \p chconf.h.
  */
 void chThdSuspend(Thread **tpp) {
 
   chSysLock();
-
   chDbgAssert(*tpp == NULL, "chthreads.c, chThdSuspend()");
   *tpp = currp;
   chSchGoSleepS(PRSUSPENDED);
   *tpp = NULL;
-
   chSysUnlock();
 }
-#endif /* CH_USE_SUSPEND */
 
-#ifdef CH_USE_RESUME
 /**
- * Resumes a thread created with the \p P_SUSPENDED option or suspended with
- * \p chThdSuspend().
+ * Resumes a suspended thread.
  * @param tp the pointer to the thread
- * @note The function has no effect on threads in any other state than
- *       \p PRSUSPENDED.
- * @note The function is available only if the \p CH_USE_RESUME
- *       option is enabled in \p chconf.h.
  */
 void chThdResume(Thread *tp) {
 
   chSysLock();
-
-  if ((tp)->p_state == PRSUSPENDED)
-    chSchWakeupS(tp, RDY_OK);
-
+  chDbgAssert(tp->p_state == PRSUSPENDED, "chthreads.c, chThdResume()");
+  chSchWakeupS(tp, RDY_OK);
   chSysUnlock();
 }
-#endif
 
-#ifdef CH_USE_TERMINATE
 /**
  * Requests a thread termination.
  * @param tp the pointer to the thread
@@ -230,12 +217,9 @@ void chThdResume(Thread *tp) {
 void chThdTerminate(Thread *tp) {
 
   chSysLock();
-
   tp->p_flags |= P_TERMINATE;
-
   chSysUnlock();
 }
-#endif
 
 /**
  * Terminates the current thread by specifying an exit status code.
