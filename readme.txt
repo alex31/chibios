@@ -74,6 +74,33 @@ Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 0.7.1 ***
+- NEW: New chThdInit() and chThdCreateStatic() APIs now replace the old
+  chThdCreate() and chThdCreateFast() that are thus marked as deprecated.
+  The new APIs use one less parameter and are faster.
+- NEW: New dynamic chThdCreateFromHeap() and chthdCreateFromMemoryPool() APIs.
+  The dynamic APIs are only included if the CH_USE_DYNAMIC option is specified
+  into the project configuration file.
+- NEW: Added an THREAD_EXT_EXIT macro in chconf.h to add finalization code to
+  the chThdExit() API.
+- CHANGE: chThdCreateFast() is now a macro that uses chThdCreateStatic().
+- CHANGE: chThdWait() now releases the memory allocated by
+  chThdCreateFromHeap() and chthdCreateFromMemoryPool(). Threads created
+  through the static APIs are not affected thus the behavior is backward
+  compatible.
+- CHANGE: Modified the chThdResume() API to return the resumed thread pointer
+  instead of void. This allowed few optimization into the threads creation
+  code.
+- CHANGE: The chThdGetExitEventSource() API and the CH_USE_EXIT_EVENT
+  configuration option and the are now deprecated. Use the THREAD_EXT_EXIT
+  finalization macro in order to implement a similar functionality if needed.
+- FIX: The chThdCreate() had a regression in 0.7.0, the mode parameter was
+  ignored.
+- FIX: Removed duplicated call to chHeapInit() into chSysInit().
+- FIX: Fixed a syntax error in chheap.c triggered by the CH_USE_DEBUG option.
+- Added new test cases to the test suite for the new dynamic APIs.
+- Documentation fixes.
+
 *** 0.7.0 ***
 - NEW: Memory Heap Allocator functionality added. The allocator implements a
   first-fit strategy but there is an option that allow it to wrap the compiler
