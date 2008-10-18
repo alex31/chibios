@@ -182,10 +182,11 @@ void test_wait_threads(void) {
       chThdWait(threads[i]);
 }
 
-void test_cpu_pulse(systime_t ms) {
+void test_cpu_pulse(unsigned ms) {
 
+  systime_t duration = MS2ST(ms);
   systime_t start = chSysGetTime();
-  while (chSysInTimeWindow(start, start + ms)) {
+  while (chSysInTimeWindow(start, start + duration)) {
 #if defined(WIN32)
     ChkIntSources();
 #endif
@@ -209,11 +210,12 @@ static void tmr(void *p) {
   test_timer_done = TRUE;
 }
 
-void test_start_timer(systime_t time) {
+void test_start_timer(unsigned ms) {
 
+  systime_t duration = MS2ST(ms);
   test_timer_done = FALSE;
   chSysLock();
-  chVTSetI(&vt, time, tmr, NULL);
+  chVTSetI(&vt, duration, tmr, NULL);
   chSysUnlock();
 }
 
@@ -248,7 +250,7 @@ msg_t TestThread(void *p) {
   i = 0;
   while (tests[i]) {
 #if DELAY_BETWEEN_TESTS > 0
-    chThdSleep(DELAY_BETWEEN_TESTS);
+    chThdSleep(MS2ST(DELAY_BETWEEN_TESTS));
 #endif
     test_println("---------------------------------------------------------------------------");
     test_print("--- Test Case ");

@@ -21,6 +21,7 @@
 #include <signal.h>
 
 #include "board.h"
+#include "msp430_serial.h"
 
 /*
  * Hardware initialization goes here.
@@ -33,6 +34,14 @@ void hwinit(void) {
    */
   DCOCTL  = VAL_DCOCTL;
   BCSCTL1 = VAL_BCSCTL1;
+#if defined(MSP_USE_XT2CLK)
+  do {
+    int i;
+    IFG1 &= ~OFIFG;
+     for (i = 255; i > 0; i--)
+       asm("nop");
+  } while (IFG1 & OFIFG);
+#endif
   BCSCTL2 = VAL_BCSCTL2;
 
   /*
@@ -65,10 +74,15 @@ void hwinit(void) {
   /*
    * Timer 0 setup, uses SMCLK as source.
    */
-  TACCR0 = SMCLK / CH_FREQUENCY - 1;    /* Counter limit.               */
+  TACCR0 = SMCLK / 4 / CH_FREQUENCY - 1;/* Counter limit.               */
   TACTL = TACLR;                        /* Clean start.                 */
-  TACTL = TASSEL_2 | MC_1;              /* Src=SMCLK, cmp=TACCR0.       */
+  TACTL = TASSEL_2 | ID_2 | MC_1;       /* Src=SMCLK, ID=4, cmp=TACCR0. */
   TACCTL0 = CCIE;                       /* Interrupt on compare.        */
+
+  /*
+   * Other subsystems.
+   */
+  InitSerial();
 }
 
 interrupt(TIMERA0_VECTOR) tmr0irq(void) {

@@ -21,6 +21,7 @@
 #include <test.h>
 
 #include "board.h"
+#include "msp430_serial.h"
 
 /*
  * Red LEDs blinker thread, times are in milliseconds.
@@ -30,9 +31,9 @@ static msg_t Thread1(void *arg) {
 
   while (TRUE) {
     P6OUT |= P6_O_LED;
-    chThdSleep(500);
+    chThdSleep(MS2ST(500));
     P6OUT &= ~P6_O_LED;
-    chThdSleep(500);
+    chThdSleep(MS2ST(500));
   }
   return 0;
 }
@@ -63,9 +64,9 @@ int main(int argc, char **argv) {
    * sleeping in a loop.
    */
   while (TRUE) {
-//    if (!(P6IN & P6_I_BUTTON))
-//      TestThread(&COM1);
-    chThdSleep(500);
+    if (!(P6IN & P6_I_BUTTON))
+      TestThread(&COM1);
+    chThdSleep(MS2ST(500));
   }
   return 0;
 }

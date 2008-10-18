@@ -51,7 +51,7 @@ struct intctx {
   regmsp        r9;
   regmsp        r10;
   regmsp        r11;
-  regmsp        sr;
+//  regmsp        sr;
   regmsp        pc;
 };
 
@@ -65,13 +65,12 @@ typedef struct {
                                    sizeof(struct intctx));              \
   tp->p_ctx.sp->r10 = pf;                                               \
   tp->p_ctx.sp->r11 = arg;                                              \
-  tp->p_ctx.sp->sr = (regmsp)GIE;                                       \
   tp->p_ctx.sp->pc = threadstart;                                       \
 }
 
 #define IDLE_THREAD_STACK_SIZE 0
 
-#define INT_REQUIRED_STACK 16
+#define INT_REQUIRED_STACK 32
 #define StackAlign(n) ((((n) - 1) | 1) + 1)
 #define UserStackSize(n) StackAlign(sizeof(Thread) +                    \
                                     sizeof(struct intctx) +             \

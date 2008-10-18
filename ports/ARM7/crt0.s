@@ -18,7 +18,7 @@
 */
 
 /*
- * Generic ARM startup file for ChibiOS/RT.
+ * Generic ARM7 startup file for ChibiOS/RT.
  */
 
 .set    MODE_USR, 0x10
@@ -32,41 +32,14 @@
 .equ    I_BIT, 0x80
 .equ    F_BIT, 0x40
 
-.section .startup
+.text
 .code 32
 .balign 4
-/*
- * System entry points.
- */
-_start:
-        ldr     pc, _reset
-        ldr     pc, _undefined
-        ldr     pc, _swi
-        ldr     pc, _prefetch
-        ldr     pc, _abort
-        nop
-        ldr     pc, [pc,#-0xFF0]        /* VIC - IRQ Vector Register */
-        ldr     pc, _fiq
-
-_reset:
-        .word   ResetHandler
-_undefined:
-        .word   UndHandler
-_swi:
-        .word   SwiHandler
-_prefetch:
-        .word   PrefetchHandler
-_abort:
-        .word   AbortHandler
-_fiq:
-        .word   FiqHandler
-        .word   0
-        .word   0
 
 /*
  * Reset handler.
  */
-.text
+.global ResetHandler
 ResetHandler:
         /*
          * Stack pointers initialization.
@@ -103,6 +76,20 @@ ResetHandler:
 //        ldr     r1, =__sys_stack_size__
 //        sub     r0, r0, r1
         /*
+         * Early initialization.
+         */
+#ifndef THUMB_NO_INTERWORKING
+        bl      hwinit0
+#else
+        add     r0, pc, #1
+        bx      r0
+.code 16
+        bl      hwinit0
+        mov     r0, pc
+        bx      r0
+.code 32
+#endif
+        /*
          * Data initialization.
          * NOTE: It assumes that the DATA size is a multiple of 4.
          */
@@ -126,10 +113,10 @@ bssloop:
         strlo   r0, [r1], #4
         blo     bssloop
         /*
-         * Application-provided HW initialization routine.
+         * Late initialization.
          */
 #ifndef THUMB_NO_INTERWORKING
-        bl      hwinit
+        bl      hwinit1
         /*
          * main(0, NULL).
          */
@@ -141,7 +128,7 @@ bssloop:
         add     r0, pc, #1
         bx      r0
 .code 16
-        bl      hwinit
+        bl      hwinit1
         mov     r0, #0
         mov     r1, r0
         bl      main
@@ -149,6 +136,10 @@ bssloop:
 .code 32
 #endif
 
+/*
+ * Default exceptions handlers. The handlers are declared weak in order to be
+ * replaced by the real handling code.
+ */
 .weak UndHandler
 .globl UndHandler
 UndHandler:
@@ -170,3 +161,31 @@ AbortHandler:
 FiqHandler:
 
 .loop: b        .loop
+
+#ifdef THUMB_NO_INTERWORKING
+.code 16
+#endif
+
+/*
+ * Default early initialization code. It is declared weak in order to be
+ * replaced by the real initialization code.
+ * Early initialization is performed just after reset before BSS and DATA
+ * segments initialization.
+ */
+.global hwinit0
+.weak hwinit0
+.thumb_func
+hwinit0:
+        bx      lr
+        
+/*
+ * Default late initialization code. It is declared weak in order to be
+ * replaced by the real initialization code.
+ * Late initialization is performed after BSS and DATA segments initialization
+ * and before invoking the main() function.
+ */
+.global hwinit1
+.weak hwinit1
+.thumb_func
+hwinit1:
+        bx      lr

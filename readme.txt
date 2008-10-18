@@ -48,8 +48,7 @@ AVR-AVRmega128-GCC     - Port on AVRmega128. A special thanks to Vladimir for
                          targets the Olimex AVR-MT-128 mini terminal board.
 AVR-AT90CANx-GCC       - Port on AVR AT90CAN128, not tested on hardware yet.
 MSP430-MSP430x1611-GCC - Port on Texas Instruments MSP430F1611, the demo
-                         targets the Olimex MSP430-P1611 board. It is not
-                         tested on hardware yet, consider it work in progress.
+                         targets the Olimex MSP430-P1611 board.
 Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
                          MinGW version.
 
@@ -73,6 +72,29 @@ Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
 *****************************************************************************
 *** Releases                                                              ***
 *****************************************************************************
+
+*** 0.7.2 ***
+- NEW: Added a serial driver to the MSP430 port, the MSP430 port now has been
+  tested on hardware and passes the test suite.
+- NEW: Added to the MSP demo program the option to run from the internal DCO
+  or from an external xtal. The default is the internal DCO.
+- NEW: Added macros to convert from seconds, milliseconds and microseconds to
+  system ticks. This improves application code portability among different
+  ports.
+- CHANGE: Modified the test suite to use the new time conversion macros.
+- CHANGE: Modified the CM3 startup file in order to implement an early
+  initialization phase: hwinit0, the late initialization phase is now named
+  hwinit1. The demo now initializes the PLL before initializing the BSS and
+  DATA segments, this greatly optimizes the system start up time.
+- NEW: Unified ARM7 startup file, it is shared by the LPC and SAM7 demo
+  projects. The new startup file implements early and late initialization
+  phases as described above for the CM3 startup file.
+  The architecture specific vector tables are now encapsulated into the
+  vectors.s files.
+- Modified the STM32 demo makefile to use the latest YAGARTO toolchain as
+  default (arm-elf-gcc).
+- Documentation improvements, added collaboration diagrams and call graphs.
+  Added a documentation-related readme under ./docs.
 
 *** 0.7.1 ***
 - NEW: New chThdInit() and chThdCreateStatic() APIs now replace the old

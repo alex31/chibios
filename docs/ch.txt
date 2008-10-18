@@ -141,8 +141,7 @@
  * <p>
  * The ARM7 port makes some assumptions on the application code organization:
  * <ul>
- * <li>The \p main() function is invoked in system mode and with interrupts
- *     disabled.</li>
+ * <li>The \p main() function is invoked in system mode.</li>
  * <li>Each thread has a private user/system stack, the system has a single
  *     interrupt stack where all the interrupts are processed.</li>
  * <li>The threads are started in system mode.</li>
@@ -231,6 +230,20 @@
 /** @} */
 
 /**
+ * @defgroup STM32F103 STM32F103 Support
+ * @{
+ * <p>
+ * The STM32F103 support includes:
+ * <ul>
+ * <li>Buffered, interrupt driven, serial driver.</li>
+ * <li>A demo supporting the kernel test suite.</li>
+ * </ul>
+ * </p>
+ * @ingroup ARMCM3
+ */
+/** @} */
+
+/**
  * @defgroup AVR MegaAVR
  * @{
  * <p>
@@ -312,6 +325,16 @@
  * @ingroup Kernel
  * @file chschd.c Scheduler code.
  * @file scheduler.h Scheduler macros and structures.
+ */
+/** @} */
+
+/**
+ * @defgroup ThreadLists Thread Lists and Queues
+ * @{
+ * ChibiOS/RT thread lists and queues utilities.
+ * @ingroup Kernel
+ * @file chlists.c Lists and queues code.
+ * @file lists.h Lists and queues macros and structures.
  */
 /** @} */
 
