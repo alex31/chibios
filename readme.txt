@@ -73,6 +73,24 @@ Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 0.8.3 ***
+- NEW: Introduced new API chThdSleepS() as a macro, no real changes in the
+       kernel code.
+- FIX: The MinGW simulated demo now works again after breaking in 0.8.2
+  because the changes to the macro names.
+- FIX: Adjusted the test suite stack sizes for the MinGW simulated demo, now
+  the demo passes all the tests.
+- FIX: Added fflush(stdout) to the MinGW simulation code output in order to
+  make the Eclipse console work correctly.
+- FIX: Renamed the MinGW demo main source from demo.c to main.c in order to
+  follow the pattern of all the other demos.
+- FIX:  Added debug switches to the MinGW simulated demo, not it is possible to
+  debug the demo (and the kernel) inside Eclipse without a physical board.
+- Removed lots of old deprecated constructs from the MinGW simulated demo.
+  There are still some, the demo will need some rework before version 1.0.0.
+- Updated the C++ wrapper with the latest APIs changes and fixed some bugs.
+- Small fixes to the documentation.
+
 *** 0.8.2 ***
 - FIX: Included the files that were missing from version 0.8.1 distribution.
 - FIX: Duplicated sections in the documentation removed.

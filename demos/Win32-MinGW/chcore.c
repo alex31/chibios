@@ -65,6 +65,7 @@ void InitCore(void) {
 
   InitSimCom1();
   InitSimCom2();
+  fflush(stdout);
 }
 
 /*
@@ -91,7 +92,7 @@ void ChkIntSources(void) {
   }
 }
 
-msg_t _IdleThread(void *p) {
+msg_t _idle(void *p) {
 
   while (TRUE) {
 
