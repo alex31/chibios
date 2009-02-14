@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,27 +15,26 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
+ * @file chmtx.c
+ * @brief Mutexes code.
  * @addtogroup Mutexes
  * @{
  */
 
 #include <ch.h>
 
-#ifdef CH_USE_MUTEXES
+#if CH_USE_MUTEXES
 
 /**
- * Initializes s \p Mutex structure.
- * @param mp pointer to a \p Mutex structure
+ * @brief Initializes s @p Mutex structure.
+ *
+ * @param mp pointer to a @p Mutex structure
+ * @note This function can be invoked from within an interrupt handler even if
+ *       it is not an I-Class API because it does not touch any critical kernel
+ *       data structure.
  */
 void chMtxInit(Mutex *mp) {
 
@@ -44,8 +43,9 @@ void chMtxInit(Mutex *mp) {
 }
 
 /**
- * Locks the specified mutex.
- * @param mp pointer to the \p Mutex structure
+ * @brief Locks the specified mutex.
+ *
+ * @param mp pointer to the @p Mutex structure
  */
 void chMtxLock(Mutex *mp) {
 
@@ -57,10 +57,10 @@ void chMtxLock(Mutex *mp) {
 }
 
 /**
- * Locks the specified mutex.
+ * @brief Locks the specified mutex.
  *
- * @param mp pointer to the \p Mutex structure
- * @note This function must be called within a \p chSysLock() / \p chSysUnlock()
+ * @param mp pointer to the @p Mutex structure
+ * @note This function must be called within a @p chSysLock() / @p chSysUnlock()
  *       block.
  */
 void chMtxLockS(Mutex *mp) {
@@ -83,20 +83,26 @@ void chMtxLockS(Mutex *mp) {
       switch (tp->p_state) {
       /* thread tp is waiting on a mutex? */
       case PRWTMTX:
-        /* requeue tp with its new priority on the mutex wait queue */
+        /* Requeues tp with its new priority on the mutex wait queue. */
         prio_insert(dequeue(tp), &tp->p_wtmtxp->m_queue);
         /* boost the owner of this mutex if needed */
         tp = tp->p_wtmtxp->m_owner;
         continue;
-#ifdef CH_USE_MESSAGES_PRIORITY
+#if CH_USE_SEMAPHORES_PRIORITY
+      case PRWTSEM:
+        /* Requeues tp with its new priority on the semaphore queue. */
+        prio_insert(dequeue(tp), &tp->p_wtsemp->s_queue);
+        break;
+#endif
+#if CH_USE_MESSAGES_PRIORITY
       case PRSNDMSG:
-        /* requeue tp with its new priority on (?) */
+        /* Requeues tp with its new priority on the server thread queue. */
         prio_insert(dequeue(tp), &tp->p_wtthdp->p_msgqueue);
         break;
 #endif
       /* thread tp is ready? */
       case PRREADY:
-        /* requeue tp with its new priority on the ready list */
+        /* Requeue tp with its new priority on the ready list. */
         chSchReadyI(dequeue(tp));
       }
       break;
@@ -117,10 +123,12 @@ void chMtxLockS(Mutex *mp) {
 }
 
 /**
- * Tries to lock a mutex. This function does not have any overhead related to
+ * @brief Tries to lock a mutex.
+ * @details This function does not have any overhead related to
  * the priority inheritance mechanism because it does not try to enter a sleep
  * state on the mutex.
- * @param mp pointer to the \p Mutex structure
+ *
+ * @param mp pointer to the @p Mutex structure
  * @retval TRUE if the mutex was successfully acquired
  * @retval FALSE if the lock attempt failed.
  */
@@ -136,13 +144,14 @@ bool_t chMtxTryLock(Mutex *mp) {
 }
 
 /**
- * Tries to lock a mutex. This function does not have any overhead related to
+ * @brief Tries to lock a mutex.
+ * @details This function does not have any overhead related to
  * the priority inheritance mechanism because it does not try to enter a sleep
  * state on the mutex.
- * @param mp pointer to the \p Mutex structure
+ * @param mp pointer to the @p Mutex structure
  * @retval TRUE if the mutex was successfully acquired
  * @retval FALSE if the lock attempt failed.
- * @note This function must be called within a \p chSysLock() / \p chSysUnlock()
+ * @note This function must be called within a @p chSysLock() / @p chSysUnlock()
  *       block.
  */
 bool_t chMtxTryLockS(Mutex *mp) {
@@ -156,7 +165,8 @@ bool_t chMtxTryLockS(Mutex *mp) {
 }
 
 /**
- * Unlocks the next owned mutex in reverse lock order.
+ * @brief Unlocks the next owned mutex in reverse lock order.
+ *
  * @return The pointer to the unlocked mutex.
  */
 Mutex *chMtxUnlock(void) {
@@ -201,9 +211,10 @@ Mutex *chMtxUnlock(void) {
 }
 
 /**
- * Unlocks the next owned mutex in reverse lock order.
+ * @brief Unlocks the next owned mutex in reverse lock order.
+ *
  * @return The pointer to the unlocked mutex.
- * @note This function must be called within a \p chSysLock() / \p chSysUnlock()
+ * @note This function must be called within a @p chSysLock() / @p chSysUnlock()
  *       block.
  * @note This function does not reschedule internally.
  */
@@ -241,10 +252,11 @@ Mutex *chMtxUnlockS(void) {
 }
 
 /**
- * Unlocks all the mutexes owned by the invoking thread, this is <b>MUCH MORE</b>
- * efficient than releasing the mutexes one by one and not just because the
- * call overhead, this function does not have any overhead related to the
- * priority inheritance mechanism.
+ * @brief Unlocks all the mutexes owned by the invoking thread.
+ * @details This function is <b>MUCH MORE</b> efficient than releasing the
+ * mutexes one by one and not just because the call overhead, this function
+ * does not have any overhead related to the priority inheritance mechanism
+ * too.
  */
 void chMtxUnlockAll(void) {
 

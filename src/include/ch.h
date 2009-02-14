@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,17 +15,12 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
- * @addtogroup Initialization
+ * @file ch.h
+ * @brief ChibiOS/RT main include file, it includes everything else.
+ * @addtogroup Kernel
  * @{
  */
 
@@ -40,7 +35,7 @@
 /**
  * Kernel version string.
  */
-#define CH_KERNEL_VERSION       "1.0.0"
+#define CH_KERNEL_VERSION       "1.1.0unstable"
 
 /**
  * Kernel version major number.
@@ -50,17 +45,28 @@
 /**
  * Kernel version minor number.
  */
-#define CH_KERNEL_MINOR         0
+#define CH_KERNEL_MINOR         1
 
 /**
  * Kernel version patch number.
  */
 #define CH_KERNEL_PATCH         0
 
+/*
+ * Common values.
+ */
+#ifndef FALSE
+#define FALSE       0
+#endif
+#ifndef TRUE
+#define TRUE        (!FALSE)
+#endif
+
 #include <chconf.h>
 #include <chtypes.h>
 #include "lists.h"
 #include <chcore.h>
+#include "sys.h"
 #include "vt.h"
 #include "scheduler.h"
 #include "semaphores.h"
@@ -75,25 +81,6 @@
 #include "queues.h"
 #include "serial.h"
 #include "debug.h"
-
-/*
- * Common values.
- */
-#ifndef FALSE
-#define FALSE       0
-#endif
-#ifndef TRUE
-#define TRUE        (!FALSE)
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-  void chSysInit(void);
-  void chSysTimerHandlerI(void);
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _CH_H_ */
 

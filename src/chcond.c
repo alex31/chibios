@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 /*
    Concepts and parts of this file are contributed by and Copyright (C) 2008
@@ -29,17 +22,23 @@
  */
 
 /**
+ * @file chcond.c
+ * @brief Condition Variables code.
  * @addtogroup CondVars
  * @{
  */
 
 #include <ch.h>
 
-#if defined(CH_USE_CONDVARS) && defined(CH_USE_MUTEXES)
+#if CH_USE_CONDVARS && CH_USE_MUTEXES
 
 /**
- * Initializes s \p CondVar structure.
- * @param cp pointer to a \p CondVar structure
+ * @brief Initializes s @p CondVar structure.
+ *
+ * @param cp pointer to a @p CondVar structure
+ * @note This function can be invoked from within an interrupt handler even if
+ *       it is not an I-Class API because it does not touch any critical kernel
+ *       data structure.
  */
 void chCondInit(CondVar *cp) {
 
@@ -47,9 +46,9 @@ void chCondInit(CondVar *cp) {
 }
 
 /**
- * Signals one thread that is waiting on the condition variable.
+ * @brief Signals one thread that is waiting on the condition variable.
  *
- * @param cp pointer to the \p CondVar structure
+ * @param cp pointer to the @p CondVar structure
  */
 void chCondSignal(CondVar *cp) {
 
@@ -62,11 +61,9 @@ void chCondSignal(CondVar *cp) {
 }
 
 /**
- * Signals one thread that is waiting on the condition variable.
+ * @brief Signals one thread that is waiting on the condition variable.
  *
- * @param cp pointer to the \p CondVar structure
- * @note This function must be called within a \p chSysLock() / \p chSysUnlock()
- *       block.
+ * @param cp pointer to the @p CondVar structure
  */
 void chCondSignalI(CondVar *cp) {
 
@@ -75,9 +72,9 @@ void chCondSignalI(CondVar *cp) {
 }
 
 /**
- * Signals all threads that are waiting on the condition variable.
+ * @brief Signals all threads that are waiting on the condition variable.
  *
- * @param cp pointer to the \p CondVar structure
+ * @param cp pointer to the @p CondVar structure
  */
 void chCondBroadcast(CondVar *cp) {
 
@@ -90,32 +87,30 @@ void chCondBroadcast(CondVar *cp) {
 }
 
 /**
- * Signals all threads that are waiting on the condition variable.
+ * @brief Signals all threads that are waiting on the condition variable.
  *
- * @param cp pointer to the \p CondVar structure
- * @note This function must be called within a \p chSysLock() / \p chSysUnlock()
+ * @param cp pointer to the @p CondVar structure
  */
 void chCondBroadcastI(CondVar *cp) {
 
   /* empties the condition variable queue and inserts all the Threads into the
-   * ready list in FIFO order. The wakeup message is set to \p RDY_RESET in
+   * ready list in FIFO order. The wakeup message is set to @p RDY_RESET in
    * order to make a chCondBroadcast() detectable from a chCondSignal(). */
   while (cp->c_queue.p_next != (void *)&cp->c_queue)
     chSchReadyI(fifo_remove(&cp->c_queue))->p_rdymsg = RDY_RESET;
 }
 
 /**
- * Waits on the condition variable releasing the mutex lock.
+ * @brief Waits on the condition variable releasing the mutex lock.
+ * @details Releases the mutex, waits on the condition variable, and finally
+ * acquires the mutex again. This is done atomically.
  *
- * Releases the mutex, waits on the condition variable, and finally acquires
- * the mutex again. This is done atomically.
- *
- * The thread MUST already have locked the mutex when calling chCondWait().
- *
- * @param cp pointer to the \p CondVar structure
+ * @param cp pointer to the @p CondVar structure
  * @return The wakep mode.
  * @retval RDY_OK if the condvar was signaled using chCondSignal().
  * @retval RDY_RESET if the condvar was signaled using chCondBroadcast().
+ * @note  The thread MUST already have locked the mutex when calling
+ *        @p chCondWait().
  */
 msg_t chCondWait(CondVar *cp) {
   msg_t msg;
@@ -129,18 +124,16 @@ msg_t chCondWait(CondVar *cp) {
 }
 
 /**
- * Waits on the condition variable releasing the mutex lock.
+ * @brief Waits on the condition variable releasing the mutex lock.
+ * @details Releases the mutex, waits on the condition variable, and finally
+ * acquires the mutex again. This is done atomically.
  *
- * Releases the mutex, waits on the condition variable, and finally acquires
- * the mutex again. This is done atomically.
- *
- * The thread MUST already have locked the mutex when calling chCondWait().
- *
- * @param cp pointer to the \p CondVar structure
+ * @param cp pointer to the @p CondVar structure
  * @return The wakep mode.
  * @retval RDY_OK if the condvar was signaled using chCondSignal().
  * @retval RDY_RESET if the condvar was signaled using chCondBroadcast().
- * @note This function must be called within a \p chSysLock() / \p chSysUnlock()
+ * @note  The thread MUST already have locked the mutex when calling
+ *        @p chCondWaitS().
  */
 msg_t chCondWaitS(CondVar *cp) {
   Mutex *mp;
@@ -157,22 +150,21 @@ msg_t chCondWaitS(CondVar *cp) {
   return msg;                           /* returns the wakeup message */
 }
 
-#ifdef CH_USE_CONDVARS_TIMEOUT
+#if CH_USE_CONDVARS_TIMEOUT
 /**
- * Waits on the condition variable releasing the mutex lock.
+ * @brief Waits on the condition variable releasing the mutex lock.
+ * @details Releases the mutex, waits on the condition variable, and finally
+ * acquires the mutex again. This is done atomically.
  *
- * Releases the mutex, waits on the condition variable, and finally acquires
- * the mutex again. This is done atomically.
- *
- * The thread MUST already have locked the mutex when calling chCondWait().
- *
- * @param cp pointer to the \p CondVar structure
+ * @param cp pointer to the @p CondVar structure
  * @param time the number of ticks before the operation fails
  * @return The wakep mode.
  * @retval RDY_OK if the condvar was signaled using chCondSignal().
  * @retval RDY_RESET if the condvar was signaled using chCondBroadcast().
  * @retval RDY_TIMEOUT if the condvar was not signaled within the specified
  *         timeout.
+ * @note  The thread MUST already have locked the mutex when calling
+ *        @p chCondWaitTimeout().
  */
 msg_t chCondWaitTimeout(CondVar *cp, systime_t time) {
   msg_t msg;
@@ -186,21 +178,19 @@ msg_t chCondWaitTimeout(CondVar *cp, systime_t time) {
 }
 
 /**
- * Waits on the condition variable releasing the mutex lock.
+ * @brief Waits on the condition variable releasing the mutex lock.
+ * @details Releases the mutex, waits on the condition variable, and finally
+ * acquires the mutex again. This is done atomically.
  *
- * Releases the mutex, waits on the condition variable, and finally acquires
- * the mutex again. This is done atomically.
- *
- * The thread MUST already have locked the mutex when calling chCondWait().
- *
- * @param cp pointer to the \p CondVar structure
+ * @param cp pointer to the @p CondVar structure
  * @param time the number of ticks before the operation fails
  * @return The wakep mode.
  * @retval RDY_OK if the condvar was signaled using chCondSignal().
  * @retval RDY_RESET if the condvar was signaled using chCondBroadcast().
  * @retval RDY_TIMEOUT if the condvar was not signaled within the specified
  *         timeout.
- * @note This function must be called within a \p chSysLock() / \p chSysUnlock()
+ * @note  The thread MUST already have locked the mutex when calling
+ *        @p chCondWaitTimeoutS().
  */
 msg_t chCondWaitTimeoutS(CondVar *cp, systime_t time) {
   Mutex *mp;
@@ -218,6 +208,6 @@ msg_t chCondWaitTimeoutS(CondVar *cp, systime_t time) {
 }
 #endif /* CH_USE_CONDVARS_TIMEOUT */
 
-#endif /* defined(CH_USE_CONDVARS) && defined(CH_USE_MUTEXES) */
+#endif /* CH_USE_CONDVARS && CH_USE_MUTEXES */
 
 /** @} */

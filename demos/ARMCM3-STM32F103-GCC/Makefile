@@ -13,6 +13,29 @@
 #
 
 ##############################################################################################
+# OS, compiler and demo options
+
+# Compiler options here
+OPT = -O2 -ggdb -fomit-frame-pointer -mabi=apcs-gnu -falign-functions=16
+
+# Enable this if you want the linker to remove unused code and data
+LINK_GC = yes
+
+# Enable this if you really want to use the STM FWLib. ChibiOS/RT does not
+# require it and does not support the library except for this Makefile option.
+USE_FWLIB = no
+
+# Enable register caching optimization. This option greatly improves both
+# code size and execution speed but is incompatible with libraries compiled
+# without the very same options. The register R7 becomes a global variable
+# and MUST NOT be used anywhere in the code.
+USE_CURRP_CACHING = no
+
+#
+# End of OS and demo options
+##############################################################################################
+
+##############################################################################################
 # Start of default section
 #
 
@@ -27,9 +50,6 @@ HEX  = $(CP) -O ihex
 BIN  = $(CP) -O binary
 
 MCU  = cortex-m3
-
-# Enable this if you want the linker to remove unused code and data
-LINK_GC = yes
 
 # List all default C defines here, like -D_DEBUG=1
 DDEFS =
@@ -69,6 +89,9 @@ UADEFS =
 # Imported source files
 include ../../src/kernel.mk
 include ../../test/test.mk
+ifeq ($(USE_FWLIB),yes)
+include ./stm32lib/stm32lib.mk
+endif
 
 # List ARM-mode C source files here
 SRC = ../../ports/ARMCM3/chcore.c ../../ports/ARMCM3/nvic.c \
@@ -78,12 +101,17 @@ SRC = ../../ports/ARMCM3/chcore.c ../../ports/ARMCM3/nvic.c \
       ../../src/lib/evtimer.c \
       board.c main.c
 
+ifeq ($(USE_FWLIB),yes)
+SRC += ${STM32SRC}
+endif
+
 # List ASM source files here
 ASMSRC = ../../ports/ARMCM3/crt0.s ../../ports/ARMCM3-STM32F103/vectors.s
 
 # List all user directories here
 UINCDIR = ../../src/include ../../src/lib ../../test \
-          ../../ports/ARMCM3 ../../ports/ARMCM3-STM32F103
+          ../../ports/ARMCM3 ../../ports/ARMCM3-STM32F103 \
+          ./stm32lib/inc
 
 # List the user directory to look for the libraries here
 ULIBDIR =
@@ -91,21 +119,22 @@ ULIBDIR =
 # List all user libraries here
 ULIBS =
 
-# Common options here
-# NOTE: -ffixed-r7 is only needed if you enabled CH_CURRP_REGISTER_CACHE in
-#       chconf.h.
-# NOTE: -falign-functions=16 may improve the performance, not always, but
-#       increases the code size.
-OPT = -O2 -ggdb -fomit-frame-pointer -mabi=apcs-gnu
-#OPT += -ffixed-r7
-OPT += -falign-functions=16
-
 # Define warning options here
 WARN = -Wall -Wstrict-prototypes
 
 #
 # End of user defines
 ##############################################################################################
+
+ifeq ($(USE_CURRP_CACHING),yes)
+OPT += -ffixed-r7 -DCH_CURRP_REGISTER_CACHE='"r7"'
+endif
+
+ifeq ($(USE_FWLIB),yes)
+# The thing generates a lot of aliasing warnings, this disables an optimization
+# and the warning disappears, the code is a bit larger however.
+OPT += -fno-strict-aliasing
+endif
 
 ifeq ($(LINK_GC),yes)
   OPT += -ffunction-sections -fdata-sections

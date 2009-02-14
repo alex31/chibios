@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,23 +15,22 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #ifndef _BOARD_H_
 #define _BOARD_H_
 
+/*
+ * Tricks required to make the TRUE/FALSE declaration inside the library
+ * compatible.
+ */
 #undef FALSE
 #undef TRUE
 #ifndef __STM32F10x_MAP_H
-#include "stm32lib/stm32f10x_map.h"
+#include "stm32f10x_map.h"
 #endif
+#define FALSE 0
+#define TRUE (!FALSE)
 
 #define BOARD_OLIMEX_STM32_P103
 
@@ -77,7 +76,7 @@
 #define CR_HSION_MASK           (0x1 << 0)
 #define CR_HSIRDY_MASK          (0x1 << 1)
 #define CR_HSITRIM_MASK         (0x1F << 3)
-#define   HSITRIM_RESET_BITS    (1 << 3)
+#define   HSITRIM_RESET_BITS    (0x10 << 3)
 #define CR_HSICAL_MASK          (0xFF << 8)
 #define CR_HSEON_MASK           (0x1 << 16)
 #define CR_HSERDY_MASK          (0x1 << 17)

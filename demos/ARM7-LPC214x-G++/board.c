@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
@@ -38,30 +31,30 @@
 /*
  * Non-vectored IRQs handling here.
  */
-__attribute__((naked))
-static void IrqHandler(void) {
+static CH_IRQ_HANDLER(IrqHandler) {
 
-  chSysIRQEnterI();
+  CH_IRQ_PROLOGUE();
 
   /* nothing */
-  VICVectAddr = 0;
 
-  chSysIRQExitI();
+  VICVectAddr = 0;
+  CH_IRQ_EPILOGUE();
 }
 
 /*
  * Timer 0 IRQ handling here.
  */
-__attribute__((naked))
-static void T0IrqHandler(void) {
+static CH_IRQ_HANDLER(T0IrqHandler) {
 
-  chSysIRQEnterI();
-
+  CH_IRQ_PROLOGUE();
   T0IR = 1;             /* Clear interrupt on match MR0. */
-  chSysTimerHandlerI();
-  VICVectAddr = 0;
 
-  chSysIRQExitI();
+  chSysLockFromIsr();
+  chSysTimerHandlerI();
+  chSysUnlockFromIsr();
+
+  VICVectAddr = 0;
+  CH_IRQ_EPILOGUE();
 }
 
 /*
@@ -126,7 +119,7 @@ void hwinit1(void) {
   /*
    * Interrupt vectors assignment.
    */
-  InitVIC();
+  vic_init();
   VICDefVectAddr = (IOREG32)IrqHandler;
 
   /*
@@ -144,8 +137,8 @@ void hwinit1(void) {
   /*
    * Other subsystems.
    */
-  InitSerial(1, 2);
-//  InitSSP();
+  serial_init(1, 2);
+//  ssp_init();
 //  InitMMC();
 //  InitBuzzer();
 
