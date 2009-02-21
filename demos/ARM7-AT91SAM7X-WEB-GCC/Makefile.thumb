@@ -84,7 +84,7 @@ ASRC =
 # List THUMB-mode C sources here
 # NOTE: If any module is compiled in thumb mode then -mthumb-interwork is
 #       enabled for all modules and that lowers performance.
-TSRC = ../../ports/ARM7/chcore.c \
+TSRC = ../../ports/ARM7-AT91SAM7X/chcore.c \
        ../../ports/ARM7-AT91SAM7X/sam7x_serial.c \
        ../../ports/ARM7-AT91SAM7X/sam7x_emac.c \
        ${KERNSRC} \
@@ -96,7 +96,7 @@ TSRC = ../../ports/ARM7/chcore.c \
        board.c main.c
 
 # List ASM source files here
-ASMSRC = ../../ports/ARM7/crt0.s ../../ports/ARM7/chcoreasm.s \
+ASMSRC = ../../ports/ARM7/crt0.s ../../ports/ARM7/chsys.s \
          ../../ports/ARM7-AT91SAM7X/vectors.s
 
 # List all user directories here

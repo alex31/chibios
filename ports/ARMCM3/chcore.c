@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,83 +15,81 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
-/**
- * @file ports/ARMCM3/chcore.c
- * @brief ARM Cortex-M3 architecture port code.
- * @addtogroup ARMCM3_CORE
- * @{
- */
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
+*/
 
 #include <ch.h>
 #include <nvic.h>
 
-/**
- * The default implementation of this function is void so no messages are
- * actually printed.
- * @note The function is declared as a weak symbol, it is possible to redefine
- *       it in your application code.
- * @param msg pointer to the message string
+/*
+ * System idle thread loop.
  */
-/** @cond never */
 __attribute__((weak))
-/** @endcond */
-void port_puts(char *msg) {
+void _idle(void *p) {
+
+  while (TRUE) {
+#if ENABLE_WFI_IDLE != 0
+    asm volatile ("wfi");
+#endif
+  }
 }
 
-/**
- * Halts the system.
- * @note The function is declared as a weak symbol, it is possible to redefine
- *       it in your application code.
+/*
+ * System console message (not implemented).
  */
-/** @cond never */
 __attribute__((weak))
-/** @endcond */
-void port_halt(void) {
+void chSysPuts(char *msg) {
+}
 
-  port_disable();
+/*
+ * System halt.
+ */
+__attribute__((naked, weak))
+void chSysHalt(void) {
+
+  asm volatile ("cpsid   i");
   while (TRUE) {
   }
 }
 
-/**
+/*
  * Start a thread by invoking its work function.
- * If the work function returns @p chThdExit() is automatically invoked.
+ *
+ * Start a thread by calling its work function. If the work function returns,
+ * call chThdExit and chSysHalt.
  */
-/** @cond never */
 __attribute__((naked, weak))
-/** @endcond */
 void threadstart(void) {
 
   asm volatile ("blx     r1                                     \n\t" \
-                "bl      chThdExit");
+                "bl      chThdExit                              \n\t" \
+                "bl      chSysHalt                              ");
 }
 
-/**
+/*
  * System Timer vector.
- * This interrupt is used as system tick.
- * @note The timer is initialized in the board setup code.
  */
-CH_IRQ_HANDLER(SysTickVector) {
+void SysTickVector(void) {
 
-  CH_IRQ_PROLOGUE();
+  chSysIRQEnterI();
+  chSysLock();
 
-  chSysLockFromIsr();
   chSysTimerHandlerI();
-  chSysUnlockFromIsr();
 
-  CH_IRQ_EPILOGUE();
+  chSysUnlock();
+  chSysIRQExitI();
 }
 
-/**
- * The SVC vector is used for commanded context switch.
- * @param otp the thread to be switched out
- * @param ntp the thread to be switched it
+/*
+ * System invoked context switch.
  */
-/** @cond never */
 __attribute__((naked))
-/** @endcond */
 void SVCallVector(Thread *otp, Thread *ntp) {
   /* { r0 = otp, r1 = ntp } */
   /* get the BASEPRI in r3 */
@@ -155,20 +153,18 @@ void SVCallVector(Thread *otp, Thread *ntp) {
 }
 #endif
 
-/**
+/*
  * Preemption invoked context switch.
  */
-/** @cond never */
 __attribute__((naked))
-/** @endcond */
 void PendSVVector(void) {
   Thread *otp;
   register struct intctx *sp_thd asm("r12");
 
-  chSysLockFromIsr();
+  chSysLock();
   asm volatile ("push    {lr}");
   if (!chSchRescRequiredI()) {
-    chSysUnlockFromIsr();
+    chSysUnlock();
     asm volatile ("pop     {pc}");
   }
   asm volatile ("pop     {lr}");
@@ -178,16 +174,14 @@ void PendSVVector(void) {
   (otp = currp)->p_ctx.r13 = sp_thd;
   (currp = fifo_remove((void *)&rlist))->p_state = PRCURR;
   chSchReadyI(otp);
-#if CH_USE_ROUNDROBIN
+#ifdef CH_USE_ROUNDROBIN
   /* set the round-robin time quantum */
   rlist.r_preempt = CH_TIME_QUANTUM;
 #endif
-#if CH_USE_TRACE
+#ifdef CH_USE_TRACE
   chDbgTrace(otp, currp);
 #endif
   sp_thd = currp->p_ctx.r13;
 
   POP_CONTEXT(sp_thd);
 }
-
-/** @} */

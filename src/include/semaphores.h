@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,11 +15,16 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file semaphores.h
- * @brief Semaphores macros and structures.
  * @addtogroup Semaphores
  * @{
  */
@@ -27,15 +32,16 @@
 #ifndef _SEMAPHORES_H_
 #define _SEMAPHORES_H_
 
-#if CH_USE_SEMAPHORES
+#ifdef CH_USE_SEMAPHORES
 
 /**
- * @brief Semaphore structure.
+ * Semaphore structure.
  */
 typedef struct Semaphore {
-  ThreadsQueue          s_queue;        /**< Queue of the threads sleeping on
-                                             this semaphore.*/
-  cnt_t                 s_cnt;          /**< The semaphore counter.*/
+  /** Queue of the threads sleeping on this Semaphore.*/
+  ThreadsQueue          s_queue;
+  /** The Semaphore counter.*/
+  cnt_t                 s_cnt;
 } Semaphore;
 
 #ifdef __cplusplus
@@ -46,13 +52,13 @@ extern "C" {
   void chSemResetI(Semaphore *sp, cnt_t n);
   msg_t chSemWait(Semaphore *sp);
   msg_t chSemWaitS(Semaphore *sp);
-#if CH_USE_SEMAPHORES_TIMEOUT
+#ifdef CH_USE_SEMAPHORES_TIMEOUT
   msg_t chSemWaitTimeout(Semaphore *sp, systime_t time);
   msg_t chSemWaitTimeoutS(Semaphore *sp, systime_t time);
 #endif
   void chSemSignal(Semaphore *sp);
   void chSemSignalI(Semaphore *sp);
-#if CH_USE_SEMSW
+#ifdef CH_USE_SEMSW
   msg_t chSemSignalWait(Semaphore *sps, Semaphore *spw);
 #endif
 #ifdef __cplusplus

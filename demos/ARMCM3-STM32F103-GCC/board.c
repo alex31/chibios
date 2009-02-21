@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,6 +15,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
@@ -90,13 +97,12 @@ void hwinit1(void) {
    * NVIC/SCB initialization.
    */
   SCB_AIRCR = AIRCR_VECTKEY | AIRCR_PRIGROUP(0x3); // PRIGROUP 4:0 (4:4).
-  NVICSetSystemHandlerPriority(HANDLER_SVCALL, PRIORITY_SVCALL);
-  NVICSetSystemHandlerPriority(HANDLER_SYSTICK, PRIORITY_SYSTICK);
-  NVICSetSystemHandlerPriority(HANDLER_PENDSV, PRIORITY_PENDSV);
+  SCB_SHPR(2) = 0xF0 << 16;     // PendSV at lowest priority.
 
   /*
    * SysTick initialization.
    */
+  SCB_SHPR(2) |= 0x40 << 24;    // SysTick at priority 4:0.
   ST_RVR = SYSCLK / (8000000 / CH_FREQUENCY) - 1;
   ST_CVR = 0;
   ST_CSR = ENABLE_ON_BITS | TICKINT_ENABLED_BITS | CLKSOURCE_EXT_BITS;
@@ -104,7 +110,7 @@ void hwinit1(void) {
   /*
    * Other subsystems initialization.
    */
-  serial_init(0xC0, 0xC0, 0xC0);
+  InitSerial(0x80, 0x80, 0x80);
 
   /*
    * ChibiOS/RT initialization.

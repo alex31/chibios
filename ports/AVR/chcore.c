@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,41 +15,42 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
-/**
- * @file ports/AVR/chcore.c
- * @brief AVR architecture port code.
- * @addtogroup AVR_CORE
- * @{
- */
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
+*/
 
 #include <ch.h>
 
-/**
- * The default implementation of this function is void so no messages are
- * actually printed.
- * @note The function is declared as a weak symbol, it is possible to redefine
- *       it in your application code.
- * @param msg pointer to the message string
- */
-/** @cond never */
-__attribute__((weak))
-/** @endcond */
-void port_puts(char *msg) {
+#include <avr/io.h>
+
+void _idle(void *p) {
+
+  while (TRUE) {
+    asm("sleep");
+  }
 }
 
-/**
- * Performs a context switch between two threads.
- * @param otp the thread to be switched out
- * @param ntp the thread to be switched in
- * @note The function is declared as a weak symbol, it is possible to redefine
- *       it in your application code.
+/*
+ * Threads start code.
  */
-/** @cond never */
-__attribute__((naked, weak))
-/** @endcond */
-void port_switch(Thread *otp, Thread *ntp) {
+void threadstart(void) {
+
+  asm volatile ("sei");
+  asm volatile ("movw    r24, r4");
+  asm volatile ("movw    r30, r2");
+  asm volatile ("icall");
+  asm volatile ("call    chThdExit");
+}
+
+/*
+ * Context switch.
+ */
+void chSysSwitchI(Thread *otp, Thread *ntp) {
 
   asm volatile ("push    r2");
   asm volatile ("push    r3");
@@ -107,32 +108,21 @@ void port_switch(Thread *otp, Thread *ntp) {
   asm volatile ("ret");
 }
 
-/**
- * Disables the interrupts and halts the system.
- * @note The function is declared as a weak symbol, it is possible to redefine
- *       it in your application code.
+/*
+ * System console message (not implemented).
  */
-/** @cond never */
 __attribute__((weak))
-/** @endcond */
-void port_halt(void) {
-
-  port_disable();
-  while (TRUE) {
-  }
+void chSysPuts(char *msg) {
 }
 
-/**
- * Start a thread by invoking its work function.
- * If the work function returns @p chThdExit() is automatically invoked.
+/*
+ * System halt.
  */
-void threadstart(void) {
+__attribute__((noreturn, weak))
+void chSysHalt(void) {
 
-  asm volatile ("sei");
-  asm volatile ("movw    r24, r4");
-  asm volatile ("movw    r30, r2");
-  asm volatile ("icall");
-  asm volatile ("call    chThdExit");
+  chSysLock();
+
+  while (TRUE)
+    ;
 }
-
-/** @} */

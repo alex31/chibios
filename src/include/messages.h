@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,11 +15,16 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file messages.h
- * @brief Messages macros and structures.
  * @addtogroup Messages
  * @{
  */
@@ -27,7 +32,7 @@
 #ifndef _MESSAGES_H_
 #define _MESSAGES_H_
 
-#if CH_USE_MESSAGES
+#ifdef CH_USE_MESSAGES
 
 /**
  * Evaluates to TRUE if the thread has pending messages.
@@ -49,8 +54,8 @@ extern "C" {
   msg_t chMsgGet(void);
   void chMsgRelease(msg_t msg);
 
-#if CH_USE_EVENTS && CH_USE_MESSAGES_EVENT
-  msg_t chMsgSendWithEvent(Thread *tp, msg_t msg, eventmask_t mask);
+#ifdef CH_USE_MESSAGES_EVENT
+  msg_t chMsgSendWithEvent(Thread *tp, msg_t msg, EventSource *esp);
 #endif
 #ifdef __cplusplus
 }

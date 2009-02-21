@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,6 +15,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #ifndef _CHTYPES_H_
@@ -32,6 +39,7 @@
 typedef int8_t          bool_t;
 typedef uint8_t         tmode_t;
 typedef uint8_t         tstate_t;
+typedef uint16_t        tid_t;
 typedef uint32_t        tprio_t;
 typedef int32_t         msg_t;
 typedef int32_t         eventid_t;

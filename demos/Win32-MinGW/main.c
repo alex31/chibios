@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,6 +15,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include <string.h>
@@ -34,6 +41,7 @@ static msg_t ConsoleThread(void *arg);
 
 msg_t TestThread(void *p);
 
+void InitCore(void);
 extern FullDuplexDriver COM1, COM2;
 
 #define cprint(msg) chMsgSend(cdtp, (msg_t)msg)
@@ -122,14 +130,14 @@ static msg_t HelloWorldThread(void *arg) {
   short c;
   FullDuplexDriver *sd = (FullDuplexDriver *)arg;
 
-  for (i = 0; i < 10; i++) {
+  for (i = 0; i < 100; i++) {
 
     PrintLineFDD(sd, "Hello World\r\n");
     c = chFDDGetTimeout(sd, 333);
     switch (c) {
-    case Q_TIMEOUT:
+    case -1:
       continue;
-    case Q_RESET:
+    case -2:
       return 1;
     case 3:
       PrintLineFDD(sd, "^C\r\n");
@@ -278,6 +286,8 @@ static evhandler_t fhandlers[2] = {
  *------------------------------------------------------------------------*/
 int main(void) {
   EventListener c1fel, c2fel;
+
+  InitCore();
 
   // Startup ChibiOS/RT.
   chSysInit();

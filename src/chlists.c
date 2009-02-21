@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,25 +15,30 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file chlists.c
- * @brief Lists and queues code.
  * @addtogroup ThreadLists
  * @{
  */
 #include <ch.h>
 
-#if !CH_OPTIMIZE_SPEED || defined(__DOXIGEN__)
+#if !defined(CH_OPTIMIZE_SPEED) || defined(__DOXYGEN__)
 /**
- * @brief Inserts a thread into a priority ordered queue.
+ * Inserts a thread into a priority ordered queue.
  *
  * @param tp the pointer to the thread to be inserted in the list
  * @param tqp the pointer to the threads list header
  * @note The insertion is done by scanning the list from the highest priority
  *       toward the lowest.
- * @note This function is @b not an API.
+ * @note This function is \b not an API.
  */
 void prio_insert(Thread *tp, ThreadsQueue *tqp) {
 
@@ -50,11 +55,11 @@ void prio_insert(Thread *tp, ThreadsQueue *tqp) {
 }
 
 /**
- * @brief Inserts a Thread into a queue.
+ * Inserts a Thread into a queue.
  *
  * @param tp the pointer to the thread to be inserted in the list
  * @param tqp the pointer to the threads list header
- * @note This function is @b not an API.
+ * @note This function is \b not an API.
  */
 void queue_insert(Thread *tp, ThreadsQueue *tqp) {
 
@@ -63,11 +68,11 @@ void queue_insert(Thread *tp, ThreadsQueue *tqp) {
 }
 
 /**
- * @brief Removes the first-out Thread from a queue and returns it.
+ * Removes the first-out Thread from a queue and returns it.
  *
  * @param tqp the pointer to the threads list header
  * @return The removed thread pointer.
- * @note This function is @b not an API.
+ * @note This function is \b not an API.
  */
 Thread *fifo_remove(ThreadsQueue *tqp) {
   Thread *tp = tqp->p_next;
@@ -77,11 +82,11 @@ Thread *fifo_remove(ThreadsQueue *tqp) {
 }
 
 /**
- * @brief Removes the last-out Thread from a queue and returns it.
+ * Removes the last-out Thread from a queue and returns it.
  *
  * @param tqp the pointer to the threads list header
  * @return The removed thread pointer.
- * @note This function is @b not an API.
+ * @note This function is \b not an API.
  */
 Thread *lifo_remove(ThreadsQueue *tqp) {
   Thread *tp = tqp->p_next;
@@ -91,11 +96,11 @@ Thread *lifo_remove(ThreadsQueue *tqp) {
 }
 
 /**
- * @brief Removes a Thread from a FIFO list and returns it.
+ * Removes a Thread from a FIFO list and returns it.
  *
  * @param tp the pointer to the thread to be removed from the list
  * @return The removed thread pointer.
- * @note This function is @b not an API.
+ * @note This function is \b not an API.
  */
 Thread *dequeue(Thread *tp) {
 
@@ -105,11 +110,11 @@ Thread *dequeue(Thread *tp) {
 }
 
 /**
- * @brief Pushes a Thread on top of a stack list.
+ * Pushes a Thread on top of a stack list.
  *
  * @param tp the pointer to the thread to be inserted in the list
  * @param tlp the pointer to the threads list header
- * @note This function is @b not an API.
+ * @note This function is \b not an API.
  */
 void list_insert(Thread *tp, ThreadsList *tlp) {
 
@@ -118,12 +123,12 @@ void list_insert(Thread *tp, ThreadsList *tlp) {
 }
 
 /**
- * @brief Pops a Thread from the top of a stack list and returns it.
+ * Pops a Thread from the top of a stack list and returns it.
  *
  * @param tlp the pointer to the threads list header
  * @return The removed thread pointer.
  * @note The list must be non-empty before calling this function.
- * @note This function is @b not an API.
+ * @note This function is \b not an API.
  */
 Thread *list_remove(ThreadsList *tlp) {
 

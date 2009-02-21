@@ -1,5 +1,5 @@
 ***************************************************************************
-Kernel:   ChibiOS/RT 1.1.0 unstable
+Kernel:   ChibiOS/RT 1.0.1 final
 Compiler: GCC 4.3.2 (YAGARTO 28.09.2008)
 Options:  -Os -fomit-frame-pointer -mabi=apcs-gnu -falign-functions=16
 Settings: CCLK=48, MAMCR=2, MAMTIM=3 (3 wait states)
@@ -40,7 +40,7 @@ Settings: CCLK=48, MAMCR=2, MAMTIM=3 (3 wait states)
 --- Result: SUCCESS
 ---------------------------------------------------------------------------
 --- Test Case 12 (Heap, allocation and fragmentation test)
---- Size  : 27668 bytes, not fragmented
+--- Size  : 27692 bytes, not fragmented
 --- Result: SUCCESS
 ---------------------------------------------------------------------------
 --- Test Case 13 (Memory Pools, allocation and enqueuing test)
@@ -53,35 +53,35 @@ Settings: CCLK=48, MAMCR=2, MAMTIM=3 (3 wait states)
 --- Result: SUCCESS
 ---------------------------------------------------------------------------
 --- Test Case 16 (Benchmark, context switch #1, optimal)
---- Score : 101441 msgs/S, 202882 ctxswc/S
+--- Score : 98920 msgs/S, 197840 ctxswc/S
 --- Result: SUCCESS
 ---------------------------------------------------------------------------
 --- Test Case 17 (Benchmark, context switch #2, empty ready list)
---- Score : 85780 msgs/S, 171560 ctxswc/S
+--- Score : 83531 msgs/S, 167062 ctxswc/S
 --- Result: SUCCESS
 ---------------------------------------------------------------------------
 --- Test Case 18 (Benchmark, context switch #3, 4 threads in ready list)
---- Score : 85779 msgs/S, 171558 ctxswc/S
+--- Score : 83533 msgs/S, 167066 ctxswc/S
 --- Result: SUCCESS
 ---------------------------------------------------------------------------
 --- Test Case 19 (Benchmark, threads creation/termination, worst case)
---- Score : 82665 threads/S
+--- Score : 80037 threads/S
 --- Result: SUCCESS
 ---------------------------------------------------------------------------
 --- Test Case 20 (Benchmark, threads creation/termination, optimal)
---- Score : 116537 threads/S
+--- Score : 112159 threads/S
 --- Result: SUCCESS
 ---------------------------------------------------------------------------
 --- Test Case 21 (Benchmark, mass reschedulation, 5 threads)
---- Score : 28871 reschedulations/S, 173226 ctxswc/S
+--- Score : 28157 reschedulations/S, 168942 ctxswc/S
 --- Result: SUCCESS
 ---------------------------------------------------------------------------
 --- Test Case 22 (Benchmark, I/O Queues throughput)
---- Score : 243632 bytes/S
+--- Score : 242396 bytes/S
 --- Result: SUCCESS
 ---------------------------------------------------------------------------
 --- Test Case 23 (Benchmark, virtual timers set/reset)
---- Score : 273044 timers/S
+--- Score : 272274 timers/S
 --- Result: SUCCESS
 ---------------------------------------------------------------------------
 

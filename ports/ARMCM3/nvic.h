@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,50 +15,24 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
-/**
- * @file ports/ARMCM3/nvic.h
- * @brief Cortex-M3 NVIC support macros and structures.
- * @addtogroup ARMCM3_NVIC
- * @{
- */
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
+*/
 
 #ifndef _NVIC_H_
 #define _NVIC_H_
 
-/*
- * System vector constants for @p NVICSetSystemHandlerPriority().
- */
-#define HANDLER_MEM_MANAGE      0       /**< MEM MANAGE vector id.*/
-#define HANDLER_BUS_FAULT       1       /**< BUS FAULT vector id.*/
-#define HANDLER_USAGE_FAULT     2       /**< USAGE FAULT vector id.*/
-#define HANDLER_RESERVED_3      3
-#define HANDLER_RESERVED_4      4
-#define HANDLER_RESERVED_5      5
-#define HANDLER_RESERVED_6      6
-#define HANDLER_SVCALL          7       /**< SVCALL vector id.*/
-#define HANDLER_DEBUG_MONITOR   8       /**< DEBUG MONITOR vector id.*/
-#define HANDLER_RESERVED_9      9
-#define HANDLER_PENDSV          10      /**< PENDSV vector id.*/
-#define HANDLER_SYSTICK         11      /**< SYS TCK vector id.*/
+typedef volatile unsigned char IOREG8;
+typedef volatile unsigned int IOREG32;
 
-typedef volatile unsigned char IOREG8;  /**< 8 bits I/O register type.*/
-typedef volatile unsigned int IOREG32;  /**< 32 bits I/O register type.*/
-
-/**
- * @brief NVIC ITCR register.
- */
 #define NVIC_ITCR               (*((IOREG32 *)0xE000E004))
-
-/**
- * @brief NVIC STIR register.
- */
 #define NVIC_STIR               (*((IOREG32 *)0xE000EF00))
 
-/**
- * @brief Structure representing the SYSTICK I/O space.
- */
 typedef struct {
   IOREG32       CSR;
   IOREG32       RVR;
@@ -66,9 +40,6 @@ typedef struct {
   IOREG32       CBVR;
 } CM3_ST;
 
-/**
- * @brief SYSTICK peripheral base address.
- */
 #define STBase                  ((CM3_ST *)0xE000E010)
 #define ST_CSR                  (STBase->CSR)
 #define ST_RVR                  (STBase->RVR)
@@ -94,9 +65,6 @@ typedef struct {
 #define CBVR_SKEW_MASK          (0x1 << 30)
 #define CBVR_NOREF_MASK         (0x1 << 31)
 
-/**
- * @brief Structure representing the NVIC I/O space.
- */
 typedef struct {
   IOREG32       ISER[8];
   IOREG32       unused1[24];
@@ -111,9 +79,6 @@ typedef struct {
   IOREG32       IPR[60];
 } CM3_NVIC;
 
-/**
- * @brief NVIC peripheral base address.
- */
 #define NVICBase                ((CM3_NVIC *)0xE000E100)
 #define NVIC_ISER(n)            (NVICBase->ISER[n])
 #define NVIC_ICER(n)            (NVICBase->ICER[n])
@@ -122,9 +87,6 @@ typedef struct {
 #define NVIC_IABR(n)            (NVICBase->IABR[n])
 #define NVIC_IPR(n)             (NVICBase->IPR[n])
 
-/**
- * @brief Structure representing the System Control Block I/O space.
- */
 typedef struct {
   IOREG32       CPUID;
   IOREG32       ICSR;
@@ -142,9 +104,6 @@ typedef struct {
   IOREG32       AFSR;
 } CM3_SCB;
 
-/**
- * @brief SCB peripheral base address.
- */
 #define SCBBase                 ((CM3_SCB *)0xE000ED00)
 #define SCB_CPUID               (SCBBase->CPUID)
 #define SCB_ICSR                (SCBBase->ICSR)
@@ -180,11 +139,8 @@ typedef struct {
 extern "C" {
 #endif
   void NVICEnableVector(uint32_t n, uint32_t prio);
-  void NVICSetSystemHandlerPriority(uint32_t handler, uint32_t prio);
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* _NVIC_H_ */
-
-/** @} */

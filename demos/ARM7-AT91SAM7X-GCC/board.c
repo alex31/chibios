@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,6 +15,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
@@ -24,38 +31,33 @@
 
 #include <sam7x_serial.h>
 
-/*
- * FIQ Handler, unused in this demo.
- */
-__attribute__((interrupt("FIQ")))
-static void FiqHandler(void) {
-}
+extern void FiqHandler(void);
 
-static CH_IRQ_HANDLER(SpuriousHandler) {
+__attribute__((naked))
+static void SpuriousHandler(void) {
 
-  CH_IRQ_PROLOGUE();
+  chSysIRQEnterI();
 
   AT91C_BASE_AIC->AIC_EOICR = 0;
 
-  CH_IRQ_EPILOGUE();
+  chSysIRQExitI();
 }
 
 /*
  * SYS IRQ handling here.
  */
-static CH_IRQ_HANDLER(SYSIrqHandler) {
+__attribute__((naked))
+static void SYSIrqHandler(void) {
 
-  CH_IRQ_PROLOGUE();
+  chSysIRQEnterI();
 
   if (AT91C_BASE_PITC->PITC_PISR & AT91C_PITC_PITS) {
     (void) AT91C_BASE_PITC->PITC_PIVR;
-    chSysLockFromIsr();
     chSysTimerHandlerI();
-    chSysUnlockFromIsr();
   }
   AT91C_BASE_AIC->AIC_EOICR = 0;
 
-  CH_IRQ_EPILOGUE();
+  chSysIRQExitI();
 }
 
 /*
@@ -160,7 +162,7 @@ void hwinit1(void) {
   /*
    * Serial driver initialization, RTS/CTS pins enabled for USART0 only.
    */
-  serial_init(AT91C_AIC_PRIOR_HIGHEST - 2, AT91C_AIC_PRIOR_HIGHEST - 2);
+  InitSerial(AT91C_AIC_PRIOR_HIGHEST - 2, AT91C_AIC_PRIOR_HIGHEST - 2);
   AT91C_BASE_PIOA->PIO_PDR   = AT91C_PA3_RTS0 | AT91C_PA4_CTS0;
   AT91C_BASE_PIOA->PIO_ASR   = AT91C_PIO_PA3 | AT91C_PIO_PA4;
   AT91C_BASE_PIOA->PIO_PPUDR = AT91C_PIO_PA3 | AT91C_PIO_PA4;

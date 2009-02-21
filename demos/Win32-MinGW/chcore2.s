@@ -24,33 +24,27 @@
     for full details of how and when the exception can be applied.
 */
 
-.section vectors
-.code 32
-.balign 4
-/*
- * System entry points.
- */
-_start:
-        ldr     pc, _reset
-        ldr     pc, _undefined
-        ldr     pc, _swi
-        ldr     pc, _prefetch
-        ldr     pc, _abort
-        nop
-        ldr     pc, [pc,#-0xFF0]        /* VIC - IRQ Vector Register */
-        ldr     pc, _fiq
+.text
 
-_reset:
-        .word   ResetHandler
-_undefined:
-        .word   UndHandler
-_swi:
-        .word   SwiHandler
-_prefetch:
-        .word   PrefetchHandler
-_abort:
-        .word   AbortHandler
-_fiq:
-        .word   FiqHandler
-        .word   0
-        .word   0
+.p2align 4,,15
+.globl @chSysSwitchI@8
+@chSysSwitchI@8:
+        # Switch out
+        push    %ebp
+        push    %esi
+        push    %edi
+        push    %ebx
+        movl    %esp,16(%ecx)
+        # Switch in
+        movl    16(%edx),%esp
+        pop     %ebx
+        pop     %edi
+        pop     %esi
+        pop     %ebp
+        ret
+
+.p2align 4,,15
+.globl @threadstart@0
+@threadstart@0:
+        push    %eax
+        call    _chThdExit

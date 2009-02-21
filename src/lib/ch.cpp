@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
-/**
- * @file ch.cpp
- * @brief C++ wrapper code.
- * @addtogroup CPlusPlusLibrary
- * @{
- */
 
 #include <ch.hpp>
 
@@ -86,7 +87,7 @@ namespace chibios_rt {
     chThdExit(msg);
   }
 
-#if CH_USE_WAITEXIT
+#ifdef CH_USE_WAITEXIT
   msg_t BaseThread::Wait(void) {
 
     return chThdWait(thread_ref);
@@ -103,7 +104,7 @@ namespace chibios_rt {
     chThdResume(thread_ref);
   }
 
-#if CH_USE_TERMINATE
+#ifdef CH_USE_TERMINATE
   void BaseThread::Terminate(void) {
 
     chThdTerminate(thread_ref);
@@ -120,7 +121,7 @@ namespace chibios_rt {
     chThdSleepUntil(time);
   }
 
-#if CH_USE_MESSAGES
+#ifdef CH_USE_MESSAGES
   msg_t BaseThread::SendMessage(::Thread* tp, msg_t msg) {
 
     return chMsgSend(tp, msg);
@@ -157,7 +158,7 @@ namespace chibios_rt {
     return 0;
   }
 
-#if CH_USE_SEMAPHORES
+#ifdef CH_USE_SEMAPHORES
   /*------------------------------------------------------------------------*
    * chibios_rt::Semaphore                                                  *
    *------------------------------------------------------------------------*/
@@ -176,7 +177,7 @@ namespace chibios_rt {
     return chSemWait(&sem);
   }
 
-#if CH_USE_SEMAPHORES_TIMEOUT
+#ifdef CH_USE_SEMAPHORES_TIMEOUT
   msg_t Semaphore::WaitTimeout(systime_t time) {
 
     return chSemWaitTimeout(&sem, time);
@@ -188,7 +189,7 @@ namespace chibios_rt {
     chSemSignal(&sem);
   }
 
-#if CH_USE_SEMSW
+#ifdef CH_USE_SEMSW
   msg_t Semaphore::SignalWait(Semaphore *ssem, Semaphore *wsem) {
 
     return chSemSignalWait(&ssem->sem, &wsem->sem);
@@ -196,7 +197,7 @@ namespace chibios_rt {
 #endif /* CH_USE_SEMSW */
 #endif /* CH_USE_SEMAPHORES */
 
-#if CH_USE_MUTEXES
+#ifdef CH_USE_MUTEXES
   /*------------------------------------------------------------------------*
    * chibios_rt::Mutex                                                      *
    *------------------------------------------------------------------------*/
@@ -225,7 +226,7 @@ namespace chibios_rt {
     chMtxUnlockAll();
   }
 
-#if CH_USE_CONDVARS
+#ifdef CH_USE_CONDVARS
   /*------------------------------------------------------------------------*
    * chibios_rt::CondVar                                                    *
    *------------------------------------------------------------------------*/
@@ -249,7 +250,7 @@ namespace chibios_rt {
     return chCondWait(&condvar);
   }
 
-#if CH_USE_CONDVARS_TIMEOUT
+#ifdef CH_USE_CONDVARS_TIMEOUT
   msg_t CondVar::WaitTimeout(systime_t time) {
 
     return chCondWaitTimeout(&condvar, time);
@@ -258,7 +259,7 @@ namespace chibios_rt {
 #endif /* CH_USE_CONDVARS */
 #endif /* CH_USE_MUTEXES */
 
-#if CH_USE_EVENTS
+#ifdef CH_USE_EVENTS
   /*------------------------------------------------------------------------*
    * chibios_rt::Event                                                      *
    *------------------------------------------------------------------------*/
@@ -317,7 +318,7 @@ namespace chibios_rt {
     return chEvtWaitAll(ewmask);
   }
 
-#if CH_USE_EVENTS_TIMEOUT
+#ifdef CH_USE_EVENTS_TIMEOUT
   eventmask_t Event::WaitOneTimeout(eventmask_t ewmask, systime_t time) {
 
     return chEvtWaitOneTimeout(ewmask, time);
@@ -335,5 +336,3 @@ namespace chibios_rt {
 #endif /* CH_USE_EVENTS_TIMEOUT */
 #endif /* CH_USE_EVENTS */
 }
-
-/** @} */

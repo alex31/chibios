@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,11 +15,16 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file serial.h
- * @brief Serial Drivers macros and structures.
  * @addtogroup Serial
  * @{
  */
@@ -45,31 +50,31 @@
 /** Serial Driver condition flags type.*/
 typedef uint16_t dflags_t;
 
-#if CH_USE_SERIAL_FULLDUPLEX
+#ifdef CH_USE_SERIAL_FULLDUPLEX
 
 /**
- * @brief Full Duplex Serial Driver main structure.
+ * Full Duplex Serial Driver main structure.
  */
 typedef struct {
 
   /** Input queue. Incoming data can be read from this queue by using the
    *  queues APIs.*/
   Queue                 sd_iqueue;
-  /** Data Available @p EventSource. This event is generated when some incoming
-   *  data is inserted in the Input @p Queue.*/
+  /** Data Available \p EventSource. This event is generated when some incoming
+   *  data is inserted in the Input \p Queue.*/
   EventSource           sd_ievent;
 
-  /** Output queue. Outgoing data can be written to this Output @p Queue by
+  /** Output queue. Outgoing data can be written to this Output \p Queue by
    *   using the queues APIs.*/
   Queue                 sd_oqueue;
-  /** Data Transmitted @p EventSource. This event is generated when the
-   *  Output @p Queue is empty.*/
+  /** Data Transmitted \p EventSource. This event is generated when the
+   *  Output \p Queue is empty.*/
   EventSource           sd_oevent;
 
   /** I/O driver status flags. This field should not be read directly but
-   *  the @p chFDDGetAndClearFlags() funtion should be used instead.*/
+   *  the \p chFDDGetAndClearFlags() funtion should be used instead.*/
   dflags_t              sd_flags;
-  /** Status Change @p EventSource. This event is generated when a
+  /** Status Change \p EventSource. This event is generated when a
    *  condition flag was changed.*/
   EventSource           sd_sevent;
 } FullDuplexDriver;
@@ -110,24 +115,24 @@ extern "C" {
 
 #endif /* CH_USE_SERIAL_FULLDUPLEX */
 
-#if CH_USE_SERIAL_HALFDUPLEX
+#ifdef CH_USE_SERIAL_HALFDUPLEX
 
 /**
- * @brief Full Duplex Serial Driver main structure.
+ * Full Duplex Serial Driver main structure.
  */
 typedef struct {
 
-  /** Data queue. Transmit/receive @p HalfDuplexQueue.*/
+  /** Data queue. Transmit/receive \p HalfDuplexQueue.*/
   HalfDuplexQueue       sd_queue;
-  /** Data Available @p EventSource. This event is generated when some
+  /** Data Available \p EventSource. This event is generated when some
    *  incoming data is inserted in the receive queue.*/
   EventSource           sd_ievent;
-  /** Data Transmitted @p EventSource. This event is generated when the
+  /** Data Transmitted \p EventSource. This event is generated when the
    *  transmission queue is empty and the driver can either transmit more
    *  data or enter receive mode.*/
   EventSource           sd_oevent;
   /** I/O driver status flags. This field should not be read directly but
-   *  the @p chHDDGetAndClearFlags() funtion should be used
+   *  the \p chHDDGetAndClearFlags() funtion should be used
    *  instead.*/
   dflags_t              sd_flags;
   /** Status Change Event Source. This event is generated when a condition

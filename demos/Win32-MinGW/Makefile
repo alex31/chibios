@@ -65,7 +65,7 @@ SRC  = chcore.c main.c ../../ports/win32/simcom.c \
        ${TESTSRC}
 
 # List ASM source files here
-ASRC = 
+ASRC = chcore2.s
 
 # List all user directories here
 UINCDIR = ../../src/include
@@ -77,7 +77,7 @@ ULIBDIR =
 ULIBS =
 
 # Define optimisation level here
-OPT = -ggdb -O2 -fomit-frame-pointer
+OPT = -ggdb -Os -fomit-frame-pointer
 
 #
 # End of user defines

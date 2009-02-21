@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,6 +15,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
@@ -37,35 +44,35 @@
 static const struct testcase *tests[] = {
   &testrdy1,
   &testrdy2,
-#if CH_USE_SEMAPHORES
+#ifdef CH_USE_SEMAPHORES
   &testsem1,
   &testsem2,
 #endif
-#if CH_USE_MUTEXES
+#ifdef CH_USE_MUTEXES
   &testmtx1,
   &testmtx2,
   &testmtx3,
-#if CH_USE_CONDVARS
+#ifdef CH_USE_CONDVARS
   &testcond1,
   &testcond2,
 #endif
 #endif
-#if CH_USE_MESSAGES
+#ifdef CH_USE_MESSAGES
   &testmsg1,
 #endif
-#if CH_USE_EVENTS
+#ifdef CH_USE_EVENTS
   &testevt1,
 #endif
-#if CH_USE_HEAP
+#ifdef CH_USE_HEAP
   &testheap1,
 #endif
-#if CH_USE_MEMPOOLS
+#ifdef CH_USE_MEMPOOLS
   &testpools1,
 #endif
-#if CH_USE_DYNAMIC && CH_USE_HEAP
+#if defined(CH_USE_DYNAMIC) && defined(CH_USE_HEAP)
   &testdyn1,
 #endif
-#if CH_USE_DYNAMIC && CH_USE_MEMPOOLS
+#if defined(CH_USE_DYNAMIC) && defined(CH_USE_MEMPOOLS)
   &testdyn2,
 #endif
   &testbmk1,

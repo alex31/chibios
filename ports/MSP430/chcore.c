@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,41 +15,46 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
-/**
- * @file ports/MSP430/chcore.c
- * @brief MSP430 architecture port code.
- * @addtogroup MSP430_CORE
- * @{
- */
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
+*/
 
 #include <ch.h>
 
 /**
- * The default implementation of this function is void so no messages are
- * actually printed.
- * @note The function is declared as a weak symbol, it is possible to redefine
- *       it in your application code.
- * @param msg pointer to the message string
+ * This function implements the idle thread infinite loop. The function should
+ * put the processor in the lowest power mode capable to serve interrupts.
+ * The priority is internally set to the minimum system value so that this
+ * thread is executed only if there are no other ready threads in the system.
  */
-/** @cond never */
-__attribute__((weak))
-/** @endcond */
-void port_puts(char *msg) {
+void _idle(void *p) {
+
+  while (TRUE)
+    ;
 }
 
 /**
- * Performs a context switch between two threads.
- * @param otp the thread to be switched out
- * @param ntp the thread to be switched in
- * @note The function is declared as a weak symbol, it is possible to redefine
- *       it in your application code.
+ * Abonormal system termination handler. Invoked by the ChibiOS/RT when an
+ * abnormal unrecoverable condition is met.
  */
-/** @cond never */
-__attribute__((naked, weak))
-/** @endcond */
-void port_switch(Thread *otp, Thread *ntp) {
+void chSysHalt(void) {
+
+  chSysLock();
+
+  while (TRUE)
+    ;
+}
+
+/**
+ * Context switch.
+ */
+__attribute__((naked))
+void chSysSwitchI(Thread *otp, Thread *ntp) {
   register struct intctx *sp asm("r1");
 
   asm volatile ("push    r11                                    \n\t" \
@@ -74,24 +79,11 @@ void port_switch(Thread *otp, Thread *ntp) {
 }
 
 /**
- * Disables the interrupts and halts the system.
- * @note The function is declared as a weak symbol, it is possible to redefine
- *       it in your application code.
+ * Prints a message on the system console (if any).
  */
-/** @cond never */
-__attribute__((weak))
-/** @endcond */
-void port_halt(void) {
-
-  port_disable();
-  while (TRUE) {
-  }
+void chSysPuts(char *msg) {
 }
 
-/**
- * Start a thread by invoking its work function.
- * If the work function returns @p chThdExit() is automatically invoked.
- */
 void threadstart(void) {
 
   asm volatile ("eint                                           \n\t" \
@@ -99,5 +91,3 @@ void threadstart(void) {
                 "call    r10                                    \n\t" \
                 "call    #chThdExit");
 }
-
-/** @} */

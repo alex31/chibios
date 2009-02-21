@@ -75,7 +75,7 @@ include ../../src/kernel.mk
 include ../../test/test.mk
 
 # List ARM-mode C source files here
-ACSRC = ../../ports/ARM7/chcore.c \
+ACSRC = ../../ports/ARM7-LPC214x/chcore.c \
         ../../ports/ARM7-LPC214x/vic.c  \
         ../../ports/ARM7-LPC214x/lpc214x_serial.c  \
        ${KERNSRC} \
@@ -93,7 +93,7 @@ TCSRC =
 TCPPSRC =
 
 # List ASM source files here
-ASMSRC = ../../ports/ARM7/crt0.s ../../ports/ARM7/chcoreasm.s \
+ASMSRC = ../../ports/ARM7/crt0.s ../../ports/ARM7/chsys.s \
          ../../ports/ARM7-LPC214x/vectors.s
 
 # List all user directories here

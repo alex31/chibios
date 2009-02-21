@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,24 +15,24 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
-/**
- * @file ports/ARM7-LPC214x/vic.c
- * @brief LPC214x VIC peripheral support code.
- * @addtogroup LPC214x_VIC
- * @{
- */
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
+*/
 
 #include <ch.h>
 
 #include "lpc214x.h"
 
-/**
- * @brief VIC Initialization.
- * @note Better reset everything in the VIC, it is a HUGE source of trouble.
+/*
+ * VIC Initialization.
+ * NOTE: Better reset everything in the VIC, it is a HUGE source of trouble.
  */
-void vic_init(void) {
+void InitVIC(void) {
   int i;
 
   VIC *vic = VICBase;
@@ -46,12 +46,8 @@ void vic_init(void) {
   }
 }
 
-/**
- * @brief Initializes a VIC vector.
- * @details Set a vector for an interrupt source and enables it.
- * @param[in] handler the pointer to the IRQ service routine
- * @param[in] vector the vector number
- * @param[in] source the IRQ source to be associated to the vector
+/*
+ * Set a vector for an interrupt source, the vector is enabled too.
  */
 void SetVICVector(void *handler, int vector, int source) {
 
@@ -59,5 +55,3 @@ void SetVICVector(void *handler, int vector, int source) {
   vicp->VIC_VectAddrs[vector] = (IOREG32)handler;
   vicp->VIC_VectCntls[vector] = (IOREG32)(source | 0x20);
 }
-
-/** @} */

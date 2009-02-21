@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,15 +15,18 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
-/**
- * @file ports/ARMCM3/crt0.s
- * @brief Generic ARM Cortex-M3 startup file for ChibiOS/RT.
- * @addtogroup ARMCM3_CORE
- * @{
+/*
+ * Generic ARM-CortexM3 startup file for ChibiOS/RT.
  */
-/** @cond never */
 
 .set    CONTROL_MODE_PRIVILEGED, 0
 .set    CONTROL_MODE_UNPRIVILEGED, 1
@@ -41,8 +44,6 @@
 .thumb_func
 .global ResetHandler
 ResetHandler:
-        /* Interrupts globally masked. */
-        cpsid   i
         /*
          * Stack pointers initialization.
          */
@@ -53,7 +54,9 @@ ResetHandler:
         msr     PSP, r0
 //        ldr     r1, =__process_stack_size__
 //        sub     r0, r0, r1
-        /* Early initialization. */
+        /*
+         * Early initialization.
+         */
         bl      hwinit0
         /*
          * Data initialization.
@@ -80,26 +83,26 @@ bloop:
         itt     lo
         strlo   r0, [r1], #4
         blo     bloop
-        /* Switches to the Process Stack. */
+        /*
+         * Switches to the Process Stack and disables the interrupts globally.
+         */
         movs    r0, #CONTROL_MODE_PRIVILEGED | CONTROL_USE_PSP
         msr     CONTROL, r0
         isb
-        /* Late initialization. */
+        movs    r0, #0x10
+        msr     BASEPRI, r0
+        cpsie   i
+        /*
+         * Late initialization.
+         */
         bl      hwinit1
+        /*
+         * main(0, NULL).
+         */
         movs    r0, #0
         mov     r1, r0
         bl      main
-        b       MainExitHandler
-
-/*
- * Default main exit code, just a loop.
- * It is a weak symbol, the application code can redefine the behavior.
- */
-.thumb_func
-.global MainExitHandler
-.weak MainExitHandler
-MainExitHandler:
-.loop:  b       .loop
+        bl      chSysHalt
 
 /*
  * Default early initialization code. It is declared weak in order to be
@@ -124,6 +127,3 @@ hwinit0:
 .weak hwinit1
 hwinit1:
         bx      lr
-
-/** @endcond */
-/** @} */

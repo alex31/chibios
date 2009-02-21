@@ -69,7 +69,7 @@ include ../../src/kernel.mk
 include ../../test/test.mk
 
 # List ARM-mode C source files here
-ASRC = ../../ports/ARM7/chcore.c \
+ASRC = ../../ports/ARM7-AT91SAM7X/chcore.c \
        ../../ports/ARM7-AT91SAM7X/sam7x_serial.c \
        ${KERNSRC} \
        ${TESTSRC} \
@@ -83,7 +83,7 @@ ASRC = ../../ports/ARM7/chcore.c \
 TSRC =
 
 # List ASM source files here
-ASMSRC = ../../ports/ARM7/crt0.s ../../ports/ARM7/chcoreasm.s \
+ASMSRC = ../../ports/ARM7/crt0.s ../../ports/ARM7/chsys.s \
          ../../ports/ARM7-AT91SAM7X/vectors.s
 
 # List all user directories here

@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,24 +15,17 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
-/**
- * @file ports/ARM7-AT91SAM7X/sam7x_emac.h
- * @brief AT91SAM7X EMAC driver macros and structures.
- * @addtogroup AT91SAM7X_EMAC
- * @{
- */
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
+*/
 
 #ifndef _SAM7X_EMAC_H_
 #define _SAM7X_EMAC_H_
-
-#define PHY_ADDRESS 1
-
-#define EMAC_RECEIVE_BUFFERS            24
-#define EMAC_RECEIVE_BUFFERS_SIZE       128
-#define EMAC_TRANSMIT_BUFFERS           2
-#define EMAC_TRANSMIT_BUFFERS_SIZE      1518
 
 typedef struct {
   uint32_t      w1;
@@ -76,7 +69,7 @@ typedef struct {
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void emac_init(int prio);
+  void InitEMAC(int prio);
   void EMACSetAddress(const uint8_t *eaddr);
   bool_t EMACGetLinkStatus(void);
   BufDescriptorEntry *EMACGetTransmitBuffer(void);
@@ -89,5 +82,3 @@ extern "C" {
 extern EventSource EMACFrameTransmitted, EMACFrameReceived;
 
 #endif /* _SAM7X_EMAC_H_ */
-
-/** @} */

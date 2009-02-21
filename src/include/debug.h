@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,11 +15,16 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file debug.h
- * @brief Debug macros and structures.
  * @addtogroup Debug
  * @{
  */
@@ -27,39 +32,28 @@
 #ifndef _DEBUG_H_
 #define _DEBUG_H_
 
-#if CH_USE_DEBUG
+#ifdef CH_USE_DEBUG
 
-/**
- * @brief Trace buffer entries.
- */
 #ifndef TRACE_BUFFER_SIZE
 #define TRACE_BUFFER_SIZE 64
 #endif
 
 /**
- * @brief Fill value for threads working area in debug mode.
+ * Fill value for threads working area in debug mode.
  */
-#ifndef MEM_FILL_PATTERN
 #define MEM_FILL_PATTERN 0x55
-#endif
 
-/**
- * @brief Trace buffer record.
- */
 typedef struct {
-  void                  *cse_wtobjp;    /**< Object where going to sleep.*/
-  systime_t             cse_time;       /**< Time of the switch event.*/
-  uint16_t              cse_state: 4;   /**< Switched out thread state.*/
-  uint16_t              cse_tid: 12;    /**< Switched in thdread id.*/
+  void                  *cse_wtobjp;
+  systime_t             cse_time;
+  uint16_t              cse_state: 4;
+  uint16_t              cse_tid: 12;
 } CtxSwcEvent;
 
-/**
- * @brief Trace buffer header.
- */
 typedef struct {
-  unsigned              tb_size;        /**< Trace buffer size (records).*/
-  CtxSwcEvent           *tb_ptr;        /**< Pointer to the ring buffer front.*/
-  CtxSwcEvent           tb_buffer[TRACE_BUFFER_SIZE];   /**< Ring buffer.*/
+  size_t                tb_size;
+  CtxSwcEvent           *tb_ptr;
+  CtxSwcEvent           tb_buffer[TRACE_BUFFER_SIZE];
 } TraceBuffer;
 
 extern CtxSwcEvent *dbgnext;
@@ -69,7 +63,7 @@ extern char *dbglastmsg;
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void debug_init(void);
+  void chDbgInit(void);
   void chDbgPanic(char *msg);
 #ifdef __cplusplus
 }
@@ -80,8 +74,8 @@ extern "C" {
  * with the specified message.
  * @param c the condition to be verified to be true
  * @param m the text message
- * @note The condition is tested only if the @p CH_USE_DEBUG switch is
- *       specified in @p chconf.h else the macro does nothing.
+ * @note The condition is tested only if the \p CH_USE_DEBUG switch is
+ *       specified in \p chconf.h else the macro does nothing.
  */
 #define chDbgAssert(c, m) {                                             \
   if (!(c))                                                             \
@@ -90,13 +84,13 @@ extern "C" {
 
 #else /* !CH_USE_DEBUG */
 
-#define debug_init()
+#define chDbgInit()
 #define chDbgPanic(msg) {}
 #define chDbgAssert(c, m) {(void)(c);}
 
 #endif /* CH_USE_DEBUG */
 
-#if CH_USE_TRACE
+#ifdef CH_USE_TRACE
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,15 +15,18 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
-/**
- * @file ports/ARM7/crt0.s
- * @brief Generic ARM7 startup file for ChibiOS/RT.
- * @addtogroup ARM7_CORE
- * @{
+/*
+ * Generic ARM7 startup file for ChibiOS/RT.
  */
-/** @cond never */
 
 .set    MODE_USR, 0x10
 .set    MODE_FIQ, 0x11
@@ -119,7 +122,16 @@ bssloop:
         /*
          * Late initialization.
          */
-#ifdef THUMB_NO_INTERWORKING
+#ifndef THUMB_NO_INTERWORKING
+        bl      hwinit1
+        /*
+         * main(0, NULL).
+         */
+        mov     r0, #0
+        mov     r1, r0
+        bl      main
+        bl      chSysHalt
+#else
         add     r0, pc, #1
         bx      r0
 .code 16
@@ -127,25 +139,39 @@ bssloop:
         mov     r0, #0
         mov     r1, r0
         bl      main
-        ldr     r1, =MainExitHandler
-        bx      r1
+        bl      chSysHalt
 .code 32
-#else
-        bl      hwinit1
-        mov     r0, #0
-        mov     r1, r0
-        bl      main
-        b       MainExitHandler
 #endif
 
 /*
- * Default main function exit handler.
+ * Default exceptions handlers. The handlers are declared weak in order to be
+ * replaced by the real handling code.
  */
-.weak MainExitHandler
-.globl MainExitHandler
-MainExitHandler:
+.weak UndHandler
+.globl UndHandler
+UndHandler:
 
-.loop:  b       .loop
+.weak SwiHandler
+.globl SwiHandler
+SwiHandler:
+
+.weak PrefetchHandler
+.globl PrefetchHandler
+PrefetchHandler:
+
+.weak AbortHandler
+.globl AbortHandler
+AbortHandler:
+
+.weak FiqHandler
+.globl FiqHandler
+FiqHandler:
+
+.loop: b        .loop
+
+#ifdef THUMB_NO_INTERWORKING
+.code 16
+#endif
 
 /*
  * Default early initialization code. It is declared weak in order to be
@@ -153,14 +179,11 @@ MainExitHandler:
  * Early initialization is performed just after reset before BSS and DATA
  * segments initialization.
  */
-#ifdef THUMB_NO_INTERWORKING
-.thumb_func
-.code 16
-#endif
+.global hwinit0
 .weak hwinit0
+.thumb_func
 hwinit0:
         bx      lr
-.code 32
 
 /*
  * Default late initialization code. It is declared weak in order to be
@@ -168,14 +191,8 @@ hwinit0:
  * Late initialization is performed after BSS and DATA segments initialization
  * and before invoking the main() function.
  */
-#ifdef THUMB_NO_INTERWORKING
-.thumb_func
-.code 16
-#endif
+.global hwinit1
 .weak hwinit1
+.thumb_func
 hwinit1:
         bx      lr
-.code 32
-
-/** @endcond */
-/** @} */

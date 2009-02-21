@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,15 +15,18 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
-/**
- * @file ports/ARM7/chcoreasm.s
- * @brief ARM7 architecture port low level code.
- * @addtogroup ARM7_CORE
- * @{
+/*
+ * ARM7 port system code.
  */
-/** @cond never */
 
 #include <chconf.h>
 
@@ -48,61 +51,51 @@
 .balign 16
 .code 16
 .thumb_func
-.global _port_disable_thumb
-_port_disable_thumb:
-        mov     r3, pc
-        bx      r3
+.global _lock
+_lock:
+        mov     r0, pc
+        bx      r0
 .code 32
-        mrs     r3, CPSR
-        orr     r3, #I_BIT
-        msr     CPSR_c, r3
-        orr     r3, #F_BIT
-        msr     CPSR_c, r3
-        bx      lr
-
-.balign 16
-.code 16
-.thumb_func
-.global _port_suspend_thumb
-_port_suspend_thumb:
-.thumb_func
-.global _port_lock_thumb
-_port_lock_thumb:
-        mov     r3, pc
-        bx      r3
-.code 32
+        mrs     r0, CPSR
         msr     CPSR_c, #MODE_SYS | I_BIT
         bx      lr
 
 .balign 16
 .code 16
 .thumb_func
-.global _port_enable_thumb
-_port_enable_thumb:
+.global _unlock
+_unlock:
+        mov     r1, pc
+        bx      r1
+.code 32
+        msr     CPSR_c, r0
+        bx      lr
+
+.balign 16
+.code 16
 .thumb_func
-.global _port_unlock_thumb
-_port_unlock_thumb:
-        mov     r3, pc
-        bx      r3
+.global _enable
+_enable:
+        mov     r0, pc
+        bx      r0
 .code 32
         msr     CPSR_c, #MODE_SYS
         bx      lr
-
 #endif
 
 .balign 16
 #ifdef THUMB_PRESENT
 .code 16
 .thumb_func
-.global _port_switch_thumb
-_port_switch_thumb:
+.global chSysSwitchI_thumb
+chSysSwitchI_thumb:
         mov     r2, pc
         bx      r2
-        // Jumps into _port_switch_arm in ARM mode
+        // Jumps into chSysSwitchI in ARM mode
 #endif
 .code 32
-.global _port_switch_arm
-_port_switch_arm:
+.global chSysSwitchI_arm
+chSysSwitchI_arm:
 #ifdef CH_CURRP_REGISTER_CACHE
         stmfd   sp!, {r4, r5, r6, r8, r9, r10, r11, lr}
         str     sp, [r0, #16]
@@ -156,16 +149,16 @@ _port_switch_arm:
 #ifdef THUMB_NO_INTERWORKING
 .code 16
 .thumb_func
-.globl _port_irq_common
-_port_irq_common:
+.globl IrqCommon
+IrqCommon:
         bl      chSchRescRequiredI
         mov     lr, pc
         bx      lr
 .code 32
 #else /* !THUMB_NO_INTERWORKING */
 .code 32
-.globl _port_irq_common
-_port_irq_common:
+.globl IrqCommon
+IrqCommon:
         bl      chSchRescRequiredI
 #endif /* !THUMB_NO_INTERWORKING */
         cmp     r0, #0                          // Simply returns if a
@@ -211,8 +204,8 @@ _port_irq_common:
  */
 .balign 16
 .code 32
-.globl _port_thread_start
-_port_thread_start:
+.globl threadstart
+threadstart:
         msr     CPSR_c, #MODE_SYS
 #ifndef THUMB_NO_INTERWORKING
         mov     r0, r5
@@ -230,5 +223,22 @@ jmpr4:
         bx      r4
 #endif /* !THUMB_NO_INTERWORKING */
 
-/** @endcond */
-/** @} */
+/*
+ * System stop code.
+ */
+.code 16
+.p2align 2,,
+.thumb_func
+.weak _halt16
+.globl _halt16
+_halt16:
+       mov      r0, pc
+       bx       r0
+.code 32
+.weak _halt32
+.globl _halt32
+_halt32:
+       mrs      r0, CPSR
+       orr      r0, #I_BIT | F_BIT
+       msr      CPSR_c, r0
+.loop: b        .loop

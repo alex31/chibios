@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,11 +15,16 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file queues.h I/O
- * @brief Queues macros and structures.
  * @addtogroup IOQueues
  * @{
  */
@@ -41,20 +46,24 @@ typedef void (*qnotify_t)(void);
 /** Returned by the queue functions if the queue is full. */
 #define Q_FULL          -4
 
-#if CH_USE_QUEUES
+#ifdef CH_USE_QUEUES
 /**
- * @brief I/O queue structure.
- * @details This structure is used by both Input and Output Queues,
+ * I/O queue structure, it is used by both Input and Output Queues,
  * the difference is on how the semaphore is initialized.
  */
 typedef struct {
-  uint8_t               *q_buffer;      /**< Pointer to the queue buffer.*/
-  uint8_t               *q_top;         /**< Pointer to the first location
-                                             after the buffer.*/
-  uint8_t               *q_wrptr;       /**< Write pointer.*/
-  uint8_t               *q_rdptr;       /**< Read pointer.*/
-  Semaphore             q_sem;          /**< Counter @p Semaphore.*/
-  qnotify_t             q_notify;       /**< Data notification callback.*/
+  /** Pointer to the queue buffer. */
+  uint8_t               *q_buffer;
+  /** Pointer to the first location after the buffer. */
+  uint8_t               *q_top;
+  /** Write pointer. */
+  uint8_t               *q_wrptr;
+  /** Read pointer. */
+  uint8_t               *q_rdptr;
+  /** Counter semaphore. */
+  Semaphore             q_sem;
+  /** Data notification callback. */
+  qnotify_t             q_notify;
 } Queue;
 
 /** Returns the queue's buffer size. */
@@ -94,7 +103,7 @@ extern "C" {
   msg_t chIQPutI(Queue *qp, uint8_t b);
   msg_t chIQGet(Queue *qp);
   size_t chIQRead(Queue *qp, uint8_t *buffer, size_t n);
-#if CH_USE_QUEUES_TIMEOUT
+#ifdef CH_USE_QUEUES_TIMEOUT
   msg_t chIQGetTimeout(Queue *qp, systime_t time);
 #endif
 
@@ -112,22 +121,27 @@ extern "C" {
 #endif
 #endif  /* CH_USE_QUEUES */
 
-#if CH_USE_QUEUES_HALFDUPLEX
+#ifdef CH_USE_QUEUES_HALFDUPLEX
 /**
- * @brief Half duplex queue structure.
+ * Half duplex queue structure.
  */
 typedef struct {
-  uint8_t               *hdq_buffer;    /**< Pointer to the queue buffer.*/
-  uint8_t               *hdq_top;       /**< Pointer to the first location
-                                             after the buffer. */
-  uint8_t               *hdq_wrptr;     /**< Write pointer.*/
-  uint8_t               *hdq_rdptr;     /**< Read pointer.*/
-  Semaphore             hdq_isem;       /**< Input counter @p Semaphore.*/
-  Semaphore             hdq_osem;       /**< Output counter @p Semaphore.*/
-  qnotify_t             hdq_inotify;    /**< Input data notification
-                                             callback.*/
-  qnotify_t             hdq_onotify;    /**< Output data notification
-                                             callback.*/
+  /** Pointer to the queue buffer. */
+  uint8_t               *hdq_buffer;
+  /** Pointer to the first location after the buffer. */
+  uint8_t               *hdq_top;
+  /** Write pointer.*/
+  uint8_t               *hdq_wrptr;
+  /** Read pointer.*/
+  uint8_t               *hdq_rdptr;
+  /** Input counter semaphore. */
+  Semaphore             hdq_isem;
+  /** Output counter semaphore. */
+  Semaphore             hdq_osem;
+  /** Input data notification callback. */
+  qnotify_t             hdq_inotify;
+  /** Output data notification callback. */
+  qnotify_t             hdq_onotify;
 } HalfDuplexQueue;
 
 /** Returns the queue's buffer size. */
@@ -163,7 +177,7 @@ extern "C" {
   void chHDQPutTransmit(HalfDuplexQueue *qp, uint8_t b);
   msg_t chHDQGetTransmitI(HalfDuplexQueue *qp);
   msg_t chHDQPutReceiveI(HalfDuplexQueue *qp, uint8_t b);
-#if CH_USE_QUEUES_TIMEOUT
+#ifdef CH_USE_QUEUES_TIMEOUT
   msg_t chHDQGetReceiveTimeout(HalfDuplexQueue *qp, systime_t time);
 #endif
 #ifdef __cplusplus

@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,6 +15,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
@@ -31,30 +38,30 @@
 /*
  * Non-vectored IRQs handling here.
  */
-static CH_IRQ_HANDLER(IrqHandler) {
+__attribute__((naked))
+static void IrqHandler(void) {
 
-  CH_IRQ_PROLOGUE();
+  chSysIRQEnterI();
 
   /* nothing */
-
   VICVectAddr = 0;
-  CH_IRQ_EPILOGUE();
+
+  chSysIRQExitI();
 }
 
 /*
  * Timer 0 IRQ handling here.
  */
-static CH_IRQ_HANDLER(T0IrqHandler) {
+__attribute__((naked))
+static void T0IrqHandler(void) {
 
-  CH_IRQ_PROLOGUE();
+  chSysIRQEnterI();
+
   T0IR = 1;             /* Clear interrupt on match MR0. */
-
-  chSysLockFromIsr();
   chSysTimerHandlerI();
-  chSysUnlockFromIsr();
-
   VICVectAddr = 0;
-  CH_IRQ_EPILOGUE();
+
+  chSysIRQExitI();
 }
 
 /*
@@ -79,17 +86,17 @@ void hwinit0(void) {
    * PLL setup for Fosc=12MHz and CCLK=48MHz.
    * P=2 M=3.
    */
-  PLL *pll = PLLBase;
-  pll->PLL0_CFG  = 0x23;        /* P and M values. */
-  pll->PLL0_CON  = 0x1;         /* Enalbles the PLL 0. */
-  pll->PLL0_FEED = 0xAA;
-  pll->PLL0_FEED = 0x55;
-  while (!(pll->PLL0_STAT & 0x400))
+  PLL *pll = PLL0Base;
+  pll->PLL_CFG  = 0x23;         /* P and M values. */
+  pll->PLL_CON  = 0x1;          /* Enables the PLL 0. */
+  pll->PLL_FEED = 0xAA;
+  pll->PLL_FEED = 0x55;
+  while (!(pll->PLL_STAT & 0x400))
     ;                           /* Wait for PLL lock. */
 
-  pll->PLL0_CON  = 0x3;         /* Connects the PLL. */
-  pll->PLL0_FEED = 0xAA;
-  pll->PLL0_FEED = 0x55;
+  pll->PLL_CON  = 0x3;          /* Connects the PLL. */
+  pll->PLL_FEED = 0xAA;
+  pll->PLL_FEED = 0x55;
 
   /*
    * VPB setup.
@@ -119,7 +126,7 @@ void hwinit1(void) {
   /*
    * Interrupt vectors assignment.
    */
-  vic_init();
+  InitVIC();
   VICDefVectAddr = (IOREG32)IrqHandler;
 
   /*
@@ -137,8 +144,8 @@ void hwinit1(void) {
   /*
    * Other subsystems.
    */
-//  serial_init(1, 2);
-//  ssp_init();
+//  InitSerial(1, 2);
+//  InitSSP();
 //  InitMMC();
 //  InitBuzzer();
 

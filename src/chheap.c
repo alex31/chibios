@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,20 +15,25 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file chheap.c
- * @brief Heap code.
  * @addtogroup Heap
  * @{
  */
 
 #include <ch.h>
 
-#if CH_USE_HEAP
+#ifdef CH_USE_HEAP
 
-#if !CH_USE_MALLOC_HEAP
+#ifndef CH_USE_MALLOC_HEAP
 
 #define MAGIC 0xF5A0
 #define ALIGN_TYPE      void *
@@ -45,11 +50,11 @@ struct header {
 
 static struct {
   struct header         free;   /* Guaranteed to be not adjacent to the heap */
-#if CH_USE_MUTEXES
+#if defined(CH_USE_MUTEXES)
 #define H_LOCK()        chMtxLock(&heap.hmtx)
 #define H_UNLOCK()      chMtxUnlock()
   Mutex                 hmtx;
-#elif CH_USE_SEMAPHORES
+#elif defined(CH_USE_SEMAPHORES)
 #define H_LOCK()        chSemWait(&heap.hsem)
 #define H_UNLOCK()      chSemSignal(&heap.hsem)
   Semaphore             hsem;
@@ -65,11 +70,11 @@ static struct {
 } heap;
 
 /**
- * @brief Initializes the allocator subsystem.
- *
- * @note Internal use only.
+ * Initializes the allocator subsystem.
+ * @note It is internally invoked, this function should not normally be
+ *       invoked from the user code.
  */
-void heap_init(void) {
+void chHeapInit(void) {
   struct header *hp;
 
 #if CH_HEAP_SIZE == 0
@@ -86,7 +91,7 @@ void heap_init(void) {
   hp->h_next = NULL;
   heap.free.h_next = hp;
   heap.free.h_size = 0;
-#if CH_USE_MUTEXES
+#if defined(CH_USE_MUTEXES)
   chMtxInit(&heap.hmtx);
 #else
   chSemInit(&heap.hsem, 1);
@@ -94,11 +99,9 @@ void heap_init(void) {
 }
 
 /**
- * @brief Allocates a block of memory from the heap by using the first-fit
- * algorithm.
- * @details The allocated block is guaranteed to be properly aligned for a
- * pointer data type.
- *
+ * Allocates a block of memory from the heap by using the first-fit algorithm.
+ * The allocated block is guaranteed to be properly aligned for a pointer data
+ * type.
  * @param size the size of the block to be allocated. Note that the allocated
  *             block may be a bit bigger than the requested size for alignment
  *             and fragmentation reasons.
@@ -146,8 +149,7 @@ void *chHeapAlloc(size_t size) {
                                    (p)->h_size)
 
 /**
- * @brief Frees a previously allocated memory block.
- *
+ * Frees a previously allocated memory block.
  * @param p the memory block pointer
  */
 void chHeapFree(void *p) {
@@ -162,7 +164,7 @@ void chHeapFree(void *p) {
 
   while (TRUE) {
 
-    chDbgAssert((hp < qp) && (hp >= LIMIT(qp)), "chheap.c, chHeapFree() #2");
+    chDbgAssert((hp < qp) || (hp >= LIMIT(qp)), "chheap.c, chHeapFree() #2");
 
     if (((qp == &heap.free) || (hp > qp)) &&
         ((qp->h_next == NULL) || (hp < qp->h_next))) {
@@ -189,14 +191,13 @@ void chHeapFree(void *p) {
 }
 
 /**
- * @brief Reports the heap status.
- *
+ * Determines the heap status.
  * @param sizep pointer to a variable that will receive the total fragmented
  *              free space
  * @return The number of fragments in the heap.
  * @note This function is meant to be used in the test suite, it should not be
  *       really useful for the application code.
- * @note This function is not implemented when the @p CH_USE_MALLOC_HEAP
+ * @note This function is not implemented when the \p CH_USE_MALLOC_HEAP
  *       configuration option is used (it always returns zero).
  */
 size_t chHeapStatus(size_t *sizep) {
@@ -219,11 +220,11 @@ size_t chHeapStatus(size_t *sizep) {
 
 #include <stdlib.h>
 
-#if CH_USE_MUTEXES
+#if defined(CH_USE_MUTEXES)
 #define H_LOCK()        chMtxLock(&hmtx)
 #define H_UNLOCK()      chMtxLock(&hmtx)
 static Mutex            hmtx;
-#elif CH_USE_SEMAPHORES
+#elif defined(CH_USE_SEMAPHORES)
 #define H_LOCK()        chSemWait(&hsem)
 #define H_UNLOCK()      chSemSignal(&hsem)
 static Semaphore        hsem;
@@ -231,9 +232,9 @@ static Semaphore        hsem;
 #error "The heap allocator requires mutexes or semaphores to be enabled"
 #endif
 
-void heap_init(void) {
+void chHeapInit(void) {
 
-#if CH_USE_MUTEXES
+#if defined(CH_USE_MUTEXES)
   chMtxInit(&hmtx);
 #else
   chSemInit(&hsem, 1);

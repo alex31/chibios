@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,14 +15,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
-/**
- * @file ports/ARMCM3-STM32F103/stm32_serial.c
- * @brief STM32F103 Serial driver code.
- * @addtogroup STM32F103_SERIAL
- * @{
- */
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
+*/
 
 #include <ch.h>
 
@@ -31,35 +31,26 @@
 #include "stm32_serial.h"
 #include "stm32f10x_nvic.h"
 
-#if USE_STM32_USART1 || defined(__DOXYGEN__)
-/** @brief USART1 serial driver identifier.*/
-FullDuplexDriver COM1;
+#define USART_BITRATE (38400)
 
+#ifdef USE_USART1
+FullDuplexDriver COM1;
 static uint8_t ib1[SERIAL_BUFFERS_SIZE];
 static uint8_t ob1[SERIAL_BUFFERS_SIZE];
 #endif
 
-#if USE_STM32_USART2 || defined(__DOXYGEN__)
-/** @brief USART2 serial driver identifier.*/
+#ifdef USE_USART2
 FullDuplexDriver COM2;
-
 static uint8_t ib2[SERIAL_BUFFERS_SIZE];
 static uint8_t ob2[SERIAL_BUFFERS_SIZE];
 #endif
 
-#if USE_STM32_USART3 || defined(__DOXYGEN__)
-/** @brief USART3 serial driver identifier.*/
+#ifdef USE_USART3
 FullDuplexDriver COM3;
-
 static uint8_t ib3[SERIAL_BUFFERS_SIZE];
 static uint8_t ob3[SERIAL_BUFFERS_SIZE];
 #endif
 
-/**
- * @brief Error handling routine.
- * @param[in] sr USART SR register value
- * @param[in] com communication channel associated to the USART
- */
 static void SetError(uint16_t sr, FullDuplexDriver *com) {
   dflags_t sts = 0;
 
@@ -71,30 +62,25 @@ static void SetError(uint16_t sr, FullDuplexDriver *com) {
     sts |= SD_FRAMING_ERROR;
   if (sr & SR_LBD)
     sts |= SD_BREAK_DETECTED;
-  chSysLockFromIsr();
+  chSysLock();
   chFDDAddFlagsI(com, sts);
-  chSysUnlockFromIsr();
+  chSysUnlock();
 }
 
-/**
- * @brief Common IRQ handler.
- * @param[in] u pointer to an USART I/O block
- * @param[in] com communication channel associated to the USART
- */
 static void ServeInterrupt(USART_TypeDef *u, FullDuplexDriver *com) {
   uint16_t sr = u->SR;
 
   if (sr & (SR_ORE | SR_FE | SR_PE | SR_LBD))
     SetError(sr, com);
   if (sr & SR_RXNE) {
-    chSysLockFromIsr();
+    chSysLock();
     chFDDIncomingDataI(com, u->DR);
-    chSysUnlockFromIsr();
+    chSysUnlock();
   }
   if (sr & SR_TXE) {
-    chSysLockFromIsr();
+    chSysLock();
     msg_t b = chFDDRequestDataI(com);
-    chSysUnlockFromIsr();
+    chSysUnlock();
     if (b < Q_OK)
       u->CR1 &= ~CR1_TXEIE;
     else
@@ -102,67 +88,75 @@ static void ServeInterrupt(USART_TypeDef *u, FullDuplexDriver *com) {
   }
 }
 
-#if USE_STM32_USART1 || defined(__DOXYGEN__)
-CH_IRQ_HANDLER(VectorD4) {
+#ifdef USE_USART1
+/*
+ * USART1 IRQ service routine.
+ */
+void VectorD4(void) {
 
-  CH_IRQ_PROLOGUE();
-
+  chSysIRQEnterI();
   ServeInterrupt(USART1, &COM1);
-
-  CH_IRQ_EPILOGUE();
+  chSysIRQExitI();
 }
 
+/*
+ * Invoked by the high driver when one or more bytes are inserted in the
+ * output queue.
+ */
 static void OutNotify1(void) {
 
   USART1->CR1 |= CR1_TXEIE;
 }
 #endif
 
-#if USE_STM32_USART2 || defined(__DOXYGEN__)
-CH_IRQ_HANDLER(VectorD8) {
+#ifdef USE_USART2
+/*
+ * USART2 IRQ service routine.
+ */
+void VectorD8(void) {
 
-  CH_IRQ_PROLOGUE();
-
+  chSysIRQEnterI();
   ServeInterrupt(USART2, &COM2);
-
-  CH_IRQ_EPILOGUE();
+  chSysIRQExitI();
 }
 
+/*
+ * Invoked by the high driver when one or more bytes are inserted in the
+ * output queue.
+ */
 static void OutNotify2(void) {
 
   USART2->CR1 |= CR1_TXEIE;
 }
 #endif
 
-#if USE_STM32_USART3 || defined(__DOXYGEN__)
-CH_IRQ_HANDLER(VectorDC) {
+#ifdef USE_USART3
+/*
+ * USART3 IRQ service routine.
+ */
+void VectorDC(void) {
 
-  CH_IRQ_PROLOGUE();
-
+  chSysIRQEnterI();
   ServeInterrupt(USART3, &COM3);
-
-  CH_IRQ_EPILOGUE();
+  chSysIRQExitI();
 }
 
+/*
+ * Invoked by the high driver when one or more bytes are inserted in the
+ * output queue.
+ */
 static void OutNotify3(void) {
 
   USART3->CR1 |= CR1_TXEIE;
 }
 #endif
 
-/**
- * @brief USART1 setup.
- * @details This function must be invoked with interrupts disabled.
- * @param[in] u pointer to an USART I/O block
- * @param[in] speed serial port speed in bits per second
- * @param[in] cr1 the value for the @p CR1 register
- * @param[in] cr2 the value for the @p CR2 register
- * @param[in] cr3 the value for the @p CR3 register
- * @note Must be invoked with interrupts disabled.
- * @note Does not reset the I/O queues.
+/*
+ * USART setup, must be invoked with interrupts disabled.
+ * NOTE: Does not reset I/O queues.
  */
-void usart_setup(USART_TypeDef *u, uint32_t speed, uint16_t cr1,
-                 uint16_t cr2, uint16_t cr3) {
+void SetUSARTI(USART_TypeDef *u, uint32_t speed, uint16_t cr1,
+               uint16_t cr2, uint16_t cr3) {
 
   /*
    * Baud rate setting.
@@ -180,43 +174,34 @@ void usart_setup(USART_TypeDef *u, uint32_t speed, uint16_t cr1,
   u->CR3 = cr3 | CR3_EIE;
 }
 
-/**
- * @brief Serial driver initialization.
- * @param[in] prio1 priority to be assigned to the USART1 IRQ
- * @param[in] prio2 priority to be assigned to the USART2 IRQ
- * @param[in] prio3 priority to be assigned to the USART3 IRQ
- * @note Handshake pads are not enabled inside this function because they
- *       may have another use, enable them externally if needed.
- *       RX and TX pads are handled inside.
+/*
+ * Serial subsystem initialization.
+ * NOTE: Handshake pins are not switched to their function because they may have
+ *       another use. Enable them externally if needed.
  */
-void serial_init(uint32_t prio1, uint32_t prio2, uint32_t prio3) {
+void InitSerial(uint32_t prio1, uint32_t prio2, uint32_t prio3) {
 
-#if USE_STM32_USART1
+#ifdef USE_USART1
   chFDDInit(&COM1, ib1, sizeof ib1, NULL, ob1, sizeof ob1, OutNotify1);
   RCC->APB2ENR |= 0x00004000;
-  usart_setup(USART1, DEFAULT_USART_BITRATE, 0,
-              CR2_STOP1_BITS | CR2_LINEN, 0);
+  SetUSARTI(USART1, USART_BITRATE, 0, CR2_STOP1_BITS | CR2_LINEN, 0);
   GPIOA->CRH = (GPIOA->CRH & 0xFFFFF00F) | 0x000004B0;
   NVICEnableVector(USART1_IRQChannel, prio1);
 #endif
 
-#if USE_STM32_USART2
+#ifdef USE_USART2
   chFDDInit(&COM2, ib2, sizeof ib2, NULL, ob2, sizeof ob2, OutNotify2);
   RCC->APB1ENR |= 0x00020000;
-  usart_setup(USART2, DEFAULT_USART_BITRATE, 0,
-              CR2_STOP1_BITS | CR2_LINEN, 0);
+  SetUSARTI(USART2, USART_BITRATE, 0, CR2_STOP1_BITS | CR2_LINEN, 0);
   GPIOA->CRL = (GPIOA->CRL & 0xFFFF00FF) | 0x00004B00;
   NVICEnableVector(USART2_IRQChannel, prio2);
 #endif
 
-#if USE_STM32_USART3
+#ifdef USE_USART3
   chFDDInit(&COM3, ib3, sizeof ib3, NULL, ob3, sizeof ob3, OutNotify3);
   RCC->APB1ENR |= 0x00040000;
-  usart_setup(USART3, DEFAULT_USART_BITRATE, 0,
-              CR2_STOP1_BITS | CR2_LINEN, 0);
+  SetUSARTI(USART3, USART_BITRATE, 0, CR2_STOP1_BITS | CR2_LINEN, 0);
   GPIOB->CRH = (GPIOB->CRH & 0xFFFF00FF) | 0x00004B00;
   NVICEnableVector(USART3_IRQChannel, prio3);
 #endif
 }
-
-/** @} */

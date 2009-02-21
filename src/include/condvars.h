@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,6 +15,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 /*
    Concepts and parts of this file are contributed by and Copyright (C) 2008
@@ -22,8 +29,6 @@
  */
 
 /**
- * @file condvars.h
- * @brief Condition Variables macros and structures.
  * @addtogroup CondVars
  * @{
  */
@@ -31,13 +36,13 @@
 #ifndef _CONDVARS_H_
 #define _CONDVARS_H_
 
-#if CH_USE_CONDVARS && CH_USE_MUTEXES
+#if defined(CH_USE_CONDVARS) && defined(CH_USE_MUTEXES)
 
 /**
- * @brief CondVar structure.
+ * CondVar structure.
  */
 typedef struct CondVar {
-  ThreadsQueue          c_queue;        /**< CondVar threads queue.*/
+  ThreadsQueue          c_queue;
 } CondVar;
 
 #ifdef __cplusplus
@@ -50,7 +55,7 @@ extern "C" {
   void chCondBroadcastI(CondVar *cp);
   msg_t chCondWait(CondVar *cp);
   msg_t chCondWaitS(CondVar *cp);
-#if CH_USE_CONDVARS_TIMEOUT
+#ifdef CH_USE_CONDVARS_TIMEOUT
   msg_t chCondWaitTimeout(CondVar *cp, systime_t time);
   msg_t chCondWaitTimeoutS(CondVar *cp, systime_t time);
 #endif
@@ -58,7 +63,7 @@ extern "C" {
 }
 #endif
 
-#endif /* CH_USE_CONDVARS && CH_USE_MUTEXES */
+#endif /* defined(CH_USE_CONDVARS) && defined(CH_USE_MUTEXES) */
 
 #endif /* _CONDVARS_H_ */
 

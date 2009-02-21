@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,14 +15,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
-/**
- * @file ports/MSP430/msp430_serial.c
- * @brief MSP430 Serial driver code.
- * @addtogroup MSP430_SERIAL
- * @{
- */
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
+*/
 
 #include <ch.h>
 #include <signal.h>
@@ -41,68 +41,57 @@ static void SetError(uint8_t urctl, FullDuplexDriver *com) {
     sts |= SD_FRAMING_ERROR;
   if (urctl & BRK)
     sts |= SD_BREAK_DETECTED;
-  chSysLockFromIsr();
   chFDDAddFlagsI(com, sts);
-  chSysUnlockFromIsr();
 }
 
-#if USE_MSP430_USART0 || defined(__DOXYGEN__)
-
-/** @brief USART0 serial driver identifier.*/
+#ifdef USE_MSP430_USART0
 FullDuplexDriver COM1;
-
 static uint8_t ib1[SERIAL_BUFFERS_SIZE];
 static uint8_t ob1[SERIAL_BUFFERS_SIZE];
 
-CH_IRQ_HANDLER(USART0TX_VECTOR) {
+interrupt(USART0TX_VECTOR) u0txirq(void) {
   msg_t b;
 
-  CH_IRQ_PROLOGUE();
+  chSysIRQEnterI();
 
-  chSysLockFromIsr();
   b = chFDDRequestDataI(&COM1);
-  chSysUnlockFromIsr();
   if (b < Q_OK)
     U0IE &= ~UTXIE0;
   else
     U0TXBUF = b;
 
-  CH_IRQ_EPILOGUE();
+  chSysIRQExitI();
 }
 
-CH_IRQ_HANDLER(USART0RX_VECTOR) {
+interrupt(USART0RX_VECTOR) u0rxirq(void) {
   uint8_t urctl;
 
-  CH_IRQ_PROLOGUE();
+  chSysIRQEnterI();
 
   if ((urctl = U0RCTL) & RXERR)
     SetError(urctl, &COM1);
-  chSysLockFromIsr();
   chFDDIncomingDataI(&COM1, U0RXBUF);
-  chSysUnlockFromIsr();
 
-  CH_IRQ_EPILOGUE();
+  chSysIRQExitI();
 }
 
+/*
+ * Invoked by the high driver when one or more bytes are inserted in the
+ * output queue.
+ */
 static void OutNotify1(void) {
 
   if (!(U0IE & UTXIE0)) {
-    chSysLockFromIsr();
     U0TXBUF = (uint8_t)chFDDRequestDataI(&COM1);
-    chSysUnlockFromIsr();
     U0IE |= UTXIE0;
   }
 }
 
-/**
- * @brief USART0 setup.
- * @details This function must be invoked with interrupts disabled.
- * @param div The divider value as calculated by the @p UBR() macro.
- * @param mod The value for the @p U0MCTL register.
- * @param ctl The value for the @p U0CTL register.
- * @note Does not reset the I/O queues.
+/*
+ * USART setup, must be invoked with interrupts disabled.
+ * NOTE: Does not reset I/O queues.
  */
-void usart0_setup(uint16_t div, uint8_t mod, uint8_t ctl) {
+void SetUSART0I(uint16_t div, uint8_t mod, uint8_t ctl) {
 
   U0CTL = SWRST;                /* Resets the USART, it should already be */
   /* USART init */
@@ -121,44 +110,42 @@ void usart0_setup(uint16_t div, uint8_t mod, uint8_t ctl) {
 }
 #endif /* USE_MSP430_USART0 */
 
-#if USE_MSP430_USART1 || defined(__DOXYGEN__)
-
-/** @brief USART1 serial driver identifier.*/
+#ifdef USE_MSP430_USART1
 FullDuplexDriver COM2;
-
 static uint8_t ib2[SERIAL_BUFFERS_SIZE];
 static uint8_t ob2[SERIAL_BUFFERS_SIZE];
 
-CH_IRQ_HANDLER(USART1TX_VECTOR) {
+interrupt(USART1TX_VECTOR) u1txirq(void) {
   msg_t b;
 
-  CH_IRQ_PROLOGUE();
+  chSysIRQEnterI();
 
-  chSysLockFromIsr();
   b = chFDDRequestDataI(&COM2);
-  chSysUnlockFromIsr();
   if (b < Q_OK)
     U1IE &= ~UTXIE1;
   else
     U1TXBUF = b;
 
-  CH_IRQ_EPILOGUE();
+  chSysIRQExitI();
 }
 
-CH_IRQ_HANDLER(USART1RX_VECTOR) {
+interrupt(USART1RX_VECTOR) u1rxirq(void) {
   uint8_t urctl;
 
-  CH_IRQ_PROLOGUE();
+  chSysIRQEnterI();
 
   if ((urctl = U1RCTL) & RXERR)
     SetError(urctl, &COM2);
-  chSysLockFromIsr();
   chFDDIncomingDataI(&COM2, U1RXBUF);
-  chSysUnlockFromIsr();
 
-  CH_IRQ_EPILOGUE();
+  chSysIRQExitI();
 }
 
+
+/*
+ * Invoked by the high driver when one or more bytes are inserted in the
+ * output queue.
+ */
 static void OutNotify2(void) {
 
   if (!(U1IE & UTXIE1)) {
@@ -167,16 +154,11 @@ static void OutNotify2(void) {
   }
 }
 
-/**
- * @brief USART1 setup.
- * @details This function must be invoked with interrupts disabled.
- * @param[in] div the divider value as calculated by the @p UBR() macro
- * @param[in] mod the value for the @p U1MCTL register
- * @param[in] ctl the value for the @p U1CTL register.
- * @note Must be invoked with interrupts disabled.
- * @note Does not reset the I/O queues.
+/*
+ * USART setup, must be invoked with interrupts disabled.
+ * NOTE: Does not reset I/O queues.
  */
-void usart1_setup(uint16_t div, uint8_t mod, uint8_t ctl) {
+void SetUSART1I(uint16_t div, uint8_t mod, uint8_t ctl) {
 
   U1CTL = SWRST;                /* Resets the USART, it should already be */
   /* USART init */
@@ -195,22 +177,16 @@ void usart1_setup(uint16_t div, uint8_t mod, uint8_t ctl) {
 }
 #endif
 
-/**
- * @brief Serial driver initialization.
- * @note The serial ports are initialized at @p 38400-8-N-1 by default.
- */
-void serial_init(void) {
+void InitSerial(void) {
 
   /* I/O queues setup.*/
-#if USE_MSP430_USART0
+#ifdef USE_MSP430_USART0
   chFDDInit(&COM1, ib1, sizeof ib1, NULL, ob1, sizeof ob1, OutNotify1);
-  usart0_setup(UBR(DEFAULT_USART_BITRATE), 0, CHAR);
+  SetUSART0I(UBR(38400), 0, CHAR);
 #endif
 
-#if USE_MSP430_USART1
+#ifdef USE_MSP430_USART1
   chFDDInit(&COM2, ib2, sizeof ib2, NULL, ob2, sizeof ob2, OutNotify2);
-  usart1_setup(UBR(DEFAULT_USART_BITRATE), 0, CHAR);
+  SetUSART1I(UBR(38400), 0, CHAR);
 #endif
 }
-
-/** @} */
