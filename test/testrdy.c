@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
@@ -39,12 +32,6 @@ static char *rdy1_gettest(void) {
   return "Ready List, priority enqueuing test #1";
 }
 
-static void rdy1_setup(void) {
-}
-
-static void rdy1_teardown(void) {
-}
-
 static void rdy1_execute(void) {
 
   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-5, thread, "E");
@@ -58,20 +45,14 @@ static void rdy1_execute(void) {
 
 const struct testcase testrdy1 = {
   rdy1_gettest,
-  rdy1_setup,
-  rdy1_teardown,
+  NULL,
+  NULL,
   rdy1_execute
 };
 
 static char *rdy2_gettest(void) {
 
   return "Ready List, priority enqueuing test #2";
-}
-
-static void rdy2_setup(void) {
-}
-
-static void rdy2_teardown(void) {
 }
 
 static void rdy2_execute(void) {
@@ -87,7 +68,16 @@ static void rdy2_execute(void) {
 
 const struct testcase testrdy2 = {
   rdy2_gettest,
-  rdy2_setup,
-  rdy2_teardown,
+  NULL,
+  NULL,
   rdy2_execute
+};
+
+/*
+ * Test sequence for ready list pattern.
+ */
+const struct testcase * const patternrdy[] = {
+  &testrdy1,
+  &testrdy2,
+  NULL
 };

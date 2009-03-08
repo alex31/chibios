@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,20 +15,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
 
 #include "test.h"
 
-#ifdef CH_USE_SEMAPHORES
+#if CH_USE_SEMAPHORES
 
 #define ALLOWED_DELAY MS2ST(5)
 
@@ -42,9 +35,6 @@ static char *sem1_gettest(void) {
 static void sem1_setup(void) {
 
   chSemInit(&sem1, 0);
-}
-
-static void sem1_teardown(void) {
 }
 
 static msg_t thread(void *p) {
@@ -73,10 +63,11 @@ static void sem1_execute(void) {
 const struct testcase testsem1 = {
   sem1_gettest,
   sem1_setup,
-  sem1_teardown,
+  NULL,
   sem1_execute
 };
 
+#if CH_USE_SEMAPHORES_TIMEOUT
 static char *sem2_gettest(void) {
 
   return "Semaphores, timeout test";
@@ -87,19 +78,21 @@ static void sem2_setup(void) {
   chSemInit(&sem1, 0);
 }
 
-static void sem2_teardown(void) {
-}
-
 static void sem2_execute(void) {
   int i;
   systime_t target_time;
+  msg_t msg;
+
+  msg= chSemWaitTimeout(&sem1, TIME_IMMEDIATE);
+  test_assert(msg == RDY_TIMEOUT, "#1");
 
   target_time = chSysGetTime() + MS2ST(5 * 500);
   for (i = 0; i < 5; i++) {
     test_emit_token('A' + i);
-    chSemWaitTimeout(&sem1, MS2ST(500));
-    test_assert(isempty(&sem1.s_queue), "queue not empty");
-    test_assert(&sem1.s_cnt != 0, "counter not zero");
+    msg = chSemWaitTimeout(&sem1, MS2ST(500));
+    test_assert(msg == RDY_TIMEOUT, "#2");
+    test_assert(isempty(&sem1.s_queue), "#3");    /* Queue not empty */
+    test_assert(&sem1.s_cnt != 0, "#4");          /* Counter not zero */
   }
   test_assert_sequence("ABCDE");
   test_assert_time_window(target_time, target_time + ALLOWED_DELAY);
@@ -108,8 +101,21 @@ static void sem2_execute(void) {
 const struct testcase testsem2 = {
   sem2_gettest,
   sem2_setup,
-  sem2_teardown,
+  NULL,
   sem2_execute
 };
-
+#endif /* CH_USE_SEMAPHORES_TIMEOUT */
 #endif /* CH_USE_SEMAPHORES */
+
+/*
+ * Test sequence for semaphores pattern.
+ */
+const struct testcase * const patternsem[] = {
+#if CH_USE_SEMAPHORES
+  &testsem1,
+#if CH_USE_SEMAPHORES_TIMEOUT
+  &testsem2,
+#endif
+#endif
+  NULL
+};

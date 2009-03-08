@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,16 +15,11 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
+ * @file threads.h
+ * @brief Threads macros and structures.
  * @addtogroup Threads
  * @{
  */
@@ -33,91 +28,86 @@
 #define _THREADS_H_
 
 /**
- * Structure representing a thread.
+ * @brief Structure representing a thread.
+ *
  * @extends ThreadsQueue
  * @note Not all the listed fields are always needed, by switching off some
  *       not needed ChibiOS/RT subsystems it is possible to save RAM space by
- *       shrinking the \p Thread structure.
+ *       shrinking the @p Thread structure.
  */
 struct Thread {
-  /** Next \p Thread in the threads list.*/
-  Thread                *p_next;
+  Thread                *p_next;        /**< Next @p Thread in the threads
+                                             list/queue.*/
   /* End of the fields shared with the ThreadsList structure. */
-  /** Previous \p Thread in the threads list.*/
-  Thread                *p_prev;
+  Thread                *p_prev;        /**< Previous @p Thread in the threads
+                                             queue.*/
   /* End of the fields shared with the ThreadsQueue structure. */
-  /** The thread priority.*/
-  tprio_t               p_prio;
+  tprio_t               p_prio;         /**< Thread priority.*/
   /* End of the fields shared with the ReadyList structure. */
-  /** Thread identifier. */
-  tid_t                 p_tid;
-  /** Current thread state.*/
-  tstate_t              p_state;
-  /** Mode flags. */
-  tmode_t               p_flags;
-  /** Machine dependent processor context.*/
-  Context               p_ctx;
+  tstate_t              p_state;        /**< Current thread state.*/
+  tmode_t               p_flags;        /**< Various flags.*/
+  struct context        p_ctx;          /**< Processor context.*/
+#if CH_USE_NESTED_LOCKS
+  cnt_t                 p_locks;        /**< Number of nested locks.*/
+#endif
+#if CH_DBG_THREADS_PROFILING
+  systime_t             p_time;         /**< Consumed time.
+                                             @note This field can overflow.*/
+#endif
   /*
    * The following fields are merged in unions because they are all
    * state-specific fields. This trick saves some extra space for each
    * thread in the system.
    */
   union {
-    /** Thread wakeup code (only valid when exiting the \p PRREADY state).*/
-    msg_t               p_rdymsg;
-    /** The thread exit code (only while in \p PREXIT state).*/
-    msg_t               p_exitcode;
-#ifdef CH_USE_SEMAPHORES
-    /** Semaphore where the thread is waiting on (only in \p PRWTSEM state).*/
-    Semaphore           *p_wtsemp;
+    msg_t               p_rdymsg;       /**< Thread wakeup code.*/
+    msg_t               p_exitcode;     /**< The thread exit code
+                                             (@p PREXIT state).*/
+    void                *p_wtobjp;      /**< Generic kernel object pointer used
+                                             for opaque access.*/
+#if CH_USE_SEMAPHORES
+    Semaphore           *p_wtsemp;      /**< Semaphore where the thread is
+                                             waiting on (@p PRWTSEM state).*/
 #endif
-#ifdef CH_USE_MUTEXES
-    /** Mutex where the thread is waiting on (only in \p PRWTMTX state).*/
-    Mutex               *p_wtmtxp;
+#if CH_USE_MUTEXES
+    Mutex               *p_wtmtxp;      /**< Mutex where the thread is waiting
+                                             on (@p PRWTMTX state).*/
 #endif
-#ifdef CH_USE_CONDVARS
-    /** CondVar where the thread is waiting on (only in \p PRWTCOND state).*/
-    CondVar             *p_wtcondp;
+#if CH_USE_CONDVARS
+    CondVar             *p_wtcondp;     /**< CondVar where the thread is
+                                             waiting on (@p PRWTCOND state).*/
 #endif
-#ifdef CH_USE_MESSAGES
-    /** Destination thread for message send (only in \p PRSNDMSG state).*/
-    Thread              *p_wtthdp;
+#if CH_USE_MESSAGES
+    Thread              *p_wtthdp;      /**< Destination thread for message
+                                             send @p PRSNDMSG state).*/
 #endif
-#ifdef CH_USE_EVENTS
-    /** Enabled events mask (only while in \p PRWTOREVT or \p PRWTANDEVT
-        states). */
-    eventmask_t         p_ewmask;
-#endif
-#ifdef CH_USE_TRACE
-    /** Kernel object where the thread is waiting on. It is only valid when
-        the thread is some sleeping states.*/
-    void                *p_wtobjp;
+#if CH_USE_EVENTS
+    eventmask_t         p_ewmask;       /**< Enabled events mask (@p PRWTOREVT
+                                             or @p PRWTANDEVT states).*/
 #endif
   };
   /*
    * Start of the optional fields.
    */
-#ifdef CH_USE_WAITEXIT
-  /** The list of the threads waiting for this thread termination. */
-  Thread                *p_waiting;
+#if CH_USE_WAITEXIT
+  Thread                *p_waiting;     /**< Thread waiting for termination.*/
 #endif
-#ifdef CH_USE_MESSAGES
-  ThreadsQueue          p_msgqueue;
-  msg_t                 p_msg;
+#if CH_USE_MESSAGES
+  ThreadsQueue          p_msgqueue;     /**< Message queue.*/
+  msg_t                 p_msg;          /**< The message.*/
 #endif
-#ifdef CH_USE_EVENTS
-  /** Pending events mask. */
-  eventmask_t           p_epending;
+#if CH_USE_EVENTS
+  eventmask_t           p_epending;     /**< Pending events mask.*/
 #endif
-#ifdef CH_USE_MUTEXES
-  /** List of mutexes owned by this thread, \p NULL terminated. */
-  Mutex                 *p_mtxlist;
-  /** Thread's own, non-inherited, priority. */
-  tprio_t               p_realprio;
+#if CH_USE_MUTEXES
+  Mutex                 *p_mtxlist;     /**< List of the mutexes owned by this
+                                             thread, @p NULL terminated.*/
+  tprio_t               p_realprio;     /**< Thread's own, non-inherited,
+                                             priority.*/
 #endif
-#if defined(CH_USE_DYNAMIC) && defined(CH_USE_MEMPOOLS)
-  /** Memory Pool where the thread workspace is returned. */
-  void                  *p_mpool;
+#if CH_USE_DYNAMIC && CH_USE_MEMPOOLS
+  void                  *p_mpool;       /**< Memory Pool where the thread
+                                             workspace is returned.*/
 #endif
   /* Extra fields defined in chconf.h */
   THREAD_EXT_FIELDS
@@ -133,20 +123,20 @@ struct Thread {
 #define PRWTSEM         3
 /** Thread state: Waiting on a mutex. */
 #define PRWTMTX         4
-/** Thread state: Waiting in \p chThdSleep() or \p chThdSleepUntil(). */
+/** Thread state: Waiting in @p chThdSleep() or @p chThdSleepUntil(). */
 #define PRWTCOND        5
-/** Thread state: Waiting in \p chCondWait(). */
+/** Thread state: Waiting in @p chCondWait(). */
 #define PRSLEEP         6
-/** Thread state: Waiting in \p chThdWait(). */
+/** Thread state: Waiting in @p chThdWait(). */
 #define PRWAIT          7
-/** Thread state: Waiting in \p chEvtWaitOneTimeout() or
-    \p chEvtWaitAnyTimeout(). */
+/** Thread state: Waiting in @p chEvtWaitOneTimeout() or
+    @p chEvtWaitAnyTimeout(). */
 #define PRWTOREVT       8
-/** Thread state: Waiting in \p chEvtWaitAllTimeout(). */
+/** Thread state: Waiting in @p chEvtWaitAllTimeout(). */
 #define PRWTANDEVT      9
-/** Thread state: Waiting in \p chMsgSend(). */
+/** Thread state: Waiting in @p chMsgSend(). */
 #define PRSNDMSG        10
-/** Thread state: Waiting in \p chMsgWait(). */
+/** Thread state: Waiting in @p chMsgWait(). */
 #define PRWTMSG         11
 /** Thread state: After termination.*/
 #define PREXIT          12
@@ -176,37 +166,37 @@ extern "C" {
                     tprio_t prio, tfunc_t pf, void *arg);
   Thread *chThdCreateStatic(void *workspace, size_t wsize,
                             tprio_t prio, tfunc_t pf, void *arg);
-#if defined(CH_USE_DYNAMIC) && defined(CH_USE_WAITEXIT) && defined(CH_USE_HEAP)
+#if CH_USE_DYNAMIC && CH_USE_WAITEXIT && CH_USE_HEAP
   Thread *chThdCreateFromHeap(size_t wsize, tprio_t prio,
                               tfunc_t pf, void *arg);
 #endif
-#if defined(CH_USE_DYNAMIC) && defined(CH_USE_WAITEXIT) && defined(CH_USE_MEMPOOLS)
+#if CH_USE_DYNAMIC && CH_USE_WAITEXIT && CH_USE_MEMPOOLS
   Thread *chThdCreateFromMemoryPool(MemoryPool *mp, tprio_t prio,
                                     tfunc_t pf, void *arg);
 #endif
-  void chThdSetPriority(tprio_t newprio);
+  tprio_t chThdSetPriority(tprio_t newprio);
   Thread *chThdResume(Thread *tp);
   void chThdTerminate(Thread *tp);
   void chThdSleep(systime_t time);
   void chThdSleepUntil(systime_t time);
   void chThdExit(msg_t msg);
-#ifdef CH_USE_WAITEXIT
+#if CH_USE_WAITEXIT
   msg_t chThdWait(Thread *tp);
 #endif
 #ifdef __cplusplus
 }
 #endif
 
-/** Returns the pointer to the \p Thread currently in execution.*/
+/** Returns the pointer to the @p Thread currently in execution.*/
 #define chThdSelf() currp
 
 /** Returns the thread priority.*/
 #define chThdGetPriority() (currp->p_prio)
 
-/** Returns the pointer to the \p Thread local storage area, if any.*/
+/** Returns the pointer to the @p Thread local storage area, if any.*/
 #define chThdLS() (void *)(currp + 1)
 
-/** Verifies if the specified thread is in the \p PREXIT state.*/
+/** Verifies if the specified thread is in the @p PREXIT state.*/
 #define chThdTerminated(tp) ((tp)->p_state == PREXIT)
 
 /**
@@ -215,8 +205,8 @@ extern "C" {
 #define chThdShouldTerminate() (currp->p_flags & P_TERMINATE)
 
 /**
- * Resumes a thread created with the \p P_SUSPENDED option or suspended with
- * \p chThdSuspend().
+ * Resumes a thread created with the @p P_SUSPENDED option or suspended with
+ * @p chThdSuspend().
  * @param tp the pointer to the thread
  */
 #define chThdResumeI(tp) chSchReadyI(tp)

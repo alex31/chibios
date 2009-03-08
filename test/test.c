@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
@@ -32,6 +25,7 @@
 #include "testmtx.h"
 #include "testcond.h"
 #include "testmsg.h"
+#include "testmbox.h"
 #include "testevt.h"
 #include "testheap.h"
 #include "testpools.h"
@@ -39,50 +33,20 @@
 #include "testbmk.h"
 
 /*
- * Array of all the test cases.
+ * Array of all the test patterns.
  */
-static const struct testcase *tests[] = {
-  &testrdy1,
-  &testrdy2,
-#ifdef CH_USE_SEMAPHORES
-  &testsem1,
-  &testsem2,
-#endif
-#ifdef CH_USE_MUTEXES
-  &testmtx1,
-  &testmtx2,
-  &testmtx3,
-#ifdef CH_USE_CONDVARS
-  &testcond1,
-  &testcond2,
-#endif
-#endif
-#ifdef CH_USE_MESSAGES
-  &testmsg1,
-#endif
-#ifdef CH_USE_EVENTS
-  &testevt1,
-#endif
-#ifdef CH_USE_HEAP
-  &testheap1,
-#endif
-#ifdef CH_USE_MEMPOOLS
-  &testpools1,
-#endif
-#if defined(CH_USE_DYNAMIC) && defined(CH_USE_HEAP)
-  &testdyn1,
-#endif
-#if defined(CH_USE_DYNAMIC) && defined(CH_USE_MEMPOOLS)
-  &testdyn2,
-#endif
-  &testbmk1,
-  &testbmk2,
-  &testbmk3,
-  &testbmk4,
-  &testbmk5,
-  &testbmk6,
-  &testbmk7,
-  &testbmk8,
+static const struct testcase **patterns[] = {
+  patternrdy,
+  patternsem,
+  patternmtx,
+  patterncond,
+  patternmsg,
+  patternmbox,
+  patternevt,
+  patternheap,
+  patternpools,
+  patterndyn,
+  patternbmk,
   NULL
 };
 
@@ -255,13 +219,15 @@ static void execute_test(const struct testcase *tcp) {
   for (i = 0; i < MAX_THREADS; i++)
     threads[i] = NULL;
 
-  tcp->setup();
+  if (tcp->setup != NULL)
+    tcp->setup();
   tcp->execute();
-  tcp->teardown();
+  if (tcp->teardown != NULL)
+    tcp->teardown();
 }
 
 msg_t TestThread(void *p) {
-  int i;
+  int i, j;
 
   comp = p;
   test_println("");
@@ -272,29 +238,35 @@ msg_t TestThread(void *p) {
 
   global_fail = FALSE;
   i = 0;
-  while (tests[i]) {
+  while (patterns[i]) {
+    j = 0;
+    while (patterns[i][j]) {
 #if DELAY_BETWEEN_TESTS > 0
-    chThdSleepMilliseconds(DELAY_BETWEEN_TESTS);
+      chThdSleepMilliseconds(DELAY_BETWEEN_TESTS);
 #endif
-    test_println("---------------------------------------------------------------------------");
-    test_print("--- Test Case ");
-    test_printn(i + 1);
-    test_print(" (");
-    test_print(tests[i]->gettest());
-    test_println(")");
-    execute_test(tests[i]);
-    if (local_fail) {
-      test_print("--- Result: FAIL (");
-      if (failmsg)
-        test_print(failmsg);
-      else {
-        test_print("sequence error: ");
-        print_tokens();
-      }
+      test_println("---------------------------------------------------------------------------");
+      test_print("--- Test Case ");
+      test_printn(i + 1);
+      test_print(".");
+      test_printn(j + 1);
+      test_print(" (");
+      test_print(patterns[i][j]->gettest());
       test_println(")");
+      execute_test(patterns[i][j]);
+      if (local_fail) {
+        test_print("--- Result: FAIL (");
+        if (failmsg)
+          test_print(failmsg);
+        else {
+          test_print("sequence error: ");
+          print_tokens();
+        }
+        test_println(")");
+      }
+      else
+        test_println("--- Result: SUCCESS");
+      j++;
     }
-    else
-      test_println("--- Result: SUCCESS");
     i++;
   }
   test_println("---------------------------------------------------------------------------");

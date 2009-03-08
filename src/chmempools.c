@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,48 +15,44 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
+ * @file chmempools.c
+ * @brief Memory Pools code.
  * @addtogroup MemoryPools
  * @{
  */
 
 #include <ch.h>
 
-#ifdef CH_USE_MEMPOOLS
+#if CH_USE_MEMPOOLS
 
 /**
- * Initializes an empty memory pool.
- * @param mp pointer to a \p MemoryPool structure
+ * @brief Initializes an empty memory pool.
+ *
+ * @param mp pointer to a @p MemoryPool structure
  * @param size the size of the objects contained in this memory pool
  */
 void chPoolInit(MemoryPool *mp, size_t size) {
 
-  chDbgAssert((mp != NULL) && (size >= sizeof(void *)),
-              "chpools.c, chPoolInit()");
+  chDbgCheck((mp != NULL) && (size >= sizeof(void *)), "chPoolInit");
 
   mp->mp_next = NULL;
   mp->mp_object_size = size;
 }
 
 /**
- * Allocates an object from a memory pool.
- * @param mp pointer to a \p MemoryPool structure
+ * @brief Allocates an object from a memory pool.
+ *
+ * @param mp pointer to a @p MemoryPool structure
  * @return The pointer to the allocated object.
  * @retval NULL if pool is empty.
  */
 void *chPoolAllocI(MemoryPool *mp) {
   void *objp;
 
-  chDbgAssert(mp != NULL, "chmempools.c, chPoolAllocI()");
+  chDbgCheck(mp != NULL, "chPoolAllocI");
 
   if ((objp = mp->mp_next) != NULL)
     mp->mp_next = mp->mp_next->ph_next;
@@ -65,8 +61,9 @@ void *chPoolAllocI(MemoryPool *mp) {
 }
 
 /**
- * Allocates an object from a memory pool.
- * @param mp pointer to a \p MemoryPool structure
+ * @brief Allocates an object from a memory pool.
+ *
+ * @param mp pointer to a @p MemoryPool structure
  * @return The pointer to the allocated object.
  * @retval NULL if pool is empty.
  */
@@ -80,8 +77,9 @@ void *chPoolAlloc(MemoryPool *mp) {
 }
 
 /**
- * Releases (or adds) an object into (to) a memory pool.
- * @param mp pointer to a \p MemoryPool structure
+ * @brief Releases (or adds) an object into (to) a memory pool.
+ *
+ * @param mp pointer to a @p MemoryPool structure
  * @param objp the pointer to the object to be released or added
  * @note the object is assumed to be of the right size for the specified
  *       memory pool.
@@ -89,16 +87,16 @@ void *chPoolAlloc(MemoryPool *mp) {
 void chPoolFreeI(MemoryPool *mp, void *objp) {
   struct pool_header *php = objp;
 
-  chDbgAssert((mp != NULL) && (objp != NULL),
-              "chmempools.c, chPoolFreeI()");
+  chDbgCheck((mp != NULL) && (objp != NULL), "chPoolFreeI");
 
   php->ph_next = mp->mp_next;
   mp->mp_next = php;
 }
 
 /**
- * Releases (or adds) an object into (to) a memory pool.
- * @param mp pointer to a \p MemoryPool structure
+ * @brief Releases (or adds) an object into (to) a memory pool.
+ *
+ * @param mp pointer to a @p MemoryPool structure
  * @param objp the pointer to the object to be released or added
  * @note the object is assumed to be of the right size for the specified
  *       memory pool.

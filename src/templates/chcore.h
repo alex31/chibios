@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,16 +15,11 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
+ * @file src/templates/chcore.h
+ * @brief Port related template macros and structures.
  * @addtogroup Core
  * @{
  */
@@ -45,28 +40,29 @@
 typedef uint8_t stkalign_t;
 
 /**
- * Interrupt saved context.
- * This structure represents the stack frame saved during a preemption-capable
- * interrupt handler.
+ * @brief Interrupt saved context.
+ * @details This structure represents the stack frame saved during a
+ * preemption-capable interrupt handler.
  */
 struct extctx {
 };
 
 /**
- * System saved context.
- * This structure represents the inner stack frame during a context switching.
+ * @brief System saved context.
+ * @details This structure represents the inner stack frame during a context
+ * switching.
  */
 struct intctx {
 };
 
 /**
- * Platform dependent part of the @p Thread structure.
- * This structure usually contains just the saved stack pointer defined as a
- * pointer to a @p intctx structure.
+ * @brief Platform dependent part of the @p Thread structure.
+ * @details This structure usually contains just the saved stack pointer
+ * defined as a pointer to a @p intctx structure.
  */
-typedef struct {
+struct context {
   struct intctx *sp;
-} Context;
+};
 
 /**
  * Platform dependent part of the @p chThdInit() API.
@@ -82,7 +78,9 @@ typedef struct {
  * thread should take no more space than those reserved
  * by @p INT_REQUIRED_STACK.
  */
+#ifndef IDLE_THREAD_STACK_SIZE
 #define IDLE_THREAD_STACK_SIZE 0
+#endif
 
 /**
  * Per-thread stack overhead for interrupts servicing, it is used in the
@@ -91,20 +89,22 @@ typedef struct {
  * interrupt stack and the stack space between @p intctx and @p extctx is
  * known to be zero.
  */
+#ifndef INT_REQUIRED_STACK
 #define INT_REQUIRED_STACK 0
+#endif
 
 /**
  * Enforces a correct alignment for a stack area size value.
  */
 #define STACK_ALIGN(n) ((((n) - 1) | (sizeof(stkalign_t) - 1)) + 1)
 
- /**
-  * Computes the thread working area global size.
-  */
+/**
+ * Computes the thread working area global size.
+ */
 #define THD_WA_SIZE(n) STACK_ALIGN(sizeof(Thread) +                     \
                                    sizeof(struct intctx) +              \
                                    sizeof(struct extctx) +              \
-                                   (n) + (INT_REQUIRED_STACK))
+                                  (n) + (INT_REQUIRED_STACK))
 
 /**
  * Macro used to allocate a thread working area aligned as both position and
@@ -113,30 +113,38 @@ typedef struct {
 #define WORKING_AREA(s, n) stkalign_t s[THD_WA_SIZE(n) / sizeof(stkalign_t)];
 
 /**
- * IRQ handler enter code.
- * @note Usually IRQ handlers functions are also declared naked.
- * @note On some architectures this macro can be empty.
+ * IRQ prologue code, inserted at the start of all IRQ handlers enabled to
+ * invoke system APIs.
  */
-#define chSysIRQEnterI()
+#define PORT_IRQ_PROLOGUE()
 
 /**
- * IRQ handler exit code.
- * @note Usually IRQ handlers function are also declared naked.
- * @note This macro usually performs the final reschedulation by using
- *       \p chSchRescRequiredI() and \p chSchDoRescheduleI().
+ * IRQ epilogue code, inserted at the end of all IRQ handlers enabled to
+ * invoke system APIs.
  */
-#define chSysIRQExitI()
+#define PORT_IRQ_EPILOGUE()
+
+/**
+ * IRQ handler function declaration.
+ * @note @p id can be a function name or a vector number depending on the
+ *       port implementation.
+ */
+#define PORT_IRQ_HANDLER(id) void id(void)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void _idle(void *p);
-  void chSysHalt(void);
-  void chSysEnable(void);
-  void chSysLock(void);
-  void chSysUnlock(void);
-  void chSysSwitchI(Thread *otp, Thread *ntp);
-  void chSysPuts(char *msg);
+  void port_init(void);
+  void port_lock(void);
+  void port_unlock(void);
+  void port_lock_from_isr(void);
+  void port_unlock_from_isr(void);
+  void port_disable(void);
+  void port_suspend(void);
+  void port_enable(void);
+  void port_wait_for_interrupt(void);
+  void port_halt(void);
+  void port_switch(Thread *otp, Thread *ntp);
 #ifdef __cplusplus
 }
 #endif

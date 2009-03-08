@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,28 +15,17 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
 
 #include "test.h"
 
+#if CH_USE_MESSAGES
+
 static char *msg1_gettest(void) {
 
   return "Messages, dispatch test";
-}
-
-static void msg1_setup(void) {
-}
-
-static void msg1_teardown(void) {
 }
 
 static msg_t thread(void *p) {
@@ -66,7 +55,19 @@ static void msg1_execute(void) {
 
 const struct testcase testmsg1 = {
   msg1_gettest,
-  msg1_setup,
-  msg1_teardown,
+  NULL,
+  NULL,
   msg1_execute
+};
+
+#endif /* CH_USE_MESSAGES */
+
+/*
+ * Test sequence for messages pattern.
+ */
+const struct testcase * const patternmsg[] = {
+#if CH_USE_MESSAGES
+  &testmsg1,
+#endif
+  NULL
 };

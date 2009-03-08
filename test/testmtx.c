@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,20 +15,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
 
 #include "test.h"
 
-#ifdef CH_USE_MUTEXES
+#if CH_USE_MUTEXES
 
 #define ALLOWED_DELAY 5
 
@@ -44,9 +37,6 @@ static void mtx1_setup(void) {
   chMtxInit(&m1);
 }
 
-static void mtx1_teardown(void) {
-}
-
 static msg_t thread1(void *p) {
 
   chMtxLock(&m1);
@@ -57,7 +47,7 @@ static msg_t thread1(void *p) {
 
 static void mtx1_execute(void) {
 
-  tprio_t prio = chThdGetPriority(); // Bacause priority inheritance.
+  tprio_t prio = chThdGetPriority(); // Because priority inheritance.
   chMtxLock(&m1);
   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, prio+1, thread1, "E");
   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, prio+2, thread1, "D");
@@ -66,14 +56,14 @@ static void mtx1_execute(void) {
   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, prio+5, thread1, "A");
   chMtxUnlock();
   test_wait_threads();
-  test_assert(prio == chThdGetPriority(), "priority return failure");
+  test_assert(prio == chThdGetPriority(), "#1"); /* Priority return failure.*/
   test_assert_sequence("ABCDE");
 }
 
 const struct testcase testmtx1 = {
   mtx1_gettest,
   mtx1_setup,
-  mtx1_teardown,
+  NULL,
   mtx1_execute
 };
 
@@ -85,9 +75,6 @@ static char *mtx2_gettest(void) {
 static void mtx2_setup(void) {
 
   chMtxInit(&m1);
-}
-
-static void mtx2_teardown(void) {
 }
 
 static msg_t thread2(void *p) {
@@ -134,7 +121,7 @@ static void mtx2_execute(void) {
 const struct testcase testmtx2 = {
   mtx2_gettest,
   mtx2_setup,
-  mtx2_teardown,
+  NULL,
   mtx2_execute
 };
 
@@ -147,9 +134,6 @@ static void mtx3_setup(void) {
 
   chMtxInit(&m1);
   chMtxInit(&m2);
-}
-
-static void mtx3_teardown(void) {
 }
 
 static msg_t thread5(void *p) {
@@ -225,8 +209,20 @@ static void mtx3_execute(void) {
 const struct testcase testmtx3 = {
   mtx3_gettest,
   mtx3_setup,
-  mtx3_teardown,
+  NULL,
   mtx3_execute
 };
 
 #endif /* CH_USE_MUTEXES */
+
+/*
+ * Test sequence for mutexes pattern.
+ */
+const struct testcase * const patternmtx[] = {
+#if CH_USE_MUTEXES
+  &testmtx1,
+  &testmtx2,
+  &testmtx3,
+#endif
+  NULL
+};
