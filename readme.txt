@@ -60,6 +60,16 @@ Win32-MinGW            - ChibiOS/RT simulator and demo into a WIN32 process,
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 1.2.1 ***
+- FIX: Fixed regression in MinGW demo (bug 2745153).
+- FIX: Fixed problem with the timeout constant TIME_IMMEDIATE (bug 2755170).
+- FIX: Fixed a problem in semaphores test case #2 (bug  2755195).
+- FIX: Removed usused list functions (bug 2755230).
+- FIX: Added the exception notes into the source headers (bug 2772129).
+- FIX: Added license notice to several files (bug 2772160).
+- FIX: Found new instances of the obsolete function chSysGetTime() in the
+  C++ wrapper and in the WEB demo (bug 2772237).
+
 *** 1.2.0 ***
 - Full test cycle and test reports updated.
 - NEW: Better separation between the port code and the system APIs, now an

@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,6 +15,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -174,8 +181,10 @@ msg_t chSemWaitTimeoutS(Semaphore *sp, systime_t time) {
   chDbgCheck(sp != NULL, "chSemWaitTimeoutS");
 
   if (--sp->s_cnt < 0) {
-    if (TIME_IMMEDIATE == time)
+    if (TIME_IMMEDIATE == time) {
+      sp->s_cnt++;
       return RDY_TIMEOUT;
+    }
     sem_insert(currp, &sp->s_queue);
     currp->p_wtsemp = sp;
     return chSchGoSleepTimeoutS(PRWTSEM, time);
