@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -65,40 +58,6 @@ msg_t chMsgSend(Thread *tp, msg_t msg) {
   chSysUnlock();
   return msg;
 }
-
-#if CH_USE_EVENTS && CH_USE_MESSAGES_EVENT
-/**
- * @brief Sends a message to the specified thread and atomically pends an
- *        events set.
- * @details The sender is stopped until the receiver executes a
- *          @p chMsgRelease() after receiving the message.
- *
- * @param[in] tp the pointer to the thread
- * @param[in] msg the message
- * @param[in] mask the event flags set to be pended
- * @return The return message from @p chMsgRelease().
- * @note This function assumes that the receiving thread is not sleeping into
- *       a @p chMsgWait(). The use case is that the server thread is waiting
- *       for both messages AND events while waiting into @p chEvtWaitXXX().
- */
-msg_t chMsgSendWithEvent(Thread *tp, msg_t msg, eventmask_t mask) {
-
-  chDbgCheck(tp != NULL, "chMsgSendWithEvent");
-
-  chSysLock();
-  chDbgAssert(tp->p_state != PRWTMSG,
-              "chMsgSendWithEvent(), #1",
-              "waiting for messages not events");
-  chEvtSignalI(tp, mask);
-  msg_insert(currp, &tp->p_msgqueue);
-  currp->p_wtthdp = tp;
-  currp->p_msg = msg;
-  chSchGoSleepS(PRSNDMSG);
-  msg = currp->p_rdymsg;
-  chSysUnlock();
-  return msg;
-}
-#endif /* CH_USE_EVENTS && CH_USE_MESSAGES_EVENT */
 
 /**
  * @brief Suspends the thread and waits for an incoming message.

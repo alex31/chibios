@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -161,16 +154,6 @@
 #endif
 
 /**
- * If specified then the Semaphores with timeout APIs are included in the
- * kernel.
- * @note The default is @p TRUE.
- * @note Requires @p CH_USE_SEMAPHORES.
- */
-#if !defined(CH_USE_SEMAPHORES_TIMEOUT) || defined(__DOXYGEN__)
-#define CH_USE_SEMAPHORES_TIMEOUT       TRUE
-#endif
-
-/**
  * If specified then the Mutexes APIs are included in the kernel.
  * @note The default is @p TRUE.
  */
@@ -223,16 +206,6 @@
 #endif
 
 /**
- * If specified then the @p chMsgSendWithEvent() function is included in the
- * kernel.
- * @note The default is @p TRUE.
- * @note Requires @p CH_USE_MESSAGES and @p CH_USE_EVENTS.
- */
-#if !defined(CH_USE_MESSAGES_EVENT) || defined(__DOXYGEN__)
-#define CH_USE_MESSAGES_EVENT           TRUE
-#endif
-
-/**
  * If enabled then messages are served by priority rather than in FIFO order.
  * @note The default is @p FALSE. Enable this if you have special requirements.
  * @note Requires @p CH_USE_MESSAGES.
@@ -245,6 +218,7 @@
  * If specified then the Asynchronous Messages (Mailboxes) APIs are included
  * in the kernel.
  * @note The default is @p TRUE.
+ * @note Requires @p CH_USE_SEMAPHORES.
  */
 #if !defined(CH_USE_MAILBOXES) || defined(__DOXYGEN__)
 #define CH_USE_MAILBOXES                TRUE
@@ -260,42 +234,13 @@
 #endif
 
 /**
- * If specified then the half duplex queues APIs are included in the kernel.
- * @note The default is @p TRUE.
- * @note Requires @p CH_USE_SEMAPHORES.
- */
-#if !defined(CH_USE_QUEUES_HALFDUPLEX) || defined(__DOXYGEN__)
-#define CH_USE_QUEUES_HALFDUPLEX        TRUE
-#endif
-
-/**
- * If specified then the I/O queues with timeout APIs are included in the
- * kernel.
- * @note The default is @p TRUE.
- * @note Requires @p CH_USE_QUEUES and @p CH_USE_SEMAPHORES_TIMEOUT.
- */
-#if !defined(CH_USE_QUEUES_TIMEOUT) || defined(__DOXYGEN__)
-#define CH_USE_QUEUES_TIMEOUT           TRUE
-#endif
-
-/**
  * If specified then the full duplex serial driver APIs are included in the
  * kernel.
  * @note The default is @p TRUE.
- * @note Requires @p CH_USE_QUEUES.
+ * @note Requires @p CH_USE_QUEUES and @p CH_USE_EVENTS.
  */
 #if !defined(CH_USE_SERIAL_FULLDUPLEX) || defined(__DOXYGEN__)
 #define CH_USE_SERIAL_FULLDUPLEX        TRUE
-#endif
-
-/**
- * If specified then the half duplex serial driver APIs are included in the
- * kernel.
- * @note The default is @p TRUE.
- * @note Requires @p CH_USE_QUEUES_HALFDUPLEX.
- */
-#if !defined(CH_USE_SERIAL_HALFDUPLEX) || defined(__DOXYGEN__)
-#define CH_USE_SERIAL_HALFDUPLEX        TRUE
 #endif
 
 /**
@@ -391,7 +336,7 @@
  * counts the system ticks occurred while executing the thread.
  */
 #if !defined(CH_DBG_THREADS_PROFILING) || defined(__DOXYGEN__)
-#define CH_DBG_THREADS_PROFILING        FALSE
+#define CH_DBG_THREADS_PROFILING        TRUE
 #endif
 
 /*===========================================================================*/

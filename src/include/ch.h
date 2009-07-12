@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -42,7 +35,7 @@
 /**
  * Kernel version string.
  */
-#define CH_KERNEL_VERSION       "1.2.3"
+#define CH_KERNEL_VERSION       "1.3.1unstable"
 
 /**
  * Kernel version major number.
@@ -52,12 +45,12 @@
 /**
  * Kernel version minor number.
  */
-#define CH_KERNEL_MINOR         2
+#define CH_KERNEL_MINOR         3
 
 /**
  * Kernel version patch number.
  */
-#define CH_KERNEL_PATCH         3
+#define CH_KERNEL_PATCH         1
 
 /*
  * Common values.
@@ -87,6 +80,7 @@
 #include "threads.h"
 #include "inline.h"
 #include "queues.h"
+#include "channels.h"
 #include "serial.h"
 #include "debug.h"
 

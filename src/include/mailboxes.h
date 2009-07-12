@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -34,7 +27,7 @@
 #ifndef _MAILBOXES_H_
 #define _MAILBOXES_H_
 
-#if CH_USE_MAILBOXES && CH_USE_SEMAPHORES_TIMEOUT
+#if CH_USE_MAILBOXES
 
 typedef struct {
   msg_t                 *mb_buffer;     /**< Pointer to the mailbox buffer.*/
@@ -98,7 +91,35 @@ extern "C" {
  */
 #define chMBPeek(mbp) (*(mbp)->mb_rdptr)
 
-#endif /* CH_USE_MAILBOXES && CH_USE_SEMAPHORES_TIMEOUT */
+/**
+ * @brief Data part of a static mailbox initializer.
+ * @details This macro should be used when statically initializing a
+ *          mailbox that is part of a bigger structure.
+ * @param name the name of the mailbox variable
+ * @param buffer pointer to the mailbox buffer area
+ * @param size size of the mailbox buffer area
+ */
+#define _MAILBOX_DATA(name, buffer, size) {                             \
+  (msg_t *)(buffer),                                                    \
+  (msg_t *)(buffer) + size,                                             \
+  (msg_t *)(buffer),                                                    \
+  (msg_t *)(buffer),                                                    \
+  _SEMAPHORE_DATA(name.mb_fullsem, 0),                                  \
+  _SEMAPHORE_DATA(name.mb_emptysem, size),                              \
+}
+
+/**
+ * @brief Static mailbox initializer.
+ * @details Statically initialized mailboxes require no explicit
+ *          initialization using @p chMBInit().
+ * @param name the name of the mailbox variable
+ * @param buffer pointer to the mailbox buffer area
+ * @param size size of the mailbox buffer area
+ */
+#define MAILBOX_DECL(name, buffer, size)                                \
+  Mailbox name = _MAILBOX_DATA(name, buffer, size)
+
+#endif /* CH_USE_MAILBOXES */
 
 #endif /* _MAILBOXES_H_ */
 

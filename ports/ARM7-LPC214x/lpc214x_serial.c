@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -99,12 +92,12 @@ static void ServeInterrupt(UART *u, FullDuplexDriver *com) {
     case IIR_SRC_RX:
       while (u->UART_LSR & LSR_RBR_FULL) {
         chSysLockFromIsr();
-        if (chIQPutI(&com->sd_iqueue, u->UART_RBR) < Q_OK)
+        if (chIQPutI(&com->d2.iqueue, u->UART_RBR) < Q_OK)
            chFDDAddFlagsI(com, SD_OVERRUN_ERROR);
         chSysUnlockFromIsr();
       }
       chSysLockFromIsr();
-      chEvtBroadcastI(&com->sd_ievent);
+      chEvtBroadcastI(&com->d1.ievent);
       chSysUnlockFromIsr();
       break;
     case IIR_SRC_TX:
@@ -113,12 +106,12 @@ static void ServeInterrupt(UART *u, FullDuplexDriver *com) {
         int i = UART_FIFO_PRELOAD;
         do {
           chSysLockFromIsr();
-          msg_t b = chOQGetI(&com->sd_oqueue);
+          msg_t b = chOQGetI(&com->d2.oqueue);
           chSysUnlockFromIsr();
           if (b < Q_OK) {
             u->UART_IER &= ~IER_THRE;
             chSysLockFromIsr();
-            chEvtBroadcastI(&com->sd_oevent);
+            chEvtBroadcastI(&com->d1.oevent);
             chSysUnlockFromIsr();
             break;
           }
@@ -148,11 +141,11 @@ static void preload(UART *u, FullDuplexDriver *com) {
     int i = UART_FIFO_PRELOAD;
     do {
       chSysLockFromIsr();
-      msg_t b = chOQGetI(&com->sd_oqueue);
+      msg_t b = chOQGetI(&com->d2.oqueue);
       chSysUnlockFromIsr();
       if (b < Q_OK) {
         chSysLockFromIsr();
-        chEvtBroadcastI(&com->sd_oevent);
+        chEvtBroadcastI(&com->d1.oevent);
         chSysUnlockFromIsr();
         return;
       }

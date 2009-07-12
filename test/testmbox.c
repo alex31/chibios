@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,26 +15,61 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
 
 #include "test.h"
 
-#if CH_USE_MAILBOXES && CH_USE_SEMAPHORES_TIMEOUT
+/**
+ * @page test_mbox Mailboxes test
+ *
+ * <h2>Description</h2>
+ * This module implements the test sequence for the @ref Mailboxes subsystem.
+ *
+ * <h2>Objective</h2>
+ * Objective of the test module is to cover 100% of the @ref Mailboxes
+ * subsystem code as a necessary step in order to assess its maturity
+ * level.<br>
+ * Note that the @ref Mailboxes subsystem depends on the @ref Semaphores
+ * subsystem that has to met its testing objectives as well.
+ *
+ * <h2>Preconditions</h2>
+ * The module requires the following kernel options:
+ * - @p CH_USE_MAILBOXES
+ * .
+ * In case some of the required options are not enabled then some or all tests
+ * may be skipped.
+ *
+ * <h2>Test Cases</h2>
+ * - @subpage test_mbox_001
+ * .
+ * @file testmbox.c
+ * @brief Mailboxes test source file
+ * @file testmbox.h
+ * @brief Mailboxes header file
+ */
+
+#if CH_USE_MAILBOXES
 
 #define ALLOWED_DELAY MS2ST(5)
 #define MB_SIZE 5
 
-static msg_t mb1_buf[MB_SIZE];
-static Mailbox mb1;
+/*
+ * Note, the static initializers are not really required because the
+ * variables are explicitly initialized in each test case. It is done in order
+ * to test the macros.
+ */
+static MAILBOX_DECL(mb1, waT0, MB_SIZE);
+
+/**
+ * @page test_mbox_001 Queuing and timeouts
+ *
+ * <h2>Description</h2>
+ * Messages are posted/fetched from a mailbox in carefully designed sequences
+ * in order to stimulate all the possible code paths inside the mailbox.<br>
+ * The test expects to find a consistent mailbox status after each operation.
+ */
 
 static char *mbox1_gettest(void) {
 
@@ -43,49 +78,86 @@ static char *mbox1_gettest(void) {
 
 static void mbox1_setup(void) {
 
-  chMBInit(&mb1, mb1_buf, MB_SIZE);
+  chMBInit(&mb1, (msg_t *)waT0, MB_SIZE);
 }
 
 static void mbox1_execute(void) {
   msg_t msg1, msg2;
   unsigned i;
 
-  /* Testing initial space.*/
-  test_assert(chMBGetEmpty(&mb1) == MB_SIZE, "#1");
+  /*
+   * Testing initial space.
+   */
+  test_assert(1, chMBGetEmpty(&mb1) == MB_SIZE, "wrong size");
 
-  /* Testing enqueuing.*/
+  /*
+   * Testing enqueuing and backward circularity.
+   */
   for (i = 0; i < MB_SIZE - 1; i++) {
     msg1 = chMBPost(&mb1, 'B' + i, TIME_INFINITE);
-    test_assert(msg1 == RDY_OK, "#2");
+    test_assert(2, msg1 == RDY_OK, "wrong wake-up message");
   }
   msg1 = chMBPostAhead(&mb1, 'A', TIME_INFINITE);
-  test_assert(msg1 == RDY_OK, "#3");
+  test_assert(3, msg1 == RDY_OK, "wrong wake-up message");
 
-  /* Testing post timeout.*/
+  /*
+   * Testing post timeout.
+   */
   msg1 = chMBPost(&mb1, 'X', 1);
-  test_assert(msg1 == RDY_TIMEOUT, "#4");
+  test_assert(4, msg1 == RDY_TIMEOUT, "wrong wake-up message");
 
-  /* Testing final conditions.*/
-  test_assert(chMBGetEmpty(&mb1) == 0, "#5");
-  test_assert(chMBGetFull(&mb1) == MB_SIZE, "#6");
-  test_assert(mb1.mb_rdptr == mb1.mb_wrptr, "#7");
+  /*
+   * Testing final conditions.
+   */
+  test_assert(5, chMBGetEmpty(&mb1) == 0, "still empty");
+  test_assert(6, chMBGetFull(&mb1) == MB_SIZE, "not full");
+  test_assert(7, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
 
-  /* Testing dequeuing.*/
+  /*
+   * Testing dequeuing.
+   */
   for (i = 0; i < MB_SIZE; i++) {
   msg1 = chMBFetch(&mb1, &msg2, TIME_INFINITE);
-    test_assert(msg1 == RDY_OK, "#8");
+    test_assert(8, msg1 == RDY_OK, "wrong wake-up message");
     test_emit_token(msg2);
   }
-  test_assert_sequence("ABCDE");
+  test_assert_sequence(9, "ABCDE");
 
-  /* Testing fetch timeout.*/
+  /*
+   * Testing buffer circularity.
+   */
+  msg1 = chMBPost(&mb1, 'B' + i, TIME_INFINITE);
+  test_assert(10, msg1 == RDY_OK, "wrong wake-up message");
+  msg1 = chMBFetch(&mb1, &msg2, TIME_INFINITE);
+  test_assert(11, msg1 == RDY_OK, "wrong wake-up message");
+  test_assert(12, mb1.mb_buffer == mb1.mb_wrptr, "write pointer not aligned to base");
+  test_assert(13, mb1.mb_buffer == mb1.mb_rdptr, "read pointer not aligned to base");
+
+  /*
+   * Testing fetch timeout.
+   */
   msg1 = chMBFetch(&mb1, &msg2, 1);
-  test_assert(msg1 == RDY_TIMEOUT, "#9");
+  test_assert(14, msg1 == RDY_TIMEOUT, "wrong wake-up message");
 
-  /* Testing final conditions.*/
-  test_assert(chMBGetEmpty(&mb1) == MB_SIZE, "#10");
-  test_assert(chMBGetFull(&mb1) == 0, "#11");
-  test_assert(mb1.mb_rdptr == mb1.mb_wrptr, "#12");
+  /*
+   * Testing final conditions.
+   */
+  test_assert(15, chMBGetEmpty(&mb1) == MB_SIZE, "not empty");
+  test_assert(16, chMBGetFull(&mb1) == 0, "still full");
+  test_assert(17, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+
+  /*
+   * Testing reset.
+   */
+  chMBReset(&mb1);
+
+  /*
+   * Re-testing final conditions.
+   */
+  test_assert(18, chMBGetEmpty(&mb1) == MB_SIZE, "not empty");
+  test_assert(19, chMBGetFull(&mb1) == 0, "still full");
+  test_assert(20, mb1.mb_buffer == mb1.mb_wrptr, "write pointer not aligned to base");
+  test_assert(21, mb1.mb_buffer == mb1.mb_rdptr, "read pointer not aligned to base");
 }
 
 const struct testcase testmbox1 = {
@@ -95,13 +167,13 @@ const struct testcase testmbox1 = {
   mbox1_execute
 };
 
-#endif /* CH_USE_MAILBOXES && CH_USE_SEMAPHORES_TIMEOUT */
+#endif /* CH_USE_MAILBOXES */
 
 /*
  * Test sequence for mailboxes pattern.
  */
 const struct testcase * const patternmbox[] = {
-#if CH_USE_MAILBOXES && CH_USE_SEMAPHORES_TIMEOUT
+#if CH_USE_MAILBOXES
   &testmbox1,
 #endif
   NULL

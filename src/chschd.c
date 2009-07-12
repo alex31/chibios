@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -80,8 +73,8 @@ Thread *chSchReadyI(Thread *tp) {
 
 /**
  * @brief Puts the current thread to sleep into the specified state.
- * @details The next highest priority thread becomes running. The threads
- *          states are described into @p threads.h.
+ * @details The thread goes into a sleeping state. The @ref thread_states are
+ *          described into @p threads.h.
  *
  * @param[in] newstate the new thread state
  */
@@ -124,9 +117,12 @@ static void wakeup(void *p) {
 }
 
 /**
- * @brief Puts the current thread to sleep into the specified state.
- * @details The next highest priority thread becomes running. The thread put
- *          to sleep is awakened after the specified time has elapsed.
+ * @brief Puts the current thread to sleep into the specified state with
+ *        timeout specification.
+ * @details The thread goes into a sleeping state, if it is not awakened
+ *          explicitly within the specified timeout then it is forcibly
+ *          awakened with a @p RDY_TIMEOUT low level message. The @ref
+ *          thread_states are described into @p threads.h.
  *
  * @param[in] newstate the new thread state
  * @param[in] time the number of ticks before the operation timeouts, the

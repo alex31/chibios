@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -32,6 +25,7 @@
  */
 
 #include <ch.h>
+#include <pal.h>
 
 #include "lpc214x.h"
 #include "lpc214x_ssp.h"
@@ -50,7 +44,7 @@ void sspAcquireBus(void) {
 #if LPC214x_SSP_USE_MUTEX
   chSemWait(&me);
 #endif
-  IO0CLR = 1 << 20;
+  palClearPad(IOPORT_A, 20);
 }
 
 /**
@@ -60,7 +54,7 @@ void sspAcquireBus(void) {
  */
 void sspReleaseBus(void) {
 
-  IO0SET = 1 << 20;
+  palClearPad(IOPORT_A, 20);
 #if LPC214x_SSP_USE_MUTEX
   chSemSignal(&me);
 #endif

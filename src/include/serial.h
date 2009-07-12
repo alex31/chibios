@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -33,6 +26,8 @@
 
 #ifndef _SERIAL_H_
 #define _SERIAL_H_
+
+#if CH_USE_SERIAL_FULLDUPLEX
 
 /** No pending conditions.*/
 #define SD_NO_ERROR             0
@@ -50,35 +45,81 @@
 #define SD_BREAK_DETECTED       32
 
 /** Serial Driver condition flags type.*/
-typedef uint16_t dflags_t;
-
-#if CH_USE_SERIAL_FULLDUPLEX
+typedef uint8_t dflags_t;
 
 /**
- * @brief Full Duplex Serial Driver main structure.
+ * @brief @p FullDuplexDriver specific methods.
+ */
+struct _full_duplex_driver_methods {
+};
+
+/**
+ * @brief @p FullDuplexDriver specific data.
+ */
+struct _full_duplex_driver_data {
+  /**
+   * Input queue, incoming data can be read from this input queue by
+   * using the queues APIs.
+   */
+  InputQueue            iqueue;
+  /**
+   * Output queue, outgoing data can be written to this output queue by
+   * using the queues APIs.
+   */
+  OutputQueue           oqueue;
+  /**
+   * Status Change @p EventSource. This event is generated when one or more
+   * condition flags change.
+   */
+  EventSource           sevent;
+  /**
+   * I/O driver status flags.
+   */
+  dflags_t              flags;
+};
+
+/**
+ * @brief @p FullDuplexDriver virtual methods table.
+ */
+struct FullDuplexDriverVMT {
+  /**
+   * @p BaseChannel class inherited methods.
+   */
+  struct _base_channel_methods m0;
+  /**
+   * @p BaseAsynchronousChannel class inherited methods.
+   */
+  struct _base_asynchronous_channel_methods m1;
+  /**
+   * @p FullDuplexDriver specific methods.
+   */
+  struct _full_duplex_driver_methods m2;
+};
+
+/**
+ * @extends BaseAsynchronousChannel
+ *
+ * @brief Full duplex serial driver class.
+ * @details This class extends @p GenericSerialDriver by adding physical I/O
+ *          queues.
  */
 typedef struct {
-
-  /** Input queue. Incoming data can be read from this queue by using the
-   *  queues APIs.*/
-  Queue                 sd_iqueue;
-  /** Data Available @p EventSource. This event is generated when some incoming
-   *  data is inserted in the Input @p Queue.*/
-  EventSource           sd_ievent;
-
-  /** Output queue. Outgoing data can be written to this Output @p Queue by
-   *   using the queues APIs.*/
-  Queue                 sd_oqueue;
-  /** Data Transmitted @p EventSource. This event is generated when the
-   *  Output @p Queue is empty.*/
-  EventSource           sd_oevent;
-
-  /** I/O driver status flags. This field should not be read directly but
-   *  the @p chFDDGetAndClearFlags() funtion should be used instead.*/
-  dflags_t              sd_flags;
-  /** Status Change @p EventSource. This event is generated when a
-   *  condition flag was changed.*/
-  EventSource           sd_sevent;
+  /**
+   * Virtual Methods Table.
+   */
+  const struct FullDuplexDriverVMT *vmt;
+  /**
+   * @p BaseChannel class inherited data.
+   */
+  struct _base_channel_data d0;
+  /**
+   * @p BaseAsynchronousChannel class inherited data.
+   */
+  struct _base_asynchronous_channel_data d1;
+  /**
+   * @p FullDuplexDriver specific data.
+   */
+  struct _full_duplex_driver_data d2;
 } FullDuplexDriver;
 
 #ifdef __cplusplus
@@ -95,79 +136,81 @@ extern "C" {
 }
 #endif
 
-/** @see chIQRead()*/
-#define chFDDRead(sd, b, n) \
-        chIQRead(&(sd)->sd_iqueue, b, n)
-
-/** @see chOQWrite()*/
-#define chFDDWrite(sd, b, n) \
-        chOQWrite(&(sd)->sd_oqueue, b, n)
-
-/** @see chIQGet()*/
-#define chFDDGet(sd) \
-        chIQGet(&(sd)->sd_iqueue)
-
-/** @see chIQGetTimeout()*/
-#define chFDDGetTimeout(sd, t) \
-        chIQGetTimeout(&(sd)->sd_iqueue, t)
-
-/** @see chOQPut()*/
-#define chFDDPut(sd, b) \
-        chOQPut(&(sd)->sd_oqueue, b)
-
-#endif /* CH_USE_SERIAL_FULLDUPLEX */
-
-#if CH_USE_SERIAL_HALFDUPLEX
+/**
+ * @brief Direct output check on a @p FullDuplexDriver.
+ * @details This function bypasses the indirect access to the channel and
+ *          checks directly the output queue. This is faster but cannot
+ *          be used to check different channels implementations.
+ * @see chIOPutWouldBlock()
+ */
+#define chFDDPutWouldBlock(sd) chOQIsFull(&(sd)->d2.oqueue)
 
 /**
- * @brief Full Duplex Serial Driver main structure.
+ * @brief Direct input check on a @p FullDuplexDriver.
+ * @details This function bypasses the indirect access to the channel and
+ *          checks directly the input queue. This is faster but cannot
+ *          be used to check different channels implementations.
+ * @see chIOGetWouldBlock()
  */
-typedef struct {
+#define chFDDGetWouldBlock(sd) chIQIsEmpty(&(sd)->d2.iqueue)
 
-  /** Data queue. Transmit/receive @p HalfDuplexQueue.*/
-  HalfDuplexQueue       sd_queue;
-  /** Data Available @p EventSource. This event is generated when some
-   *  incoming data is inserted in the receive queue.*/
-  EventSource           sd_ievent;
-  /** Data Transmitted @p EventSource. This event is generated when the
-   *  transmission queue is empty and the driver can either transmit more
-   *  data or enter receive mode.*/
-  EventSource           sd_oevent;
-  /** I/O driver status flags. This field should not be read directly but
-   *  the @p chHDDGetAndClearFlags() funtion should be used
-   *  instead.*/
-  dflags_t              sd_flags;
-  /** Status Change Event Source. This event is generated when a condition
-   *  flag was changed.*/
-  EventSource           sd_sevent;
-} HalfDuplexDriver;
+/**
+ * @brief Direct blocking write to a @p FullDuplexDriver.
+ * @details This function bypasses the indirect access to the channel and
+ *          writes directly on the output queue. This is faster but cannot
+ *          be used to write to different channels implementations.
+ * @see chIOPut()
+ */
+#define chFDDPut(sd, b) chOQPut(&(sd)->d2.oqueue, b)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-  void chHDDInit(HalfDuplexDriver *sd, uint8_t *b, size_t size,
-                qnotify_t inotify, qnotify_t onotify);
-  void chHDDIncomingDataI(HalfDuplexDriver *sd, uint8_t b);
-  msg_t chHDDRequestDataI(HalfDuplexDriver *sd);
-  void chHDDAddFlagsI(HalfDuplexDriver *sd, dflags_t mask);
-  dflags_t chHDDGetAndClearFlags(HalfDuplexDriver *sd);
-#ifdef __cplusplus
-}
-#endif
+/**
+ * @brief Direct blocking write on a @p FullDuplexDriver with timeout
+ *        specification.
+ * @details This function bypasses the indirect access to the channel and
+ *          writes directly on the output queue. This is faster but cannot
+ *          be used to write to different channels implementations.
+ * @see chIOPutTimeout()
+ */
+#define chFDDPutTimeout(sd, b, t) chOQPutTimeout(&(sd)->d2.iqueue, b, t)
 
-/** @see chHDQGetReceive()*/
-#define chHDDGetReceive(sd) \
-        chHDQGetReceive(&(sd)->sd_queue)
+/**
+ * @brief Direct blocking read from a @p FullDuplexDriver.
+ * @details This function bypasses the indirect access to the channel and
+ *          reads directly from the input queue. This is faster but cannot
+ *          be used to read from different channels implementations.
+ * @see chIOGet()
+ */
+#define chFDDGet(sd) chIQGet(&(sd)->d2.iqueue)
 
-/** @see chHDQGetReceiveTimeout()*/
-#define chHDDGetReceiveTimeout(sd, t) \
-        chHDQGetReceiveTimeout(&(sd)->sd_queue, t)
+/**
+ * @brief Direct blocking read from a @p FullDuplexDriver with timeout
+ *        specification.
+ * @details This function bypasses the indirect access to the channel and
+ *          reads directly from the input queue. This is faster but cannot
+ *          be used to read from different channels implementations.
+ * @see chIOGetTimeout()
+ */
+#define chFDDGetTimeout(sd, t) chIQGetTimeout(&(sd)->d2.iqueue, t)
 
-/** @see chHDQPutTransmit()*/
-#define chHDDPutTransmit(sd, b) \
-        chHDQPutTransmit(&(sd)->sd_queue, b)
+/**
+ * @brief Direct non-blocking write to a @p FullDuplexDriver.
+ * @details This function bypasses the indirect access to the channel and
+ *          writes directly to the output queue. This is faster but cannot
+ *          be used to write from different channels implementations.
+ * @see chIOWrite()
+ */
+#define chFDDWrite(sd, b, n) chOQWrite(&(sd)->d2.oqueue, b, n)
 
-#endif /* CH_USE_SERIAL_HALFDUPLEX */
+/**
+ * @brief Direct non-blocking read on a @p FullDuplexDriver.
+ * @details This function bypasses the indirect access to the channel and
+ *          reads directly from the input queue. This is faster but cannot
+ *          be used to read from different channels implementations.
+ * @see chIORead()
+ */
+#define chFDDRead(sd, b, n) chIQRead(&(sd)->d2.iqueue, b, n)
+
+#endif /* CH_USE_SERIAL_FULLDUPLEX */
 
 #endif /* _SERIAL_H_ */
 

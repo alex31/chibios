@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,20 +15,25 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
+#include <pal.h>
 #include <nvic.h>
 
 #include "board.h"
 #include "stm32_serial.h"
+
+/*
+ * Digital I/O ports static configuration as defined in @p board.h.
+ */
+static const STM32GPIOConfig config =
+{
+  {VAL_GPIOAODR, VAL_GPIOACRL, VAL_GPIOACRH},
+  {VAL_GPIOBODR, VAL_GPIOBCRL, VAL_GPIOBCRH},
+  {VAL_GPIOCODR, VAL_GPIOCCRL, VAL_GPIOCCRH},
+  {VAL_GPIODODR, VAL_GPIODCRL, VAL_GPIODCRH}
+};
 
 /*
  * Early initialization code.
@@ -41,49 +46,35 @@ void hwinit0(void) {
    * Clocks and PLL initialization.
    */
   // HSI setup.
-  RCC->CR = HSITRIM_RESET_BITS | CR_HSION_MASK;
-  while (!(RCC->CR & CR_HSIRDY_MASK))
+  RCC->CR = RCC_CR_HSITRIM_RESET_BITS | RCC_CR_HSION;
+  while (!(RCC->CR & RCC_CR_HSIRDY))
     ;                           // Waits until HSI stable, it should already be.
   // HSE setup.
-  RCC->CR |= CR_HSEON_MASK;
-  while (!(RCC->CR & CR_HSERDY_MASK))
+  RCC->CR |= RCC_CR_HSEON;
+  while (!(RCC->CR & RCC_CR_HSERDY))
     ;                           // Waits until HSE stable.
   // PLL setup.
-  RCC->CFGR = PLLSRC_HSE_BITS | PLLPREBITS | PLLMULBITS;
-  RCC->CR |= CR_PLLON_MASK;
-  while (!(RCC->CR & CR_PLLRDY_MASK))
+  RCC->CFGR = RCC_CFGR_PLLSRC_HSE_BITS | PLLPREBITS | PLLMULBITS;
+  RCC->CR |= RCC_CR_PLLON;
+  while (!(RCC->CR & RCC_CR_PLLRDY))
     ;                           // Waits until PLL stable.
   // Clock sources.
-  RCC->CFGR |= HPRE_DIV1_BITS | PPRE1_DIV2_BITS | PPRE2_DIV2_BITS |
-               ADCPRE_DIV8_BITS | USBPREBITS | MCO_DISABLED_BITS;
+  RCC->CFGR |= RCC_CFGR_HPRE_DIV1   | RCC_CFGR_PPRE1_DIV2  |
+               RCC_CFGR_PPRE2_DIV2  | RCC_CFGR_ADCPRE_DIV8 |
+               RCC_CFGR_MCO_NOCLOCK | USBPREBITS;
 
   /*
    * Flash setup and final clock selection.
    */
   FLASH->ACR = FLASHBITS;       // Flash wait states depending on clock.
-  RCC->CFGR |= SW_PLL_BITS;     // Switches on the PLL clock.
-  while ((RCC->CFGR & CFGR_SWS_MASK) != SWS_PLL_BITS)
+  RCC->CFGR |= RCC_CFGR_SW_PLL; // Switches on the PLL clock.
+  while ((RCC->CFGR & RCC_CFGR_SW) != RCC_CFGR_SW_PLL)
     ;
 
   /*
    * I/O ports initialization as specified in board.h.
    */
-  RCC->APB2ENR = 0x0000003D;    // Ports A-D enabled, AFIO enabled.
-  GPIOA->CRL = VAL_GPIOACRL;
-  GPIOA->CRH = VAL_GPIOACRH;
-  GPIOA->ODR = VAL_GPIOAODR;
-
-  GPIOB->CRL = VAL_GPIOBCRL;
-  GPIOB->CRH = VAL_GPIOBCRH;
-  GPIOB->ODR = VAL_GPIOBODR;
-
-  GPIOC->CRL = VAL_GPIOCCRL;
-  GPIOC->CRH = VAL_GPIOCCRH;
-  GPIOC->ODR = VAL_GPIOCODR;
-
-  GPIOD->CRL = VAL_GPIODCRL;
-  GPIOD->CRH = VAL_GPIODCRH;
-  GPIOD->ODR = VAL_GPIODODR;
+  palInit(&config);
 }
 
 /*

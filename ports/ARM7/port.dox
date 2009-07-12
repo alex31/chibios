@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,18 +15,10 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
  * @defgroup ARM7 ARM7TDMI
- * @{
  * @details The ARM7 architecture is quite complex for a microcontroller and
  * some explanations are required about the port choices.
  *
@@ -42,7 +34,7 @@
  *   THUMB modules then the interworking compiler option is enabled. This is
  *   usually the slowest mode and the code size is not as good as in pure
  *   THUMB mode.
- *
+ * .
  * @section ARM7_STATES Mapping of the System States in the ARM7 port
  * The ChibiOS/RT logical @ref system_states are mapped as follow in the ARM7
  * port:
@@ -77,7 +69,7 @@
  * - <b>Halted</b>. Implemented as an infinite loop after disabling both IRQ
  *   and FIQ sources. The ARM state is whatever the processor was running when
  *   @p chSysHalt() was invoked.
- *
+ * .
  * @section ARM7_NOTES The ARM7 port notes
  * The ARM7 port makes some assumptions on the application code organization:
  * - The @p main() function is invoked in system mode.
@@ -98,7 +90,7 @@
  * - FIQ sources can preempt the kernel (by design) so it is not possible to
  *   invoke the kernel APIs from inside a FIQ handler. FIQ handlers are not
  *   affected by the kernel activity so there is not added jitter.
- *
+ * .
  * @section ARM7_IH ARM7 Interrupt Handlers
  * ARM7 Interrupt handlers do not save function-saved registers so you need to
  * make sure your code saves them or does not use them (this happens
@@ -128,11 +120,9 @@
  *
  * @ingroup Ports
  */
-/** @} */
 
 /**
  * @defgroup ARM7_CONF Configuration Options
- * @{
  * @brief ARM7 specific configuration options.
  * @details The ARM7 port allows some architecture-specific configurations
  * settings that can be specified externally, as example on the compiler
@@ -148,14 +138,12 @@
  *   can trim this down by defining the macro externally. This would save
  *   some valuable RAM space for each thread present in the system.<br>
  *   The default value is set into <b>./ports/ARM7/chcore.h</b>.
- *
+ * .
  * @ingroup ARM7
  */
-/** @} */
 
 /**
  * @defgroup ARM7_CORE Core Port Implementation
- * @{
  * @brief ARM7 specific port code, structures and macros.
  *
  * @ingroup ARM7
@@ -163,11 +151,9 @@
  * @file ports/ARM7/chcore.h Port related structures and macros.
  * @file ports/ARM7/chcore.c Port related code.
  */
-/** @} */
 
 /**
  * @defgroup ARM7_STARTUP Startup Support
- * @{
  * @brief ARM7 startup code support.
  * @details ChibiOS/RT provides its own generic startup file for the ARM7 port.
  * Of course it is not mandatory to use it but care should be taken about the
@@ -212,4 +198,3 @@
  * @ingroup ARM7
  * @file ports/ARM7/crt0.s Startup code.
  */
-/** @} */

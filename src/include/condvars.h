@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 /*
    Concepts and parts of this file are contributed by and Copyright (C) 2008
@@ -64,6 +57,21 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+/**
+ * @brief Data part of a static condition variable initializer.
+ * @details This macro should be used when statically initializing a condition
+ *          variable that is part of a bigger structure.
+ */
+#define _CONDVAR_DATA(name) {_THREADSQUEUE_DATA(name.c_queue)}
+
+/**
+ * @brief Static condition variable initializer.
+ * @details Statically initialized condition variables require no explicit
+ *          initialization using @p chCondInit().
+ * @param name the name of the condition variable
+ */
+#define CONDVAR_DECL(name) CondVar name = _CONDVAR_DATA(name)
 
 #endif /* CH_USE_CONDVARS && CH_USE_MUTEXES */
 

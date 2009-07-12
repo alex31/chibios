@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -185,9 +178,8 @@ void chEvtBroadcastI(EventSource *esp) {
  * @brief Invokes the event handlers associated with a mask.
  *
  * @param[in] mask mask of the events to be dispatched
- * @param[in] handlers an array of @p evhandler_t. The array must be
- *                     have indexes from zero up the higher registered event
- *                     identifier.
+ * @param[in] handlers an array of @p evhandler_t. The array must have size
+ *                     equal to the number of bits in eventmask_t.
  */
 void chEvtDispatch(const evhandler_t handlers[], eventmask_t mask) {
   eventid_t eid;

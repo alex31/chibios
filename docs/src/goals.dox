@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,18 +15,10 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
  * @page goals Project Goals
- * @{
  * <h2>Another RTOS?</h2>
  * The first question to be answered is: there was really the need for YET
  * ANOTHER RTOS?<br>
@@ -64,7 +56,7 @@
  * finalized to this objective. Everything you can invoke in the kernel is
  * designed to not fail unless you pass garbage as parameters, stray pointers
  * as examples. The APIs are not slowed down by parameter checks,
- * parameter checks (and consistency checks) do exists but only when the
+ * parameter checks (and consistency checks) do exist but only when the
  * debug switch is activated.<br>
  * All the static core APIs always succeed if correct parameters are passed.
  * Exception to this are the optional allocators APIs that, of course,
@@ -94,4 +86,3 @@
  * code is released as well, all the included demos are capable of executing
  * the test suite and the OS benchmarks.
  */
-/** @} */

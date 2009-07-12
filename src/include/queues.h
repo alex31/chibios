@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -50,9 +43,13 @@ typedef void (*qnotify_t)(void);
 
 #if CH_USE_QUEUES
 /**
- * @brief I/O queue structure.
- * @details This structure is used by both Input and Output Queues,
- * the difference is on how the semaphore is initialized.
+ * @brief Generic I/O queue structure.
+ * @details This structure represents a generic Input or Output asymmetrical
+ *          queue. The queue is asymmetrical because one end is meant to be
+ *          accessed from a thread context, and thus can be blocking, the other
+ *          end is accessible from interrupt handlers or from within a kernel
+ *          lock zone (see <b>I-Locked</b> and <b>S-Locked</b> states in
+ *          @ref system_states) and is non-blocking.
  */
 typedef struct {
   uint8_t               *q_buffer;      /**< Pointer to the queue buffer.*/
@@ -62,7 +59,7 @@ typedef struct {
   uint8_t               *q_rdptr;       /**< Read pointer.*/
   Semaphore             q_sem;          /**< Counter @p Semaphore.*/
   qnotify_t             q_notify;       /**< Data notification callback.*/
-} Queue;
+} GenericQueue;
 
 /** Returns the queue's buffer size. */
 #define chQSize(q) ((q)->q_top - (q)->q_buffer)
@@ -75,109 +72,146 @@ typedef struct {
  */
 #define chQSpace(q) chSemGetCounterI(&(q)->q_sem)
 
-/** Evaluates to TRUE if the specified Input Queue is empty. */
+/**
+ * @brief Input queue structure.
+ * @details This structure represents a generic asymmetrical input queue.
+ *          Writing in the queue is non-blocking and can be performed from
+ *          interrupt handlers or from within a kernel lock zone (see
+ *          <b>I-Locked</b> and <b>S-Locked</b> states in @ref system_states).
+ *          Reading the queue can be a blocking operation and is supposed to
+ *          be performed by a system thread.
+ * @extends GenericQueue
+ */
+typedef GenericQueue InputQueue;
+
+/** Evaluates to @p TRUE if the specified Input Queue is empty. */
 #define chIQIsEmpty(q) (chQSpace(q) <= 0)
 
-/** Evaluates to TRUE if the specified Input Queue is full. */
+/** Evaluates to @p TRUE if the specified Input Queue is full. */
 #define chIQIsFull(q) (chQSpace(q) >= chQSize(q))
 
-/** Evaluates to TRUE if the specified Output Queue is empty. */
+/**
+ * @brief Input queue read.
+ * @details This function reads a byte value from an input queue. If the queue
+ *          is empty then the calling thread is suspended until a byte arrives
+ *          in the queue.
+ *
+ * @param[in] iqp pointer to an @p InputQueue structure
+ * @return A byte value from the queue or:
+ * @retval Q_RESET if the queue was reset.
+ */
+#define chIQGet(iqp) chIQGetTimeout(iqp, TIME_INFINITE)
+
+/**
+ * @brief Data part of a static input queue initializer.
+ * @details This macro should be used when statically initializing an
+ *          input queue that is part of a bigger structure.
+ * @param name the name of the input queue variable
+ * @param buffer pointer to the queue buffer area
+ * @param size size of the queue buffer area
+ * @param inotify input notification callback pointer
+ */
+#define _INPUTQUEUE_DATA(name, buffer, size, inotify) {                 \
+  (uint8_t *)(buffer),                                                  \
+  (uint8_t *)(buffer) + size,                                           \
+  (uint8_t *)(buffer),                                                  \
+  (uint8_t *)(buffer),                                                  \
+  _SEMAPHORE_DATA(name.q_sem, 0),                                       \
+  inotify                                                               \
+}
+
+/**
+ * @brief Static input queue initializer.
+ * @details Statically initialized input queues require no explicit
+ *          initialization using @p chIQInit().
+ * @param name the name of the input queue variable
+ * @param buffer pointer to the queue buffer area
+ * @param size size of the queue buffer area
+ * @param inotify input notification callback pointer
+ */
+#define INPUTQUEUE_DECL(name, buffer, size, inotify)                    \
+  InputQueue name = _INPUTQUEUE_DATA(name, buffer, size, inotify)
+
+/**
+ * @brief Output queue structure.
+ * @details This structure represents a generic asymmetrical output queue.
+ *          Reading from the queue is non-blocking and can be performed from
+ *          interrupt handlers or from within a kernel lock zone (see
+ *          <b>I-Locked</b> and <b>S-Locked</b> states in @ref system_states).
+ *          Writing the queue can be a blocking operation and is supposed to
+ *          be performed by a system thread.
+ * @extends GenericQueue
+ */
+typedef GenericQueue OutputQueue;
+
+/** Evaluates to @p TRUE if the specified Output Queue is empty. */
 #define chOQIsEmpty(q) (chQSpace(q) >= chQSize(q))
 
-/** Evaluates to TRUE if the specified Output Queue is full. */
+/** Evaluates to @p TRUE if the specified Output Queue is full. */
 #define chOQIsFull(q) (chQSpace(q) <= 0)
+
+/**
+ * @brief Output queue write.
+ * @details This function writes a byte value to an output queue. If the queue
+ *          is full then the calling thread is suspended until there is space
+ *          in the queue.
+ *
+ * @param[in] oqp pointer to an @p OutputQueue structure
+ * @param[in] b the byte value to be written in the queue
+ * @return The operation status:
+ * @retval Q_OK if the operation succeeded.
+ * @retval Q_RESET if the queue was reset.
+ */
+#define chOQPut(oqp, b) chOQPutTimeout(oqp, b, TIME_INFINITE)
+
+/**
+ * @brief Data part of a static output queue initializer.
+ * @details This macro should be used when statically initializing an
+ *          output queue that is part of a bigger structure.
+ * @param name the name of the output queue variable.
+ * @param buffer pointer to the queue buffer area
+ * @param size size of the queue buffer area
+ * @param onotify output notification callback pointer
+ */
+#define _OUTPUTQUEUE_DATA(name, buffer, size, onotify) {                \
+  (uint8_t *)(buffer),                                                  \
+  (uint8_t *)(buffer) + size,                                           \
+  (uint8_t *)(buffer),                                                  \
+  (uint8_t *)(buffer),                                                  \
+  _SEMAPHORE_DATA(name.q_sem, size),                                    \
+  onotify                                                               \
+}
+
+/**
+ * @brief Static output queue initializer.
+ * @details Statically initialized output queues require no explicit
+ *          initialization using @p chOQInit().
+ * @param name the name of the output queue variable
+ * @param buffer pointer to the queue buffer area
+ * @param size size of the queue buffer area
+ * @param onotify output notification callback pointer
+ */
+#define OUTPUTQUEUE_DECL(name, buffer, size, onotify)                   \
+  InputQueue name = _OUTPUTQUEUE_DATA(name, buffer, size, onotify)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-  /*
-   * Input Queues functions. An Input Queue is usually written into by an
-   * interrupt handler and read from a thread.
-   */
-  void chIQInit(Queue *qp, uint8_t *buffer, size_t size, qnotify_t inotify);
-  void chIQReset(Queue *qp);
-  msg_t chIQPutI(Queue *qp, uint8_t b);
-  msg_t chIQGet(Queue *qp);
-  size_t chIQRead(Queue *qp, uint8_t *buffer, size_t n);
-#if CH_USE_QUEUES_TIMEOUT
-  msg_t chIQGetTimeout(Queue *qp, systime_t time);
-#endif
+  void chIQInit(InputQueue *qp, uint8_t *buffer, size_t size, qnotify_t inotify);
+  void chIQResetI(InputQueue *qp);
+  msg_t chIQPutI(InputQueue *qp, uint8_t b);
+  msg_t chIQGetTimeout(InputQueue *qp, systime_t timeout);
+  size_t chIQRead(InputQueue *qp, uint8_t *buffer, size_t n);
 
-  /*
-   * Output Queues functions. An Output Queue is usually written into by a
-   * thread and read from an interrupt handler.
-   */
-  void chOQInit(Queue *queue, uint8_t *buffer, size_t size, qnotify_t onotify);
-  void chOQReset(Queue *queue);
-  void chOQPut(Queue *queue, uint8_t b);
-  msg_t chOQGetI(Queue *queue);
-  size_t chOQWrite(Queue *queue, uint8_t *buffer, size_t n);
+  void chOQInit(OutputQueue *queue, uint8_t *buffer, size_t size, qnotify_t onotify);
+  void chOQResetI(OutputQueue *queue);
+  msg_t chOQPutTimeout(OutputQueue *queue, uint8_t b, systime_t timeout);
+  msg_t chOQGetI(OutputQueue *queue);
+  size_t chOQWrite(OutputQueue *queue, uint8_t *buffer, size_t n);
 #ifdef __cplusplus
 }
 #endif
 #endif  /* CH_USE_QUEUES */
-
-#if CH_USE_QUEUES_HALFDUPLEX
-/**
- * @brief Half duplex queue structure.
- */
-typedef struct {
-  uint8_t               *hdq_buffer;    /**< Pointer to the queue buffer.*/
-  uint8_t               *hdq_top;       /**< Pointer to the first location
-                                             after the buffer. */
-  uint8_t               *hdq_wrptr;     /**< Write pointer.*/
-  uint8_t               *hdq_rdptr;     /**< Read pointer.*/
-  Semaphore             hdq_isem;       /**< Input counter @p Semaphore.*/
-  Semaphore             hdq_osem;       /**< Output counter @p Semaphore.*/
-  qnotify_t             hdq_inotify;    /**< Input data notification
-                                             callback.*/
-  qnotify_t             hdq_onotify;    /**< Output data notification
-                                             callback.*/
-} HalfDuplexQueue;
-
-/** Returns the queue's buffer size. */
-#define chHDQSize(q) ((q)->hdq_top - (q)->hdq_buffer)
-
-/**
- * Returns the queue space when in transmission mode.
- * @note The returned value can be less than zero when there are waiting
- *       threads on the internal semaphore.
- */
-#define chHDQEmptySpace(q) chSemGetCounterI(&(q)->hdq_osem)
-
-/**
- * Returns the number of the bytes in the queue when in receive mode.
- * @note The returned value can be less than zero when there are waiting
- *       threads on the internal semaphore.
- */
-#define chHDQFilledSpace(q) chSemGetCounterI(&(q)->hdq_isem)
-
-/** Evaluates to TRUE if the queue is in transmit mode. */
-#define chHDQIsTransmitting(q) (chHDQEmptySpace(q) < chHDQSize(q))
-
-/** Evaluates to TRUE if the queue is in receive mode. */
-#define chHDQIsReceiving(q) (chHDQEmptySpaceQ(q) >= chHDQSize(q))
-
-/** Evaluates to TRUE if the receive queue is full. */
-#define chHDQIsFullReceive(q) (chHDQFilledSpace(q) >= chHDQSize(q))
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-  void chHDQInit(HalfDuplexQueue *qp, uint8_t *buffer, size_t size,
-                 qnotify_t inotify, qnotify_t onotify);
-  msg_t chHDQGetReceive(HalfDuplexQueue *qp);
-  void chHDQPutTransmit(HalfDuplexQueue *qp, uint8_t b);
-  msg_t chHDQGetTransmitI(HalfDuplexQueue *qp);
-  msg_t chHDQPutReceiveI(HalfDuplexQueue *qp, uint8_t b);
-#if CH_USE_QUEUES_TIMEOUT
-  msg_t chHDQGetReceiveTimeout(HalfDuplexQueue *qp, systime_t time);
-#endif
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* CH_USE_QUEUES_HALFDUPLEX */
 
 #endif /* _QUEUES_H_ */
 

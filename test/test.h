@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,13 +15,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #ifndef _TEST_H_
@@ -62,10 +55,10 @@ extern "C" {
   void test_print(char *msgp);
   void test_println(char *msgp);
   void test_emit_token(char token);
-  bool_t _test_fail(char * msg);
-  bool_t _test_assert(bool_t condition, char * msg);
-  bool_t _test_assert_sequence(char *expected);
-  bool_t _test_assert_time_window(systime_t start, systime_t end);
+  bool_t _test_fail(unsigned point);
+  bool_t _test_assert(unsigned point, bool_t condition);
+  bool_t _test_assert_sequence(unsigned point, char *expected);
+  bool_t _test_assert_time_window(unsigned point, systime_t start, systime_t end);
   void test_terminate_threads(void);
   void test_wait_threads(void);
   systime_t test_wait_tick(void);
@@ -80,28 +73,33 @@ extern "C" {
 }
 #endif
 
-#define test_fail(msg) {                                                \
-  _test_fail(msg);                                                      \
+#define test_fail(point) {                                              \
+  _test_fail(point);                                                    \
   return;                                                               \
 }
 
-#define test_assert(condition, msg) {                                   \
-  if (_test_assert(condition, msg))                                     \
+#define test_assert(point, condition, msg) {                            \
+  if (_test_assert(point, condition))                                   \
     return;                                                             \
 }
 
-#define test_assert_sequence(expected) {                                \
-  if (_test_assert_sequence(expected))                                  \
+#define test_assert_sequence(point, expected) {                         \
+  if (_test_assert_sequence(point, expected))                           \
     return;                                                             \
 }
 
-#define test_assert_time_window(start, end) {                           \
-  if (_test_assert_time_window(start, end))                             \
+#define test_assert_time_window(point, start, end) {                    \
+  if (_test_assert_time_window(point, start, end))                      \
     return;                                                             \
 }
 
 extern Thread *threads[MAX_THREADS];
-extern void *wa[MAX_THREADS];
+extern WORKING_AREA(waT0, THREADS_STACK_SIZE);
+extern WORKING_AREA(waT1, THREADS_STACK_SIZE);
+extern WORKING_AREA(waT2, THREADS_STACK_SIZE);
+extern WORKING_AREA(waT3, THREADS_STACK_SIZE);
+extern WORKING_AREA(waT4, THREADS_STACK_SIZE);
+extern void * const wa[];
 extern bool_t test_timer_done;
 
 #endif /* _TEST_H_ */

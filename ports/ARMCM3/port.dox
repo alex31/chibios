@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,18 +15,10 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
  * @defgroup ARMCM3 ARM Cortex-M3
- * @{
  * @details The ARM Cortex-M3 architecture is quite complex for a
  *  microcontroller and some explanations are required about the port choices.
  *
@@ -68,7 +60,7 @@
  * - <b>Halted</b>. Implemented as an infinite loop after globally masking all
  *   the maskable interrupt sources. The ARM state is whatever the processor
  *   was running when @p chSysHalt() was invoked.
- *
+ * .
  * @section ARMCM3_NOTES The ARM Cortex-M3 port notes
  * The ARM Cortex-M3 port is organized as follow:
  * - The @p main() function is invoked in thread-privileged mode.
@@ -86,14 +78,12 @@
  *   It is possible to share the SVC handler at the cost of slower context
  *   switching.
  * - The PendSV vector is internally used for preemption context switching.
- *
+ * .
  * @ingroup Ports
  */
-/** @} */
 
 /**
  * @defgroup ARMCM3_CONF Configuration Options
- * @{
  * @brief ARM Cortex-M3 Configuration Options.
  * @details The ARMCM3 port allows some architecture-specific configurations
  * settings that can be specified externally, as example on the compiler
@@ -117,23 +107,19 @@
  *   instruction from within the idle loop. This is defaulted to 0 because
  *   it can create problems with some debuggers. Setting this option to 1
  *   reduces the system power requirements.
- *
+ * .
  * @ingroup ARMCM3
  */
-/** @} */
 
 /**
  * @defgroup ARMCM3_CORE Core Port Implementation
- * @{
  * @brief ARM Cortex-M3 specific port code, structures and macros.
  *
  * @ingroup ARMCM3
  */
-/** @} */
 
 /**
  * @defgroup ARMCM3_STARTUP Startup Support
- * @{
  * @brief ARM Cortex-M3 startup code support.
  * @details ChibiOS/RT provides its own generic startup file for the ARM
  * Cortex-M3 port.
@@ -175,13 +161,10 @@
  * @ingroup ARMCM3
  * @file ports/ARMCM3/crt0.s Startup code.
  */
-/** @} */
 
 /**
  * @defgroup ARMCM3_NVIC NVIC Support
- * @{
  * @brief ARM Cortex-M3 NVIC support.
  *
  * @ingroup ARMCM3
  */
-/** @} */

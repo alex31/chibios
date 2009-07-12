@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,16 +15,10 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
+#include <pal.h>
 
 #include "board.h"
 #include "at91lib/aic.h"
@@ -62,6 +56,15 @@ static CH_IRQ_HANDLER(SYSIrqHandler) {
 
   CH_IRQ_EPILOGUE();
 }
+
+/*
+ * Digital I/O ports static configuration as defined in @p board.h.
+ */
+static const AT91SAM7XPIOConfig config =
+{
+  {VAL_PIOA_ODSR, VAL_PIOA_OSR, VAL_PIOA_PUSR},
+  {VAL_PIOB_ODSR, VAL_PIOB_OSR, VAL_PIOB_PUSR}
+};
 
 /*
  * Early initialization code.
@@ -104,11 +107,9 @@ void hwinit0(void) {
     ;
 
   /*
-   * I/O setup, enable clocks, initially all pins are inputs with pullups.
+   * PIO initialization.
    */
-  AT91C_BASE_PMC->PMC_PCER   = (1 << AT91C_ID_PIOA) | (1 << AT91C_ID_PIOB);
-  AT91C_BASE_PIOA->PIO_PER   = 0xFFFFFFFF;
-  AT91C_BASE_PIOB->PIO_PER   = 0xFFFFFFFF;
+  palInit(&config);
 }
 
 /*
@@ -133,24 +134,27 @@ void hwinit1(void) {
   /*
    * LCD pins setup.
    */
-  AT91C_BASE_PIOB->PIO_CODR   = PIOB_LCD_BL;    // Set to low.
-  AT91C_BASE_PIOB->PIO_OER    = PIOB_LCD_BL;    // Configure as output.
-  AT91C_BASE_PIOB->PIO_PPUDR  = PIOB_LCD_BL;    // Disable internal pullup resistor.
+  palClearPad(IOPORT_B, PIOB_LCD_BL);
+  palSetPadMode(IOPORT_B, PIOB_LCD_BL, PAL_MODE_OUTPUT_PUSHPULL);
 
-  AT91C_BASE_PIOA->PIO_SODR   = PIOA_LCD_RESET; // Set to high.
-  AT91C_BASE_PIOA->PIO_OER    = PIOA_LCD_RESET; // Configure as output.
-  AT91C_BASE_PIOA->PIO_PPUDR  = PIOA_LCD_RESET; // Disable internal pullup resistor.
+  palSetPad(IOPORT_A, PIOA_LCD_RESET);
+  palSetPadMode(IOPORT_A, PIOA_LCD_RESET, PAL_MODE_OUTPUT_PUSHPULL);
 
   /*
-   * Joystick and buttons, disable pullups, already inputs.
+   * Joystick and buttons setup.
    */
-  AT91C_BASE_PIOA->PIO_PPUDR = PIOA_B1 | PIOA_B2 | PIOA_B3 | PIOA_B4 | PIOA_B5;
-  AT91C_BASE_PIOB->PIO_PPUDR = PIOB_SW1 | PIOB_SW2;
+  palSetGroupMode(IOPORT_A,
+                  PIOA_B1_MASK | PIOA_B2_MASK | PIOA_B3_MASK |
+                  PIOA_B4_MASK | PIOA_B5_MASK,
+                  PAL_MODE_INPUT);
+  palSetGroupMode(IOPORT_B, PIOB_SW1_MASK | PIOB_SW2_MASK, PAL_MODE_INPUT);
 
   /*
-   * MMC/SD slot, disable pullups, already inputs.
+   * MMC/SD slot setup.
    */
-  AT91C_BASE_SYS->PIOB_PPUDR = PIOB_MMC_WP | PIOB_MMC_CP;
+  palSetGroupMode(IOPORT_B,
+                  PIOB_MMC_WP_MASK | PIOB_MMC_CP_MASK,
+                  PAL_MODE_INPUT);
 
   /*
    * PIT Initialization.

@@ -65,7 +65,7 @@ SRC  = chcore.c main.c ../../ports/win32/simcom.c \
        ${TESTSRC}
 
 # List ASM source files here
-ASRC = 
+ASRC =
 
 # List all user directories here
 UINCDIR = ../../src/include
@@ -93,7 +93,7 @@ LIBS    = $(DLIBS) $(ULIBS)
 
 LDFLAGS = -Wl,-Map=$(PROJECT).map,--cref,--no-warn-mismatch $(LIBDIR)
 ASFLAGS = -Wa,-amhls=$(<:.s=.lst) $(ADEFS)
-CPFLAGS = $(OPT) -Wall -Wstrict-prototypes -fverbose-asm -Wa,-ahlms=$(<:.c=.lst) $(DEFS)
+CPFLAGS = $(OPT) -Wall -Wstrict-prototypes -fverbose-asm -Wa,-alms=$(<:.c=.lst) $(DEFS)
 
 # Generate dependency information
 CPFLAGS += -MD -MP -MF .dep/$(@F).d
@@ -112,6 +112,11 @@ all: $(OBJS) $(PROJECT).exe
 
 %exe: $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
+
+gcov:
+	-mkdir gcov
+	$(COV) -u $(subst /,\,$(SRC))
+	-mv *.gcov ./gcov
 
 clean:
 	-rm -f $(OBJS)

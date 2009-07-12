@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,18 +15,10 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
  * @defgroup MSP430 MSP430
- * @{
  * @details MSP430 port details. This section how the ChibiOS/RT features are
  * implemented on this architecture.
  *
@@ -51,7 +43,7 @@
  * - <b>Serving Non-Maskable Interrupt</b>. The MSP430 has several non
  *   maskable interrupt sources that can be associated to this state.
  * - <b>Halted</b>. Implemented as an infinite loop with interrupts disabled.
- *
+ * .
  * @section MSP430_NOTES The MSP430 port notes
  * - The MSP430 does not have a dedicated interrupt stack, make sure to reserve
  *     enough stack space for interrupts in each thread stack. This can be done
@@ -63,14 +55,12 @@
  *   idle thread because the MSP430 has several low power modes. You can
  *   select the proper low power mode for you application by defining the
  *   macro @p port_wait_for_interrupt().
- *
+ * .
  * @ingroup Ports
  */
-/** @} */
 
 /**
  * @defgroup MSP430_CONF Configuration Options
- * @{
  * @brief MSP430 Configuration Options.
  * @details The MSP430 port allows some architecture-specific configurations
  * settings that can be specified externally, as example on the compiler
@@ -80,36 +70,55 @@
  *   The default for this value is @p 32, this space is allocated for each
  *   thread so be careful in order to not waste precious RAM space.<br>
  *   The default value is set into <b>./ports/MSP430/chcore.h</b>.
- *
+ * .
  * @ingroup MSP430
  */
-/** @} */
 
 /**
  * @defgroup MSP430_CORE Core Port Implementation
- * @{
  * @brief MSP430 specific port code, structures and macros.
  *
  * @ingroup MSP430
  */
-/** @} */
 
 /**
  * @defgroup MSP430_DRIVERS MSP430 Drivers
- * @{
  * @brief Device drivers included in the MSP430 support.
  *
  * @ingroup MSP430
  */
-/** @} */
+
+/**
+ * @defgroup MSP430_PAL I/O Ports Support
+ * @brief I/O Ports peripherals support.
+ * @details This module supports the MSP430 Digital I/O controller. The
+ * controller supports the following features (see @ref PAL):
+ * - 8 bits wide ports.
+ * - Atomic set/reset/toggle functions because special MSP430 instruction set.
+ * - Output latched regardless of the pad setting.
+ * - Direct read of input pads regardless of the pad setting.
+ * .
+ * <h2>Supported Setup Modes</h2>
+ * - @p PAL_MODE_RESET.
+ * - @p PAL_MODE_UNCONNECTED.
+ * - @p PAL_MODE_INPUT.
+ * - @p PAL_MODE_OUTPUT_PUSHPULL.
+ * .
+ * Any attempt to setup an invalid mode is ignored.
+ *
+ * <h2>Suboptimal Behavior</h2>
+ * Some MSP430 I/O ports features are less than optimal:
+ * - Bus/group writing is not atomic.
+ * - Pad/group mode setup is not atomic.
+ * .
+ * @ingroup MSP430_DRIVERS
+ */
 
 /**
  * @defgroup MSP430_SERIAL USART Support
- * @{
  * @brief USART support.
  * @details The serial driver supports both the MSP430 USARTs in asynchronous
  * mode.
  *
  * @ingroup MSP430_DRIVERS
  */
-/** @} */
