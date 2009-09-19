@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,20 +15,28 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
+#include <pal.h>
+#include <serial.h>
+
 #include <signal.h>
 
 #include "board.h"
-#include "msp430_serial.h"
+
+/*
+ * Digital I/O ports static configuration as defined in @p board.h.
+ */
+static const MSP430DIOConfig config =
+{
+  {VAL_P1OUT, VAL_P1DIR},
+  {VAL_P2OUT, VAL_P2DIR},
+  {VAL_P3OUT, VAL_P3DIR},
+  {VAL_P4OUT, VAL_P4DIR},
+  {VAL_P5OUT, VAL_P5DIR},
+  {VAL_P6OUT, VAL_P6DIR},
+};
 
 /*
  * Hardware initialization goes here.
@@ -54,29 +62,7 @@ void hwinit(void) {
   /*
    * I/O ports initialization.
    */
-  P1OUT = VAL_P1OUT;
-  P1DIR = VAL_P1DIR;
-  P1SEL = VAL_P1SEL;
-
-  P2OUT = VAL_P2OUT;
-  P2DIR = VAL_P2DIR;
-  P2SEL = VAL_P2SEL;
-
-  P3OUT = VAL_P3OUT;
-  P3DIR = VAL_P3DIR;
-  P3SEL = VAL_P3SEL;
-
-  P4OUT = VAL_P4OUT;
-  P4DIR = VAL_P4DIR;
-  P4SEL = VAL_P4SEL;
-
-  P5OUT = VAL_P5OUT;
-  P5DIR = VAL_P5DIR;
-  P5SEL = VAL_P5SEL;
-
-  P6OUT = VAL_P6OUT;
-  P6DIR = VAL_P6DIR;
-  P6SEL = VAL_P6SEL;
+  palInit(&config);
 
   /*
    * Timer 0 setup, uses SMCLK as source.
@@ -89,7 +75,7 @@ void hwinit(void) {
   /*
    * Other subsystems.
    */
-  serial_init();
+  sdInit();
 }
 
 CH_IRQ_HANDLER(TIMERA0_VECTOR) {

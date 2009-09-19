@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,20 +15,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
+#include <pal.h>
+#include <serial.h>
 #include <test.h>
 
 #include "board.h"
-#include "msp430_serial.h"
 
 /*
  * Red LEDs blinker thread, times are in milliseconds.
@@ -37,9 +31,9 @@ static WORKING_AREA(waThread1, 64);
 static msg_t Thread1(void *arg) {
 
   while (TRUE) {
-    P6OUT |= P6_O_LED;
+    palSetPad(IOPORT6, P6_O_LED);
     chThdSleepMilliseconds(500);
-    P6OUT &= ~P6_O_LED;
+    palClearPad(IOPORT6, P6_O_LED);
     chThdSleepMilliseconds(500);
   }
   return 0;
@@ -54,6 +48,11 @@ int main(int argc, char **argv) {
    * Hardware initialization, see board.c.
    */
   hwinit();
+
+  /*
+   * Activates the serial driver 2 using the driver default configuration.
+   */
+  sdStart(&SD1, NULL);
 
   /*
    * The main() function becomes a thread here then the interrupts are
@@ -71,8 +70,8 @@ int main(int argc, char **argv) {
    * sleeping in a loop.
    */
   while (TRUE) {
-    if (!(P6IN & P6_I_BUTTON))
-      TestThread(&COM1);
+    if (!palReadPad(IOPORT6, P6_I_BUTTON))
+      TestThread(&SD1);
     chThdSleepMilliseconds(500);
   }
   return 0;

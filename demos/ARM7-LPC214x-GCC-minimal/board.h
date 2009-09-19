@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,17 +15,12 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #ifndef _BOARD_H_
 #define _BOARD_H_
+
+#include "lpc214x.h"
 
 #define BOARD_OLIMEX_LCP_P2148
 
@@ -67,5 +62,20 @@
 #define VAL_PINSEL2 0x00000004
 #define VAL_FIO0DIR 0xB0703C00
 #define VAL_FIO1DIR 0x00000000
+#define VAL_FIO0PIN 0xFFFFFFFF
+#define VAL_FIO1PIN 0xFFFFFFFF
+
+#define PA_LED1         10
+#define PA_LED2         11
+#define PA_BUZZ1        12
+#define PA_BUZZ2        13
+#define PA_BSL          14
+#define PA_BUTTON1      15
+#define PA_BUTTON2      16
+#define PA_SSEL1        20
+#define PA_LEDUSB       31
+
+#define PB_WP1          24
+#define PB_CP1          25
 
 #endif /* _BOARD_H_ */

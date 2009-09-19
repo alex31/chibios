@@ -40,25 +40,30 @@ endif
 PROJECT = ch
 
 # Define linker script file here
-LDSCRIPT= ch.ld
+LDSCRIPT = ch.ld
 
 # Imported source files
-include ../../src/kernel.mk
-include ../../test/test.mk
+CHIBIOS = ../..
+include ${CHIBIOS}/os/ports/GCC/ARM7/port.mk
+include ${CHIBIOS}/os/kernel/kernel.mk
+include ${CHIBIOS}/test/test.mk
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CSRC = ../../ports/ARM7/chcore.c \
-       ../../ports/ARM7-LPC214x/vic.c  \
-       ../../ports/ARM7-LPC214x/lpc214x_serial.c  \
+CSRC = ${PORTSRC} \
        ${KERNSRC} \
        ${TESTSRC} \
-       ../../src/lib/evtimer.c \
+       ${CHIBIOS}/os/io/pal.c \
+       ${CHIBIOS}/os/io/serial.c \
+       ${CHIBIOS}/os/io/platforms/LPC214x/pal_lld.c \
+       ${CHIBIOS}/os/io/platforms/LPC214x/serial_lld.c \
+       ${CHIBIOS}/os/io/platforms/LPC214x/vic.c  \
+       ${CHIBIOS}/os/various/evtimer.c \
        board.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CPPSRC = ../../src/lib/ch.cpp main.cpp
+CPPSRC = ${CHIBIOS}/os/various/ch.cpp main.cpp
 
 # C sources to be compiled in ARM mode regardless of the global setting.
 # NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
@@ -81,14 +86,14 @@ TCSRC =
 TCPPSRC =
 
 # List ASM source files here
-ASMSRC = ../../ports/ARM7/crt0.s \
-         ../../ports/ARM7-LPC214x/vectors.s \
-         ../../ports/ARM7/chcoreasm.s
+ASMSRC = $(PORTASM) \
+         ${CHIBIOS}/os/ports/GCC/ARM7/LPC214x/vectors.s
 
-INCDIR = $(KERNINC) $(TESTINC) \
-         ../../src/lib \
-         ../../ports/ARM7 \
-         ../../ports/ARM7-LPC214x
+INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
+         ${CHIBIOS}/os/io \
+         ${CHIBIOS}/os/io/platforms/LPC214x \
+         ${CHIBIOS}/os/various \
+         ${CHIBIOS}/os/ports/GCC/ARM7/LPC214x
 
 #
 # Project, sources and paths
@@ -176,4 +181,4 @@ ULIBS =
 # End of user defines
 ##############################################################################
 
-include ../../ports/ARM/rules.mk
+include ${CHIBIOS}/os/ports/GCC/ARM/rules.mk

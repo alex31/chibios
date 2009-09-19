@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,18 +15,10 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
  * @page concepts Concepts and Architecture
- * @{
  * @brief ChibiOS/RT Concepts and Architecture
  * - @ref naming
  * - @ref api_suffixes
@@ -42,8 +34,8 @@
  * ChibiOS/RT APIs are all named following this convention:
  * @a ch\<group\>\<action\>\<suffix\>().
  * The possible groups are: @a Sys, @a Sch, @a Time, @a VT, @a Thd, @a Sem,
- * @a Mtx, @a Cond, @a Evt, @a Msg, @a IQ, @a OQ, @a HQ, @a FDD, @a HDD,
- * @a Dbg, @a Heap, @a Pool.
+ * @a Mtx, @a Cond, @a Evt, @a Msg, @a IQ, @a OQ, @a IO, @a Dbg,
+ * @a Heap, @a Pool.
  *
  * @section api_suffixes API Names Suffixes
  * The suffix can be one of the following:
@@ -62,7 +54,7 @@
  * - <b>Regular Interrupts</b>. Maskable interrupt sources that cannot
  *   preempt the kernel code and are thus able to invoke operating system APIs
  *   from within their handlers. The interrupt handlers belonging to this class
- *   must be written following some rules. See the @ref System APIs group and
+ *   must be written following some rules. See the @ref system APIs group and
  *   @ref article_interrupts.
  * - <b>Fast Interrupts</b>. Maskable interrupt sources with the ability
  *   to preempt the kernel code and thus have a lower latency and are less
@@ -252,7 +244,7 @@
  * - Interrupt Stack.
  * - Internal Context.
  * .
- * See the @ref Core documentation for details, the area may change on
+ * See the @ref core documentation for details, the area may change on
  * the various ports and some structures may not be present (or be zero-sized).
  *
  * @section architecture Architectural Diagram
@@ -268,4 +260,3 @@
  * extra layers, this is just not part of the kernel architecture but part of
  * the overall system design.
  */
-/** @} */

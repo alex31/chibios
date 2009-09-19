@@ -31,7 +31,7 @@ PROJECT_NAME           = ChibiOS/RT
 # This could be handy for archiving the generated documentation or
 # if some version control system is used.
 
-PROJECT_NUMBER         = 1.2.4
+PROJECT_NUMBER         = 1.3.2
 
 # The OUTPUT_DIRECTORY tag is used to specify the (relative or absolute)
 # base path where the generated documentation will be put.
@@ -573,21 +573,28 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories
 # with spaces.
 
-INPUT                  = ../src/include \
-                         ../src/templates \
-                         ../src \
-                         ../docs/src \
-                         ../src/lib \
-                         ../ports/ARM7 \
-                         ../ports/ARM7/crt0.s \
-                         ../ports/ARM7/chcoreasm.s \
-                         ../ports/ARM7-AT91SAM7X \
-                         ../ports/ARM7-LPC214x \
-                         ../ports/ARMCM3 \
-                         ../ports/ARMCM3/crt0.s \
-                         ../ports/ARMCM3-STM32F103 \
-                         ../ports/MSP430 \
-                         ../ports/AVR
+INPUT                  = ../docs/src \
+                         ../os/kernel \
+                         ../os/kernel/include \
+                         ../os/kernel/src \
+                         ../os/kernel/templates \
+                         ../os/ports \
+                         ../os/ports/GCC/ARM7 \
+                         ../os/ports/GCC/ARM7/crt0.s \
+                         ../os/ports/GCC/ARM7/chcoreasm.s \
+                         ../os/ports/GCC/ARMCM3 \
+                         ../os/ports/GCC/ARMCM3/crt0.s \
+                         ../os/ports/GCC/MSP430 \
+                         ../os/ports/GCC/AVR \
+                         ../os/io \
+                         ../os/io/templates \
+                         ../os/io/platforms/AT91SAM7X \
+                         ../os/io/platforms/AVR \
+                         ../os/io/platforms/LPC214x \
+                         ../os/io/platforms/MSP430 \
+                         ../os/io/platforms/STM32 \
+                         ../os/various \
+                         ../test
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is
@@ -637,13 +644,13 @@ FILE_PATTERNS          = *.c \
 # should be searched for input files as well. Possible values are YES and NO.
 # If left blank NO is used.
 
-RECURSIVE              = YES
+RECURSIVE              = NO
 
 # The EXCLUDE tag can be used to specify files and/or directories that should
 # excluded from the INPUT source files. This way you can easily exclude a
 # subdirectory from a directory tree whose root is specified with the INPUT tag.
 
-EXCLUDE                =
+EXCLUDE                = ../os/io/platforms/STM32/stm32f10x.h
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or
 # directories that are symbolic links (a Unix filesystem feature) are excluded
@@ -1298,17 +1305,12 @@ PREDEFINED             = __DOXYGEN__ \
                          CH_USE_CONDVARS_TIMEOUT=1 \
                          CH_USE_EVENTS=1 \
                          CH_USE_EVENTS_TIMEOUT=1 \
-                         CH_USE_EXIT_EVENT=1 \
                          CH_USE_QUEUES=1 \
-                         CH_USE_QUEUES_TIMEOUT=1 \
-                         CH_USE_QUEUES_HALFDUPLEX=1 \
                          CH_USE_SERIAL_FULLDUPLEX=1 \
-                         CH_USE_SERIAL_HALFDUPLEX=1 \
                          CH_USE_HEAP=1 \
                          CH_USE_MEMPOOLS=1 \
                          CH_USE_MESSAGES=1 \
                          CH_USE_MAILBOXES=1 \
-                         CH_USE_MESSAGES_EVENT=1 \
                          CH_USE_DYNAMIC=1 \
                          CH_DBG_ENABLE_ASSERTS=1 \
                          CH_DBG_ENABLE_CHECKS=1 \

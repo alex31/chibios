@@ -43,28 +43,33 @@ PROJECT = ch
 LDSCRIPT= ch.ld
 
 # Imported source files
-include ../../src/kernel.mk
-include ../../test/test.mk
+CHIBIOS = ../..
+include ${CHIBIOS}/os/ports/GCC/ARM7/port.mk
+include ${CHIBIOS}/os/kernel/kernel.mk
+include ${CHIBIOS}/test/test.mk
 
 # List of the required uIP source files.
-USRC = ../../ext/uip-1.0/uip/uip_arp.c \
-       ../../ext/uip-1.0/uip/psock.c \
-       ../../ext/uip-1.0/uip/uip.c \
-       ../../ext/uip-1.0/apps/webserver/httpd.c \
-       ../../ext/uip-1.0/apps/webserver/http-strings.c \
-       ../../ext/uip-1.0/apps/webserver/httpd-fs.c \
-       ../../ext/uip-1.0/apps/webserver/httpd-cgi.c
+USRC = ${CHIBIOS}/ext/uip-1.0/uip/uip_arp.c \
+       ${CHIBIOS}/ext/uip-1.0/uip/psock.c \
+       ${CHIBIOS}/ext/uip-1.0/uip/uip.c \
+       ${CHIBIOS}/ext/uip-1.0/apps/webserver/httpd.c \
+       ${CHIBIOS}/ext/uip-1.0/apps/webserver/http-strings.c \
+       ${CHIBIOS}/ext/uip-1.0/apps/webserver/httpd-fs.c \
+       ${CHIBIOS}/ext/uip-1.0/apps/webserver/httpd-cgi.c
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CSRC = ../../ports/ARM7/chcore.c \
-       ../../ports/ARM7-AT91SAM7X/sam7x_serial.c \
-       ../../ports/ARM7-AT91SAM7X/sam7x_emac.c \
+CSRC = ${PORTSRC} \
        ${KERNSRC} \
        ${TESTSRC} \
        ${USRC} \
-       ../../src/lib/evtimer.c \
-       at91lib/aic.c \
+       ${CHIBIOS}/os/io/pal.c \
+       ${CHIBIOS}/os/io/serial.c \
+       ${CHIBIOS}/os/io/platforms/AT91SAM7X/pal_lld.c \
+       ${CHIBIOS}/os/io/platforms/AT91SAM7X/serial_lld.c \
+       ${CHIBIOS}/os/io/platforms/AT91SAM7X/sam7x_emac.c \
+       ${CHIBIOS}/os/io/platforms/AT91SAM7X/at91lib/aic.c \
+       ${CHIBIOS}/os/various/evtimer.c \
        web/webthread.c \
        board.c main.c
 
@@ -93,15 +98,15 @@ TCSRC =
 TCPPSRC =
 
 # List ASM source files here
-ASMSRC = ../../ports/ARM7/crt0.s \
-         ../../ports/ARM7-AT91SAM7X/vectors.s \
-         ../../ports/ARM7/chcoreasm.s
+ASMSRC = $(PORTASM) \
+         ${CHIBIOS}/os/ports/GCC/ARM7/AT91SAM7X/vectors.s
 
-INCDIR = $(KERNINC) $(TESTINC) \
-         ../../src/lib \
-         ../../ports/ARM7 \
-         ../../ports/ARM7-AT91SAM7X \
-         ./web ../../ext/uip-1.0/uip ../../ext/uip-1.0/apps/webserver
+INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
+         ${CHIBIOS}/os/io \
+         ${CHIBIOS}/os/io/platforms/AT91SAM7X \
+         ${CHIBIOS}/os/various \
+         ${CHIBIOS}/os/ports/GCC/ARM7/AT91SAM7X \
+         ./web ${CHIBIOS}/ext/uip-1.0/uip ${CHIBIOS}/ext/uip-1.0/apps/webserver
 
 #
 # Project, sources and paths
@@ -189,4 +194,4 @@ ULIBS =
 # End of user defines
 ##############################################################################
 
-include ../../ports/ARM/rules.mk
+include ${CHIBIOS}/os/ports/GCC/ARM/rules.mk

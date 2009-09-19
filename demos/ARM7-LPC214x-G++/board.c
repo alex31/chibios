@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2009 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -15,20 +15,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <ch.h>
+#include <pal.h>
+#include <serial.h>
 
-#include <lpc214x.h>
-#include <vic.h>
-#include <lpc214x_serial.h>
+#include "lpc214x.h"
+#include "vic.h"
 //#include "lpc214x_ssp.h"
 
 #include "board.h"
@@ -63,6 +57,18 @@ static CH_IRQ_HANDLER(T0IrqHandler) {
   VICVectAddr = 0;
   CH_IRQ_EPILOGUE();
 }
+
+/*
+ * Digital I/O ports static configuration as defined in @p board.h.
+ */
+static const LPC214xFIOConfig config =
+{
+  VAL_PINSEL0,
+  VAL_PINSEL1,
+  VAL_PINSEL2,
+  {VAL_FIO0PIN, VAL_FIO0DIR},
+  {VAL_FIO1PIN, VAL_FIO1DIR}
+};
 
 /*
  * Early initialization code.
@@ -107,13 +113,7 @@ void hwinit0(void) {
   /*
    * I/O pins configuration.
    */
-  PINSEL0 = VAL_PINSEL0;
-  PINSEL1 = VAL_PINSEL1;
-  PINSEL2 = VAL_PINSEL2;
-  IO0DIR = VAL_FIO0DIR;
-  IO0SET = 0xFFFFFFFF;
-  IO1DIR = VAL_FIO1DIR;
-  IO1SET = 0xFFFFFFFF;
+  palInit(&config);
 }
 
 /*
@@ -144,7 +144,7 @@ void hwinit1(void) {
   /*
    * Other subsystems.
    */
-  serial_init(1, 2);
+  sdInit();
 //  ssp_init();
 //  InitMMC();
 //  InitBuzzer();

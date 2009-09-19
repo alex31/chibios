@@ -56,18 +56,23 @@ PROJECT = ch
 LDSCRIPT= ch.ld
 
 # Imported source files
-include ../../src/kernel.mk
-include ../../test/test.mk
+CHIBIOS = ../..
+include ${CHIBIOS}/os/ports/GCC/ARMCM3/port.mk
+include ${CHIBIOS}/os/kernel/kernel.mk
+include ${CHIBIOS}/test/test.mk
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CSRC = ../../ports/ARMCM3/chcore.c \
-       ../../ports/ARMCM3/nvic.c \
-       ../../ports/ARMCM3-STM32F103/stm32_serial.c \
+CSRC = ${PORTSRC} \
        ${KERNSRC} \
        ${TESTSRC} \
-       ../../src/lib/evtimer.c \
+       ${CHIBIOS}/os/io/pal.c \
+       ${CHIBIOS}/os/io/serial.c \
+       ${CHIBIOS}/os/io/platforms/STM32/pal_lld.c \
+       ${CHIBIOS}/os/io/platforms/STM32/serial_lld.c \
+       ${CHIBIOS}/os/various/evtimer.c \
        board.c main.c
+
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -94,13 +99,13 @@ TCSRC =
 TCPPSRC =
 
 # List ASM source files here
-ASMSRC =  ../../ports/ARMCM3/crt0.s \
-          ../../ports/ARMCM3-STM32F103/vectors.s
+ASMSRC = $(PORTASM) \
+         ${CHIBIOS}/os/ports/GCC/ARMCM3/STM32F103/vectors.s
 
-INCDIR = $(KERNINC) $(TESTINC) \
-         ../../src/lib \
-         ../../ports/ARMCM3 \
-         ../../ports/ARMCM3-STM32F103 \
+INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
+         ${CHIBIOS}/os/io \
+         ${CHIBIOS}/os/io/platforms/STM32 \
+         ${CHIBIOS}/os/various \
          ./stm32lib/inc
 
 #
@@ -192,9 +197,7 @@ ULIBS =
 ifeq ($(USE_FWLIB),yes)
   include ./stm32lib/stm32lib.mk
   CSRC += ${STM32SRC}
-  # The thing generates a lot of aliasing warnings, this disables an
-  # optimization and the warning disappears, the code is a bit larger however.
-  USE_OPT += -fno-strict-aliasing
+  USE_OPT += -DUSE_STDPERIPH_DRIVER
 endif
 
-include ../../ports/ARM/rules.mk
+include ${CHIBIOS}/os/ports/GCC/ARM/rules.mk
