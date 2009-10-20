@@ -21,7 +21,7 @@
 
 #include <ch.h>
 #include <evtimer.h>
-#include <sam7x_emac.h>
+#include <mac.h>
 
 #include <uip.h>
 #include <uip_arp.h>
@@ -33,8 +33,7 @@
 #define IPADDR2  1
 #define IPADDR3  20
 
-#define SEND_RETRY_MAX 10
-#define SEND_RETRY_INTERVAL 2
+#define SEND_TIMEOUT 50
 
 static const struct uip_eth_addr macaddr = {
   {0xC2, 0xAF, 0x51, 0x03, 0xCF, 0x46}
@@ -46,25 +45,17 @@ static const struct uip_eth_addr macaddr = {
  * uIP send function wrapping the EMAC functions.
  */
 static void network_device_send(void) {
-  int i;
-  BufDescriptorEntry *bdep;
+  MACTransmitDescriptor td;
 
-  for (i = 0; i < SEND_RETRY_MAX; i++) {
-    if ((bdep = EMACGetTransmitBuffer()) != NULL) {
-      uint8_t *bp = (uint8_t *)bdep->w1;
-
-      if(uip_len <= UIP_LLH_LEN + UIP_TCPIP_HLEN)
-        memcpy(bp, &uip_buf[0], uip_len);
-      else {
-        memcpy(bp, &uip_buf[0], UIP_LLH_LEN + UIP_TCPIP_HLEN);
-        memcpy(bp + UIP_LLH_LEN + UIP_TCPIP_HLEN,
-               uip_appdata,
-               uip_len - (UIP_LLH_LEN + UIP_TCPIP_HLEN));
-      }
-      EMACTransmit(bdep, uip_len);
-      return;
+  if (macWaitTransmitDescriptor(&ETH1, &td, MS2ST(SEND_TIMEOUT)) == RDY_OK) {
+    if(uip_len <= UIP_LLH_LEN + UIP_TCPIP_HLEN)
+      macWriteTransmitDescriptor(&td, uip_buf, uip_len);
+    else {
+      macWriteTransmitDescriptor(&td, uip_buf, UIP_LLH_LEN + UIP_TCPIP_HLEN);
+      macWriteTransmitDescriptor(&td, uip_appdata,
+                                 uip_len - (UIP_LLH_LEN + UIP_TCPIP_HLEN));
     }
-    chThdSleep(SEND_RETRY_INTERVAL);
+    macReleaseTransmitDescriptor(&td);
   }
   /* Dropped... */
 }
@@ -73,10 +64,15 @@ static void network_device_send(void) {
  * uIP receive function wrapping the EMAC function.
  */
 static size_t network_device_read(void) {
-  size_t size = UIP_CONF_BUFFER_SIZE;
-  if (EMACReceive(uip_buf, &size))
-    return size;
-  return 0;
+  MACReceiveDescriptor rd;
+  size_t size;
+
+  if (macWaitReceiveDescriptor(&ETH1, &rd, TIME_IMMEDIATE) != RDY_OK)
+    return 0;
+  size = rd.rd_size;
+  macReadReceiveDescriptor(&rd, uip_buf, size);
+  macReleaseReceiveDescriptor(&rd);
+  return size;
 }
 
 void clock_init(void) {}
@@ -92,6 +88,7 @@ clock_time_t clock_time( void )
 static void PeriodicTimerHandler(eventid_t id) {
   int i;
 
+  (void)id;
   for (i = 0; i < UIP_CONNS; i++) {
     uip_periodic(i);
     if (uip_len > 0) {
@@ -106,8 +103,9 @@ static void PeriodicTimerHandler(eventid_t id) {
  */
 static void ARPTimerHandler(eventid_t id) {
 
+  (void)id;
+  (void)macPollLinkStatus(&ETH1);
   uip_arp_timer();
-  (void)EMACGetLinkStatus();
 }
 
 /*
@@ -115,6 +113,7 @@ static void ARPTimerHandler(eventid_t id) {
  */
 static void FrameReceivedHandler(eventid_t id) {
 
+  (void)id;
   while ((uip_len = network_device_read()) > 0) {
     if (BUF->type == HTONS(UIP_ETHTYPE_IP)) {
       uip_arp_ipin();
@@ -147,10 +146,12 @@ msg_t WebThread(void *p) {
   EventListener el0, el1, el2;
   uip_ipaddr_t ipaddr;
 
+  (void)p;
+
   /*
    * Event sources setup.
    */
-  chEvtRegister(&EMACFrameReceived, &el0, FRAME_RECEIVED_ID);
+  chEvtRegister(macGetReceiveEventSource(&ETH1), &el0, FRAME_RECEIVED_ID);
   chEvtPend(EVENT_MASK(FRAME_RECEIVED_ID)); /* In case some frames are already buffered */
 
   evtInit(&evt1, MS2ST(500));
@@ -164,8 +165,8 @@ msg_t WebThread(void *p) {
   /*
    * EMAC settings.
    */
-  EMACSetAddress(&macaddr.addr[0]);
-  (void)EMACGetLinkStatus();
+  macSetAddress(&ETH1, &macaddr.addr[0]);
+  (void)macPollLinkStatus(&ETH1);
 
   /*
    * uIP initialization.

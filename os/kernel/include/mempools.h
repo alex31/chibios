@@ -40,33 +40,42 @@ struct pool_header {
  * @brief Memory pool descriptor.
  */
 typedef struct {
-  struct pool_header    *mp_next;       /**< Pointer to the header.*/
-  size_t                mp_object_size; /**< Memory pool objects size.*/
+  struct pool_header    *mp_next;       /**< @brief Pointer to the header.  */
+  size_t                mp_object_size; /**< @brief Memory pool objects
+                                                    size.                   */
+  memgetfunc_t          mp_provider;    /**< @brief Memory blocks provider for
+                                                    this pool.              */
 } MemoryPool;
 
 /**
  * @brief Data part of a static memory pool initializer.
  * @details This macro should be used when statically initializing a
  *          memory pool that is part of a bigger structure.
- * @param name the name of the memory pool variable
- * @param size size of the memory pool contained objects
+ *
+ * @param[in] name the name of the memory pool variable
+ * @param[in] size size of the memory pool contained objects
+ * @param[in] provider memory provider function for the memory pool
  */
-#define _MEMORYPOOL_DATA(name, size) {NULL, size}
+#define _MEMORYPOOL_DATA(name, size, provider)                              \
+  {NULL, MEM_ALIGN_SIZE(size), provider}
 
 /**
- * @brief Static memory pool initializer.
+ * @brief Static memory pool initializer in hungry mode.
  * @details Statically initialized memory pools require no explicit
  *          initialization using @p chPoolInit().
- * @param name the name of the memory pool variable
- * @param size size of the memory pool contained objects
+ *
+ * @param[in] name the name of the memory pool variable
+ * @param[in] size size of the memory pool contained objects
+ * @param[in] provider memory provider function for the memory pool or @p NULL
+ *                     if the pool is not allowed to grow automatically
  */
-#define MEMORYPOOL_DECL(name, size)                                     \
-  MemoryPool name = _MEMORYPOOL_DATA(name, size)
+#define MEMORYPOOL_DECL(name, size, provider)                               \
+  MemoryPool name = _MEMORYPOOL_DATA(name, size, provider)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void chPoolInit(MemoryPool *mp, size_t size);
+  void chPoolInit(MemoryPool *mp, size_t size, memgetfunc_t provider);
   void *chPoolAllocI(MemoryPool *mp);
   void *chPoolAlloc(MemoryPool *mp);
   void chPoolFreeI(MemoryPool *mp, void *objp);

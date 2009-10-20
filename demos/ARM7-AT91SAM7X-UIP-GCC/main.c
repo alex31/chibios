@@ -21,17 +21,17 @@
 #include <pal.h>
 #include <test.h>
 #include <serial.h>
-#include <sam7x_emac.h>
 
 #include "board.h"
 
 #include "web/webthread.h"
 
-static WORKING_AREA(waWebThread, 512);
-static WORKING_AREA(waThread1, 64);
+static WORKING_AREA(waWebThread, 1024);
+static WORKING_AREA(waThread1, 128);
 
 static msg_t Thread1(void *arg) {
 
+  (void)arg;
   while (TRUE) {
     palSetPad(IOPORT2, PIOB_LCD_BL);
     chThdSleepMilliseconds(100);
@@ -47,6 +47,9 @@ static msg_t Thread1(void *arg) {
  */
 int main(int argc, char **argv) {
 
+  (void)argc;
+  (void)argv;
+
   /*
    * Activates the serial driver 2 using the driver default configuration.
    */
@@ -56,7 +59,7 @@ int main(int argc, char **argv) {
    * Creates the blinker and web server threads.
    */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
-  chThdCreateStatic(waWebThread, sizeof(waWebThread), NORMALPRIO - 1, WebThread, NULL);
+  chThdCreateStatic(waWebThread, sizeof(waWebThread), LOWPRIO, WebThread, NULL);
 
   /*
    * Normal main() thread activity.

@@ -20,7 +20,7 @@
 #include <ch.h>
 #include <pal.h>
 #include <serial.h>
-#include <sam7x_emac.h>
+#include <mac.h>
 
 #include "board.h"
 #include "at91lib/aic.h"
@@ -178,7 +178,7 @@ void hwinit1(void) {
   /*
    * EMAC driver initialization.
    */
-  emac_init(AT91C_AIC_PRIOR_HIGHEST - 3);
+  macInit();
 
   /*
    * ChibiOS/RT initialization.

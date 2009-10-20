@@ -92,22 +92,22 @@ void SVCallVector(Thread *otp, Thread *ntp) {
   asm volatile ("mrs     r3, BASEPRI                            \n\t" \
                 "mrs     r12, PSP                               \n\t" \
                 "stmdb   r12!, {r3-r6,r8-r11, lr}               \n\t" \
-                "str     r12, [r0, #16]                         \n\t" \
-                "ldr     r12, [r1, #16]                         \n\t" \
+                "str     r12, [%0, #16]                         \n\t" \
+                "ldr     r12, [%1, #16]                         \n\t" \
                 "ldmia   r12!, {r3-r6,r8-r11, lr}               \n\t" \
                 "msr     PSP, r12                               \n\t" \
                 "msr     BASEPRI, r3                            \n\t" \
-                "bx      lr                                     ");
+                "bx      lr" : : "r" (otp), "r" (ntp));
 #else
   asm volatile ("mrs     r3, BASEPRI                            \n\t" \
                 "mrs     r12, PSP                               \n\t" \
                 "stmdb   r12!, {r3-r11, lr}                     \n\t" \
-                "str     r12, [r0, #16]                         \n\t" \
-                "ldr     r12, [r1, #16]                         \n\t" \
+                "str     r12, [%0, #16]                         \n\t" \
+                "ldr     r12, [%1, #16]                         \n\t" \
                 "ldmia   r12!, {r3-r11, lr}                     \n\t" \
                 "msr     PSP, r12                               \n\t" \
                 "msr     BASEPRI, r3                            \n\t" \
-                "bx      lr                                     ");
+                "bx      lr" : : "r" (otp), "r" (ntp));
 #endif
 }
 
@@ -158,7 +158,7 @@ void PendSVVector(void) {
   (otp = currp)->p_ctx.r13 = sp_thd;
   (currp = fifo_remove(&rlist.r_queue))->p_state = PRCURR;
   chSchReadyI(otp);
-#if CH_USE_ROUNDROBIN
+#if CH_TIME_QUANTUM > 0
   /* set the round-robin time quantum */
   rlist.r_preempt = CH_TIME_QUANTUM;
 #endif

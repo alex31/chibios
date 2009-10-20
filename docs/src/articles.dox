@@ -18,13 +18,15 @@
 */
 
 /**
- * @page articles Articles
+ * @page articles Articles and Code Samples
  * ChibiOS/RT Articles and Code Examples:
+ * - @subpage article_interrupts
+ * - @subpage article_create_thread
+ * - @subpage article_manage_memory
  * - @subpage article_stacks
  * - @subpage article_mutual_exclusion
  * - @subpage article_atomic
  * - @subpage article_saveram
- * - @subpage article_interrupts
  * - @subpage article_jitter
  * - @subpage article_timing
  * - @subpage article_portguide

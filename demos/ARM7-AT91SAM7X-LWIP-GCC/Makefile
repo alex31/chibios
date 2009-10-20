@@ -47,30 +47,30 @@ CHIBIOS = ../..
 include ${CHIBIOS}/os/ports/GCC/ARM7/port.mk
 include ${CHIBIOS}/os/kernel/kernel.mk
 include ${CHIBIOS}/test/test.mk
-
-# List of the required uIP source files.
-USRC = ${CHIBIOS}/ext/uip-1.0/uip/uip_arp.c \
-       ${CHIBIOS}/ext/uip-1.0/uip/psock.c \
-       ${CHIBIOS}/ext/uip-1.0/uip/uip.c \
-       ${CHIBIOS}/ext/uip-1.0/apps/webserver/httpd.c \
-       ${CHIBIOS}/ext/uip-1.0/apps/webserver/http-strings.c \
-       ${CHIBIOS}/ext/uip-1.0/apps/webserver/httpd-fs.c \
-       ${CHIBIOS}/ext/uip-1.0/apps/webserver/httpd-cgi.c
+include ./lwip/lwip.mk
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CSRC = ${PORTSRC} \
        ${KERNSRC} \
        ${TESTSRC} \
-       ${USRC} \
        ${CHIBIOS}/os/io/pal.c \
        ${CHIBIOS}/os/io/serial.c \
+       ${CHIBIOS}/os/io/mii.c \
+       ${CHIBIOS}/os/io/mac.c \
        ${CHIBIOS}/os/io/platforms/AT91SAM7X/pal_lld.c \
        ${CHIBIOS}/os/io/platforms/AT91SAM7X/serial_lld.c \
-       ${CHIBIOS}/os/io/platforms/AT91SAM7X/sam7x_emac.c \
+       ${CHIBIOS}/os/io/platforms/AT91SAM7X/mii_lld.c \
+       ${CHIBIOS}/os/io/platforms/AT91SAM7X/mac_lld.c \
        ${CHIBIOS}/os/io/platforms/AT91SAM7X/at91lib/aic.c \
        ${CHIBIOS}/os/various/evtimer.c \
-       web/webthread.c \
+       ${LWNETIFSRC} \
+       ${LWCORESRC} \
+       ${LWIPV4SRC} \
+       ${LWAPISRC} \
+       ./lwip/arch/sys_arch.c \
+       ./lwip/lwipthread.c \
+       ./web/web.c \
        board.c main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -101,12 +101,12 @@ TCPPSRC =
 ASMSRC = $(PORTASM) \
          ${CHIBIOS}/os/ports/GCC/ARM7/AT91SAM7X/vectors.s
 
-INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
+INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) $(LWINC) \
          ${CHIBIOS}/os/io \
          ${CHIBIOS}/os/io/platforms/AT91SAM7X \
          ${CHIBIOS}/os/various \
          ${CHIBIOS}/os/ports/GCC/ARM7/AT91SAM7X \
-         ./web ${CHIBIOS}/ext/uip-1.0/uip ${CHIBIOS}/ext/uip-1.0/apps/webserver
+         ./lwip
 
 #
 # Project, sources and paths
@@ -139,10 +139,10 @@ AOPT =
 TOPT = -mthumb -DTHUMB
 
 # Define C warning options here
-CWARN = -Wall -Wstrict-prototypes
+CWARN = -Wall -Wextra -Wstrict-prototypes
 
 # Define C++ warning options here
-CPPWARN = -Wall
+CPPWARN = -Wall -Wextra
 
 #
 # Compiler settings
@@ -153,7 +153,7 @@ CPPWARN = -Wall
 #
 
 # List all default C defines here, like -D_DEBUG=1
-DDEFS =
+DDEFS = -DLWIP_PROVIDE_ERRNO
 
 # List all default ASM defines here, like -D_DEBUG=1
 DADEFS =

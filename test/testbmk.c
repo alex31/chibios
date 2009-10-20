@@ -66,6 +66,7 @@ static Mutex mtx1;
 static msg_t thread1(void *p) {
   msg_t msg;
 
+  (void)p;
   do {
     chMsgRelease(msg = chMsgWait());
   } while (msg);
@@ -223,6 +224,7 @@ msg_t thread4(void *p) {
   msg_t msg;
   Thread *self = chThdSelf();
 
+  (void)p;
   chSysLock();
   do {
     chSchGoSleepS(PRSUSPENDED);
@@ -367,6 +369,7 @@ const struct testcase testbmk6 = {
 
 static msg_t thread3(void *p) {
 
+  (void)p;
   while (!chThdShouldTerminate())
     chSemWait(&sem1);
   return 0;
@@ -429,7 +432,6 @@ const struct testcase testbmk7 = {
  * a second of continuous operations.
  */
 
-#if CH_USE_ROUNDROBIN
 static msg_t thread8(void *p) {
 
   do {
@@ -479,7 +481,6 @@ const struct testcase testbmk8 = {
   NULL,
   bmk8_execute
 };
-#endif
 
 /**
  * @page test_benchmarks_009 I/O Queues throughput
@@ -544,7 +545,7 @@ static char *bmk10_gettest(void) {
   return "Benchmark, virtual timers set/reset";
 }
 
-static void tmo(void *param) {}
+static void tmo(void *param) {(void)param;}
 
 static void bmk10_execute(void) {
   static VirtualTimer vt1, vt2;
@@ -757,9 +758,7 @@ const struct testcase * const patternbmk[] = {
   &testbmk5,
   &testbmk6,
   &testbmk7,
-#if CH_USE_ROUNDROBIN
   &testbmk8,
-#endif
   &testbmk9,
   &testbmk10,
   &testbmk11,
