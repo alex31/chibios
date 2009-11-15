@@ -19,15 +19,16 @@
 
 #include <ch.h>
 #include <pal.h>
+#include <serial.h>
+#include <spi.h>
 #include <test.h>
 
 #include "board.h"
-#include "serial.h"
 
 /*
  * Red LEDs blinker thread, times are in milliseconds.
  */
-static WORKING_AREA(waThread1, 128);
+static WORKING_AREA(waThread1, 512);
 static msg_t Thread1(void *arg) {
 
   (void)arg;

@@ -60,12 +60,14 @@ CHIBIOS = ../..
 include ${CHIBIOS}/os/ports/GCC/ARMCM3/port.mk
 include ${CHIBIOS}/os/kernel/kernel.mk
 include ${CHIBIOS}/test/test.mk
+include ${CHIBIOS}/ext/fatfs/fatfs.mk
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CSRC = ${PORTSRC} \
        ${KERNSRC} \
        ${TESTSRC} \
+       ${FATFSSRC} \
        ${CHIBIOS}/os/io/pal.c \
        ${CHIBIOS}/os/io/serial.c \
        ${CHIBIOS}/os/io/spi.c \
@@ -75,6 +77,7 @@ CSRC = ${PORTSRC} \
        ${CHIBIOS}/os/io/platforms/STM32/spi_lld.c \
        ${CHIBIOS}/os/io/platforms/STM32/stm32_dma.c \
        ${CHIBIOS}/os/various/evtimer.c \
+       ${CHIBIOS}/os/various/syscalls.c \
        board.c main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -108,7 +111,8 @@ ASMSRC = $(PORTASM) \
 INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          ${CHIBIOS}/os/io \
          ${CHIBIOS}/os/io/platforms/STM32 \
-         ${CHIBIOS}/os/various
+         ${CHIBIOS}/os/various \
+         $(FATFSINC)
 
 #
 # Project, sources and paths
@@ -155,7 +159,7 @@ CPPWARN = -Wall -Wextra
 #
 
 # List all default C defines here, like -D_DEBUG=1
-DDEFS =
+DDEFS = -DSTDOUT_SD=SD2 -DSTDIN_SD=SD2
 
 # List all default ASM defines here, like -D_DEBUG=1
 DADEFS =
