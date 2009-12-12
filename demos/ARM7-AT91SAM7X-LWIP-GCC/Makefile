@@ -44,6 +44,8 @@ LDSCRIPT= ch.ld
 
 # Imported source files
 CHIBIOS = ../..
+include ${CHIBIOS}/os/hal/hal.mk
+include ${CHIBIOS}/os/hal/platforms/AT91SAM7/platform.mk
 include ${CHIBIOS}/os/ports/GCC/ARM7/port.mk
 include ${CHIBIOS}/os/kernel/kernel.mk
 include ${CHIBIOS}/test/test.mk
@@ -54,20 +56,13 @@ include ./lwip/lwip.mk
 CSRC = ${PORTSRC} \
        ${KERNSRC} \
        ${TESTSRC} \
-       ${CHIBIOS}/os/io/pal.c \
-       ${CHIBIOS}/os/io/serial.c \
-       ${CHIBIOS}/os/io/mii.c \
-       ${CHIBIOS}/os/io/mac.c \
-       ${CHIBIOS}/os/io/platforms/AT91SAM7X/pal_lld.c \
-       ${CHIBIOS}/os/io/platforms/AT91SAM7X/serial_lld.c \
-       ${CHIBIOS}/os/io/platforms/AT91SAM7X/mii_lld.c \
-       ${CHIBIOS}/os/io/platforms/AT91SAM7X/mac_lld.c \
-       ${CHIBIOS}/os/io/platforms/AT91SAM7X/at91lib/aic.c \
-       ${CHIBIOS}/os/various/evtimer.c \
+       ${HALSRC} \
+       ${PLATFORMSRC} \
        ${LWNETIFSRC} \
        ${LWCORESRC} \
        ${LWIPV4SRC} \
        ${LWAPISRC} \
+       ${CHIBIOS}/os/various/evtimer.c \
        ./lwip/arch/sys_arch.c \
        ./lwip/lwipthread.c \
        ./web/web.c \
@@ -99,13 +94,11 @@ TCPPSRC =
 
 # List ASM source files here
 ASMSRC = $(PORTASM) \
-         ${CHIBIOS}/os/ports/GCC/ARM7/AT91SAM7X/vectors.s
+         ${CHIBIOS}/os/ports/GCC/ARM7/AT91SAM7/vectors.s
 
-INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) $(LWINC) \
-         ${CHIBIOS}/os/io \
-         ${CHIBIOS}/os/io/platforms/AT91SAM7X \
+INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) $(HALINC) $(PLATFORMINC) $(LWINC) \
          ${CHIBIOS}/os/various \
-         ${CHIBIOS}/os/ports/GCC/ARM7/AT91SAM7X \
+         ${CHIBIOS}/os/ports/GCC/ARM7/AT91SAM7 \
          ./lwip
 
 #

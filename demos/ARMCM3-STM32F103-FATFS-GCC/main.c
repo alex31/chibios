@@ -17,20 +17,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ch.h>
-#include <pal.h>
-#include <serial.h>
-#include <spi.h>
-#include <mmc_spi.h>
-#include <evtimer.h>
-#include <test.h>
-
-#include <ff.h>
-
 #include <stdio.h>
 #include <string.h>
 
-#include "board.h"
+#include "ch.h"
+#include "hal.h"
+#include "test.h"
+#include "evtimer.h"
+
+#include "ff.h"
 
 /**
  * @brief FS object.
@@ -66,7 +61,7 @@ uint8_t fbuff[1024];
 /*
  * Red LEDs blinker thread, times are in milliseconds.
  */
-static WORKING_AREA(waThread1, 512);
+static WORKING_AREA(waThread1, 128);
 static msg_t Thread1(void *arg) {
 
   (void)arg;

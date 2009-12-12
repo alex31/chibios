@@ -44,6 +44,8 @@ LDSCRIPT= ch.ld
 
 # Imported source files
 CHIBIOS = ../..
+include ${CHIBIOS}/os/hal/hal.mk
+include ${CHIBIOS}/os/hal/platforms/AT91SAM7/platform.mk
 include ${CHIBIOS}/os/ports/GCC/ARM7/port.mk
 include ${CHIBIOS}/os/kernel/kernel.mk
 include ${CHIBIOS}/test/test.mk
@@ -62,21 +64,14 @@ USRC = ${CHIBIOS}/ext/uip-1.0/uip/uip_arp.c \
 CSRC = ${PORTSRC} \
        ${KERNSRC} \
        ${TESTSRC} \
+       ${HALSRC} \
+       ${PLATFORMSRC} \
        ${USRC} \
-       ${CHIBIOS}/os/io/pal.c \
-       ${CHIBIOS}/os/io/serial.c \
-       ${CHIBIOS}/os/io/mii.c \
-       ${CHIBIOS}/os/io/mac.c \
-       ${CHIBIOS}/os/io/platforms/AT91SAM7X/pal_lld.c \
-       ${CHIBIOS}/os/io/platforms/AT91SAM7X/serial_lld.c \
-       ${CHIBIOS}/os/io/platforms/AT91SAM7X/mii_lld.c \
-       ${CHIBIOS}/os/io/platforms/AT91SAM7X/mac_lld.c \
-       ${CHIBIOS}/os/io/platforms/AT91SAM7X/at91lib/aic.c \
        ${CHIBIOS}/os/various/syscalls.c \
        ${CHIBIOS}/os/various/evtimer.c \
        web/webthread.c \
        board.c main.c
-#       ${CHIBIOS}/os/io/platforms/AT91SAM7X/sam7x_emac.c \
+#       ${CHIBIOS}/os/io/platforms/AT91SAM7/sam7x_emac.c \
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -104,13 +99,11 @@ TCPPSRC =
 
 # List ASM source files here
 ASMSRC = $(PORTASM) \
-         ${CHIBIOS}/os/ports/GCC/ARM7/AT91SAM7X/vectors.s
+         ${CHIBIOS}/os/ports/GCC/ARM7/AT91SAM7/vectors.s
 
-INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
-         ${CHIBIOS}/os/io \
-         ${CHIBIOS}/os/io/platforms/AT91SAM7X \
+INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) $(HALINC) $(PLATFORMINC) $(LWINC)  \
          ${CHIBIOS}/os/various \
-         ${CHIBIOS}/os/ports/GCC/ARM7/AT91SAM7X \
+         ${CHIBIOS}/os/ports/GCC/ARM7/AT91SAM7 \
          ./web ${CHIBIOS}/ext/uip-1.0/uip ${CHIBIOS}/ext/uip-1.0/apps/webserver
 
 #

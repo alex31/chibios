@@ -21,7 +21,7 @@ CC   = $(TRGT)gcc
 AS   = $(TRGT)gcc -x assembler-with-cpp
 
 # List all default C defines here, like -D_DEBUG=1
-DDEFS =
+DDEFS = -DSHELL_USE_IPRINTF=FALSE
 
 # List all default ASM defines here, like -D_DEBUG=1
 DADEFS =
@@ -57,24 +57,27 @@ UADEFS =
 
 # Imported source files
 CHIBIOS = ../..
+include ${CHIBIOS}/os/hal/hal.mk
+include ${CHIBIOS}/os/hal/platforms/Win32/platform.mk
+include ${CHIBIOS}/os/ports/GCC/SIMIA32/port.mk
 include ${CHIBIOS}/os/kernel/kernel.mk
 include ${CHIBIOS}/test/test.mk
 
 # List C source files here
-SRC  = ${KERNSRC} \
+SRC  = ${PORTSRC} \
+       ${KERNSRC} \
        ${TESTSRC} \
-       chcore.c \
-       ${CHIBIOS}/os/io/serial.c \
-       ${CHIBIOS}/os/io/platforms/Win32/serial_lld.c \
+       ${HALSRC} \
+       ${PLATFORMSRC} \
+       ${CHIBIOS}/os/various/shell.c \
        main.c
 
 # List ASM source files here
 ASRC =
 
 # List all user directories here
-UINCDIR = $(KERNINC) $(TESTINC) \
-          ${CHIBIOS}/os/io \
-          ${CHIBIOS}/os/io/platforms/Win32
+UINCDIR = $(PORTINC) $(KERNINC) $(TESTINC) $(HALINC) $(PLATFORMINC) \
+          ${CHIBIOS}/os/various
 
 # List the user directory to look for the libraries here
 ULIBDIR =

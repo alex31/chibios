@@ -2,6 +2,37 @@
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 1.3.5 ***
+- FIX: Fixed problem with memory core allocator (bug 2912528).
+- FIX: Fixed problem with CH_USE_MEMCORE option (bug 2912522).
+- FIX: Fixed some problems in the MMC_SPI driver (bugs 2901084 and 2901172).
+- NEW: Added a command line shell component, modified the Win32 simulator
+  in order to use the new shell. The shell can be used under any architecture,
+  it just requires an I/O channel. Custom commands can be easily added.
+- NEW: Unified the initialization of the various drivers from a single HAL
+  driver. The single drivers can be enabled or disabled from a HAL
+  configuration file halconf.h.
+- NEW: New CAN driver model.
+- NEW: New PWM driver model.
+- NEW: STM32 ADC driver implementation with DMA support.
+- NEW: STM32 CAN driver implementation.
+- NEW: Extended the support to all the SAM7X and SAM7S devices thanks to
+  code contributed by Liam Staskawicz.
+- NEW: Improvements to the AT91SAM7 startup code contributed by Liam.
+- NEW: Added test report for MSP430 running from the external high speed
+  oscillator.
+- NEW: HAL stress test for STM32 added, the demo is located under
+  ./testhal/STM32. The demo code also shows how to use the ADC, CAN and SPI
+  drivers.
+- CHANGE: Removed the MII from the standard drivers, now it is part of the
+  AT91SAM7 support, the header mii.h is still part of the HAL.
+- CHANGE: In the STM32 drivers now the DMA errors are handled by hook macros
+  rather than by events. The default action is to halt the system but users
+  are able to override this and define custom handling.
+- CHANGE: In the Cortex-M3 port, modified the NVICEnableVector() function
+  to make it clear pending interrupts.
+- CHANGE: Minor changes to the ADC driver model.
+
 *** 1.3.4 ***
 - FIX: Fixed bug in STM32 PAL port driver (bug 2897636).
 - FIX: Fixed problem with ARM-CM3 context switch when compiled at level

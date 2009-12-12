@@ -1,6 +1,6 @@
 ***************************************************************************
 Options:  -O2 -fomit-frame-pointer
-Settings: MCLK=DCOCLK 750Khz
+Settings: MCLK=DCOCLK 750KHz
 ***************************************************************************
 
 *** ChibiOS/RT test suite

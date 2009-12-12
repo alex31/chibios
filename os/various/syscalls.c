@@ -63,9 +63,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <ch.h>
+#include "ch.h"
 #if defined(STDOUT_SD) || defined(STDIN_SD)
-#include <serial.h>
+#include "hal.h"
 #endif
 
 /***************************************************************************/
@@ -75,7 +75,7 @@ int _read_r(struct _reent *r, int file, char * ptr, int len)
   (void)r;
 #if defined(STDIN_SD)
   if (!len || (file != 0)) {
-    errno = EINVAL;
+    __errno_r(r) = EINVAL;
     return -1;
   }
   *ptr++ = chIOGet(&STDOUT_SD);
@@ -86,7 +86,7 @@ int _read_r(struct _reent *r, int file, char * ptr, int len)
   (void)file;
   (void)ptr;
   (void)len;
-  errno = EINVAL;
+  __errno_r(r) = EINVAL;
   return -1;
 #endif
 }
@@ -107,14 +107,16 @@ int _lseek_r(struct _reent *r, int file, int ptr, int dir)
 
 int _write_r(struct _reent *r, int file, char * ptr, int len)
 {
+#if defined(STDOUT_SD)
   int n;
+#endif
 
   (void)r;
   (void)file;
   (void)ptr;
 #if defined(STDOUT_SD)
   if (file != 1) {
-    errno = EINVAL;
+    __errno_r(r) = EINVAL;
     return -1;
   }
   n = len;
@@ -145,7 +147,7 @@ caddr_t _sbrk_r(struct _reent *r, int incr)
   (void)r;
   p = chCoreAlloc((size_t)incr);
   if (p == NULL) {
-    errno = ENOMEM;
+    __errno_r(r) = ENOMEM;
     return (caddr_t)-1;
   }
   return (caddr_t)p;

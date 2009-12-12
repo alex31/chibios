@@ -20,9 +20,10 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <ch.h>
-#include <serial.h>
-#include <test.h>
+#include "ch.h"
+#include "hal.h"
+#include "test.h"
+#include "console.h"
 
 /*
  * Simulator main.
@@ -33,12 +34,11 @@ int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
 
+  halInit();
+  conInit();
   chSysInit();
-  sdStart(&SD1, NULL);
 
-  result = TestThread(&SD1);
-  chThdSleepMilliseconds(1); /* Gives time to flush SD1 output queue */
-  fflush(stdout);
+  result = TestThread(&CD1);
   if (result)
     exit(1);
   else
