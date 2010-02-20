@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 /*
    Concepts and parts of this file are contributed by and Copyright (C) 2008
@@ -22,9 +29,8 @@
  */
 
 /**
- * @file    condvars.h
- * @brief   Condition Variables macros and structures.
- *
+ * @file condvars.h
+ * @brief Condition Variables macros and structures.
  * @addtogroup condvars
  * @{
  */
@@ -42,10 +48,10 @@
 #endif
 
 /**
- * @brief   CondVar structure.
+ * @brief CondVar structure.
  */
 typedef struct CondVar {
-  ThreadsQueue          c_queue;        /**< @brief CondVar threads queue.*/
+  ThreadsQueue          c_queue;        /**< CondVar threads queue.*/
 } CondVar;
 
 #ifdef __cplusplus
@@ -70,8 +76,6 @@ extern "C" {
  * @brief Data part of a static condition variable initializer.
  * @details This macro should be used when statically initializing a condition
  *          variable that is part of a bigger structure.
- *
- * @param[in] name      the name of the condition variable
  */
 #define _CONDVAR_DATA(name) {_THREADSQUEUE_DATA(name.c_queue)}
 
@@ -79,8 +83,7 @@ extern "C" {
  * @brief Static condition variable initializer.
  * @details Statically initialized condition variables require no explicit
  *          initialization using @p chCondInit().
- *
- * @param[in] name      the name of the condition variable
+ * @param name the name of the condition variable
  */
 #define CONDVAR_DECL(name) CondVar name = _CONDVAR_DATA(name)
 

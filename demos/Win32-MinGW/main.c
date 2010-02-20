@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -32,60 +39,7 @@ static Thread *cdtp;
 static Thread *shelltp1;
 static Thread *shelltp2;
 
-static void cmd_mem(BaseChannel *chp, int argc, char *argv[]) {
-  size_t n, size;
-  char buf[52];
-
-  (void)argv;
-  if (argc > 0) {
-    shellPrintLine(chp, "Usage: mem");
-    return;
-  }
-  n = chHeapStatus(NULL, &size);
-  sprintf(buf, "core free memory : %i bytes", chCoreFree());
-  shellPrintLine(chp, buf);
-  sprintf(buf, "heap fragments   : %i", n);
-  shellPrintLine(chp, buf);
-  sprintf(buf, "heap free total  : %i bytes", size);
-  shellPrintLine(chp, buf);
-}
-
-static void cmd_threads(BaseChannel *chp, int argc, char *argv[]) {
-  static const char *states[] = {
-    "READY",
-    "CURRENT",
-    "SUSPENDED",
-    "WTSEM",
-    "WTMTX",
-    "WTCOND",
-    "SLEEPING",
-    "WTEXIT",
-    "WTOREVT",
-    "WTANDEVT",
-    "SNDMSG",
-    "WTMSG",
-    "FINAL"
-  };
-  Thread *tp;
-  char buf[60];
-
-  (void)argv;
-  if (argc > 0) {
-    shellPrintLine(chp, "Usage: threads");
-    return;
-  }
-  shellPrintLine(chp, "    addr    stack prio refs     state time");
-  tp = chRegFirstThread();
-  do {
-    sprintf(buf, "%8p %8p %4i %4i %9s %i",
-            tp, tp->p_ctx.esp, tp->p_prio, tp->p_refs - 1,
-            states[tp->p_state], tp->p_time);
-    shellPrintLine(chp, buf);
-    tp = chRegNextThread(tp);
-  } while (tp != NULL);
-}
-
-static void cmd_test(BaseChannel *chp, int argc, char *argv[]) {
+void cmd_test(BaseChannel *chp, int argc, char *argv[]) {
   Thread *tp;
 
   (void)argv;
@@ -103,8 +57,6 @@ static void cmd_test(BaseChannel *chp, int argc, char *argv[]) {
 }
 
 static const ShellCommand commands[] = {
-  {"mem", cmd_mem},
-  {"threads", cmd_threads},
   {"test", cmd_test},
   {NULL, NULL}
 };
@@ -149,7 +101,7 @@ static void termination_handler(eventid_t id) {
     chThdSleepMilliseconds(10);
     cputs("Init: shell on SD1 terminated");
     chSysLock();
-    chOQResetI(&SD1.oqueue);
+    chOQResetI(&SD1.sd.oqueue);
     chSysUnlock();
   }
   if (shelltp2 && chThdTerminated(shelltp2)) {
@@ -158,7 +110,7 @@ static void termination_handler(eventid_t id) {
     chThdSleepMilliseconds(10);
     cputs("Init: shell on SD2 terminated");
     chSysLock();
-    chOQResetI(&SD2.oqueue);
+    chOQResetI(&SD2.sd.oqueue);
     chSysUnlock();
   }
 }
@@ -180,7 +132,7 @@ static void sd1_handler(eventid_t id) {
   if (flags & SD_DISCONNECTED) {
     cputs("Init: disconnection on SD1");
     chSysLock();
-    chIQResetI(&SD1.iqueue);
+    chIQResetI(&SD1.sd.iqueue);
     chSysUnlock();
   }
 }
@@ -202,7 +154,7 @@ static void sd2_handler(eventid_t id) {
   if (flags & SD_DISCONNECTED) {
     cputs("Init: disconnection on SD2");
     chSysLock();
-    chIQResetI(&SD2.iqueue);
+    chIQResetI(&SD2.sd.iqueue);
     chSysUnlock();
   }
 }
@@ -253,10 +205,10 @@ int main(void) {
   cputs("Shell service started on SD1, SD2");
   cputs("  - Listening for connections on SD1");
   (void) sdGetAndClearFlags(&SD1);
-  chEvtRegister(&SD1.sevent, &sd1fel, 1);
+  chEvtRegister(&SD1.sd.sevent, &sd1fel, 1);
   cputs("  - Listening for connections on SD2");
   (void) sdGetAndClearFlags(&SD2);
-  chEvtRegister(&SD2.sevent, &sd2fel, 2);
+  chEvtRegister(&SD2.sd.sevent, &sd2fel, 2);
 
   /*
    * Events servicing loop.
@@ -267,7 +219,7 @@ int main(void) {
   /*
    * Clean simulator exit.
    */
-  chEvtUnregister(&SD1.sevent, &sd1fel);
-  chEvtUnregister(&SD2.sevent, &sd2fel);
+  chEvtUnregister(&SD1.sd.sevent, &sd1fel);
+  chEvtUnregister(&SD2.sd.sevent, &sd2fel);
   return 0;
 }

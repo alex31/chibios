@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,17 +10,23 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    mutexes.h
- * @brief   Mutexes macros and structures.
- *
+ * @file mutexes.h
+ * @brief Mutexes macros and structures.
  * @addtogroup mutexes
  * @{
  */
@@ -34,12 +40,12 @@
  * @brief Mutex structure.
  */
 typedef struct Mutex {
-  ThreadsQueue          m_queue;    /**< @brief Queue of the threads sleeping
-                                                on this Mutex.              */
-  Thread                *m_owner;   /**< @brief Owner @p Thread pointer or
-                                                @p NULL.                    */
-  struct Mutex          *m_next;    /**< @brief Next @p Mutex into an
-                                                owner-list or @p NULL.      */
+  ThreadsQueue          m_queue;        /**< Queue of the threads sleeping on
+                                             this Mutex.*/
+  Thread                *m_owner;       /**< Owner @p Thread pointer or
+                                             @p NULL.*/
+  struct Mutex          *m_next;        /**< Next @p Mutex into an owner-list
+                                             or @p NULL.*/
 } Mutex;
 
 #ifdef __cplusplus
@@ -58,26 +64,23 @@ extern "C" {
 #endif
 
 /**
- * @brief   Data part of a static mutex initializer.
+ * @brief Data part of a static mutex initializer.
  * @details This macro should be used when statically initializing a mutex
  *          that is part of a bigger structure.
- *
- * @param[in] name      the name of the mutex variable
+ * @param name the name of the mutex variable
  */
 #define _MUTEX_DATA(name) {_THREADSQUEUE_DATA(name.m_queue), NULL, NULL}
 
 /**
- * @brief   Static mutex initializer.
+ * @brief Static mutex initializer.
  * @details Statically initialized mutexes require no explicit initialization
  *          using @p chMtxInit().
- *
- * @param[in] name      the name of the mutex variable
+ * @param name the name of the mutex variable
  */
 #define MUTEX_DECL(name) Mutex name = _MUTEX_DATA(name)
 
 /**
- * @brief   Returns @p TRUE if the mutex queue contains at least a waiting
- *          thread.
+ * Returns @p TRUE if the mutex queue contains at least a waiting thread.
  */
 #define chMtxQueueNotEmptyS(mp) notempty(&(mp)->m_queue)
 

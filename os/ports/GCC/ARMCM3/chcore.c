@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -70,25 +77,32 @@ void SysTickVector(void) {
 
 /**
  * @brief SVC vector.
- * @details The SVC vector is used for commanded context switch. Structures
- *          @p intctx are saved and restored from the process stacks of the
- *          switched threads.
+ * @details The SVC vector is used for commanded context switch.
  *
  * @param otp the thread to be switched out
  * @param ntp the thread to be switched it
  */
-#if !defined(__DOXYGEN__)
+/** @cond never */
 __attribute__((naked))
-#endif
+/** @endcond */
 void SVCallVector(Thread *otp, Thread *ntp) {
+  /* { r0 = otp, r1 = ntp } */
+  /* get the BASEPRI in r3 */
+  /* get the PSP in r12 */
+  /* push the registers on the PSP stack */
+  /* stores the modified PSP into the thread context */
+  /* fetches the PSP position from the new thread context */
+  /* pop the registers from the PSP stack */
+  /* set the PSP from r12 */
+  /* set the BASEPRI from R3 */
   (void)otp;
   (void)ntp;
 #ifdef CH_CURRP_REGISTER_CACHE
   asm volatile ("mrs     r3, BASEPRI                            \n\t" \
                 "mrs     r12, PSP                               \n\t" \
                 "stmdb   r12!, {r3-r6,r8-r11, lr}               \n\t" \
-                "str     r12, [r0, #12]                         \n\t" \
-                "ldr     r12, [r1, #12]                         \n\t" \
+                "str     r12, [r0, #16]                         \n\t" \
+                "ldr     r12, [r1, #16]                         \n\t" \
                 "ldmia   r12!, {r3-r6,r8-r11, lr}               \n\t" \
                 "msr     PSP, r12                               \n\t" \
                 "msr     BASEPRI, r3                            \n\t" \
@@ -97,8 +111,8 @@ void SVCallVector(Thread *otp, Thread *ntp) {
   asm volatile ("mrs     r3, BASEPRI                            \n\t" \
                 "mrs     r12, PSP                               \n\t" \
                 "stmdb   r12!, {r3-r11, lr}                     \n\t" \
-                "str     r12, [r0, #12]                         \n\t" \
-                "ldr     r12, [r1, #12]                         \n\t" \
+                "str     r12, [r0, #16]                         \n\t" \
+                "ldr     r12, [r1, #16]                         \n\t" \
                 "ldmia   r12!, {r3-r11, lr}                     \n\t" \
                 "msr     PSP, r12                               \n\t" \
                 "msr     BASEPRI, r3                            \n\t" \
@@ -139,9 +153,9 @@ void SVCallVector(Thread *otp, Thread *ntp) {
 /**
  * @brief Preemption code.
  */
-#ifndef __DOXYGEN__
+/** @cond never */
 __attribute__((naked))
-#endif
+/** @endcond */
 void PendSVVector(void) {
   Thread *otp;
   register struct intctx *sp_thd asm("r12");
@@ -151,10 +165,10 @@ void PendSVVector(void) {
   PUSH_CONTEXT(sp_thd);
 
   (otp = currp)->p_ctx.r13 = sp_thd;
-  (currp = fifo_remove(&rlist.r_queue))->p_state = THD_STATE_CURRENT;
+  (currp = fifo_remove(&rlist.r_queue))->p_state = PRCURR;
   chSchReadyI(otp);
 #if CH_TIME_QUANTUM > 0
-  /* Set the round-robin time quantum.*/
+  /* set the round-robin time quantum */
   rlist.r_preempt = CH_TIME_QUANTUM;
 #endif
   chDbgTrace(otp, currp);

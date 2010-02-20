@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -61,14 +68,14 @@ void port_switch(Thread *otp, Thread *ntp) {
 
   asm volatile ("movw    r30, r24");
   asm volatile ("in      r0, 0x3d");
-  asm volatile ("std     Z+6, r0");
-  asm volatile ("in      r0, 0x3e");
   asm volatile ("std     Z+7, r0");
+  asm volatile ("in      r0, 0x3e");
+  asm volatile ("std     Z+8, r0");
 
   asm volatile ("movw    r30, r22");
-  asm volatile ("ldd     r0, Z+6");
-  asm volatile ("out     0x3d, r0");
   asm volatile ("ldd     r0, Z+7");
+  asm volatile ("out     0x3d, r0");
+  asm volatile ("ldd     r0, Z+8");
   asm volatile ("out     0x3e, r0");
 
   asm volatile ("pop     r29");

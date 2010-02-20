@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,26 +10,31 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    templates/halconf.h
- * @brief   HAL configuration header.
- * @details HAL configuration file, this file allows to enable or disable the
- *          various device drivers from your application. You may also use
- *          this file in order to override the device drivers default settings.
- *
+ * @file templates/halconf.h
+ * @brief HAL configuration header.
  * @addtogroup HAL_CONF
  * @{
  */
 
 /*
- *
+ * HAL configuration file, this file allows to enable or disable the various
+ * device drivers from your application. You may also use this file in order
+ * to override the device drivers default settings.
  */
 
 #ifndef _HALCONF_H_
@@ -47,7 +52,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   Enables the PAL subsystem.
+ * @brief Enables the PAL subsystem.
  */
 #if !defined(CH_HAL_USE_PAL) || defined(__DOXYGEN__)
 #define CH_HAL_USE_PAL              TRUE
@@ -58,7 +63,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   Enables the ADC subsystem.
+ * @brief Enables the ADC subsystem.
  */
 #if !defined(CH_HAL_USE_ADC) || defined(__DOXYGEN__)
 #define CH_HAL_USE_ADC              TRUE
@@ -69,7 +74,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   Enables the CAN subsystem.
+ * @brief Enables the CAN subsystem.
  */
 #if !defined(CH_HAL_USE_CAN) || defined(__DOXYGEN__)
 #define CH_HAL_USE_CAN              TRUE
@@ -85,7 +90,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   Enables the MAC subsystem.
+ * @brief Enables the MAC subsystem.
  */
 #if !defined(CH_HAL_USE_MAC) || defined(__DOXYGEN__)
 #define CH_HAL_USE_MAC              TRUE
@@ -96,7 +101,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   Enables the PWM subsystem.
+ * @brief Enables the PWM subsystem.
  */
 #if !defined(CH_HAL_USE_PWM) || defined(__DOXYGEN__)
 #define CH_HAL_USE_PWM              TRUE
@@ -107,7 +112,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   Enables the SERIAL subsystem.
+ * @brief Enables the SERIAL subsystem.
  */
 #if !defined(CH_HAL_USE_SERIAL) || defined(__DOXYGEN__)
 #define CH_HAL_USE_SERIAL           TRUE
@@ -124,7 +129,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   Enables the SPI subsystem.
+ * @brief Enables the SPI subsystem.
  */
 #if !defined(CH_HAL_USE_SPI) || defined(__DOXYGEN__)
 #define CH_HAL_USE_SPI              TRUE
@@ -140,7 +145,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   Enables the MMC_SPI subsystem.
+ * @brief Enables the MMC_SPI subsystem.
  */
 #if !defined(CH_HAL_USE_MMC_SPI) || defined(__DOXYGEN__)
 #define CH_HAL_USE_MMC_SPI          TRUE

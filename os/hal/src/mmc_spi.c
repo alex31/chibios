@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,17 +10,23 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    mmc_spi.c
- * @brief   MMC over SPI driver code.
- *
+ * @file mmc_spi.c
+ * @brief MMC over SPI driver code.
  * @addtogroup MMC_SPI
  * @{
  */
@@ -42,11 +48,6 @@
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
-/**
- * @brief   Inserion monitor timer callback function.
- *
- * @param[in] p         pointer to the @p MMCDriver object
- */
 void tmrfunc(void *p) {
   MMCDriver *mmcp = p;
 
@@ -71,7 +72,7 @@ void tmrfunc(void *p) {
 }
 
 /**
- * @brief   Waits an idle condition.
+ * @brief Waits an idle condition.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
  */
@@ -97,7 +98,7 @@ static void wait(MMCDriver *mmcp) {
 }
 
 /**
- * @brief   Sends a command header.
+ * @brief Sends a command header.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
  * @param cmd[in]       the command id
@@ -119,10 +120,11 @@ static void send_hdr(MMCDriver *mmcp, uint8_t cmd, uint32_t arg) {
 }
 
 /**
- * @brief   Receives a single byte response.
+ * @brief Receives a single byte response.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
- * @return              The response as an @p uint8_t value.
+ *
+ * @return The response as an @p uint8_t value.
  * @retval 0xFF         timed out.
  */
 static uint8_t recvr1(MMCDriver *mmcp) {
@@ -138,12 +140,13 @@ static uint8_t recvr1(MMCDriver *mmcp) {
 }
 
 /**
- * @brief   Sends a command an returns a single byte response.
+ * @brief Sends a command an returns a single byte response.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
  * @param cmd[in]       the command id
  * @param arg[in]       the command argument
- * @return              The response as an @p uint8_t value.
+ *
+ * @return The response as an @p uint8_t value.
  * @retval 0xFF         timed out.
  */
 static uint8_t send_command(MMCDriver *mmcp, uint8_t cmd, uint32_t arg) {
@@ -157,7 +160,7 @@ static uint8_t send_command(MMCDriver *mmcp, uint8_t cmd, uint32_t arg) {
 }
 
 /**
- * @brief   Waits that the card reaches an idle state.
+ * @brief Waits that the card reaches an idle state.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
  */
@@ -181,14 +184,14 @@ static void sync(MMCDriver *mmcp) {
 /*===========================================================================*/
 
 /**
- * @brief   MMC over SPI driver initialization.
+ * @brief MMC over SPI driver initialization.
  */
 void mmcInit(void) {
 
 }
 
 /**
- * @brief   Initializes an instance.
+ * @brief Initializes an instance.
  *
  * @param[in] mmcp          pointer to the @p MMCDriver object
  * @param[in] spip          pointer to the SPI driver to be used as interface
@@ -215,7 +218,7 @@ void mmcObjectInit(MMCDriver *mmcp, SPIDriver *spip,
 }
 
 /**
- * @brief   Configures and activates the MMC peripheral.
+ * @brief Configures and activates the MMC peripheral.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
  * @param[in] config    pointer to the @p MMCConfig object
@@ -234,7 +237,7 @@ void mmcStart(MMCDriver *mmcp, const MMCConfig *config) {
 }
 
 /**
- * @brief   Disables the MMC peripheral.
+ * @brief Disables the MMC peripheral.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
  */
@@ -257,15 +260,16 @@ void mmcStop(MMCDriver *mmcp) {
 }
 
 /**
- * @brief   Performs the initialization procedure on the inserted card.
+ * @brief Performs the initialization procedure on the inserted card.
  * @details This function should be invoked when a card is inserted and
  *          brings the driver in the @p MMC_READY state where it is possible
  *          to perform read and write operations.
- * @note    It is possible to invoke this function from the insertion event
- *          handler.
+ * @note It is possible to invoke this function from the insertion event
+ *       handler.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
- * @return              The operation status.
+ *
+ * @return The operation status.
  * @retval FALSE        the operation was successful and the driver is now
  *                      in the @p MMC_READY state.
  * @retval TRUE         the operation failed.
@@ -334,10 +338,10 @@ bool_t mmcConnect(MMCDriver *mmcp) {
 }
 
 /**
- * @brief   Brings the driver in a state safe for card removal.
+ * @brief Brings the driver in a state safe for card removal.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
- * @return              The operation status.
+ * @return The operation status.
  * @retval FALSE        the operation was successful and the driver is now
  *                      in the @p MMC_INSERTED state.
  * @retval TRUE         the operation failed.
@@ -366,11 +370,12 @@ bool_t mmcDisconnect(MMCDriver *mmcp) {
 }
 
 /**
- * @brief   Starts a sequential read.
+ * @brief Starts a sequential read.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
  * @param[in] startblk  first block to read
- * @return              The operation status.
+ *
+ * @return The operation status.
  * @retval FALSE        the operation was successful.
  * @retval TRUE         the operation failed.
  */
@@ -400,11 +405,12 @@ bool_t mmcStartSequentialRead(MMCDriver *mmcp, uint32_t startblk) {
 }
 
 /**
- * @brief   Reads a block within a sequential read operation.
+ * @brief Reads a block within a sequential read operation.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
  * @param[out] buffer   pointer to the read buffer
- * @return              The operation status.
+ *
+ * @return The operation status.
  * @retval FALSE        the operation was successful.
  * @retval TRUE         the operation failed.
  */
@@ -439,10 +445,11 @@ bool_t mmcSequentialRead(MMCDriver *mmcp, uint8_t *buffer) {
 }
 
 /**
- * @brief   Stops a sequential read gracefully.
+ * @brief Stops a sequential read gracefully.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
- * @return              The operation status.
+ *
+ * @return The operation status.
  * @retval FALSE        the operation was successful.
  * @retval TRUE         the operation failed.
  */
@@ -471,11 +478,12 @@ bool_t mmcStopSequentialRead(MMCDriver *mmcp) {
 }
 
 /**
- * @brief   Starts a sequential write.
+ * @brief Starts a sequential write.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
  * @param[in] startblk  first block to write
- * @return              The operation status.
+ *
+ * @return The operation status.
  * @retval FALSE        the operation was successful.
  * @retval TRUE         the operation failed.
  */
@@ -505,11 +513,12 @@ bool_t mmcStartSequentialWrite(MMCDriver *mmcp, uint32_t startblk) {
 }
 
 /**
- * @brief   Writes a block within a sequential write operation.
+ * @brief Writes a block within a sequential write operation.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
  * @param[out] buffer   pointer to the write buffer
- * @return              The operation status.
+ *
+ * @return The operation status.
  * @retval FALSE        the operation was successful.
  * @retval TRUE         the operation failed.
  */
@@ -543,10 +552,11 @@ bool_t mmcSequentialWrite(MMCDriver *mmcp, const uint8_t *buffer) {
 }
 
 /**
- * @brief   Stops a sequential write gracefully.
+ * @brief Stops a sequential write gracefully.
  *
  * @param[in] mmcp      pointer to the @p MMCDriver object
- * @return              The operation status.
+ *
+ * @return The operation status.
  * @retval FALSE        the operation was successful.
  * @retval TRUE         the operation failed.
  */

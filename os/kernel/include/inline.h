@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,33 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #ifndef _INLINE_H_
 #define _INLINE_H_
 
 /**
- * @file    inline.h
- * @brief   Kernel inlined functions.
- * @details In this file there are a set of inlined functions if the
- *          @p CH_OPTIMIZE_SPEED is enabled.
+ * @file inline.h
+ * @brief kernel inlined functions.
  */
 
+/*
+ * Inlined functions if CH_OPTIMIZE_SPEED is enabled.
+ * Note: static inlined functions do not duplicate the code in every module
+ *       this is true for GCC, not sure about other compilers.
+ */
 #if CH_OPTIMIZE_SPEED
 static INLINE void prio_insert(Thread *tp, ThreadsQueue *tqp) {
 
@@ -62,19 +72,6 @@ static INLINE Thread *dequeue(Thread *tp) {
 
   tp->p_prev->p_next = tp->p_next;
   tp->p_next->p_prev = tp->p_prev;
-  return tp;
-}
-
-static INLINE void list_insert(Thread *tp, ThreadsList *tlp) {
-
-  tp->p_next = tlp->p_next;
-  tlp->p_next = tp;
-}
-
-static INLINE Thread *list_remove(ThreadsList *tlp) {
-
-  Thread *tp = tlp->p_next;
-  tlp->p_next = tp->p_next;
   return tp;
 }
 #endif /* CH_OPTIMIZE_SPEED */

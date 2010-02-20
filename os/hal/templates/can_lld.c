@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,17 +10,23 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    templates/can_lld.c
- * @brief   CAN Driver subsystem low level driver source template.
- *
+ * @file templates/can_lld.c
+ * @brief CAN Driver subsystem low level driver source template.
  * @addtogroup CAN_LLD
  * @{
  */
@@ -51,25 +57,25 @@
 /*===========================================================================*/
 
 /**
- * @brief   Low level CAN driver initialization.
+ * @brief Low level CAN driver initialization.
  */
 void can_lld_init(void) {
 
 }
 
 /**
- * @brief   Configures and activates the CAN peripheral.
+ * @brief Configures and activates the CAN peripheral.
  *
- * @param[in] canp      pointer to the @p CANDriver object
+ * @param[in] canp pointer to the @p CANDriver object
  */
 void can_lld_start(CANDriver *canp) {
 
 }
 
 /**
- * @brief   Deactivates the CAN peripheral.
+ * @brief Deactivates the CAN peripheral.
  *
- * @param[in] canp      pointer to the @p CANDriver object
+ * @param[in] canp pointer to the @p CANDriver object
  */
 void can_lld_stop(CANDriver *canp) {
 
@@ -81,12 +87,13 @@ void can_lld_stop(CANDriver *canp) {
 
 
 /**
- * @brief   Determines whether a frame can be transmitted.
+ * @brief Determines whether a frame can be transmitted.
  *
- * @param[in] canp      pointer to the @p CANDriver object
- * @return              The queue space availability.
- * @retval FALSE        no space in the transmit queue.
- * @retval TRUE         transmit slot available.
+ * @param[in] canp pointer to the @p CANDriver object
+ *
+ * @return The queue space availability.
+ * @retval FALSE no space in the transmit queue.
+ * @retval TRUE transmit slot available.
  */
 bool_t can_lld_can_transmit(CANDriver *canp) {
 
@@ -94,7 +101,7 @@ bool_t can_lld_can_transmit(CANDriver *canp) {
 }
 
 /**
- * @brief   Inserts a frame into the transmit queue.
+ * @brief Inserts a frame into the transmit queue.
  *
  * @param[in] canp      pointer to the @p CANDriver object
  * @param[in] ctfp      pointer to the CAN frame to be transmitted
@@ -104,12 +111,13 @@ void can_lld_transmit(CANDriver *canp, const CANTxFrame *ctfp) {
 }
 
 /**
- * @brief   Determines whether a frame has been received.
+ * @brief Determines whether a frame has been received.
  *
- * @param[in] canp      pointer to the @p CANDriver object
- * @return              The queue space availability.
- * @retval FALSE        no space in the transmit queue.
- * @retval TRUE         transmit slot available.
+ * @param[in] canp pointer to the @p CANDriver object
+ *
+ * @return The queue space availability.
+ * @retval FALSE no space in the transmit queue.
+ * @retval TRUE transmit slot available.
  */
 bool_t can_lld_can_receive(CANDriver *canp) {
 
@@ -117,7 +125,7 @@ bool_t can_lld_can_receive(CANDriver *canp) {
 }
 
 /**
- * @brief   Receives a frame from the input queue.
+ * @brief Receives a frame from the input queue.
  *
  * @param[in] canp      pointer to the @p CANDriver object
  * @param[out] crfp     pointer to the buffer where the CAN frame is copied
@@ -128,7 +136,7 @@ void can_lld_receive(CANDriver *canp, CANRxFrame *crfp) {
 
 #if CAN_USE_SLEEP_MODE || defined(__DOXYGEN__)
 /**
- * @brief   Enters the sleep mode.
+ * @brief Enters the sleep mode.
  *
  * @param[in] canp      pointer to the @p CANDriver object
  */
@@ -137,7 +145,7 @@ void can_lld_sleep(CANDriver *canp) {
 }
 
 /**
- * @brief   Enforces leaving the sleep mode.
+ * @brief Enforces leaving the sleep mode.
  *
  * @param[in] canp      pointer to the @p CANDriver object
  */

@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,17 +10,23 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    adc.c
- * @brief   ADC Driver code.
- *
+ * @file adc.c
+ * @brief ADC Driver code.
  * @addtogroup ADC
  * @{
  */
@@ -47,7 +53,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   ADC Driver initialization.
+ * @brief ADC Driver initialization.
  */
 void adcInit(void) {
 
@@ -55,7 +61,7 @@ void adcInit(void) {
 }
 
 /**
- * @brief   Initializes the standard part of a @p ADCDriver structure.
+ * @brief Initializes the standard part of a @p ADCDriver structure.
  *
  * @param[in] adcp      pointer to the @p ADCDriver object
  */
@@ -71,7 +77,7 @@ void adcObjectInit(ADCDriver *adcp) {
 }
 
 /**
- * @brief   Configures and activates the ADC peripheral.
+ * @brief Configures and activates the ADC peripheral.
  *
  * @param[in] adcp      pointer to the @p ADCDriver object
  * @param[in] config    pointer to the @p ADCConfig object
@@ -91,7 +97,7 @@ void adcStart(ADCDriver *adcp, const ADCConfig *config) {
 }
 
 /**
- * @brief   Deactivates the ADC peripheral.
+ * @brief Deactivates the ADC peripheral.
  *
  * @param[in] adcp      pointer to the @p ADCDriver object
  */
@@ -109,7 +115,7 @@ void adcStop(ADCDriver *adcp) {
 }
 
 /**
- * @brief   Starts an ADC conversion.
+ * @brief Starts an ADC conversion.
  * @details Starts a conversion operation, there are two kind of conversion
  *          modes:
  *          - <b>LINEAR</b>, this mode is activated when the @p callback
@@ -123,10 +129,6 @@ void adcStop(ADCDriver *adcp) {
  *            time. This kind of conversion can only be stopped by explicitly
  *            invoking @p adcStopConversion().
  *          .
- * @note    The buffer is organized as a matrix of M*N elements where M is the
- *          channels number configured into the conversion group and N is the
- *          buffer depth. The samples are sequentially written into the buffer
- *          with no gaps.
  *
  * @param[in] adcp      pointer to the @p ADCDriver object
  * @param[in] grpp      pointer to a @p ADCConversionGroup object
@@ -134,9 +136,14 @@ void adcStop(ADCDriver *adcp) {
  * @param[in] depth     buffer depth (matrix rows number). The buffer depth
  *                      must be one or an even number.
  * @param[in] callback  pointer to the conversion callback function
- * @return              The operation status.
+ * @return The operation status.
  * @retval FALSE        the conversion has been started.
  * @retval TRUE         the driver is busy, conversion not started.
+ *
+ * @note The buffer is organized as a matrix of M*N elements where M is the
+ *       channels number configured into the conversion group and N is the
+ *       buffer depth. The samples are sequentially written into the buffer
+ *       with no gaps.
  */
 bool_t adcStartConversion(ADCDriver *adcp,
                           const ADCConversionGroup *grpp,
@@ -169,9 +176,9 @@ bool_t adcStartConversion(ADCDriver *adcp,
 }
 
 /**
- * @brief   Stops an ongoing conversion.
+ * @brief Stops an ongoing conversion.
  *
- * @param[in] adcp      pointer to the @p ADCDriver object
+ * @param[in] adcp pointer to the @p ADCDriver object
  */
 void adcStopConversion(ADCDriver *adcp) {
 
@@ -196,7 +203,7 @@ void adcStopConversion(ADCDriver *adcp) {
 }
 
 /**
- * @brief   Waits for completion.
+ * @brief Waits for completion.
  * @details If the conversion is not completed or not yet started then the
  *          invoking thread waits for a conversion completion event.
  *
@@ -206,9 +213,9 @@ void adcStopConversion(ADCDriver *adcp) {
  *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      - @a TIME_INFINITE no timeout.
  *                      .
- * @return              The operation result.
- * @retval RDY_OK       conversion finished.
- * @retval RDY_TIMEOUT  conversion not finished within the specified time.
+ * @return The operation result.
+ * @retval RDY_OK conversion finished.
+ * @retval RDY_TIMEOUT conversion not finished within the specified time.
  */
 msg_t adcWaitConversion(ADCDriver *adcp, systime_t timeout) {
 

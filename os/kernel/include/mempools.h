@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,17 +10,23 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    mempools.h
- * @brief   Memory Pools macros and structures.
- *
+ * @file mempools.h
+ * @brief Memory Pools macros and structures.
  * @addtogroup pools
  * @{
  */
@@ -31,15 +37,14 @@
 #if CH_USE_MEMPOOLS
 
 /**
- * @brief   Memory pool free object header.
+ * @brief Memory pool free object header.
  */
 struct pool_header {
-  struct pool_header    *ph_next;       /**< @brief Pointer to the next pool
-                                                    header in the list.     */
+  struct pool_header    *ph_next;
 };
 
 /**
- * @brief   Memory pool descriptor.
+ * @brief Memory pool descriptor.
  */
 typedef struct {
   struct pool_header    *mp_next;       /**< @brief Pointer to the header.  */
@@ -50,13 +55,13 @@ typedef struct {
 } MemoryPool;
 
 /**
- * @brief   Data part of a static memory pool initializer.
+ * @brief Data part of a static memory pool initializer.
  * @details This macro should be used when statically initializing a
  *          memory pool that is part of a bigger structure.
  *
- * @param[in] name      the name of the memory pool variable
- * @param[in] size      size of the memory pool contained objects
- * @param[in] provider  memory provider function for the memory pool
+ * @param[in] name the name of the memory pool variable
+ * @param[in] size size of the memory pool contained objects
+ * @param[in] provider memory provider function for the memory pool
  */
 #define _MEMORYPOOL_DATA(name, size, provider)                              \
   {NULL, MEM_ALIGN_SIZE(size), provider}

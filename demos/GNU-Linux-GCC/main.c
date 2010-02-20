@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include <stdio.h>
@@ -96,7 +103,7 @@ static void termination_handler(eventid_t id) {
     chThdSleepMilliseconds(10);
     cputs("Init: shell on SD1 terminated");
     chSysLock();
-    chOQResetI(&SD1.oqueue);
+    chOQResetI(&SD1.sd.oqueue);
     chSysUnlock();
   }
   if (shelltp2 && chThdTerminated(shelltp2)) {
@@ -105,7 +112,7 @@ static void termination_handler(eventid_t id) {
     chThdSleepMilliseconds(10);
     cputs("Init: shell on SD2 terminated");
     chSysLock();
-    chOQResetI(&SD2.oqueue);
+    chOQResetI(&SD2.sd.oqueue);
     chSysUnlock();
   }
 }
@@ -128,7 +135,7 @@ static void sd1_handler(eventid_t id) {
   if (flags & SD_DISCONNECTED) {
     cputs("Init: disconnection on SD1");
     chSysLock();
-    chIQResetI(&SD1.iqueue);
+    chIQResetI(&SD1.sd.iqueue);
     chSysUnlock();
   }
 }
@@ -151,7 +158,7 @@ static void sd2_handler(eventid_t id) {
   if (flags & SD_DISCONNECTED) {
     cputs("Init: disconnection on SD2");
     chSysLock();
-    chIQResetI(&SD2.iqueue);
+    chIQResetI(&SD2.sd.iqueue);
     chSysUnlock();
   }
 }
@@ -202,10 +209,10 @@ int main(void) {
   cputs("Shell service started on SD1, SD2");
   cputs("  - Listening for connections on SD1");
   (void) sdGetAndClearFlags(&SD1);
-  chEvtRegister(&SD1.sevent, &sd1fel, 1);
+  chEvtRegister(&SD1.sd.sevent, &sd1fel, 1);
   cputs("  - Listening for connections on SD2");
   (void) sdGetAndClearFlags(&SD2);
-  chEvtRegister(&SD2.sevent, &sd2fel, 2);
+  chEvtRegister(&SD2.sd.sevent, &sd2fel, 2);
 
   /*
    * Events servicing loop.
@@ -216,7 +223,7 @@ int main(void) {
   /*
    * Clean simulator exit.
    */
-  chEvtUnregister(&SD1.sevent, &sd1fel);
-  chEvtUnregister(&SD2.sevent, &sd2fel);
+  chEvtUnregister(&SD1.sd.sevent, &sd1fel);
+  chEvtUnregister(&SD2.sd.sevent, &sd2fel);
   return 0;
 }

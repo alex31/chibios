@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,17 +10,23 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    chmsg.c
- * @brief   Messages code.
- *
+ * @file chmsg.c
+ * @brief Messages code.
  * @addtogroup messages
  * @{
  */
@@ -36,64 +42,60 @@
 #endif
 
 /**
- * @brief   Sends a message to the specified thread.
+ * @brief Sends a message to the specified thread.
  * @details The sender is stopped until the receiver executes a
  *          @p chMsgRelease()after receiving the message.
  *
- * @param[in] tp        the pointer to the thread
- * @param[in] msg       the message
- * @return              The answer message from @p chMsgRelease().
+ * @param[in] tp the pointer to the thread
+ * @param[in] msg the message
+ * @return The return message from @p chMsgRelease().
  */
 msg_t chMsgSend(Thread *tp, msg_t msg) {
-  Thread *ctp = currp;
 
   chDbgCheck(tp != NULL, "chMsgSend");
 
   chSysLock();
-  ctp->p_msg = msg;
-  ctp->p_u.wtobjp = &tp->p_msgqueue;
-  msg_insert(ctp, &tp->p_msgqueue);
-  if (tp->p_state == THD_STATE_WTMSG)
+  msg_insert(currp, &tp->p_msgqueue);
+  currp->p_msg = msg;
+  currp->p_wtthdp = tp;
+  if (tp->p_state == PRWTMSG)
     chSchReadyI(tp);
-  chSchGoSleepS(THD_STATE_SNDMSG);
-  msg = ctp->p_u.rdymsg;
+  chSchGoSleepS(PRSNDMSG);
+  msg = currp->p_rdymsg;
   chSysUnlock();
   return msg;
 }
 
 /**
- * @brief   Suspends the thread and waits for an incoming message.
- * @note    You can assume that the data contained in the message is stable
- *          until you invoke @p chMsgRelease() because the sending thread is
- *          suspended until then.
+ * @brief Suspends the thread and waits for an incoming message.
  *
- * @return              The pointer to the message structure. Note, it is
- *                      always the message associated to the thread on the
- *                      top of the messages queue.
+ * @return The pointer to the message structure. Note, it is always the
+ *         message associated to the thread on the top of the messages queue.
+ * @note You can assume that the data contained in the message is stable until
+ *       you invoke @p chMsgRelease() because the sending thread is
+ *       suspended until then.
  */
 msg_t chMsgWait(void) {
   msg_t msg;
 
   chSysLock();
   if (!chMsgIsPendingI(currp))
-    chSchGoSleepS(THD_STATE_WTMSG);
+    chSchGoSleepS(PRWTMSG);
   msg = chMsgGetI(currp);
   chSysUnlock();
   return msg;
 }
 
 /**
- * @brief   Returns the next message in the queue.
- * @note    You can assume that the data pointed by the message is stable until
- *          you invoke @p chMsgRelease() because the sending thread is
- *          suspended until then. Always remember that the message data is not
- *          copied between the sender and the receiver, just a pointer is
- *          passed.
+ * @brief Returns the next message in the queue.
  *
- * @return              The pointer to the message structure. Note, it is
- *                      always the message associated to the thread on the
- *                      top of the messages queue.
- * @retval NULL         if the queue is empty.
+ * @return The pointer to the message structure. Note, it is always the
+ *         message associated to the thread on the top of the messages queue.
+ *         If the queue is empty then @p NULL is returned.
+ * @note You can assume that the data pointed by the message is stable until
+ *       you invoke @p chMsgRelease() because the sending thread is
+ *       suspended until then. Always remember that the message data is not
+ *       copied between the sender and the receiver, just a pointer is passed.
  */
 msg_t chMsgGet(void) {
   msg_t msg;
@@ -105,15 +107,15 @@ msg_t chMsgGet(void) {
 }
 
 /**
- * @brief   Releases the thread waiting on top of the messages queue.
- * @note    You can call this function only if there is a message already in
- *          the queue else the result will be unpredictable (a crash most likely).
- *          Exiting from the @p chMsgWait() ensures you have at least one
- *          message in the queue so it is not a big deal.<br>
- *          The condition is only tested in debug mode in order to make this
- *          code as fast as possible.
+ * @brief Releases the thread waiting on top of the messages queue.
  *
- * @param[in] msg       the message returned to the message sender
+ * @param[in] msg the message returned to the message sender
+ * @note You can call this function only if there is a message already in the
+ *       queue else the result will be unpredictable (a crash most likely).
+ *       Exiting from the @p chMsgWait() ensures you have at least one
+ *       message in the queue so it is not a big deal.<br>
+ *       The condition is only tested in debug mode in order to make this code
+ *       as fast as possible.
  */
 void chMsgRelease(msg_t msg) {
 

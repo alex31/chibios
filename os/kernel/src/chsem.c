@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2007 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,17 +10,23 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    chsem.c
- * @brief   Semaphores code.
- *
+ * @file chsem.c
+ * @brief Semaphores code.
  * @addtogroup semaphores
  * @{
  */
@@ -36,11 +42,13 @@
 #endif
 
 /**
- * @brief   Initializes a semaphore with the specified counter value.
+ * @brief Initializes a semaphore with the specified counter value.
  *
- * @param[out] sp       pointer to a @p Semaphore structure
- * @param[in] n         initial value of the semaphore counter. Must be
- *                      non-negative.
+ * @param[out] sp pointer to a @p Semaphore structure
+ * @param[in] n initial value of the semaphore counter. Must be non-negative.
+ * @note This function can be invoked from within an interrupt handler even if
+ *       it is not an I-Class API because it does not touch any critical kernel
+ *       data structure.
  */
 void chSemInit(Semaphore *sp, cnt_t n) {
 
@@ -51,14 +59,13 @@ void chSemInit(Semaphore *sp, cnt_t n) {
 }
 
 /**
- * @brief   Performs a reset operation on the semaphore.
- * @note    The released threads can recognize they were waked up by a reset
- *          rather than a signal because the @p chSemWait() will return
- *          @p RDY_RESET instead of @p RDY_OK.
+ * @brief Performs a reset operation on the semaphore.
  *
- * @param[in] sp        pointer to a @p Semaphore structure
- * @param[in] n         the new value of the semaphore counter. The value must
- *                      be non-negative.
+ * @param[in] sp pointer to a @p Semaphore structure
+ * @param[in] n the new value of the semaphore counter. The value must be non-negative.
+ * @note The released threads can recognize they were waked up by a reset
+ *       instead than a signal because the @p chSemWait() will return
+ *       @p RDY_RESET instead of @p RDY_OK.
  */
 void chSemReset(Semaphore *sp, cnt_t n) {
 
@@ -69,15 +76,14 @@ void chSemReset(Semaphore *sp, cnt_t n) {
 }
 
 /**
- * @brief   Performs a reset operation on the semaphore.
- * @note    The released threads can recognize they were waked up by a reset
- *          rather than a signal because the @p chSemWait() will return
- *          @p RDY_RESET instead of @p RDY_OK.
- * @note    This function does not reschedule.
+ * @brief Performs a reset operation on the semaphore.
  *
- * @param[in] sp        pointer to a @p Semaphore structure
- * @param[in] n         the new value of the semaphore counter. The value must
- *                      be non-negative.
+ * @param[in] sp pointer to a @p Semaphore structure
+ * @param[in] n the new value of the semaphore counter. The value must be non-negative.
+ * @note The released threads can recognize they were waked up by a reset
+ *       instead than a signal because the @p chSemWait() will return
+ *       @p RDY_RESET instead of @p RDY_OK.
+ * @note This function does not reschedule.
  */
 void chSemResetI(Semaphore *sp, cnt_t n) {
   cnt_t cnt;
@@ -87,15 +93,15 @@ void chSemResetI(Semaphore *sp, cnt_t n) {
   cnt = sp->s_cnt;
   sp->s_cnt = n;
   while (cnt++ < 0)
-    chSchReadyI(lifo_remove(&sp->s_queue))->p_u.rdymsg = RDY_RESET;
+    chSchReadyI(lifo_remove(&sp->s_queue))->p_rdymsg = RDY_RESET;
 }
 
 /**
- * @brief   Performs a wait operation on a semaphore.
+ * @brief Performs a wait operation on a semaphore.
  *
- * @param[in] sp        pointer to a @p Semaphore structure
- * @retval RDY_OK       if the semaphore was signaled or not taken.
- * @retval RDY_RESET    if the semaphore was reset using @p chSemReset().
+ * @param[in] sp pointer to a @p Semaphore structure
+ * @retval RDY_OK if the semaphore was signaled or not taken.
+ * @retval RDY_RESET if the semaphore was reset using @p chSemReset().
  */
 msg_t chSemWait(Semaphore *sp) {
   msg_t msg;
@@ -107,11 +113,13 @@ msg_t chSemWait(Semaphore *sp) {
 }
 
 /**
- * @brief   Performs a wait operation on a semaphore.
+ * @brief Performs a wait operation on a semaphore.
  *
- * @param[in] sp        pointer to a @p Semaphore structure
- * @retval RDY_OK       if the semaphore was signaled or not taken.
- * @retval RDY_RESET    if the semaphore was reset using @p chSemReset().
+ * @param[in] sp pointer to a @p Semaphore structure
+ * @retval RDY_OK if the semaphore was signaled or not taken.
+ * @retval RDY_RESET if the semaphore was reset using @p chSemReset().
+ * @note This function must be called with interrupts disabled.
+ * @note This function cannot be called by an interrupt handler.
  */
 msg_t chSemWaitS(Semaphore *sp) {
 
@@ -119,26 +127,26 @@ msg_t chSemWaitS(Semaphore *sp) {
 
   if (--sp->s_cnt < 0) {
     sem_insert(currp, &sp->s_queue);
-    currp->p_u.wtobjp = sp;
-    chSchGoSleepS(THD_STATE_WTSEM);
-    return currp->p_u.rdymsg;
+    currp->p_wtsemp = sp;
+    chSchGoSleepS(PRWTSEM);
+    return currp->p_rdymsg;
   }
   return RDY_OK;
 }
 
 /**
- * @brief   Performs a wait operation on a semaphore with timeout specification.
+ * @brief Performs a wait operation on a semaphore with timeout specification.
  *
- * @param[in] sp        pointer to a @p Semaphore structure
- * @param[in] time      the number of ticks before the operation timeouts,
- *                      the following special values are allowed:
- *                      - @a TIME_IMMEDIATE immediate timeout.
- *                      - @a TIME_INFINITE no timeout.
- *                      .
- * @retval RDY_OK       if the semaphore was signaled or not taken.
- * @retval RDY_RESET    if the semaphore was reset using @p chSemReset().
- * @retval RDY_TIMEOUT  if the semaphore was not signaled or reset within the
- *                      specified timeout.
+ * @param[in] sp pointer to a @p Semaphore structure
+ * @param[in] time the number of ticks before the operation timeouts,
+ *             the following special values are allowed:
+ *             - @a TIME_IMMEDIATE immediate timeout.
+ *             - @a TIME_INFINITE no timeout.
+ *             .
+ * @retval RDY_OK if the semaphore was signaled or not taken.
+ * @retval RDY_RESET if the semaphore was reset using @p chSemReset().
+ * @retval RDY_TIMEOUT if the semaphore was not signaled or reset within the
+ *         specified timeout.
  */
 msg_t chSemWaitTimeout(Semaphore *sp, systime_t time) {
   msg_t msg;
@@ -150,18 +158,18 @@ msg_t chSemWaitTimeout(Semaphore *sp, systime_t time) {
 }
 
 /**
- * @brief   Performs a wait operation on a semaphore with timeout specification.
+ * @brief Performs a wait operation on a semaphore with timeout specification.
  *
- * @param[in] sp        pointer to a @p Semaphore structure
- * @param[in] time      the number of ticks before the operation timeouts,
- *                      the following special values are allowed:
- *                      - @a TIME_IMMEDIATE immediate timeout.
- *                      - @a TIME_INFINITE no timeout.
- *                      .
- * @retval RDY_OK       if the semaphore was signaled or not taken.
- * @retval RDY_RESET    if the semaphore was reset using @p chSemReset().
- * @retval RDY_TIMEOUT  if the semaphore was not signaled or reset within the
- *                      specified timeout.
+ * @param[in] sp pointer to a @p Semaphore structure
+ * @param[in] time the number of ticks before the operation timeouts,
+ *                 the following special values are allowed:
+ *                 - @a TIME_IMMEDIATE immediate timeout.
+ *                 - @a TIME_INFINITE no timeout.
+ *                 .
+ * @retval RDY_OK if the semaphore was signaled or not taken.
+ * @retval RDY_RESET if the semaphore was reset using @p chSemReset().
+ * @retval RDY_TIMEOUT if the semaphore was not signaled or reset within the specified
+ *         timeout.
  */
 msg_t chSemWaitTimeoutS(Semaphore *sp, systime_t time) {
 
@@ -173,16 +181,18 @@ msg_t chSemWaitTimeoutS(Semaphore *sp, systime_t time) {
       return RDY_TIMEOUT;
     }
     sem_insert(currp, &sp->s_queue);
-    currp->p_u.wtobjp = sp;
-    return chSchGoSleepTimeoutS(THD_STATE_WTSEM, time);
+    currp->p_wtsemp = sp;
+    return chSchGoSleepTimeoutS(PRWTSEM, time);
   }
   return RDY_OK;
 }
 
 /**
- * @brief   Performs a signal operation on a semaphore.
+ * @brief Performs a signal operation on a semaphore.
  *
- * @param[in] sp        pointer to a @p Semaphore structure
+ * @param[in] sp pointer to a @p Semaphore structure
+ * @note The function is available only if the @p CH_USE_SEMAPHORES
+ *       option is enabled in @p chconf.h.
  */
 void chSemSignal(Semaphore *sp) {
 
@@ -195,34 +205,36 @@ void chSemSignal(Semaphore *sp) {
 }
 
 /**
- * @brief   Performs a signal operation on a semaphore.
- * @note    This function does not reschedule.
+ * @brief Performs a signal operation on a semaphore.
  *
- * @param[in] sp    pointer to a @p Semaphore structure
+ * @param[in] sp pointer to a @p Semaphore structure
+ * @note The function is available only if the @p CH_USE_SEMAPHORES
+ *       option is enabled in @p chconf.h.
+ * @note This function does not reschedule.
  */
 void chSemSignalI(Semaphore *sp) {
 
   chDbgCheck(sp != NULL, "chSemSignalI");
 
   if (sp->s_cnt++ < 0) {
-    /* note, it is done this way in order to allow a tail call on
+    /* NOTE: It is done this way in order to allow a tail call on
              chSchReadyI().*/
     Thread *tp = fifo_remove(&sp->s_queue);
-    tp->p_u.rdymsg = RDY_OK;
+    tp->p_rdymsg = RDY_OK;
     chSchReadyI(tp);
   }
 }
 
 #if CH_USE_SEMSW
 /**
- * @brief   Performs atomic signal and wait operations on two semaphores.
- * @note    The function is available only if the @p CH_USE_SEMSW
- *          option is enabled in @p chconf.h.
+ * @brief Performs atomic signal and wait operations on two semaphores.
  *
- * @param[in] sps       pointer to a @p Semaphore structure to be signaled
- * @param[in] spw       pointer to a @p Semaphore structure to be wait on
- * @retval RDY_OK       if the semaphore was signaled or not taken.
- * @retval RDY_RESET    if the semaphore was reset using @p chSemReset().
+ * @param[in] sps pointer to a @p Semaphore structure to be signaled
+ * @param[in] spw pointer to a @p Semaphore structure to be wait on
+ * @retval RDY_OK if the semaphore was signaled or not taken.
+ * @retval RDY_RESET if the semaphore was reset using @p chSemReset().
+ * @note The function is available only if the @p CH_USE_SEMSW
+ *       option is enabled in @p chconf.h.
  */
 msg_t chSemSignalWait(Semaphore *sps, Semaphore *spw) {
   msg_t msg;
@@ -231,12 +243,12 @@ msg_t chSemSignalWait(Semaphore *sps, Semaphore *spw) {
 
   chSysLock();
   if (sps->s_cnt++ < 0)
-    chSchReadyI(fifo_remove(&sps->s_queue))->p_u.rdymsg = RDY_OK;
+    chSchReadyI(fifo_remove(&sps->s_queue))->p_rdymsg = RDY_OK;
   if (--spw->s_cnt < 0) {
     sem_insert(currp, &spw->s_queue);
-    currp->p_u.wtobjp = spw;
-    chSchGoSleepS(THD_STATE_WTSEM);
-    msg = currp->p_u.rdymsg;
+    currp->p_wtsemp = spw;
+    chSchGoSleepS(PRWTSEM);
+    msg = currp->p_rdymsg;
   }
   else {
     chSchRescheduleS();
