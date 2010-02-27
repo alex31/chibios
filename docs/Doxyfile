@@ -31,7 +31,7 @@ PROJECT_NAME           = ChibiOS/RT
 # This could be handy for archiving the generated documentation or
 # if some version control system is used.
 
-PROJECT_NUMBER         = 1.4.1
+PROJECT_NUMBER         = 1.5.2
 
 # The OUTPUT_DIRECTORY tag is used to specify the (relative or absolute)
 # base path where the generated documentation will be put.
@@ -584,6 +584,8 @@ INPUT                  = ../docs/src \
                          ../os/ports/GCC/ARM7/chcoreasm.s \
                          ../os/ports/GCC/ARMCM3 \
                          ../os/ports/GCC/ARMCM3/crt0.s \
+                         ../os/ports/GCC/PPC \
+                         ../os/ports/GCC/PPC/crt0.s \
                          ../os/ports/GCC/MSP430 \
                          ../os/ports/GCC/AVR \
                          ../os/hal \
@@ -596,7 +598,8 @@ INPUT                  = ../docs/src \
                          ../os/hal/platforms/MSP430 \
                          ../os/hal/platforms/STM32 \
                          ../os/various \
-                         ../test
+                         ../test \
+                         ../ext/ext.dox
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is
@@ -1313,6 +1316,7 @@ PREDEFINED             = __DOXYGEN__ \
                          CH_USE_MESSAGES=1 \
                          CH_USE_MAILBOXES=1 \
                          CH_USE_DYNAMIC=1 \
+                         CH_USE_REGISTRY=1 \
                          CH_DBG_ENABLE_ASSERTS=1 \
                          CH_DBG_ENABLE_CHECKS=1 \
                          CH_DBG_ENABLE_TRACE=1 \

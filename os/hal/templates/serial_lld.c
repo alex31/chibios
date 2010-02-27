@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file templates/serial_lld.c
- * @brief Serial Driver subsystem low level driver source template.
+ * @file    templates/serial_lld.c
+ * @brief   Serial Driver subsystem low level driver source template.
+ *
  * @addtogroup SERIAL_LLD
  * @{
  */
@@ -44,7 +38,9 @@
 /* Driver local variables.                                                   */
 /*===========================================================================*/
 
-/** @brief Driver default configuration.*/
+/**
+ * @brief   Driver default configuration.
+ */
 static const SerialConfig default_config = {
 };
 
@@ -61,30 +57,30 @@ static const SerialConfig default_config = {
 /*===========================================================================*/
 
 /**
- * Low level serial driver initialization.
+ * @brief   Low level serial driver initialization.
  */
 void sd_lld_init(void) {
 
 }
 
 /**
- * @brief Low level serial driver configuration and (re)start.
+ * @brief   Low level serial driver configuration and (re)start.
  *
- * @param[in] sdp pointer to a @p SerialDriver object
+ * @param[in] sdp       pointer to a @p SerialDriver object
  */
 void sd_lld_start(SerialDriver *sdp) {
 
-  if (sdp->sd.config == NULL)
-    sdp->sd.config = &default_config;
+  if (sdp->config == NULL)
+    sdp->config = &default_config;
 
 }
 
 /**
- * @brief Low level serial driver stop.
+ * @brief   Low level serial driver stop.
  * @details De-initializes the USART, stops the associated clock, resets the
  *          interrupt vector.
  *
- * @param[in] sdp pointer to a @p SerialDriver object
+ * @param[in] sdp       pointer to a @p SerialDriver object
  */
 void sd_lld_stop(SerialDriver *sdp) {
 

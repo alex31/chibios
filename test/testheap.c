@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "ch.h"
@@ -121,7 +114,10 @@ static void heap1_execute(void) {
   chHeapFree(p1);
   test_assert(5, chHeapStatus(&test_heap, &n) == 2, "invalid state");
   p1 = chHeapAlloc(&test_heap, SIZE);
-  test_assert(6, chHeapStatus(&test_heap, &n) == 1, "heap fragmented");
+  /* Note, the first situation happens when the alignment size is smaller
+     than the header size, the second in the other cases.*/
+  test_assert(6, (chHeapStatus(&test_heap, &n) == 1) ||
+                 (chHeapStatus(&test_heap, &n) == 2), "heap fragmented");
   chHeapFree(p2);
   chHeapFree(p1);
   test_assert(7, chHeapStatus(&test_heap, &n) == 1, "heap fragmented");

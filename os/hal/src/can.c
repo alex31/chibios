@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file CAN.c
- * @brief CAN Driver code.
+ * @file    can.c
+ * @brief   CAN Driver code.
+ *
  * @addtogroup CAN
  * @{
  */
@@ -53,7 +47,7 @@
 /*===========================================================================*/
 
 /**
- * @brief CAN Driver initialization.
+ * @brief   CAN Driver initialization.
  */
 void canInit(void) {
 
@@ -61,7 +55,7 @@ void canInit(void) {
 }
 
 /**
- * @brief Initializes the standard part of a @p CANDriver structure.
+ * @brief   Initializes the standard part of a @p CANDriver structure.
  *
  * @param[in] canp      pointer to the @p CANDriver object
  */
@@ -82,7 +76,7 @@ void canObjectInit(CANDriver *canp) {
 }
 
 /**
- * @brief Configures and activates the CAN peripheral.
+ * @brief   Configures and activates the CAN peripheral.
  *
  * @param[in] canp      pointer to the @p CANDriver object
  * @param[in] config    pointer to the @p CANConfig object
@@ -108,7 +102,7 @@ void canStart(CANDriver *canp, const CANConfig *config) {
 }
 
 /**
- * @brief Deactivates the CAN peripheral.
+ * @brief   Deactivates the CAN peripheral.
  *
  * @param[in] canp      pointer to the @p CANDriver object
  */
@@ -130,10 +124,10 @@ void canStop(CANDriver *canp) {
 }
 
 /**
- * @brief Can frame transmission.
+ * @brief   Can frame transmission.
  * @details The specified frame is queued for transmission, if the hardware
  *          queue is full then the invoking thread is queued.
- * @note Trying to transmit while in sleep mode simply enqueues the thread.
+ * @note    Trying to transmit while in sleep mode simply enqueues the thread.
  *
  * @param[in] canp      pointer to the @p CANDriver object
  * @param[in] ctfp       pointer to the CAN frame to be transmitted
@@ -142,10 +136,10 @@ void canStop(CANDriver *canp) {
  *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      - @a TIME_INFINITE no timeout.
  *                      .
- * @return The operation result.
- * @retval RDY_OK the frame has been queued for transmission.
- * @retval RDY_TIMEOUT operation not finished within the specified time.
- * @retval RDY_RESET driver stopped while waiting.
+ * @return              The operation result.
+ * @retval RDY_OK       the frame has been queued for transmission.
+ * @retval RDY_TIMEOUT  operation not finished within the specified time.
+ * @retval RDY_RESET    driver stopped while waiting.
  */
 msg_t canTransmit(CANDriver *canp, const CANTxFrame *ctfp, systime_t timeout) {
 
@@ -168,9 +162,9 @@ msg_t canTransmit(CANDriver *canp, const CANTxFrame *ctfp, systime_t timeout) {
 }
 
 /**
- * @brief Can frame receive.
+ * @brief   Can frame receive.
  * @details The function waits until a frame is received.
- * @note Trying to receive while in sleep mode simply enqueues the thread.
+ * @note    Trying to receive while in sleep mode simply enqueues the thread.
  *
  * @param[in] canp      pointer to the @p CANDriver object
  * @param[out] crfp     pointer to the buffer where the CAN frame is copied
@@ -181,11 +175,12 @@ msg_t canTransmit(CANDriver *canp, const CANTxFrame *ctfp, systime_t timeout) {
  *                        for I/O).
  *                      - @a TIME_INFINITE no timeout.
  *                      .
- * @return The operation result.
- * @retval RDY_OK a frame has been received and placed in the buffer.
- * @retval RDY_TIMEOUT operation not finished within the specified time or
- *         frame not immediately available if invoked using @p TIME_IMMEDIATE.
- * @retval RDY_RESET driver stopped while waiting.
+ * @return              The operation result.
+ * @retval RDY_OK       a frame has been received and placed in the buffer.
+ * @retval RDY_TIMEOUT  operation not finished within the specified time or
+ *                      frame not immediately available if invoked using
+ *                      @p TIME_IMMEDIATE.
+ * @retval RDY_RESET    driver stopped while waiting.
  */
 msg_t canReceive(CANDriver *canp, CANRxFrame *crfp, systime_t timeout) {
 
@@ -208,11 +203,10 @@ msg_t canReceive(CANDriver *canp, CANRxFrame *crfp, systime_t timeout) {
 }
 
 /**
- * @brief Returns the current status mask and clears it.
+ * @brief   Returns the current status mask and clears it.
  *
  * @param[in] canp      pointer to the @p CANDriver object
- *
- * @return The status flags mask.
+ * @return              The status flags mask.
  */
 canstatus_t canGetAndClearFlags(CANDriver *canp) {
   canstatus_t status;
@@ -226,7 +220,7 @@ canstatus_t canGetAndClearFlags(CANDriver *canp) {
 
 #if CAN_USE_SLEEP_MODE || defined(__DOXYGEN__)
 /**
- * @brief Enters the sleep mode.
+ * @brief   Enters the sleep mode.
  *
  * @param[in] canp      pointer to the @p CANDriver object
  */
@@ -248,9 +242,9 @@ void canSleep(CANDriver *canp) {
 }
 
 /**
- * @brief Enforces leaving the sleep mode.
- * @note The sleep mode is supposed to be usually exited automatically by an
- *       hardware event.
+ * @brief   Enforces leaving the sleep mode.
+ * @note    The sleep mode is supposed to be usually exited automatically by
+ *          an hardware event.
  *
  * @param[in] canp      pointer to the @p CANDriver object
  */

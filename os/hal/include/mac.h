@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,16 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file mac.h
- * @brief MAC Driver macros and structures.
+ * @file    mac.h
+ * @brief   MAC Driver macros and structures.
  * @addtogroup MAC
  * @{
  */
@@ -63,37 +56,38 @@
 /*===========================================================================*/
 
 /**
- * @brief Returns the received frames event source.
+ * @brief   Returns the received frames event source.
  *
- * @param[in] macp pointer to the @p MACDriver object
- * @return The pointer to the @p EventSource structure.
+ * @param[in] macp      pointer to the @p MACDriver object
+ * @return              The pointer to the @p EventSource structure.
  */
 #if CH_USE_EVENTS || defined(__DOXYGEN__)
 #define macGetReceiveEventSource(macp)  (&(macp)->md_rdevent)
 #endif
 
 /**
- * @brief Writes to a transmit descriptor's stream.
+ * @brief   Writes to a transmit descriptor's stream.
  *
- * @param[in] tdp pointer to a @p MACTransmitDescriptor structure
- * @param[in] buf pointer to the buffer containing the data to be written
- * @param[in] size number of bytes to be written
- * @return The number of bytes written into the descriptor's stream, this
- *         value can be less than the amount specified in the parameter
- *         @p size if the maximum frame size is reached.
+ * @param[in] tdp       pointer to a @p MACTransmitDescriptor structure
+ * @param[in] buf       pointer to the buffer containing the data to be written
+ * @param[in] size      number of bytes to be written
+ * @return              The number of bytes written into the descriptor's
+ *                      stream, this value can be less than the amount
+ *                      specified in the parameter @p size if the maximum frame
+ *                      size is reached.
  */
 #define macWriteTransmitDescriptor(tdp, buf, size)                          \
     mac_lld_write_transmit_descriptor(tdp, buf, size)
 
 /**
- * @brief Reads from a receive descriptor's stream.
+ * @brief   Reads from a receive descriptor's stream.
  *
- * @param[in] rdp pointer to a @p MACReceiveDescriptor structure
- * @param[in] buf pointer to the buffer that will receive the read data
- * @param[in] size number of bytes to be read
- * @return The number of bytes read from the descriptor's stream, this
- *         value can be less than the amount specified in the parameter
- *         @p size if there are no more bytes to read.
+ * @param[in] rdp   pointer to a @p MACReceiveDescriptor structure
+ * @param[in] buf   pointer to the buffer that will receive the read data
+ * @param[in] size  number of bytes to be read
+ * @return          The number of bytes read from the descriptor's stream, this
+ *                  value can be less than the amount specified in the
+ *                  parameter @p size if there are no more bytes to read.
  */
 #define macReadReceiveDescriptor(rdp, buf, size)                            \
     mac_lld_read_receive_descriptor(rdp, buf, size)

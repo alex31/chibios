@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file templates/pwm_lld.h
- * @brief PWM Driver subsystem low level driver header template.
+ * @file    templates/pwm_lld.h
+ * @brief   PWM Driver subsystem low level driver header template.
+ *
  * @addtogroup PWM_LLD
  * @{
  */
@@ -43,7 +37,7 @@
 /*===========================================================================*/
 
 /**
- * @brief Number of PWM channels per PWM driver.
+ * @brief   Number of PWM channels per PWM driver.
  */
 #if !defined(PWM_CHANNELS) || defined(__DOXYGEN__)
 #define PWM_CHANNELS        1
@@ -58,25 +52,25 @@
 /*===========================================================================*/
 
 /**
- * @brief PWM channel type.
+ * @brief   PWM channel type.
  */
 typedef uint8_t pwmchannel_t;
 
 /**
- * @brief PWM counter type.
+ * @brief   PWM counter type.
  */
 typedef uint16_t pwmcnt_t;
 
 /**
- * @brief Driver configuration structure.
- * @note It could be empty on some architectures.
+ * @brief   Driver configuration structure.
+ * @note    It could be empty on some architectures.
  */
 typedef struct {
 
 } PWMConfig;
 
 /**
- * @brief Structure representing an PWM driver.
+ * @brief   Structure representing an PWM driver.
  */
 typedef struct {
   /**
