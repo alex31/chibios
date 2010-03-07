@@ -18,10 +18,10 @@
 */
 
 /**
- * @file    Win32/pal_lld.c
- * @brief   Win32 low level simulated PAL driver code.
+ * @file    STM8/pal_lld.c
+ * @brief   STM8 GPIO low level driver code.
  *
- * @addtogroup WIN32_PAL
+ * @addtogroup STM8_PAL
  * @{
  */
 
@@ -33,16 +33,6 @@
 /*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
-
-/**
- * @brief   VIO1 simulated port.
- */
-sim_vio_port_t vio_port_1;
-
-/**
- * @brief   VIO2 simulated port.
- */
-sim_vio_port_t vio_port_2;
 
 /*===========================================================================*/
 /* Driver local variables.                                                   */
@@ -59,39 +49,6 @@ sim_vio_port_t vio_port_2;
 /*===========================================================================*/
 /* Driver exported functions.                                                */
 /*===========================================================================*/
-
-/**
- * @brief Pads mode setup.
- * @details This function programs a pads group belonging to the same port
- *          with the specified mode.
- *
- * @param[in] port the port identifier
- * @param[in] mask the group mask
- * @param[in] mode the mode
- *
- * @note This function is not meant to be invoked directly by the application
- *       code.
- * @note @p PAL_MODE_UNCONNECTED is implemented as push pull output with high
- *       state.
- * @note This function does not alter the @p PINSELx registers. Alternate
- *       functions setup must be handled by device-specific code.
- */
-void _pal_lld_setgroupmode(ioportid_t port,
-                           ioportmask_t mask,
-                           uint_fast8_t mode) {
-
-  switch (mode) {
-  case PAL_MODE_RESET:
-  case PAL_MODE_INPUT:
-    port->dir &= ~mask;
-    break;
-  case PAL_MODE_UNCONNECTED:
-    port->latch |= mask;
-  case PAL_MODE_OUTPUT_PUSHPULL:
-    port->dir |= mask;
-    break;
-  }
-}
 
 #endif /* CH_HAL_USE_PAL */
 

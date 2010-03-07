@@ -1,16 +1,14 @@
 ***************************************************************************
-Options:  -O2 -fomit-frame-pointer -mabi=apcs-gnu -falign-functions=16
-Settings: SYSCLK=72, ACR=0x12 (2 wait states)
+Options:  Optimized for speed (3)
+Settings: CPUCLK=16MHz (HSI)
+Compiler: Raisonance
 ***************************************************************************
 
 *** ChibiOS/RT test suite
 ***
 *** Kernel:       1.5.3unstable
-*** GCC Version:  4.4.2
-*** Architecture: ARM
-*** Core Variant: Cortex-M3
-*** Platform:     STM32
-*** Test Board:   Olimex STM32-P103
+*** Architecture: STM8
+*** Test Board:   Raisonance REva V3 + STM8S208RB
 
 ----------------------------------------------------------------------------
 --- Test Case 1.1 (Threads, enqueuing test #1)
@@ -34,34 +32,7 @@ Settings: SYSCLK=72, ACR=0x12 (2 wait states)
 --- Test Case 2.3 (Semaphores, atomic signal-wait)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
---- Test Case 3.1 (Mutexes, priority enqueuing test)
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 3.2 (Mutexes, priority inheritance, simple case)
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 3.3 (Mutexes, priority inheritance, complex case)
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 3.4 (Mutexes, priority return)
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 3.5 (Mutexes, status)
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 3.6 (CondVar, signal test)
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 3.7 (CondVar, broadcast test)
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 3.8 (CondVar, boost test)
---- Result: SUCCESS
-----------------------------------------------------------------------------
 --- Test Case 4.1 (Messages, loop)
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 5.1 (Mailboxes, queuing and timeouts)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 6.1 (Events, registration and dispatch)
@@ -92,64 +63,57 @@ Settings: SYSCLK=72, ACR=0x12 (2 wait states)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.1 (Benchmark, messages #1)
---- Score : 223892 msgs/S, 447784 ctxswc/S
+--- Score : 31840 msgs/S, 63680 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.2 (Benchmark, messages #2)
---- Score : 187652 msgs/S, 375304 ctxswc/S
+--- Score : 24743 msgs/S, 49486 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.3 (Benchmark, messages #3)
---- Score : 187652 msgs/S, 375304 ctxswc/S
+--- Score : 24743 msgs/S, 49486 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.4 (Benchmark, context switch)
---- Score : 696944 ctxswc/S
+--- Score : 112568 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.5 (Benchmark, threads, full cycle)
---- Score : 146984 threads/S
+--- Score : 18457 threads/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.6 (Benchmark, threads, create only)
---- Score : 203030 threads/S
+--- Score : 28904 threads/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.7 (Benchmark, mass reschedulation, 5 threads)
---- Score : 56954 reschedulations/S, 341724 ctxswc/S
+--- Score : 7336 reschedulations/S, 44016 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.8 (Benchmark, round robin context switching)
---- Score : 505284 reschedulations/S, 505284 ctxswc/S
+--- Score : 71920 reschedulations/S, 71920 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.9 (Benchmark, I/O Queues throughput)
---- Score : 475040 bytes/S
+--- Score : 69028 bytes/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.10 (Benchmark, virtual timers set/reset)
---- Score : 647640 timers/S
+--- Score : 64712 timers/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.11 (Benchmark, semaphores wait/signal)
---- Score : 833440 wait+signal/S
+--- Score : 201052 wait+signal/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
---- Test Case 11.12 (Benchmark, mutexes lock/unlock)
---- Score : 644680 lock+unlock/S
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 11.13 (Benchmark, RAM footprint)
---- System: 332 bytes
---- Thread: 68 bytes
---- Timer : 20 bytes
---- Semaph: 12 bytes
---- EventS: 4 bytes
---- EventL: 12 bytes
---- Mutex : 16 bytes
---- CondV.: 8 bytes
---- Queue : 32 bytes
---- MailB.: 40 bytes
+--- Test Case 11.12 (Benchmark, RAM footprint)
+--- System: 179 bytes
+--- Thread: 29 bytes
+--- Timer : 10 bytes
+--- Semaph: 6 bytes
+--- EventS: 2 bytes
+--- EventL: 5 bytes
+--- Queue : 16 bytes
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 

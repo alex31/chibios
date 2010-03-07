@@ -72,7 +72,9 @@ static msg_t thread1(void *p) {
   return 0;
 }
 
+#ifdef __GNUC__
 __attribute__((noinline))
+#endif
 static unsigned int msg_loop_test(Thread *tp) {
 
   uint32_t n = 0;
@@ -108,7 +110,6 @@ static void bmk1_execute(void) {
 
   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-1, thread1, NULL);
   n = msg_loop_test(threads[0]);
-  chThdTerminate(threads[0]);
   test_wait_threads();
   test_print("--- Score : ");
   test_printn(n);
@@ -143,7 +144,6 @@ static void bmk2_execute(void) {
 
   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread1, NULL);
   n = msg_loop_test(threads[0]);
-  chThdTerminate(threads[0]);
   test_wait_threads();
   test_print("--- Score : ");
   test_printn(n);
@@ -188,7 +188,6 @@ static void bmk3_execute(void) {
   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()-4, thread2, NULL);
   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()-5, thread2, NULL);
   n = msg_loop_test(threads[0]);
-  chThdTerminate(threads[0]);
   test_wait_threads();
   test_print("--- Score : ");
   test_printn(n);
@@ -235,9 +234,10 @@ msg_t thread4(void *p) {
 
 static void bmk4_execute(void) {
   Thread *tp;
+  uint32_t n;
 
   tp = threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread4, NULL);
-  uint32_t n = 0;
+  n = 0;
   test_wait_tick();
   test_start_timer(1000);
   do {
@@ -497,11 +497,12 @@ static char *bmk9_gettest(void) {
 }
 
 static void bmk9_execute(void) {
+  uint32_t n;
   static uint8_t ib[16];
   static InputQueue iq;
 
   chIQInit(&iq, ib, sizeof(ib), NULL);
-  uint32_t n = 0;
+  n = 0;
   test_wait_tick();
   test_start_timer(1000);
   do {
