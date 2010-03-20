@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -72,11 +79,10 @@ static msg_t thread1(void *p) {
   return 0;
 }
 
-#ifdef __GNUC__
-__attribute__((noinline))
+#ifdef __GNUC___
+_attribute__((noinline))
 #endif
 static unsigned int msg_loop_test(Thread *tp) {
-
   uint32_t n = 0;
   test_wait_tick();
   test_start_timer(1000);
@@ -225,8 +231,8 @@ msg_t thread4(void *p) {
   (void)p;
   chSysLock();
   do {
-    chSchGoSleepS(THD_STATE_SUSPENDED);
-    msg = self->p_u.rdymsg;
+    chSchGoSleepS(PRSUSPENDED);
+    msg = self->p_rdymsg;
   } while (msg == RDY_OK);
   chSysUnlock();
   return 0;
@@ -235,7 +241,6 @@ msg_t thread4(void *p) {
 static void bmk4_execute(void) {
   Thread *tp;
   uint32_t n;
-
   tp = threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread4, NULL);
   n = 0;
   test_wait_tick();
@@ -356,10 +361,10 @@ const struct testcase testbmk6 = {
 };
 
 /**
- * @page test_benchmarks_007 Mass reschedulation performance
+ * @page test_benchmarks_007 Mass reschedule performance
  *
  * <h2>Description</h2>
- * Five threads are created and atomically reschedulated by resetting the
+ * Five threads are created and atomically rescheduled by resetting the
  * semaphore where they are waiting on. The operation is performed into a
  * continuous loop.<br>
  * The performance is calculated by measuring the number of iterations after
@@ -376,7 +381,7 @@ static msg_t thread3(void *p) {
 
 static char *bmk7_gettest(void) {
 
-  return "Benchmark, mass reschedulation, 5 threads";
+  return "Benchmark, mass reschedule, 5 threads";
 }
 
 static void bmk7_setup(void) {
@@ -409,7 +414,7 @@ static void bmk7_execute(void) {
 
   test_print("--- Score : ");
   test_printn(n);
-  test_print(" reschedulations/S, ");
+  test_print(" reschedules/S, ");
   test_printn(n * 6);
   test_println(" ctxswc/S");
 }
@@ -422,7 +427,7 @@ const struct testcase testbmk7 = {
 };
 
 /**
- * @page test_benchmarks_008 I/O Round-Robin voluntary reschedulation.
+ * @page test_benchmarks_008 I/O Round-Robin voluntary reschedule.
  *
  * <h2>Description</h2>
  * Five threads are created at equal priority, each thread just increases a
@@ -469,8 +474,6 @@ static void bmk8_execute(void) {
 
   test_print("--- Score : ");
   test_printn(n);
-  test_print(" reschedulations/S, ");
-  test_printn(n);
   test_println(" ctxswc/S");
 }
 
@@ -497,8 +500,7 @@ static char *bmk9_gettest(void) {
 }
 
 static void bmk9_execute(void) {
-  uint32_t n;
-  static uint8_t ib[16];
+  uint32_t n;  static uint8_t ib[16];
   static InputQueue iq;
 
   chIQInit(&iq, ib, sizeof(ib), NULL);

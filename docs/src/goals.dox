@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -69,7 +76,7 @@
  * <h3>Fast and compact</h3>
  * Note, first "fast" then "compact", the focus is on speed and execution
  * efficiency and then on code size. This does not mean that the OS is large,
- * the kernel size with all the subsystems activated weighs around <b>5.3KiB</b>
+ * the kernel size with all the subsystems activated is around <b>5.2KiB</b>
  * and can shrink down around to <b>1.2Kib</b> in a minimal configuration
  * (STM32, Cortex-M3). It would be possible to make something even smaller but:
  * -# It would be pointless, it is already @a really small.
