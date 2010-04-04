@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,21 +10,15 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "ch.h"
+#include "hal.h"
 
 #include "test.h"
 #include "testthd.h"
@@ -76,7 +70,8 @@ Thread *threads[MAX_THREADS];
 /*
  * Pointers to the working areas.
  */
-void * const wa[5] = {test.waT0, test.waT1, test.waT2, test.waT3, test.waT4};
+void * const wa[5] = {test.wa.T0, test.wa.T1, test.wa.T2,
+                      test.wa.T3, test.wa.T4};
 
 /*
  * Console output.
@@ -271,11 +266,23 @@ msg_t TestThread(void *p) {
   test_println("***");
   test_print("*** Kernel:       ");
   test_println(CH_KERNEL_VERSION);
-  test_print("*** Architecture: ");
-  test_println(CH_ARCHITECTURE_NAME);
 #ifdef __GNUC__
   test_print("*** GCC Version:  ");
   test_println(__VERSION__);
+#endif
+  test_print("*** Architecture: ");
+  test_println(CH_ARCHITECTURE_NAME);
+#ifdef CH_CORE_VARIANT_NAME
+  test_print("*** Core Variant: ");
+  test_println(CH_CORE_VARIANT_NAME);
+#endif
+#ifdef PLATFORM_NAME
+  test_print("*** Platform:     ");
+  test_println(PLATFORM_NAME);
+#endif
+#ifdef BOARD_NAME
+  test_print("*** Test Board:   ");
+  test_println(BOARD_NAME);
 #endif
   test_println("");
 

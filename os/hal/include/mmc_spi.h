@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file mmc_spi.h
- * @brief MMC over SPI driver header.
+ * @file    mmc_spi.h
+ * @brief   MMC over SPI driver header.
+ *
  * @addtogroup MMC_SPI
  * @{
  */
@@ -59,14 +53,14 @@
 /*===========================================================================*/
 
 /**
- * @brief Block size for MMC transfers.
+ * @brief   Block size for MMC transfers.
  */
 #if !defined(MMC_SECTOR_SIZE) || defined(__DOXYGEN__)
 #define MMC_SECTOR_SIZE         512
 #endif
 
 /**
- * @brief Delays insertions.
+ * @brief   Delays insertions.
  * @details If enabled this options inserts delays into the MMC waiting
  *          routines releasing some extra CPU time for the threads with
  *          lower priority, this may slow down the driver a bit however.
@@ -78,15 +72,15 @@
 #endif
 
 /**
- * @brief Number of positive insertion queries before generating the
- *        insertion event.
+ * @brief   Number of positive insertion queries before generating the
+ *          insertion event.
  */
 #if !defined(MMC_POLLING_INTERVAL) || defined(__DOXYGEN__)
 #define MMC_POLLING_INTERVAL    10
 #endif
 
 /**
- * @brief Interval, in milliseconds, between insertion queries.
+ * @brief   Interval, in milliseconds, between insertion queries.
  */
 #if !defined(MMC_POLLING_DELAY) || defined(__DOXYGEN__)
 #define MMC_POLLING_DELAY       10
@@ -105,7 +99,7 @@
 /*===========================================================================*/
 
 /**
- * @brief Driver state machine possible states.
+ * @brief   Driver state machine possible states.
  */
 typedef enum {
   MMC_UNINIT = 0,                           /**< @brief Not initialized.    */
@@ -118,21 +112,21 @@ typedef enum {
 } mmcstate_t;
 
 /**
- * @brief Function used to query some hardware status bits.
+ * @brief   Function used to query some hardware status bits.
  *
- * @return The status.
+ * @return              The status.
  */
 typedef bool_t (*mmcquery_t)(void);
 
 /**
- * @brief Driver configuration structure.
+ * @brief   Driver configuration structure.
  */
 typedef struct {
 
 } MMCConfig;
 
 /**
- * @brief Structure representing a MMC driver.
+ * @brief   Structure representing a MMC driver.
  */
 typedef struct {
   /**
@@ -186,12 +180,12 @@ typedef struct {
 /*===========================================================================*/
 
 /**
- * @brief Returns the driver state.
+ * @brief   Returns the driver state.
  */
 #define mmcGetDriverState(mmcp) ((mmcp)->mmc_state)
 
 /**
- * @brief Returns the write protect status.
+ * @brief   Returns the write protect status.
  */
 #define mmcIsWriteProtected(mmcp) ((mmcp)->mmc_is_protected())
 

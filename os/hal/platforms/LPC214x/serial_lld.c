@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -71,14 +64,14 @@ static const SerialConfig default_config = {
  * @param[in] sdp communication channel associated to the UART
  */
 static void uart_init(SerialDriver *sdp) {
-  UART *u = sdp->sd.uart;
+  UART *u = sdp->uart;
 
-  uint32_t div = PCLK / (sdp->sd.config->sc_speed << 4);
-  u->UART_LCR = sdp->sd.config->sc_lcr | LCR_DLAB;
+  uint32_t div = PCLK / (sdp->config->sc_speed << 4);
+  u->UART_LCR = sdp->config->sc_lcr | LCR_DLAB;
   u->UART_DLL = div;
   u->UART_DLM = div >> 8;
-  u->UART_LCR = sdp->sd.config->sc_lcr;
-  u->UART_FCR = FCR_ENABLE | FCR_RXRESET | FCR_TXRESET | sdp->sd.config->sc_fcr;
+  u->UART_LCR = sdp->config->sc_lcr;
+  u->UART_FCR = FCR_ENABLE | FCR_RXRESET | FCR_TXRESET | sdp->config->sc_fcr;
   u->UART_ACR = 0;
   u->UART_FDR = 0x10;
   u->UART_TER = TER_ENABLE;
@@ -136,7 +129,7 @@ __attribute__((noinline))
  *       go through the whole ISR and have another interrupt soon after.
  */
 static void serve_interrupt(SerialDriver *sdp) {
-  UART *u = sdp->sd.uart;
+  UART *u = sdp->uart;
 
   while (TRUE) {
     switch (u->UART_IIR & IIR_SRC_MASK) {
@@ -148,12 +141,12 @@ static void serve_interrupt(SerialDriver *sdp) {
     case IIR_SRC_TIMEOUT:
     case IIR_SRC_RX:
       chSysLockFromIsr();
-      if (chIQIsEmpty(&sdp->sd.iqueue))
-        chEvtBroadcastI(&sdp->bac.ievent);
+      if (chIQIsEmpty(&sdp->iqueue))
+        chEvtBroadcastI(&sdp->ievent);
       chSysUnlockFromIsr();
       while (u->UART_LSR & LSR_RBR_FULL) {
         chSysLockFromIsr();
-        if (chIQPutI(&sdp->sd.iqueue, u->UART_RBR) < Q_OK)
+        if (chIQPutI(&sdp->iqueue, u->UART_RBR) < Q_OK)
            sdAddFlagsI(sdp, SD_OVERRUN_ERROR);
         chSysUnlockFromIsr();
       }
@@ -165,12 +158,12 @@ static void serve_interrupt(SerialDriver *sdp) {
           msg_t b;
 
           chSysLockFromIsr();
-          b = chOQGetI(&sdp->sd.oqueue);
+          b = chOQGetI(&sdp->oqueue);
           chSysUnlockFromIsr();
           if (b < Q_OK) {
             u->UART_IER &= ~IER_THRE;
             chSysLockFromIsr();
-            chEvtBroadcastI(&sdp->bac.oevent);
+            chEvtBroadcastI(&sdp->oevent);
             chSysUnlockFromIsr();
             break;
           }
@@ -189,14 +182,14 @@ static void serve_interrupt(SerialDriver *sdp) {
  * @brief Attempts a TX FIFO preload.
  */
 static void preload(SerialDriver *sdp) {
-  UART *u = sdp->sd.uart;
+  UART *u = sdp->uart;
 
   if (u->UART_LSR & LSR_THRE) {
     int i = LPC214x_UART_FIFO_PRELOAD;
     do {
-      msg_t b = chOQGetI(&sdp->sd.oqueue);
+      msg_t b = chOQGetI(&sdp->oqueue);
       if (b < Q_OK) {
-        chEvtBroadcastI(&sdp->bac.oevent);
+        chEvtBroadcastI(&sdp->oevent);
         return;
       }
       u->UART_THR = b;
@@ -214,7 +207,6 @@ static void notify1(void) {
   preload(&SD1);
 }
 #endif
-
 
 /**
  * @brief Driver SD2 output notification.
@@ -245,7 +237,6 @@ CH_IRQ_HANDLER(UART0IrqHandler) {
 }
 #endif
 
-
 /**
  * @brief UART1 IRQ handler.
  */
@@ -261,7 +252,6 @@ CH_IRQ_HANDLER(UART1IrqHandler) {
 }
 #endif
 
-
 /*===========================================================================*/
 /* Driver exported functions.                                                */
 /*===========================================================================*/
@@ -273,12 +263,12 @@ void sd_lld_init(void) {
 
 #if USE_LPC214x_UART0
   sdObjectInit(&SD1, NULL, notify1);
-  SD1.sd.uart = U0Base;
+  SD1.uart = U0Base;
   SetVICVector(UART0IrqHandler, LPC214x_UART0_PRIORITY, SOURCE_UART0);
 #endif
 #if USE_LPC214x_UART1
   sdObjectInit(&SD2, NULL, notify2);
-  SD2.sd.uart = U1Base;
+  SD2.uart = U1Base;
   SetVICVector(UART1IrqHandler, LPC214x_UART1_PRIORITY, SOURCE_UART1);
 #endif
 }
@@ -290,10 +280,10 @@ void sd_lld_init(void) {
  */
 void sd_lld_start(SerialDriver *sdp) {
 
-  if (sdp->sd.config == NULL)
-    sdp->sd.config = &default_config;
+  if (sdp->config == NULL)
+    sdp->config = &default_config;
 
-  if (sdp->sd.state == SD_STOP) {
+  if (sdp->state == SD_STOP) {
 #if USE_LPC214x_UART0
     if (&SD1 == sdp) {
       PCONP = (PCONP & PCALL) | PCUART0;
@@ -319,8 +309,8 @@ void sd_lld_start(SerialDriver *sdp) {
  */
 void sd_lld_stop(SerialDriver *sdp) {
 
-  if (sdp->sd.state == SD_READY) {
-    uart_deinit(sdp->sd.uart);
+  if (sdp->state == SD_READY) {
+    uart_deinit(sdp->uart);
 #if USE_LPC214x_UART0
     if (&SD1 == sdp) {
       PCONP = (PCONP & PCALL) & ~PCUART0;

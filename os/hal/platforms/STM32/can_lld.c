@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -181,10 +174,14 @@ void can_lld_start(CANDriver *canp) {
   /* Clock activation.*/
 #if USE_STM32_CAN1
   if (&CAND1 == canp) {
-    NVICEnableVector(USB_HP_CAN1_TX_IRQn, STM32_CAN1_IRQ_PRIORITY);
-    NVICEnableVector(USB_LP_CAN1_RX0_IRQn, STM32_CAN1_IRQ_PRIORITY);
-    NVICEnableVector(CAN1_RX1_IRQn, STM32_CAN1_IRQ_PRIORITY);
-    NVICEnableVector(CAN1_SCE_IRQn, STM32_CAN1_IRQ_PRIORITY);
+    NVICEnableVector(USB_HP_CAN1_TX_IRQn,
+                     CORTEX_PRIORITY_MASK(STM32_CAN1_IRQ_PRIORITY));
+    NVICEnableVector(USB_LP_CAN1_RX0_IRQn,
+                     CORTEX_PRIORITY_MASK(STM32_CAN1_IRQ_PRIORITY));
+    NVICEnableVector(CAN1_RX1_IRQn,
+                     CORTEX_PRIORITY_MASK(STM32_CAN1_IRQ_PRIORITY));
+    NVICEnableVector(CAN1_SCE_IRQn,
+                     CORTEX_PRIORITY_MASK(STM32_CAN1_IRQ_PRIORITY));
     RCC->APB1ENR |= RCC_APB1ENR_CAN1EN;
   }
 #endif

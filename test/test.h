@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef _TEST_H_
@@ -38,7 +31,9 @@
 #define MAX_THREADS             5
 #define MAX_TOKENS              16
 
-#if defined(CH_ARCHITECTURE_AVR) || defined(CH_ARCHITECTURE_MSP430)
+#if defined(CH_ARCHITECTURE_AVR) ||                                         \
+    defined(CH_ARCHITECTURE_MSP430) ||                                      \
+    defined(CH_ARCHITECTURE_STM8)
 #define THREADS_STACK_SIZE      48
 #elif defined(CH_ARCHITECTURE_SIMIA32)
 #define THREADS_STACK_SIZE      512
@@ -57,12 +52,12 @@ struct testcase {
 #ifndef __DOXYGEN__
 union test_buffers {
   struct {
-    WORKING_AREA(waT0, THREADS_STACK_SIZE);
-    WORKING_AREA(waT1, THREADS_STACK_SIZE);
-    WORKING_AREA(waT2, THREADS_STACK_SIZE);
-    WORKING_AREA(waT3, THREADS_STACK_SIZE);
-    WORKING_AREA(waT4, THREADS_STACK_SIZE);
-  };
+    WORKING_AREA(T0, THREADS_STACK_SIZE);
+    WORKING_AREA(T1, THREADS_STACK_SIZE);
+    WORKING_AREA(T2, THREADS_STACK_SIZE);
+    WORKING_AREA(T3, THREADS_STACK_SIZE);
+    WORKING_AREA(T4, THREADS_STACK_SIZE);
+  } wa;
   uint8_t buffer[WA_SIZE * 5];
 };
 #endif

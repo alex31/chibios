@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -87,34 +80,30 @@
 
 /**
  * @brief PWM1 interrupt priority level setting.
- * @note @p BASEPRI_KERNEL >= @p STM32_PWM1_IRQ_PRIORITY > @p PRIORITY_PENDSV.
  */
 #if !defined(STM32_PWM1_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_PWM1_IRQ_PRIORITY     0x70
+#define STM32_PWM1_IRQ_PRIORITY     7
 #endif
 
 /**
  * @brief PWM2 interrupt priority level setting.
- * @note @p BASEPRI_KERNEL >= @p STM32_PWM2_IRQ_PRIORITY > @p PRIORITY_PENDSV.
  */
 #if !defined(STM32_PWM2_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_PWM2_IRQ_PRIORITY     0x70
+#define STM32_PWM2_IRQ_PRIORITY     7
 #endif
 
 /**
  * @brief PWM3 interrupt priority level setting.
- * @note @p BASEPRI_KERNEL >= @p STM32_PWM3_IRQ_PRIORITY > @p PRIORITY_PENDSV.
  */
 #if !defined(STM32_PWM3_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_PWM3_IRQ_PRIORITY     0x70
+#define STM32_PWM3_IRQ_PRIORITY     7
 #endif
 
 /**
  * @brief PWM4 interrupt priority level setting.
- * @note @p BASEPRI_KERNEL >= @p STM32_PWM4_IRQ_PRIORITY > @p PRIORITY_PENDSV.
  */
 #if !defined(STM32_PWM4_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_PWM4_IRQ_PRIORITY     0x80
+#define STM32_PWM4_IRQ_PRIORITY     7
 #endif
 
 /*===========================================================================*/
@@ -219,20 +208,19 @@ typedef struct {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
-/** @cond never*/
-#if defined(USE_STM32_PWM1)
+#if defined(USE_STM32_PWM1) && !defined(__DOXYGEN__)
 extern PWMDriver PWMD1;
 #endif
 
-#if defined(USE_STM32_PWM2)
+#if defined(USE_STM32_PWM2) && !defined(__DOXYGEN__)
 extern PWMDriver PWMD2;
 #endif
 
-#if defined(USE_STM32_PWM3)
+#if defined(USE_STM32_PWM3) && !defined(__DOXYGEN__)
 extern PWMDriver PWMD3;
 #endif
 
-#if defined(USE_STM32_PWM4)
+#if defined(USE_STM32_PWM4) && !defined(__DOXYGEN__)
 extern PWMDriver PWMD4;
 #endif
 
@@ -249,7 +237,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-/** @endcond*/
 
 #endif /* CH_HAL_USE_PWM */
 

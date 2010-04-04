@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file mac.c
- * @brief MAC Driver code.
+ * @file    mac.c
+ * @brief   MAC Driver code.
+ *
  * @addtogroup MAC
  * @{
  */
@@ -57,7 +51,7 @@
 /*===========================================================================*/
 
 /**
- * @brief MAC Driver initialization.
+ * @brief   MAC Driver initialization.
  */
 void macInit(void) {
 
@@ -65,9 +59,9 @@ void macInit(void) {
 }
 
 /**
- * @brief Initialize the standard part of a @p MACDriver structure.
+ * @brief   Initialize the standard part of a @p MACDriver structure.
  *
- * @param[in] macp pointer to the @p MACDriver object
+ * @param[in] macp      pointer to the @p MACDriver object
  */
 void macObjectInit(MACDriver *macp) {
 
@@ -79,15 +73,15 @@ void macObjectInit(MACDriver *macp) {
 }
 
 /**
- * @brief MAC address setup.
+ * @brief   MAC address setup.
+ * @note    This function must be invoked only with the driver in the stopped
+ *          state. If invoked on an active interface then it is ignored.
  *
- * @param[in] macp pointer to the @p MACDriver object
- * @param[in] p pointer to a six bytes buffer containing the MAC address. If
- *            this parameter is set to @p NULL then a system default MAC is
- *            used.
+ * @param[in] macp      pointer to the @p MACDriver object
+ * @param[in] p         pointer to a six bytes buffer containing the MAC
+ *                      address. If this parameter is set to @p NULL then MAC
+ *                      a system default is used.
  *
- * @note This function must be invoked only with the driver in the stopped
- *       state. If invoked on an active interface then it is ignored.
  */
 void macSetAddress(MACDriver *macp, const uint8_t *p) {
 
@@ -95,21 +89,21 @@ void macSetAddress(MACDriver *macp, const uint8_t *p) {
 }
 
 /**
- * @brief Allocates a transmission descriptor.
+ * @brief   Allocates a transmission descriptor.
  * @details One of the available transmission descriptors is locked and
  *          returned. If a descriptor is not currently available then the
  *          invoking thread is queued until one is freed.
  *
- * @param[in] macp pointer to the @p MACDriver object
- * @param[out] tdp pointer to a @p MACTransmitDescriptor structure
- * @param[in] time the number of ticks before the operation timeouts,
- *            the following special values are allowed:
- *            - @a TIME_IMMEDIATE immediate timeout.
- *            - @a TIME_INFINITE no timeout.
- *            .
- * @return The operation status.
- * @retval RDY_OK the descriptor was obtained.
- * @retval RDY_TIMEOUT the operation timed out, descriptor not initialized.
+ * @param[in] macp      pointer to the @p MACDriver object
+ * @param[out] tdp      pointer to a @p MACTransmitDescriptor structure
+ * @param[in] time      the number of ticks before the operation timeouts,
+ *                      the following special values are allowed:
+ *                      - @a TIME_IMMEDIATE immediate timeout.
+ *                      - @a TIME_INFINITE no timeout.
+ *                      .
+ * @return              The operation status.
+ * @retval RDY_OK       the descriptor was obtained.
+ * @retval RDY_TIMEOUT  the operation timed out, descriptor not initialized.
  */
 msg_t macWaitTransmitDescriptor(MACDriver *macp,
                                 MACTransmitDescriptor *tdp,
@@ -130,10 +124,10 @@ msg_t macWaitTransmitDescriptor(MACDriver *macp,
 }
 
 /**
- * @brief Releases a transmit descriptor and starts the transmission of the
- *        enqueued data as a single frame.
+ * @brief   Releases a transmit descriptor and starts the transmission of the
+ *          enqueued data as a single frame.
  *
- * @param[in] tdp the pointer to the @p MACTransmitDescriptor structure
+ * @param[in] tdp       the pointer to the @p MACTransmitDescriptor structure
  */
 void macReleaseTransmitDescriptor(MACTransmitDescriptor *tdp) {
 
@@ -141,21 +135,21 @@ void macReleaseTransmitDescriptor(MACTransmitDescriptor *tdp) {
 }
 
 /**
- * @brief Waits for a received frame.
+ * @brief   Waits for a received frame.
  * @details Stops until a frame is received and buffered. If a frame is
  *          not immediately available then the invoking thread is queued
  *          until one is received.
  *
- * @param[in] macp pointer to the @p MACDriver object
- * @param[out] rdp pointer to a @p MACReceiveDescriptor structure
- * @param[in] time the number of ticks before the operation timeouts,
- *            the following special values are allowed:
- *            - @a TIME_IMMEDIATE immediate timeout.
- *            - @a TIME_INFINITE no timeout.
- *            .
- * @return The operation status.
- * @retval RDY_OK the descriptor was obtained.
- * @retval RDY_TIMEOUT the operation timed out, descriptor not initialized.
+ * @param[in] macp      pointer to the @p MACDriver object
+ * @param[out] rdp      pointer to a @p MACReceiveDescriptor structure
+ * @param[in] time      the number of ticks before the operation timeouts,
+ *                      the following special values are allowed:
+ *                      - @a TIME_IMMEDIATE immediate timeout.
+ *                      - @a TIME_INFINITE no timeout.
+ *                      .
+ * @return              The operation status.
+ * @retval RDY_OK       the descriptor was obtained.
+ * @retval RDY_TIMEOUT  the operation timed out, descriptor not initialized.
  */
 msg_t macWaitReceiveDescriptor(MACDriver *macp,
                                MACReceiveDescriptor *rdp,
@@ -176,11 +170,11 @@ msg_t macWaitReceiveDescriptor(MACDriver *macp,
 }
 
 /**
- * @brief Releases a receive descriptor.
+ * @brief   Releases a receive descriptor.
  * @details The descriptor and its buffer are made available for more incoming
  *          frames.
  *
- * @param[in] rdp the pointer to the @p MACReceiveDescriptor structure
+ * @param[in] rdp       the pointer to the @p MACReceiveDescriptor structure
  */
 void macReleaseReceiveDescriptor(MACReceiveDescriptor *rdp) {
 
@@ -188,12 +182,12 @@ void macReleaseReceiveDescriptor(MACReceiveDescriptor *rdp) {
 }
 
 /**
- * @brief Updates and returns the link status.
+ * @brief   Updates and returns the link status.
  *
- * @param[in] macp pointer to the @p MACDriver object
- * @return The link status.
- * @retval TRUE if the link is active.
- * @retval FALSE if the link is down.
+ * @param[in] macp      pointer to the @p MACDriver object
+ * @return              The link status.
+ * @retval TRUE         if the link is active.
+ * @retval FALSE        if the link is down.
  */
 bool_t macPollLinkStatus(MACDriver *macp) {
 

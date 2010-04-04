@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file serial.h
- * @brief Serial Driver macros and structures.
+ * @file    serial.h
+ * @brief   Serial Driver macros and structures.
+ *
  * @addtogroup SERIAL
  * @{
  */
@@ -62,7 +56,7 @@
 /*===========================================================================*/
 
 /**
- * @brief Default bit rate.
+ * @brief   Default bit rate.
  * @details Configuration parameter, this is the baud rate selected for the
  *          default configuration.
  */
@@ -71,10 +65,11 @@
 #endif
 
 /**
- * @brief Serial buffers size.
+ * @brief   Serial buffers size.
  * @details Configuration parameter, you can change the depth of the queue
  *          buffers depending on the requirements of your application.
- * @note The default is 64 bytes for both the transmission and receive buffers.
+ * @note    The default is 64 bytes for both the transmission and receive
+ *          buffers.
  */
 #if !defined(SERIAL_BUFFERS_SIZE) || defined(__DOXYGEN__)
 #define SERIAL_BUFFERS_SIZE         64
@@ -96,74 +91,42 @@
  * @brief Driver state machine possible states.
  */
 typedef enum {
-  SD_UNINIT = 0,                            /**< @brief Not initialized.    */
-  SD_STOP = 1,                              /**< @brief Stopped.            */
-  SD_READY = 2                              /**< @brief Ready.              */
+  SD_UNINIT = 0,                    /**< @brief Not initialized.            */
+  SD_STOP = 1,                      /**< @brief Stopped.                    */
+  SD_READY = 2                      /**< @brief Ready.                      */
 } sdstate_t;
 
 /**
- * @brief Structure representing a serial driver.
+ * @brief   Structure representing a serial driver.
  */
 typedef struct _SerialDriver SerialDriver;
 
 #include "serial_lld.h"
 
 /**
- * @brief @p SerialDriver specific methods.
+ * @brief   @p SerialDriver specific methods.
  */
-struct _serial_driver_methods {
-};
+#define _serial_driver_methods                                              \
+  _base_asynchronous_channel_methods
 
 /**
- * @brief @p SerialDriver virtual methods table.
+ * @brief   @p SerialDriver virtual methods table.
  */
 struct SerialDriverVMT {
-  /**
-   * @p BaseSequentialStream class inherited methods.
-   */
-  struct _base_sequental_stream_methods bss;
-  /**
-   * @p BaseChannel class inherited methods.
-   */
-  struct _base_channel_methods bc;
-  /**
-   * @p BaseAsynchronousChannel class inherited methods.
-   */
-  struct _base_asynchronous_channel_methods bac;
-  /**
-   * @p SerialDriver specific methods.
-   */
-  struct _serial_driver_methods sd;
+  _serial_driver_methods
 };
 
 /**
  * @extends BaseAsynchronousChannel
  *
- * @brief Full duplex serial driver class.
+ * @brief   Full duplex serial driver class.
  * @details This class extends @p BaseAsynchronousChannel by adding physical
  *          I/O queues.
  */
 struct _SerialDriver {
-  /**
-   * Virtual Methods Table.
-   */
+  /** @brief Virtual Methods Table.*/
   const struct SerialDriverVMT *vmt;
-  /**
-   * @p BaseSequentialStream class inherited data.
-   */
-  struct _base_sequental_stream_data bss;
-  /**
-   * @p BaseChannel class inherited data.
-   */
-  struct _base_channel_data bc;
-  /**
-   * @p BaseAsynchronousChannel class inherited data.
-   */
-  struct _base_asynchronous_channel_data bac;
-  /**
-   * @p SerialDriver specific data.
-   */
-  struct _serial_driver_data sd;
+  _serial_driver_data
 };
 
 /*===========================================================================*/
@@ -171,131 +134,143 @@ struct _SerialDriver {
 /*===========================================================================*/
 
 /**
- * @brief Direct output check on a @p SerialDriver.
+ * @brief   Direct output check on a @p SerialDriver.
  * @details This function bypasses the indirect access to the channel and
  *          checks directly the output queue. This is faster but cannot
  *          be used to check different channels implementations.
- * @see chIOPutWouldBlock()
+ *
+ * @see     chIOPutWouldBlock()
  */
-#define sdPutWouldBlock(sdp) chOQIsFull(&(sdp)->sd.oqueue)
+#define sdPutWouldBlock(sdp) chOQIsFull(&(sdp)->oqueue)
 
 /**
- * @brief Direct input check on a @p SerialDriver.
+ * @brief   Direct input check on a @p SerialDriver.
  * @details This function bypasses the indirect access to the channel and
  *          checks directly the input queue. This is faster but cannot
  *          be used to check different channels implementations.
- * @see chIOGetWouldBlock()
+ *
+ * @see     chIOGetWouldBlock()
  */
-#define sdGetWouldBlock(sdp) chIQIsEmpty(&(sdp)->sd.iqueue)
+#define sdGetWouldBlock(sdp) chIQIsEmpty(&(sdp)->iqueue)
 
 /**
- * @brief Direct write to a @p SerialDriver.
+ * @brief   Direct write to a @p SerialDriver.
  * @details This function bypasses the indirect access to the channel and
  *          writes directly on the output queue. This is faster but cannot
  *          be used to write to different channels implementations.
- * @see chIOPut()
+ *
+ * @see     chIOPut()
  */
-#define sdPut(sdp, b) chOQPut(&(sdp)->sd.oqueue, b)
+#define sdPut(sdp, b) chOQPut(&(sdp)->oqueue, b)
 
 /**
- * @brief Direct write to a @p SerialDriver with timeout specification.
+ * @brief   Direct write to a @p SerialDriver with timeout specification.
  * @details This function bypasses the indirect access to the channel and
  *          writes directly on the output queue. This is faster but cannot
  *          be used to write to different channels implementations.
- * @see chIOPutTimeout()
+ *
+ * @see     chIOPutTimeout()
  */
-#define sdPutTimeout(sdp, b, t) chOQPutTimeout(&(sdp)->sd.iqueue, b, t)
+#define sdPutTimeout(sdp, b, t) chOQPutTimeout(&(sdp)->iqueue, b, t)
 
 /**
- * @brief Direct read from a @p SerialDriver.
+ * @brief   Direct read from a @p SerialDriver.
  * @details This function bypasses the indirect access to the channel and
  *          reads directly from the input queue. This is faster but cannot
  *          be used to read from different channels implementations.
- * @see chIOGet()
+ *
+ * @see     chIOGet()
  */
-#define sdGet(sdp) chIQGet(&(sdp)->sd.iqueue)
+#define sdGet(sdp) chIQGet(&(sdp)->iqueue)
 
 /**
- * @brief Direct read from a @p SerialDriver with timeout specification.
+ * @brief   Direct read from a @p SerialDriver with timeout specification.
  * @details This function bypasses the indirect access to the channel and
  *          reads directly from the input queue. This is faster but cannot
  *          be used to read from different channels implementations.
- * @see chIOGetTimeout()
+ *
+ * @see     chIOGetTimeout()
  */
-#define sdGetTimeout(sdp, t) chIQGetTimeout(&(sdp)->sd.iqueue, t)
+#define sdGetTimeout(sdp, t) chIQGetTimeout(&(sdp)->iqueue, t)
 
 /**
- * @brief Direct blocking write to a @p SerialDriver.
+ * @brief   Direct blocking write to a @p SerialDriver.
  * @details This function bypasses the indirect access to the channel and
  *          writes directly to the output queue. This is faster but cannot
  *          be used to write from different channels implementations.
- * @see chIOWriteTimeout()
+ *
+ * @see     chIOWriteTimeout()
  */
 #define sdWrite(sdp, b, n)                                                  \
-  chOQWriteTimeout(&(sdp)->sd.oqueue, b, n, TIME_INFINITE)
+  chOQWriteTimeout(&(sdp)->oqueue, b, n, TIME_INFINITE)
 
 /**
- * @brief Direct blocking write to a @p SerialDriver with timeout
- *        specification.
+ * @brief   Direct blocking write to a @p SerialDriver with timeout
+ *          specification.
  * @details This function bypasses the indirect access to the channel and
  *          writes directly to the output queue. This is faster but cannot
  *          be used to write from different channels implementations.
- * @see chIOWriteTimeout()
+ *
+ * @see     chIOWriteTimeout()
  */
 #define sdWriteTimeout(sdp, b, n, t)                                        \
-  chOQWriteTimeout(&(sdp)->sd.oqueue, b, n, t)
+  chOQWriteTimeout(&(sdp)->oqueue, b, n, t)
 
 /**
- * @brief Direct non-blocking write to a @p SerialDriver.
+ * @brief   Direct non-blocking write to a @p SerialDriver.
  * @details This function bypasses the indirect access to the channel and
  *          writes directly to the output queue. This is faster but cannot
  *          be used to write from different channels implementations.
- * @see chIOWriteTimeout()
+ *
+ * @see     chIOWriteTimeout()
  */
 #define sdAsynchronousWrite(sdp, b, n)                                      \
-  chOQWriteTimeout(&(sdp)->sd.oqueue, b, n, TIME_IMMEDIATE)
+  chOQWriteTimeout(&(sdp)->oqueue, b, n, TIME_IMMEDIATE)
 
 /**
- * @brief Direct blocking read from a @p SerialDriver.
+ * @brief   Direct blocking read from a @p SerialDriver.
  * @details This function bypasses the indirect access to the channel and
  *          reads directly from the input queue. This is faster but cannot
  *          be used to read from different channels implementations.
- * @see chIOReadTimeout()
+ *
+ * @see     chIOReadTimeout()
  */
 #define sdRead(sdp, b, n)                                                   \
-  chIQReadTimeout(&(sdp)->sd.iqueue, b, n, TIME_INFINITE)
+  chIQReadTimeout(&(sdp)->iqueue, b, n, TIME_INFINITE)
 
 /**
- * @brief Direct blocking read from a @p SerialDriver with timeout
- *        specification.
+ * @brief   Direct blocking read from a @p SerialDriver with timeout
+ *          specification.
  * @details This function bypasses the indirect access to the channel and
  *          reads directly from the input queue. This is faster but cannot
  *          be used to read from different channels implementations.
- * @see chIOReadTimeout()
+ *
+ * @see     chIOReadTimeout()
  */
 #define sdReadTimeout(sdp, b, n, t)                                         \
-  chIQReadTimeout(&(sdp)->sd.iqueue, b, n, t)
+  chIQReadTimeout(&(sdp)->iqueue, b, n, t)
 
 /**
- * @brief Direct non-blocking read from a @p SerialDriver.
+ * @brief   Direct non-blocking read from a @p SerialDriver.
  * @details This function bypasses the indirect access to the channel and
  *          reads directly from the input queue. This is faster but cannot
  *          be used to read from different channels implementations.
- * @see chIOReadTimeout()
+ *
+ * @see     chIOReadTimeout()
  */
 #define sdAsynchronousRead(sdp, b, n)                                       \
-  chIQReadTimeout(&(sdp)->sd.iqueue, b, n, TIME_IMMEDIATE)
+  chIQReadTimeout(&(sdp)->iqueue, b, n, TIME_IMMEDIATE)
 
 /**
- * @brief Returns the status change event source.
+ * @brief   Returns the status change event source.
  * @details The status change event source is broadcasted when the channel
  *          status is updated, the status flags can then be fetched and
  *          cheared by using @p sdGetAndClearFlags().
  *
- * @param[in] ip pointer to a @p SerialDriver object
- * @return A pointer to an @p EventSource object.
+ * @param[in] ip        pointer to a @p SerialDriver object
+ * @return              A pointer to an @p EventSource object.
  */
-#define sdGetStatusChangeEventSource(ip) (&((ip)->vmt->sd.sevent))
+#define sdGetStatusChangeEventSource(ip) (&((ip)->vmt->sevent))
 
 /*===========================================================================*/
 /* External declarations.                                                    */

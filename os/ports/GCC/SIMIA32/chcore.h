@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -40,12 +33,19 @@
 /**
  * Name of the implemented architecture.
  */
-#define CH_ARCHITECTURE_NAME "x86 Simulator"
+#define CH_ARCHITECTURE_NAME "Simulator"
 
 /**
- * 32 bit stack alignment.
+ * @brief   Name of the architecture variant (optional).
  */
-typedef uint32_t stkalign_t;
+#define CH_CORE_VARIANT_NAME "x86 (integer only)"
+
+/**
+ * 16 bytes stack alignment.
+ */
+typedef struct {
+  uint8_t a[16];
+} stkalign_t __attribute__((aligned(16)));
 
 /**
  * Generic x86 register.
@@ -90,6 +90,9 @@ struct context {
  */
 #define SETUP_CONTEXT(workspace, wsize, pf, arg) {                      \
   uint8_t *esp = (uint8_t *)workspace + wsize;                          \
+  APUSH(esp, 0);                                                        \
+  APUSH(esp, 0);                                                        \
+  APUSH(esp, 0);                                                        \
   APUSH(esp, arg);                                                      \
   APUSH(esp, threadexit);                                               \
   esp -= sizeof(struct intctx);                                         \
@@ -127,7 +130,7 @@ struct context {
   * Computes the thread working area global size.
   */
 #define THD_WA_SIZE(n) STACK_ALIGN(sizeof(Thread) +                     \
-                                   sizeof(void *) * 2 +                 \
+                                   sizeof(void *) * 4 +                 \
                                    sizeof(struct intctx) +              \
                                    sizeof(struct extctx) +              \
                                   (n) + (INT_REQUIRED_STACK))
@@ -204,7 +207,7 @@ struct context {
 #ifdef __cplusplus
 extern "C" {
 #endif
-  __attribute__((fastcall)) void port_switch(Thread *otp, Thread *ntp);
+  __attribute__((fastcall)) void port_switch(Thread *ntp, Thread *otp);
   __attribute__((fastcall)) void port_halt(void);
   void threadexit(void);
   void ChkIntSources(void);

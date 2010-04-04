@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -43,15 +36,16 @@
 #include <stdint.h>
 #endif
 
-typedef int16_t         bool_t;         /**< Fast boolean type. */
-typedef uint8_t         tmode_t;        /**< Thread flags. */
-typedef uint8_t         tstate_t;       /**< Thread state. */
-typedef uint16_t        tprio_t;        /**< Thread priority. */
-typedef int16_t         msg_t;          /**< Inter-thread message. */
-typedef int16_t         eventid_t;      /**< Event Id. */
-typedef uint16_t        eventmask_t;    /**< Events mask. */
-typedef uint16_t        systime_t;      /**< System time. */
-typedef int16_t         cnt_t;          /**< Resources counter. */
+typedef int16_t         bool_t;         /**< Fast boolean type.             */
+typedef uint8_t         tmode_t;        /**< Thread flags.                  */
+typedef uint8_t         tstate_t;       /**< Thread state.                  */
+typedef uint8_t         trefs_t;        /**< Thread references counter.     */
+typedef uint16_t        tprio_t;        /**< Thread priority.               */
+typedef int16_t         msg_t;          /**< Inter-thread message.          */
+typedef int16_t         eventid_t;      /**< Event Id.                      */
+typedef uint16_t        eventmask_t;    /**< Events mask.                   */
+typedef uint16_t        systime_t;      /**< System time.                   */
+typedef int16_t         cnt_t;          /**< Resources counter.             */
 
 #define INLINE      inline
 #define PACK_STRUCT_STRUCT __attribute__((packed))
