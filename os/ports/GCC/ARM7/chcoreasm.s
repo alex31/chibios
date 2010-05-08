@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -30,9 +23,10 @@
  * @addtogroup ARM7_CORE
  * @{
  */
-/** @cond never */
 
-#include <chconf.h>
+#include "chconf.h"
+
+#if !defined(__DOXYGEN__)
 
 .set    MODE_USR, 0x10
 .set    MODE_FIQ, 0x11
@@ -112,8 +106,8 @@ _port_switch_thumb:
 _port_switch_arm:
 #ifdef CH_CURRP_REGISTER_CACHE
         stmfd   sp!, {r4, r5, r6, r8, r9, r10, r11, lr}
-        str     sp, [r0, #16]
-        ldr     sp, [r1, #16]
+        str     sp, [r1, #12]
+        ldr     sp, [r0, #12]
 #ifdef THUMB_PRESENT
         ldmfd   sp!, {r4, r5, r6, r8, r9, r10, r11, lr}
         bx      lr
@@ -122,8 +116,8 @@ _port_switch_arm:
 #endif /* !THUMB_PRESENT */
 #else /* !CH_CURRP_REGISTER_CACHE */
         stmfd   sp!, {r4, r5, r6, r7, r8, r9, r10, r11, lr}
-        str     sp, [r0, #16]
-        ldr     sp, [r1, #16]
+        str     sp, [r1, #12]
+        ldr     sp, [r0, #12]
 #ifdef THUMB_PRESENT
         ldmfd   sp!, {r4, r5, r6, r7, r8, r9, r10, r11, lr}
         bx      lr
@@ -237,5 +231,6 @@ jmpr4:
         bx      r4
 #endif /* !THUMB_NO_INTERWORKING */
 
-/** @endcond */
+#endif /* !defined(__DOXYGEN__) */
+
 /** @} */

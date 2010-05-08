@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -278,26 +271,31 @@ void pwm_lld_start(PWMDriver *pwmp) {
     /* Clock activation.*/
 #if USE_STM32_PWM1
     if (&PWMD1 == pwmp) {
-      NVICEnableVector(TIM1_UP_IRQn, STM32_PWM1_IRQ_PRIORITY);
-      NVICEnableVector(TIM1_CC_IRQn, STM32_PWM1_IRQ_PRIORITY);
+      NVICEnableVector(TIM1_UP_IRQn,
+                       CORTEX_PRIORITY_MASK(STM32_PWM1_IRQ_PRIORITY));
+      NVICEnableVector(TIM1_CC_IRQn,
+                       CORTEX_PRIORITY_MASK(STM32_PWM1_IRQ_PRIORITY));
       RCC->APB2ENR |= RCC_APB2ENR_TIM1EN;
     }
 #endif
 #if USE_STM32_PWM2
     if (&PWMD2 == pwmp) {
-      NVICEnableVector(TIM2_IRQn, STM32_PWM2_IRQ_PRIORITY);
+      NVICEnableVector(TIM2_IRQn,
+                       CORTEX_PRIORITY_MASK(STM32_PWM2_IRQ_PRIORITY));
       RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
     }
 #endif
 #if USE_STM32_PWM3
     if (&PWMD3 == pwmp) {
-      NVICEnableVector(TIM3_IRQn, STM32_PWM3_IRQ_PRIORITY);
+      NVICEnableVector(TIM3_IRQn,
+                       CORTEX_PRIORITY_MASK(STM32_PWM3_IRQ_PRIORITY));
       RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
     }
 #endif
 #if USE_STM32_PWM4
     if (&PWMD4 == pwmp) {
-      NVICEnableVector(TIM4_IRQn, STM32_PWM4_IRQ_PRIORITY);
+      NVICEnableVector(TIM4_IRQn,
+                       CORTEX_PRIORITY_MASK(STM32_PWM4_IRQ_PRIORITY));
       RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;
     }
 #endif

@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -40,11 +33,14 @@
  * @param ntp the thread to be switched in
  */
 __attribute__((used))
-static void __dummy(Thread *otp, Thread *ntp) {
-  (void)otp; (void)ntp;
+static void __dummy(Thread *ntp, Thread *otp) {
+  (void)ntp; (void)otp;
 #if defined(WIN32)
   asm volatile (".globl @port_switch@8                          \n\t" \
                 "@port_switch@8:");
+#elif defined(__APPLE__)
+  asm volatile (".globl _port_switch                            \n\t" \
+                "_port_switch:");
 #else
   asm volatile (".globl port_switch                             \n\t" \
                 "port_switch:");
@@ -53,8 +49,8 @@ static void __dummy(Thread *otp, Thread *ntp) {
                 "push    %esi                                   \n\t" \
                 "push    %edi                                   \n\t" \
                 "push    %ebx                                   \n\t" \
-                "movl    %esp, 16(%ecx)                         \n\t" \
-                "movl    16(%edx), %esp                         \n\t" \
+                "movl    %esp, 12(%edx)                         \n\t" \
+                "movl    12(%ecx), %esp                         \n\t" \
                 "pop     %ebx                                   \n\t" \
                 "pop     %edi                                   \n\t" \
                 "pop     %esi                                   \n\t" \
@@ -76,7 +72,7 @@ void port_halt(void) {
  */
 void threadexit(void) {
 
-#if defined(WIN32)
+#if defined(WIN32) || defined (__APPLE__)
   asm volatile ("push    %eax                                   \n\t" \
                 "call    _chThdExit");
 #else

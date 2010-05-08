@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file templates/mac_lld.h
- * @brief MAC Driver subsystem low level driver header template.
+ * @file    templates/mac_lld.h
+ * @brief   MAC Driver subsystem low level driver header template.
+ *
  * @addtogroup MAC_LLD
  * @{
  */
@@ -45,21 +39,21 @@
 /*===========================================================================*/
 
 /**
- * @brief Number of available transmit buffers.
+ * @brief   Number of available transmit buffers.
  */
 #if !defined(MAC_TRANSMIT_BUFFERS) || defined(__DOXYGEN__)
 #define MAC_TRANSMIT_BUFFERS            2
 #endif
 
 /**
- * @brief Number of available receive buffers.
+ * @brief   Number of available receive buffers.
  */
 #if !defined(MAC_RECEIVE_BUFFERS) || defined(__DOXYGEN__)
 #define MAC_RECEIVE_BUFFERS             2
 #endif
 
 /**
- * @brief Maximum supported frame size.
+ * @brief   Maximum supported frame size.
  */
 #if !defined(MAC_BUFFERS_SIZE) || defined(__DOXYGEN__)
 #define MAC_BUFFERS_SIZE                1518
@@ -74,7 +68,7 @@
 /*===========================================================================*/
 
 /**
- * @brief Structure representing a MAC driver.
+ * @brief   Structure representing a MAC driver.
  */
 typedef struct {
   Semaphore             md_tdsem;       /**< Transmit semaphore.        */
@@ -86,7 +80,7 @@ typedef struct {
 } MACDriver;
 
 /**
- * @brief Structure representing a transmit descriptor.
+ * @brief   Structure representing a transmit descriptor.
  */
 typedef struct {
   size_t                td_offset;      /**< Current write offset.      */
@@ -95,7 +89,7 @@ typedef struct {
 } MACTransmitDescriptor;
 
 /**
- * @brief Structure representing a receive descriptor.
+ * @brief   Structure representing a receive descriptor.
  */
 typedef struct {
   size_t                rd_offset;      /**< Current read offset.       */

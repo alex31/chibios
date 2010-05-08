@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file spi.h
- * @brief SPI Driver macros and structures.
+ * @file    spi.h
+ * @brief   SPI Driver macros and structures.
+ *
  * @addtogroup SPI
  * @{
  */
@@ -45,7 +39,7 @@
 /*===========================================================================*/
 
 /**
- * @brief Enables the mutual exclusion APIs on the SPI bus.
+ * @brief   Enables the mutual exclusion APIs on the SPI bus.
  */
 #if !defined(SPI_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
 #define SPI_USE_MUTUAL_EXCLUSION    TRUE
@@ -64,13 +58,13 @@
 /*===========================================================================*/
 
 /**
- * @brief Driver state machine possible states.
+ * @brief   Driver state machine possible states.
  */
 typedef enum {
-  SPI_UNINIT = 0,                           /**< @brief Not initialized.    */
-  SPI_STOP = 1,                             /**< @brief Stopped.            */
-  SPI_READY = 2,                            /**< @brief Ready.              */
-  SPI_ACTIVE = 3                            /**< @brief Slave selected.     */
+  SPI_UNINIT = 0,                   /**< @brief Not initialized.            */
+  SPI_STOP = 1,                     /**< @brief Stopped.                    */
+  SPI_READY = 2,                    /**< @brief Ready.                      */
+  SPI_ACTIVE = 3                    /**< @brief Slave selected.             */
 } spistate_t;
 
 #include "spi_lld.h"

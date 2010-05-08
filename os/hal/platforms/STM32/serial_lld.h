@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file STM32/serial_lld.h
- * @brief STM32 low level serial driver header.
+ * @file    STM32/serial_lld.h
+ * @brief   STM32 low level serial driver header.
+ *
  * @addtogroup STM32_SERIAL
  * @{
  */
@@ -45,54 +39,88 @@
 /*===========================================================================*/
 
 /**
- * @brief USART1 driver enable switch.
+ * @brief   USART1 driver enable switch.
  * @details If set to @p TRUE the support for USART1 is included.
- * @note The default is @p FALSE.
+ * @note    The default is @p FALSE.
  */
 #if !defined(USE_STM32_USART1) || defined(__DOXYGEN__)
 #define USE_STM32_USART1            TRUE
 #endif
 
 /**
- * @brief USART2 driver enable switch.
+ * @brief   USART2 driver enable switch.
  * @details If set to @p TRUE the support for USART2 is included.
- * @note The default is @p TRUE.
+ * @note    The default is @p TRUE.
  */
 #if !defined(USE_STM32_USART2) || defined(__DOXYGEN__)
 #define USE_STM32_USART2            TRUE
 #endif
 
 /**
- * @brief USART3 driver enable switch.
+ * @brief   USART3 driver enable switch.
  * @details If set to @p TRUE the support for USART3 is included.
- * @note The default is @p FALSE.
+ * @note    The default is @p FALSE.
  */
 #if !defined(USE_STM32_USART3) || defined(__DOXYGEN__)
 #define USE_STM32_USART3            TRUE
 #endif
 
+
+#if defined(STM32F10X_HD) || defined(STM32F10X_CL) || defined(__DOXYGEN__)
 /**
- * @brief USART1 interrupt priority level setting.
- * @note @p BASEPRI_KERNEL >= @p STM32_USART1_PRIORITY > @p PRIORITY_PENDSV.
+ * @brief   UART4 driver enable switch.
+ * @details If set to @p TRUE the support for UART4 is included.
+ * @note    The default is @p FALSE.
+ */
+#if !defined(USE_STM32_UART4) || defined(__DOXYGEN__)
+#define USE_STM32_UART4             TRUE
+#endif
+
+/**
+ * @brief   UART5 driver enable switch.
+ * @details If set to @p TRUE the support for UART5 is included.
+ * @note    The default is @p FALSE.
+ */
+#if !defined(USE_STM32_USART3) || defined(__DOXYGEN__)
+#define USE_STM32_UART5             TRUE
+#endif
+#endif
+
+/**
+ * @brief   USART1 interrupt priority level setting.
  */
 #if !defined(STM32_USART1_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_USART1_PRIORITY       0xC0
+#define STM32_USART1_PRIORITY       12
 #endif
 
 /**
- * @brief USART2 interrupt priority level setting.
- * @note @p BASEPRI_KERNEL >= @p STM32_USART2_PRIORITY > @p PRIORITY_PENDSV.
+ * @brief   USART2 interrupt priority level setting.
  */
 #if !defined(STM32_USART2_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_USART2_PRIORITY       0xC0
+#define STM32_USART2_PRIORITY       12)
 #endif
 
 /**
- * @brief USART3 interrupt priority level setting.
- * @note @p BASEPRI_KERNEL >= @p STM32_USART3_PRIORITY > @p PRIORITY_PENDSV.
+ * @brief   USART3 interrupt priority level setting.
  */
 #if !defined(STM32_USART3_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_USART3_PRIORITY       0xC0
+#define STM32_USART3_PRIORITY       12
+#endif
+
+#if defined(STM32F10X_HD) || defined(STM32F10X_CL) || defined(__DOXYGEN__)
+/**
+ * @brief   UART4 interrupt priority level setting.
+ */
+#if !defined(STM32_UART4_PRIORITY) || defined(__DOXYGEN__)
+#define STM32_UART4_PRIORITY        12
+#endif
+
+/**
+ * @brief   UART5 interrupt priority level setting.
+ */
+#if !defined(STM32_UART5_PRIORITY) || defined(__DOXYGEN__)
+#define STM32_UART5_PRIORITY        12
+#endif
 #endif
 
 /*===========================================================================*/
@@ -104,18 +132,17 @@
 /*===========================================================================*/
 
 /**
- * @brief Serial Driver condition flags type.
+ * @brief   Serial Driver condition flags type.
  */
 typedef uint32_t sdflags_t;
 
 /**
- * @brief STM32 Serial Driver configuration structure.
+ * @brief   STM32 Serial Driver configuration structure.
  * @details An instance of this structure must be passed to @p sdStart()
  *          in order to configure and start a serial driver operations.
- *
- * @note This structure content is architecture dependent, each driver
- *       implementation defines its own version and the custom static
- *       initializers.
+ * @note    This structure content is architecture dependent, each driver
+ *          implementation defines its own version and the custom static
+ *          initializers.
  */
 typedef struct {
   /**
@@ -137,50 +164,27 @@ typedef struct {
 } SerialConfig;
 
 /**
- * @brief @p SerialDriver specific data.
+ * @brief   @p SerialDriver specific data.
  */
-struct _serial_driver_data {
-  /**
-   * @brief Driver state.
-   */
-  sdstate_t                 state;
-  /**
-   * @brief Current configuration data.
-   */
-  const SerialConfig        *config;
-  /**
-   * @brief Input queue, incoming data can be read from this input queue by
-   *        using the queues APIs.
-   */
-  InputQueue                iqueue;
-  /**
-   * @brief Output queue, outgoing data can be written to this output queue by
-   *        using the queues APIs.
-   */
-  OutputQueue               oqueue;
-  /**
-   * @brief Status Change @p EventSource. This event is generated when one or
-   *        more condition flags change.
-   */
-  EventSource               sevent;
-  /**
-   * @brief I/O driver status flags.
-   */
-  sdflags_t                 flags;
-  /**
-   * @brief Input circular buffer.
-   */
-  uint8_t                   ib[SERIAL_BUFFERS_SIZE];
-  /**
-   * @brief Output circular buffer.
-   */
-  uint8_t                   ob[SERIAL_BUFFERS_SIZE];
-  /* End of the mandatory fields.*/
-  /**
-   * @brief Pointer to the USART registers block.
-   */
+#define _serial_driver_data                                                 \
+  _base_asynchronous_channel_data                                           \
+  /* Driver state.*/                                                        \
+  sdstate_t                 state;                                          \
+  /* Input queue.*/                                                         \
+  InputQueue                iqueue;                                         \
+  /* Output queue.*/                                                        \
+  OutputQueue               oqueue;                                         \
+  /* Status Change @p EventSource.*/                                        \
+  EventSource               sevent;                                         \
+  /* I/O driver status flags.*/                                             \
+  sdflags_t                 flags;                                          \
+  /* Input circular buffer.*/                                               \
+  uint8_t                   ib[SERIAL_BUFFERS_SIZE];                        \
+  /* Output circular buffer.*/                                              \
+  uint8_t                   ob[SERIAL_BUFFERS_SIZE];                        \
+  /* End of the mandatory fields.*/                                         \
+  /* Pointer to the USART registers block.*/                                \
   USART_TypeDef             *usart;
-};
 
 /*===========================================================================*/
 /* Driver macros.                                                            */
@@ -198,27 +202,33 @@ struct _serial_driver_data {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
-/** @cond never*/
-#if USE_STM32_USART1
+#if USE_STM32_USART1 && !defined(__DOXYGEN__)
 extern SerialDriver SD1;
 #endif
-#if USE_STM32_USART2
+#if USE_STM32_USART2 && !defined(__DOXYGEN__)
 extern SerialDriver SD2;
 #endif
-#if USE_STM32_USART3
+#if USE_STM32_USART3 && !defined(__DOXYGEN__)
 extern SerialDriver SD3;
+#endif
+#if defined(STM32F10X_HD) || defined(STM32F10X_CL)
+#if USE_STM32_UART4 && !defined(__DOXYGEN__)
+extern SerialDriver SD4;
+#endif
+#if USE_STM32_UART5 && !defined(__DOXYGEN__)
+extern SerialDriver SD5;
+#endif
 #endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
   void sd_lld_init(void);
-  void sd_lld_start(SerialDriver *sdp);
+  void sd_lld_start(SerialDriver *sdp, const SerialConfig *config);
   void sd_lld_stop(SerialDriver *sdp);
 #ifdef __cplusplus
 }
 #endif
-/** @endcond*/
 
 #endif /* CH_HAL_USE_SERIAL */
 

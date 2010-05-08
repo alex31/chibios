@@ -10,7 +10,7 @@ endif
 
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
-  USE_CPPOPT = -fno-rtti
+  USE_CPPOPT = -fno-rtti -fno-exceptions
 endif
 
 # Enable this if you want the linker to remove unused code and data
@@ -104,7 +104,8 @@ INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
 
 MCU  = arm7tdmi
 
-TRGT = arm-elf-
+#TRGT = arm-elf-
+TRGT = arm-none-eabi-
 CC   = $(TRGT)gcc
 CPPC = $(TRGT)g++
 # Enable loading with g++ only if you need C++ runtime support.

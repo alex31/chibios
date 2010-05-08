@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -35,6 +28,7 @@
 #include <string.h>
 
 #include "ch.h"
+#include "hal.h"
 #include "shell.h"
 
 #if SHELL_USE_IPRINTF
@@ -91,13 +85,25 @@ static void cmd_info(BaseChannel *chp, int argc, char *argv[]) {
     return;
   }
 
-  shellPrint(chp, "Kernel version ");
+  shellPrint(chp, "Kernel version: ");
   shellPrintLine(chp, CH_KERNEL_VERSION);
-  shellPrint(chp, "Architecture ");
-  shellPrintLine(chp, CH_ARCHITECTURE_NAME);
 #ifdef __GNUC__
-  shellPrint(chp, "GCC Version ");
+  shellPrint(chp, "GCC Version:    ");
   shellPrintLine(chp, __VERSION__);
+#endif
+  shellPrint(chp, "Architecture:   ");
+  shellPrintLine(chp, CH_ARCHITECTURE_NAME);
+#ifdef CH_CORE_VARIANT_NAME
+  shellPrint(chp, "Core Variant:   ");
+  shellPrintLine(chp, CH_CORE_VARIANT_NAME);
+#endif
+#ifdef PLATFORM_NAME
+  shellPrint(chp, "Platform:       ");
+  shellPrintLine(chp, PLATFORM_NAME);
+#endif
+#ifdef BOARD_NAME
+  shellPrint(chp, "Board:          ");
+  shellPrintLine(chp, BOARD_NAME);
 #endif
 }
 

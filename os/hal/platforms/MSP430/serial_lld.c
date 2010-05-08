@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file MSP430/serial_lld.c
- * @brief MSP430 low level serial driver code.
+ * @file    MSP430/serial_lld.c
+ * @brief   MSP430 low level serial driver code.
+ *
  * @addtogroup MSP430_SERIAL
  * @{
  */
@@ -95,9 +89,9 @@ static void notify1(void) {
 }
 
 /**
- * @brief USART0 initialization.
+ * @brief   USART0 initialization.
  *
- * @param[in] config the architecture-dependent serial driver configuration
+ * @param[in] config    the architecture-dependent serial driver configuration
  */
 static void usart0_init(const SerialConfig *config) {
 
@@ -117,7 +111,7 @@ static void usart0_init(const SerialConfig *config) {
 }
 
 /**
- * @brief USART0 de-initialization.
+ * @brief   USART0 de-initialization.
  */
 static void usart0_deinit(void) {
 
@@ -139,9 +133,9 @@ static void notify2(void) {
 }
 
 /**
- * @brief USART1 initialization.
+ * @brief   USART1 initialization.
  *
- * @param[in] config the architecture-dependent serial driver configuration
+ * @param[in] config    the architecture-dependent serial driver configuration
  */
 static void usart1_init(const SerialConfig *config) {
 
@@ -161,7 +155,7 @@ static void usart1_init(const SerialConfig *config) {
 }
 
 /**
- * @brief USART1 de-initialization.
+ * @brief   USART1 de-initialization.
  */
 static void usart1_deinit(void) {
 
@@ -243,7 +237,7 @@ CH_IRQ_HANDLER(USART1RX_VECTOR) {
 /*===========================================================================*/
 
 /**
- * Low level serial driver initialization.
+ * @brief   Low level serial driver initialization.
  */
 void sd_lld_init(void) {
 
@@ -261,35 +255,38 @@ void sd_lld_init(void) {
 }
 
 /**
- * @brief Low level serial driver configuration and (re)start.
+ * @brief   Low level serial driver configuration and (re)start.
  *
- * @param[in] sdp pointer to a @p SerialDriver object
+ * @param[in] sdp       pointer to a @p SerialDriver object
+ * @param[in] config    the architecture-dependent serial driver configuration.
+ *                      If this parameter is set to @p NULL then a default
+ *                      configuration is used.
  */
-void sd_lld_start(SerialDriver *sdp) {
+void sd_lld_start(SerialDriver *sdp, const SerialConfig *config) {
 
-  if (sdp->sd.config == NULL)
-    sdp->sd.config = &default_config;
+  if (config == NULL)
+    config = &default_config;
 
 #if USE_MSP430_USART0
   if (&SD1 == sdp) {
-    usart0_init(sdp->sd.config);
+    usart0_init(config);
     return;
   }
 #endif
 #if USE_MSP430_USART1
   if (&SD2 == sdp) {
-    usart1_init(sdp->sd.config);
+    usart1_init(config);
     return;
   }
 #endif
 }
 
 /**
- * @brief Low level serial driver stop.
+ * @brief   Low level serial driver stop.
  * @details De-initializes the USART, stops the associated clock, resets the
  *          interrupt vector.
  *
- * @param[in] sdp pointer to a @p SerialDriver object
+ * @param[in] sdp       pointer to a @p SerialDriver object
  */
 void sd_lld_stop(SerialDriver *sdp) {
 

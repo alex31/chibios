@@ -60,7 +60,7 @@ CHIBIOS = ../..
 include $(CHIBIOS)/boards/OLIMEX_STM32_P103/board.mk
 include $(CHIBIOS)/os/hal/platforms/STM32/platform.mk
 include $(CHIBIOS)/os/hal/hal.mk
-include $(CHIBIOS)/os/ports/GCC/ARMCM3/port.mk
+include $(CHIBIOS)/os/ports/GCC/ARMCMx/STM32F10x/port.mk
 include $(CHIBIOS)/os/kernel/kernel.mk
 include $(CHIBIOS)/test/test.mk
 
@@ -102,7 +102,7 @@ TCPPSRC =
 
 # List ASM source files here
 ASMSRC = $(PORTASM) \
-         $(CHIBIOS)/os/ports/GCC/ARMCM3/STM32F103/vectors.s
+         $(CHIBIOS)/os/ports/GCC/ARMCMx/STM32F10x/vectors.s
 
 INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) \
@@ -118,7 +118,8 @@ INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
 
 MCU  = cortex-m3
 
-TRGT = arm-elf-
+#TRGT = arm-elf-
+TRGT = arm-none-eabi-
 CC   = $(TRGT)gcc
 CPPC = $(TRGT)g++
 # Enable loading with g++ only if you need C++ runtime support.
@@ -153,7 +154,7 @@ CPPWARN = -Wall -Wextra
 #
 
 # List all default C defines here, like -D_DEBUG=1
-DDEFS =
+DDEFS = -DSTM32F10X_MD -DCORTEX_USE_BASEPRI=TRUE
 
 # List all default ASM defines here, like -D_DEBUG=1
 DADEFS =

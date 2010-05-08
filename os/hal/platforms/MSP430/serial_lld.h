@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file MSP430/serial_lld.h
- * @brief MSP430 low level serial driver header.
+ * @file    MSP430/serial_lld.h
+ * @brief   MSP430 low level serial driver header.
+ *
  * @addtogroup MSP430_SERIAL
  * @{
  */
@@ -45,18 +39,18 @@
 /*===========================================================================*/
 
 /**
- * @brief USART0 driver enable switch.
+ * @brief   USART0 driver enable switch.
  * @details If set to @p TRUE the support for USART0 is included.
- * @note The default is @p TRUE.
+ * @note    The default is @p TRUE.
  */
 #if !defined(USE_MSP430_USART0) || defined(__DOXYGEN__)
 #define USE_MSP430_USART0           TRUE
 #endif
 
 /**
- * @brief USART1 driver enable switch.
+ * @brief   USART1 driver enable switch.
  * @details If set to @p TRUE the support for USART1 is included.
- * @note The default is @p FALSE.
+ * @note    The default is @p FALSE.
  */
 #if !defined(USE_MSP430_USART1) || defined(__DOXYGEN__)
 #define USE_MSP430_USART1           TRUE
@@ -71,12 +65,12 @@
 /*===========================================================================*/
 
 /**
- * Serial Driver condition flags type.
+ * @brief   Serial Driver condition flags type.
  */
 typedef uint8_t sdflags_t;
 
 /**
- * @brief MSP430 Serial Driver configuration structure.
+ * @brief   MSP430 Serial Driver configuration structure.
  * @details An instance of this structure must be passed to @p sdStart()
  *          in order to configure and start a serial driver operations.
  */
@@ -98,52 +92,31 @@ typedef struct {
 /**
  * @brief @p SerialDriver specific data.
  */
-struct _serial_driver_data {
-  /**
-   * @brief Driver state.
-   */
-  sdstate_t                 state;
-  /**
-   * @brief Current configuration data.
-   */
-  const SerialConfig        *config;
-  /**
-   * @brief Input queue, incoming data can be read from this input queue by
-   *        using the queues APIs.
-   */
-  InputQueue                iqueue;
-  /**
-   * @brief Output queue, outgoing data can be written to this output queue by
-   *        using the queues APIs.
-   */
-  OutputQueue               oqueue;
-  /**
-   * @brief Status Change @p EventSource. This event is generated when one or
-   *        more condition flags change.
-   */
-  EventSource               sevent;
-  /**
-   * @brief I/O driver status flags.
-   */
-  sdflags_t                 flags;
-  /**
-   * @brief Input circular buffer.
-   */
-  uint8_t                   ib[SERIAL_BUFFERS_SIZE];
-  /**
-   * @brief Output circular buffer.
-   */
-  uint8_t                   ob[SERIAL_BUFFERS_SIZE];
+#define _serial_driver_data                                                 \
+  _base_asynchronous_channel_data                                           \
+  /* Driver state.*/                                                        \
+  sdstate_t                 state;                                          \
+  /* Input queue.*/                                                         \
+  InputQueue                iqueue;                                         \
+  /* Output queue.*/                                                        \
+  OutputQueue               oqueue;                                         \
+  /* Status Change @p EventSource.*/                                        \
+  EventSource               sevent;                                         \
+  /* I/O driver status flags.*/                                             \
+  sdflags_t                 flags;                                          \
+  /* Input circular buffer.*/                                               \
+  uint8_t                   ib[SERIAL_BUFFERS_SIZE];                        \
+  /* Output circular buffer.*/                                              \
+  uint8_t                   ob[SERIAL_BUFFERS_SIZE];                        \
   /* End of the mandatory fields.*/
-};
 
 /*===========================================================================*/
 /* Driver macros.                                                            */
 /*===========================================================================*/
 
 /**
- * @brief Macro for baud rate computation.
- * @note Make sure the final baud rate is within tolerance.
+ * @brief   Macro for baud rate computation.
+ * @note    Make sure the final baud rate is within tolerance.
  */
 #define UBR(b) (SMCLK / (b))
 
@@ -151,11 +124,10 @@ struct _serial_driver_data {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
-/** @cond never*/
-#if USE_MSP430_USART0
+#if USE_MSP430_USART0 && !defined(__DOXYGEN__)
 extern SerialDriver SD1;
 #endif
-#if USE_MSP430_USART1
+#if USE_MSP430_USART1 && !defined(__DOXYGEN__)
 extern SerialDriver SD2;
 #endif
 
@@ -163,12 +135,11 @@ extern SerialDriver SD2;
 extern "C" {
 #endif
   void sd_lld_init(void);
-  void sd_lld_start(SerialDriver *sdp);
+  void sd_lld_start(SerialDriver *sdp, const SerialConfig *config);
   void sd_lld_stop(SerialDriver *sdp);
 #ifdef __cplusplus
 }
 #endif
-/** @endcond*/
 
 #endif /* CH_HAL_USE_SERIAL */
 

@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -39,7 +32,7 @@
  * - When, after a while, I needed a RTOS again, none of the existing FOSS
  *   projects met my expectations or my ideas of how a RTOS should be, not
  *   even close (see below). I decided that work on that old project was
- *   a better idea that contribute to, or fork, something else.
+ *   a better idea than contribute to, or fork, something else.
  * - I wanted another toy.
  * .
  * <h2>Why is it different?</h2>
@@ -76,15 +69,15 @@
  * <h3>Fast and compact</h3>
  * Note, first "fast" then "compact", the focus is on speed and execution
  * efficiency and then on code size. This does not mean that the OS is large,
- * the kernel size with all the subsystems activated is around <b>5.2KiB</b>
+ * the kernel size with all the subsystems activated weighs around <b>5.3KiB</b>
  * and can shrink down around to <b>1.2Kib</b> in a minimal configuration
  * (STM32, Cortex-M3). It would be possible to make something even smaller but:
  * -# It would be pointless, it is already @a really small.
  * -# I would not trade efficiency or features in order to save few bytes.
  * .
- * About the "fast" part, the kernel is able to start/exit more than
+ * About the "fast" part, the kernel is able to start/exit over
  * <b>220,000 threads per second</b> on a 72MHz STM32.
- * The Context Switch takes <b>1.41 microseconds</b> on the same STM32.
+ * The Context Switch takes <b>1.2 microseconds</b> on the same STM32.
  *
  * <h3>Tests and metrics</h3>
  * I think it is nice to know how an OS is tested and how it performs before

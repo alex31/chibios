@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "ch.h"
@@ -29,6 +22,8 @@
 
 /**
  * @page test_benchmarks Kernel Benchmarks
+ *
+ * File: @ref testbmk.c
  *
  * <h2>Description</h2>
  * This module implements a series of system benchmarks. The benchmarks are
@@ -79,10 +74,11 @@ static msg_t thread1(void *p) {
   return 0;
 }
 
-#ifdef __GNUC___
-_attribute__((noinline))
+#ifdef __GNUC__
+__attribute__((noinline))
 #endif
 static unsigned int msg_loop_test(Thread *tp) {
+
   uint32_t n = 0;
   test_wait_tick();
   test_start_timer(1000);
@@ -231,8 +227,8 @@ msg_t thread4(void *p) {
   (void)p;
   chSysLock();
   do {
-    chSchGoSleepS(PRSUSPENDED);
-    msg = self->p_rdymsg;
+    chSchGoSleepS(THD_STATE_SUSPENDED);
+    msg = self->p_u.rdymsg;
   } while (msg == RDY_OK);
   chSysUnlock();
   return 0;
@@ -241,6 +237,7 @@ msg_t thread4(void *p) {
 static void bmk4_execute(void) {
   Thread *tp;
   uint32_t n;
+
   tp = threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread4, NULL);
   n = 0;
   test_wait_tick();
@@ -500,7 +497,8 @@ static char *bmk9_gettest(void) {
 }
 
 static void bmk9_execute(void) {
-  uint32_t n;  static uint8_t ib[16];
+  uint32_t n;
+  static uint8_t ib[16];
   static InputQueue iq;
 
   chIQInit(&iq, ib, sizeof(ib), NULL);
@@ -748,8 +746,8 @@ const struct testcase testbmk13 = {
   bmk13_execute
 };
 
-/*
- * Test sequence for benchmarks pattern.
+/**
+ * @brief   Test sequence for benchmarks.
  */
 const struct testcase * const patternbmk[] = {
 #if !TEST_NO_BENCHMARKS

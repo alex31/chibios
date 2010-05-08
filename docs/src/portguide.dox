@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -47,17 +40,20 @@
  * applies when porting the OS on a custom hardware using a supported
  * microcontroller. This task can be easily performed with the following
  * steps:
- * -# Create a new directory under the ChibiOS/RT installation directory:
- *    <code>./projects/<i>@<my_app_name@></i></code>
- * -# Copy the microcontroller demo code under the newly created directory.
- * -# Customize the demo. Usually there are only four files that need to
- *    be modified:
+ * -# Create a new directory under ./boards and copy inside the board files
+ *    from another board using the same microcontroller.
+ * -# Customize the board files:
  *   - @p board.h This file contains the I/O pins setup for the uC, it
- *     may also contain other board-dependent settings, as example, clock and
- *     PLL settings. Customize this file depending on your target hardware.
+ *     may also contain other board-dependent settings, as example, the clock
+ *     frequency. Customize this file depending on your target hardware.
  *   - @p board.c This file contains the initialization code, it is possible
  *     you just need to customize @p board.h and not this file. If you have
  *     some hardware specific initialization code then put it here.
+ *   .
+ * -# Create a new directory under the ChibiOS/RT installation directory:
+ *    <code>./projects/<i>@<my_app_name@></i></code>
+ * -# Copy an existing demo code under the newly created directory.
+ * -# Customize the demo:
  *   - @p Makefile You may edit this file in order to remove the test related
  *     sources and/or add you application source files.
  *   - @p main.c It contains the demo simple code, clean it and write your

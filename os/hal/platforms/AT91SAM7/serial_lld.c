@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file AT91SAM7/serial_lld.c
- * @brief AT91SAM7 low level serial driver code.
+ * @file    AT91SAM7/serial_lld.c
+ * @brief   AT91SAM7 low level serial driver code.
+ *
  * @addtogroup AT91SAM7_SERIAL
  * @{
  */
@@ -42,6 +36,8 @@
 #define SAM7_USART0_TX    AT91C_PA6_TXD0
 #define SAM7_USART1_RX    AT91C_PA21_RXD1
 #define SAM7_USART1_TX    AT91C_PA22_TXD1
+#define SAM7_DBGU_RX      AT91C_PA9_DRXD
+#define SAM7_DBGU_TX      AT91C_PA10_DTXD
 
 #elif SAM7_PLATFORM == SAM7X256
 
@@ -49,6 +45,8 @@
 #define SAM7_USART0_TX    AT91C_PA1_TXD0
 #define SAM7_USART1_RX    AT91C_PA5_RXD1
 #define SAM7_USART1_TX    AT91C_PA6_TXD1
+#define SAM7_DBGU_RX      AT91C_PA27_DRXD
+#define SAM7_DBGU_TX      AT91C_PA28_DTXD
 
 #else
 #error "serial lines not defined for this SAM7 version"
@@ -68,6 +66,11 @@ SerialDriver SD1;
 SerialDriver SD2;
 #endif
 
+#if USE_SAM7_DBGU_UART || defined(__DOXYGEN__)
+/** @brief DBGU_UART serial driver identifier.*/
+SerialDriver SD3;
+#endif
+
 /*===========================================================================*/
 /* Driver local variables.                                                   */
 /*===========================================================================*/
@@ -84,23 +87,24 @@ static const SerialConfig default_config = {
 /*===========================================================================*/
 
 /**
- * @brief USART initialization.
+ * @brief   USART initialization.
  *
- * @param[in] sdp communication channel associated to the USART
+ * @param[in] sdp       communication channel associated to the USART
+ * @param[in] config    the architecture-dependent serial driver configuration
  */
-static void usart_init(SerialDriver *sdp) {
-  AT91PS_USART u = sdp->sd.usart;
+static void usart_init(SerialDriver *sdp, const SerialConfig *config) {
+  AT91PS_USART u = sdp->usart;
 
   /* Disables IRQ sources and stop operations.*/
   u->US_IDR = 0xFFFFFFFF;
   u->US_CR = AT91C_US_RSTRX | AT91C_US_RSTTX | AT91C_US_RSTSTA;
 
   /* New parameters setup.*/
-  if (sdp->sd.config->sc_mr & AT91C_US_OVER)
-    u->US_BRGR = MCK / (sdp->sd.config->sc_speed * 8);
+  if (config->sc_mr & AT91C_US_OVER)
+    u->US_BRGR = MCK / (config->sc_speed * 8);
   else
-    u->US_BRGR = MCK / (sdp->sd.config->sc_speed * 16);
-  u->US_MR = sdp->sd.config->sc_mr;
+    u->US_BRGR = MCK / (config->sc_speed * 16);
+  u->US_MR = config->sc_mr;
   u->US_RTOR = 0;
   u->US_TTGR = 0;
 
@@ -111,8 +115,9 @@ static void usart_init(SerialDriver *sdp) {
 }
 
 /**
- * @brief USART de-initialization.
- * @param[in] u pointer to an USART I/O block
+ * @brief   USART de-initialization.
+ *
+ * @param[in] u         pointer to an USART I/O block
  */
 static void usart_deinit(AT91PS_USART u) {
 
@@ -125,9 +130,10 @@ static void usart_deinit(AT91PS_USART u) {
 }
 
 /**
- * @brief Error handling routine.
- * @param[in] err USART CSR register value
- * @param[in] sdp communication channel associated to the USART
+ * @brief   Error handling routine.
+ *
+ * @param[in] err       USART CSR register value
+ * @param[in] sdp       communication channel associated to the USART
  */
 static void set_error(SerialDriver *sdp, AT91_REG csr) {
   sdflags_t sts = 0;
@@ -148,14 +154,17 @@ static void set_error(SerialDriver *sdp, AT91_REG csr) {
 #if defined(__GNU__)
 __attribute__((noinline))
 #endif
+#if !USE_SAM7_DBGU_UART
+static
+#endif
 /**
- * @brief Common IRQ handler.
+ * @brief   Common IRQ handler.
  *
- * @param[in] sdp communication channel associated to the USART
+ * @param[in] sdp       communication channel associated to the USART
  */
-static void serve_interrupt(SerialDriver *sdp) {
+void sd_lld_serve_interrupt(SerialDriver *sdp) {
   uint32_t csr;
-  AT91PS_USART u = sdp->sd.usart;
+  AT91PS_USART u = sdp->usart;
 
   csr = u->US_CSR;
   if (csr & AT91C_US_RXRDY) {
@@ -167,9 +176,9 @@ static void serve_interrupt(SerialDriver *sdp) {
     msg_t b;
 
     chSysLockFromIsr();
-    b = chOQGetI(&sdp->sd.oqueue);
+    b = chOQGetI(&sdp->oqueue);
     if (b < Q_OK) {
-      chEvtBroadcastI(&sdp->bac.oevent);
+      chEvtBroadcastI(&sdp->oevent);
       u->US_IDR = AT91C_US_TXRDY;
     }
     else
@@ -198,6 +207,13 @@ static void notify2(void) {
 }
 #endif
 
+#if USE_SAM7_DBGU_UART || defined(__DOXYGEN__)
+static void notify3(void) {
+
+  AT91C_BASE_DBGU->DBGU_IER = AT91C_US_TXRDY;
+}
+#endif
+
 /*===========================================================================*/
 /* Driver interrupt handlers.                                                */
 /*===========================================================================*/
@@ -206,9 +222,8 @@ static void notify2(void) {
 CH_IRQ_HANDLER(USART0IrqHandler) {
 
   CH_IRQ_PROLOGUE();
-
-  serve_interrupt(&SD1);
-
+  sd_lld_serve_interrupt(&SD1);
+  AT91C_BASE_AIC->AIC_EOICR = 0;
   CH_IRQ_EPILOGUE();
 }
 #endif
@@ -217,25 +232,27 @@ CH_IRQ_HANDLER(USART0IrqHandler) {
 CH_IRQ_HANDLER(USART1IrqHandler) {
 
   CH_IRQ_PROLOGUE();
-
-  serve_interrupt(&SD2);
-
+  sd_lld_serve_interrupt(&SD2);
+  AT91C_BASE_AIC->AIC_EOICR = 0;
   CH_IRQ_EPILOGUE();
 }
 #endif
+
+// note - DBGU_UART IRQ is the SysIrq in board.c
+// since it's not vectored separately by the AIC
 
 /*===========================================================================*/
 /* Driver exported functions.                                                */
 /*===========================================================================*/
 
 /**
- * Low level serial driver initialization.
+ * @brief   Low level serial driver initialization.
  */
 void sd_lld_init(void) {
 
 #if USE_SAM7_USART0
   sdObjectInit(&SD1, NULL, notify1);
-  SD1.sd.usart = AT91C_BASE_US0;
+  SD1.usart = AT91C_BASE_US0;
   AT91C_BASE_PIOA->PIO_PDR   = SAM7_USART0_RX | SAM7_USART0_TX;
   AT91C_BASE_PIOA->PIO_ASR   = SAM7_USART0_RX | SAM7_USART0_TX;
   AT91C_BASE_PIOA->PIO_PPUDR = SAM7_USART0_RX | SAM7_USART0_TX;
@@ -246,7 +263,7 @@ void sd_lld_init(void) {
 
 #if USE_SAM7_USART1
   sdObjectInit(&SD2, NULL, notify2);
-  SD2.sd.usart = AT91C_BASE_US1;
+  SD2.usart = AT91C_BASE_US1;
   AT91C_BASE_PIOA->PIO_PDR   = SAM7_USART1_RX | SAM7_USART1_TX;
   AT91C_BASE_PIOA->PIO_ASR   = SAM7_USART1_RX | SAM7_USART1_TX;
   AT91C_BASE_PIOA->PIO_PPUDR = SAM7_USART1_RX | SAM7_USART1_TX;
@@ -254,19 +271,33 @@ void sd_lld_init(void) {
                   AT91C_AIC_SRCTYPE_HIGH_LEVEL | SAM7_USART1_PRIORITY,
                   USART1IrqHandler);
 #endif
+
+#if USE_SAM7_DBGU_UART
+  sdObjectInit(&SD3, NULL, notify3);
+  // this is a little cheap, but OK for now since there's enough overlap
+  // between dbgu and usart register maps.  it means we can reuse all the
+  // same usart interrupt handling and config that already exists
+  SD3.usart = (AT91PS_USART)AT91C_BASE_DBGU;
+  AT91C_BASE_PIOA->PIO_PDR   = SAM7_DBGU_RX | SAM7_DBGU_TX;
+  AT91C_BASE_PIOA->PIO_ASR   = SAM7_DBGU_RX | SAM7_DBGU_TX;
+  AT91C_BASE_PIOA->PIO_PPUDR = SAM7_DBGU_RX | SAM7_DBGU_TX;
+#endif
 }
 
 /**
- * @brief Low level serial driver configuration and (re)start.
+ * @brief   Low level serial driver configuration and (re)start.
  *
- * @param[in] sdp pointer to a @p SerialDriver object
+ * @param[in] sdp       pointer to a @p SerialDriver object
+ * @param[in] config    the architecture-dependent serial driver configuration.
+ *                      If this parameter is set to @p NULL then a default
+ *                      configuration is used.
  */
-void sd_lld_start(SerialDriver *sdp) {
+void sd_lld_start(SerialDriver *sdp, const SerialConfig *config) {
 
-  if (sdp->sd.config == NULL)
-    sdp->sd.config = &default_config;
+  if (config == NULL)
+    config = &default_config;
 
-  if (sdp->sd.state == SD_STOP) {
+  if (sdp->state == SD_STOP) {
 #if USE_SAM7_USART0
     if (&SD1 == sdp) {
       /* Starts the clock and clears possible sources of immediate interrupts.*/
@@ -283,21 +314,22 @@ void sd_lld_start(SerialDriver *sdp) {
       AIC_EnableIT(AT91C_ID_US1);
     }
 #endif
+  // note - no explicit start for SD3 (DBGU_UART) since it's not included in the AIC or PMC
   }
-  usart_init(sdp);
+  usart_init(sdp, config);
 }
 
 /**
- * @brief Low level serial driver stop.
+ * @brief   Low level serial driver stop.
  * @details De-initializes the USART, stops the associated clock, resets the
  *          interrupt vector.
  *
- * @param[in] sdp pointer to a @p SerialDriver object
+ * @param[in] sdp       pointer to a @p SerialDriver object
  */
 void sd_lld_stop(SerialDriver *sdp) {
 
-  if (sdp->sd.state == SD_READY) {
-    usart_deinit(sdp->sd.usart);
+  if (sdp->state == SD_READY) {
+    usart_deinit(sdp->usart);
 #if USE_SAM7_USART0
     if (&SD1 == sdp) {
       AT91C_BASE_PMC->PMC_PCDR = (1 << AT91C_ID_US0);
@@ -309,6 +341,12 @@ void sd_lld_stop(SerialDriver *sdp) {
     if (&SD2 == sdp) {
       AT91C_BASE_PMC->PMC_PCDR = (1 << AT91C_ID_US1);
       AIC_DisableIT(AT91C_ID_US1);
+      return;
+    }
+#endif
+#if USE_SAM7_DBGU_UART
+    if (&SD3 == sdp) {
+      AT91C_BASE_DBGU->DBGU_IDR = 0xFFFFFFFF;
       return;
     }
 #endif
