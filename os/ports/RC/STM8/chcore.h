@@ -30,6 +30,21 @@
 
 #include <intrins.h>
 
+/*===========================================================================*/
+/* Port configurable parameters.                                             */
+/*===========================================================================*/
+
+/**
+ * @brief   Enables the use of the WFI instruction in the idle thread loop.
+ */
+#ifndef STM8_ENABLE_WFI_IDLE
+#define STM8_ENABLE_WFI_IDLE    FALSE
+#endif
+
+/*===========================================================================*/
+/* Port exported info.                                                       */
+/*===========================================================================*/
+
 /**
  * @brief   Unique macro for the implemented architecture.
  */
@@ -39,6 +54,10 @@
  * @brief   Name of the implemented architecture.
  */
 #define CH_ARCHITECTURE_NAME "STM8"
+
+/*===========================================================================*/
+/* Port implementation part.                                                 */
+/*===========================================================================*/
 
 /**
  * @brief   Base type for stack alignment.
@@ -250,7 +269,11 @@ struct stm8_startctx {
  * @brief   Enters an architecture-dependent halt mode.
  * @note    Implemented with the specific "wfi" instruction.
  */
+#if STM8_ENABLE_WFI_IDLE || defined(__DOXYGEN__)
 #define port_wait_for_interrupt() _wfi_()
+#else
+#define port_wait_for_interrupt()
+#endif
 
 /**
  * @brief   Performs a context switch between two threads.
@@ -272,6 +295,30 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+/*===========================================================================*/
+/* Scheduler captured code.                                                  */
+/*===========================================================================*/
+
+#define PORT_OPTIMIZED_RLIST_VAR
+#define PORT_OPTIMIZED_RLIST_EXT
+#define PORT_OPTIMIZED_READYLIST_STRUCT
+
+typedef struct {
+  ThreadsQueue          r_queue;
+  tprio_t               r_prio;
+  Thread                *r_current;
+#if CH_USE_REGISTRY
+  Thread                *r_newer;
+  Thread                *r_older;
+#endif
+  /* End of the fields shared with the Thread structure.*/
+#if CH_TIME_QUANTUM > 0
+  cnt_t                 r_preempt;
+#endif
+} ReadyList;
+
+extern page0 ReadyList rlist;
 
 #endif /* _CHCORE_H_ */
 

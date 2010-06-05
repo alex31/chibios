@@ -117,7 +117,7 @@ static void notify1(void) {
  */
 static void uart1_init(const SerialConfig *config) {
 
-  UART1_BRR2 = ((uint8_t)(config->sc_brr >> 8) % (uint8_t)0xF0) |
+  UART1_BRR2 = ((uint8_t)(config->sc_brr >> 8) & (uint8_t)0xF0) |
                ((uint8_t)config->sc_brr & (uint8_t)0x0F);
   UART1_BRR1 = (uint8_t)(config->sc_brr >> 4);
   UART1_CR1  = config->sc_mode &
@@ -148,7 +148,7 @@ static void uart1_deinit(void) {
 #if USE_STM8_UART3 || defined(__DOXYGEN__)
 static void notify3(void) {
 
-  UART1_CR2 |= 0x80;                        /* TIEN bit.                    */
+  UART3_CR2 |= 0x80;                        /* TIEN bit.                    */
 }
 
 /**
@@ -158,7 +158,7 @@ static void notify3(void) {
  */
 static void uart3_init(const SerialConfig *config) {
 
-  UART3_BRR2 = ((uint8_t)(config->sc_brr >> 8) % (uint8_t)0xF0) |
+  UART3_BRR2 = ((uint8_t)(config->sc_brr >> 8) & (uint8_t)0xF0) |
                ((uint8_t)config->sc_brr & (uint8_t)0x0F);
   UART3_BRR1 = (uint8_t)(config->sc_brr >> 4);
   UART3_CR1  = config->sc_mode &
