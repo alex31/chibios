@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -39,22 +46,22 @@
 /**
  * @brief   Kernel version string.
  */
-#define CH_KERNEL_VERSION       "1.5.9unstable"
+#define CH_KERNEL_VERSION       "2.0.0"
 
 /**
  * @brief   Kernel version major number.
  */
-#define CH_KERNEL_MAJOR         1
+#define CH_KERNEL_MAJOR         2
 
 /**
  * @brief   Kernel version minor number.
  */
-#define CH_KERNEL_MINOR         5
+#define CH_KERNEL_MINOR         0
 
 /**
  * @brief   Kernel version patch number.
  */
-#define CH_KERNEL_PATCH         9
+#define CH_KERNEL_PATCH         0
 
 /*
  * Common values.
