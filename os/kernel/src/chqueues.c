@@ -133,6 +133,10 @@ msg_t chIQGetTimeout(InputQueue *iqp, systime_t time) {
   msg_t msg;
 
   chSysLock();
+  
+  if (iqp->q_notify)
+    iqp->q_notify();
+
   if ((msg = chSemWaitTimeoutS(&iqp->q_sem, time)) < RDY_OK) {
     chSysUnlock();
     return msg;
@@ -140,9 +144,6 @@ msg_t chIQGetTimeout(InputQueue *iqp, systime_t time) {
   b = *iqp->q_rdptr++;
   if (iqp->q_rdptr >= iqp->q_top)
     iqp->q_rdptr = iqp->q_buffer;
-
-  if (iqp->q_notify)
-    iqp->q_notify();
 
   chSysUnlock();
   return b;
@@ -161,7 +162,8 @@ msg_t chIQGetTimeout(InputQueue *iqp, systime_t time) {
  *
  * @param[in] iqp       pointer to an @p InputQueue structure
  * @param[out] bp       pointer to the data buffer
- * @param[in] n         the maximum amount of data to be transferred
+ * @param[in] n         the maximum amount of data to be transferred, the
+ *                      value 0 is reserved
  * @param[in] time      the number of ticks before the operation timeouts,
  *                      the following special values are allowed:
  *                      - @a TIME_IMMEDIATE immediate timeout.
@@ -173,6 +175,8 @@ size_t chIQReadTimeout(InputQueue *iqp, uint8_t *bp,
                        size_t n, systime_t time) {
   qnotify_t nfy = iqp->q_notify;
   size_t r = 0;
+
+  chDbgCheck(n > 0, "chIQReadTimeout");
 
   chSysLock();
   while (TRUE) {
@@ -311,7 +315,8 @@ msg_t chOQGetI(OutputQueue *oqp) {
  *
  * @param[in] oqp       pointer to an @p OutputQueue structure
  * @param[out] bp       pointer to the data buffer
- * @param[in] n         the maximum amount of data to be transferred
+ * @param[in] n         the maximum amount of data to be transferred, the
+ *                      value 0 is reserved
  * @param[in] time      the number of ticks before the operation timeouts,
  *                      the following special values are allowed:
  *                      - @a TIME_IMMEDIATE immediate timeout.
@@ -323,6 +328,8 @@ size_t chOQWriteTimeout(OutputQueue *oqp, const uint8_t *bp,
                         size_t n, systime_t time) {
   qnotify_t nfy = oqp->q_notify;
   size_t w = 0;
+
+  chDbgCheck(n > 0, "chOQWriteTimeout");
 
   chSysLock();
   while (TRUE) {
