@@ -5,7 +5,7 @@ Settings: F_CPU=16000000
 
 *** ChibiOS/RT test suite
 ***
-*** Kernel:       2.0.1
+*** Kernel:       2.1.0unstable
 *** GCC Version:  4.3.0
 *** Architecture: AVR
 *** Core Variant: MegaAVR
@@ -73,12 +73,6 @@ Settings: F_CPU=16000000
 --- Test Case 6.3 (Events, timeouts)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
---- Test Case 7.1 (Heap, allocation and fragmentation test)
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 8.1 (Memory Pools, queue/dequeue)
---- Result: SUCCESS
-----------------------------------------------------------------------------
 --- Test Case 10.1 (Queues, input queues)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
@@ -114,11 +108,11 @@ Settings: F_CPU=16000000
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.8 (Benchmark, round robin context switching)
---- Score : 60760 ctxswc/S
+--- Score : 60756 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.9 (Benchmark, I/O Queues throughput)
---- Score : 80180 bytes/S
+--- Score : 82696 bytes/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.10 (Benchmark, virtual timers set/reset)
@@ -130,7 +124,7 @@ Settings: F_CPU=16000000
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.12 (Benchmark, mutexes lock/unlock)
---- Score : 116720 lock+unlock/S
+--- Score : 117588 lock+unlock/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.13 (Benchmark, RAM footprint)

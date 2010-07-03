@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "ch.h"
@@ -77,10 +70,6 @@ static SEMAPHORE_DECL(sem1, 0);
  * priority order depending on the CH_USE_SEMAPHORES_PRIORITY configuration
  * setting.
  */
-static char *sem1_gettest(void) {
-
-  return "Semaphores, enqueuing";
-}
 
 static void sem1_setup(void) {
 
@@ -114,6 +103,13 @@ static void sem1_execute(void) {
 #endif
 }
 
+ROMCONST struct testcase testsem1 = {
+  "Semaphores, enqueuing",
+  sem1_setup,
+  NULL,
+  sem1_execute
+};
+
 /**
  * @page test_sem_002 Timeout test
  *
@@ -124,17 +120,6 @@ static void sem1_execute(void) {
  * in each of the above scenario and that the semaphore structure status is
  * correct after each operation.
  */
-const struct testcase testsem1 = {
-  sem1_gettest,
-  sem1_setup,
-  NULL,
-  sem1_execute
-};
-
-static char *sem2_gettest(void) {
-
-  return "Semaphores, timeout";
-}
 
 static void sem2_setup(void) {
 
@@ -192,8 +177,8 @@ static void sem2_execute(void) {
   test_assert_time_window(11, target_time, target_time + ALLOWED_DELAY);
 }
 
-const struct testcase testsem2 = {
-  sem2_gettest,
+ROMCONST struct testcase testsem2 = {
+  "Semaphores, timeout",
   sem2_setup,
   NULL,
   sem2_execute
@@ -211,11 +196,6 @@ const struct testcase testsem2 = {
  * in each of the above scenario and that the semaphore structure status is
  * correct after each operation.
  */
-
-static char *sem3_gettest(void) {
-
-  return "Semaphores, atomic signal-wait";
-}
 
 static void sem3_setup(void) {
 
@@ -242,8 +222,8 @@ static void sem3_execute(void) {
   test_assert(4, sem1.s_cnt == 0, "counter not zero");
 }
 
-const struct testcase testsem3 = {
-  sem3_gettest,
+ROMCONST struct testcase testsem3 = {
+  "Semaphores, atomic signal-wait",
   sem3_setup,
   NULL,
   sem3_execute
@@ -254,7 +234,7 @@ const struct testcase testsem3 = {
 /**
  * @brief   Test sequence for semaphores.
  */
-const struct testcase * const patternsem[] = {
+ROMCONST struct testcase * ROMCONST patternsem[] = {
 #if CH_USE_SEMAPHORES
   &testsem1,
   &testsem2,

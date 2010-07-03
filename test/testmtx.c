@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "ch.h"
@@ -90,10 +83,6 @@ static CONDVAR_DECL(c1);
  * The test expects the threads to perform their operations in increasing
  * priority order regardless of the initial order.
  */
-static char *mtx1_gettest(void) {
-
-  return "Mutexes, priority enqueuing test";
-}
 
 static void mtx1_setup(void) {
 
@@ -123,8 +112,8 @@ static void mtx1_execute(void) {
   test_assert_sequence(2, "ABCDE");
 }
 
-const struct testcase testmtx1 = {
-  mtx1_gettest,
+ROMCONST struct testcase testmtx1 = {
+  "Mutexes, priority enqueuing test",
   mtx1_setup,
   NULL,
   mtx1_execute
@@ -161,11 +150,6 @@ const struct testcase testmtx1 = {
  *   ^    - Priority transition (boost or return).
  * @endcode
  */
-
-static char *mtx2_gettest(void) {
-
-  return "Mutexes, priority inheritance, simple case";
-}
 
 static void mtx2_setup(void) {
 
@@ -219,8 +203,8 @@ static void mtx2_execute(void) {
   test_assert_time_window(2, time + MS2ST(100), time + MS2ST(100) + ALLOWED_DELAY);
 }
 
-const struct testcase testmtx2 = {
-  mtx2_gettest,
+ROMCONST struct testcase testmtx2 = {
+  "Mutexes, priority inheritance, simple case",
   mtx2_setup,
   NULL,
   mtx2_execute
@@ -256,10 +240,6 @@ const struct testcase testmtx2 = {
  *   ^    - Priority transition (boost or return).
  * @endcode
  */
-static char *mtx3_gettest(void) {
-
-  return "Mutexes, priority inheritance, complex case";
-}
 
 static void mtx3_setup(void) {
 
@@ -343,8 +323,8 @@ static void mtx3_execute(void) {
   test_assert_time_window(2, time + MS2ST(110), time + MS2ST(110) + ALLOWED_DELAY);
 }
 
-const struct testcase testmtx3 = {
-  mtx3_gettest,
+ROMCONST struct testcase testmtx3 = {
+  "Mutexes, priority inheritance, complex case",
   mtx3_setup,
   NULL,
   mtx3_execute
@@ -360,10 +340,6 @@ const struct testcase testmtx3 = {
  * The test expects that the priority changes caused by the priority
  * inheritance algorithm happen at the right moment and with the right values.
  */
-static char *mtx4_gettest(void) {
-
-  return "Mutexes, priority return";
-}
 
 static void mtx4_setup(void) {
 
@@ -435,8 +411,8 @@ static void mtx4_execute(void) {
   test_wait_threads();
 }
 
-const struct testcase testmtx4 = {
-  mtx4_gettest,
+ROMCONST struct testcase testmtx4 = {
+  "Mutexes, priority return",
   mtx4_setup,
   NULL,
   mtx4_execute
@@ -451,10 +427,6 @@ const struct testcase testmtx4 = {
  * The test expects that the internal mutex status is consistent after each
  * operation.
  */
-static char *mtx5_gettest(void) {
-
-  return "Mutexes, status";
-}
 
 static void mtx5_setup(void) {
 
@@ -482,8 +454,8 @@ static void mtx5_execute(void) {
   test_assert(5, chThdGetPriority() == prio, "wrong priority level");
 }
 
-const struct testcase testmtx5 = {
-  mtx5_gettest,
+ROMCONST struct testcase testmtx5 = {
+  "Mutexes, status",
   mtx5_setup,
   NULL,
   mtx5_execute
@@ -500,10 +472,6 @@ const struct testcase testmtx5 = {
  * The test expects the threads to reach their goal in increasing priority
  * order regardless of the initial order.
  */
-static char *mtx6_gettest(void) {
-
-  return "CondVar, signal test";
-}
 
 static void mtx6_setup(void) {
 
@@ -540,8 +508,8 @@ static void mtx6_execute(void) {
   test_assert_sequence(1, "ABCDE");
 }
 
-const struct testcase testmtx6 = {
-  mtx6_gettest,
+ROMCONST struct testcase testmtx6 = {
+  "CondVar, signal test",
   mtx6_setup,
   NULL,
   mtx6_execute
@@ -556,10 +524,6 @@ const struct testcase testmtx6 = {
  * The test expects the threads to reach their goal in increasing priority
  * order regardless of the initial order.
  */
-static char *mtx7_gettest(void) {
-
-  return "CondVar, broadcast test";
-}
 
 static void mtx7_setup(void) {
 
@@ -581,8 +545,8 @@ static void mtx7_execute(void) {
   test_assert_sequence(1, "ABCDE");
 }
 
-const struct testcase testmtx7 = {
-  mtx7_gettest,
+ROMCONST struct testcase testmtx7 = {
+  "CondVar, broadcast test",
   mtx7_setup,
   NULL,
   mtx7_execute
@@ -596,10 +560,6 @@ const struct testcase testmtx7 = {
  * conditional variable queue. It tests this very specific situation in order
  * to complete the code coverage.
  */
-static char *mtx8_gettest(void) {
-
-  return "CondVar, boost test";
-}
 
 static void mtx8_setup(void) {
 
@@ -643,8 +603,8 @@ static void mtx8_execute(void) {
   test_assert_sequence(1, "ABC");
 }
 
-const struct testcase testmtx8 = {
-  mtx8_gettest,
+ROMCONST struct testcase testmtx8 = {
+  "CondVar, boost test",
   mtx8_setup,
   NULL,
   mtx8_execute
@@ -655,7 +615,7 @@ const struct testcase testmtx8 = {
 /**
  * @brief   Test sequence for mutexes.
  */
-const struct testcase * const patternmtx[] = {
+ROMCONST struct testcase * ROMCONST patternmtx[] = {
 #if CH_USE_MUTEXES
   &testmtx1,
 #if CH_DBG_THREADS_PROFILING

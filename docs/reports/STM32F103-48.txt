@@ -5,12 +5,9 @@ Settings: SYSCLK=48, ACR=0x11 (1 wait state)
 
 *** ChibiOS/RT test suite
 ***
-*** Kernel:       2.0.1
-*** GCC Version:  4.5.0
-*** Architecture: ARMv7-M
-*** Core Variant: Cortex-M3
-*** Platform:     STM32 MD
-*** Test Board:   Olimex STM32-P103
+*** Kernel:       1.3.5unstable
+*** Architecture: ARM Cortex-M3
+*** GCC Version:  4.4.2
 
 ----------------------------------------------------------------------------
 --- Test Case 1.1 (Threads, enqueuing test #1)
@@ -85,9 +82,6 @@ Settings: SYSCLK=48, ACR=0x11 (1 wait state)
 --- Test Case 9.2 (Dynamic APIs, threads creation from memory pool)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
---- Test Case 9.3 (Dynamic APIs, registry and references)
---- Result: SUCCESS
-----------------------------------------------------------------------------
 --- Test Case 10.1 (Queues, input queues)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
@@ -95,56 +89,56 @@ Settings: SYSCLK=48, ACR=0x11 (1 wait state)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.1 (Benchmark, messages #1)
---- Score : 189148 msgs/S, 378296 ctxswc/S
+--- Score : 161714 msgs/S, 323428 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.2 (Benchmark, messages #2)
---- Score : 155368 msgs/S, 310736 ctxswc/S
+--- Score : 135981 msgs/S, 271962 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.3 (Benchmark, messages #3)
---- Score : 155368 msgs/S, 310736 ctxswc/S
+--- Score : 135981 msgs/S, 271962 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.4 (Benchmark, context switch)
---- Score : 621496 ctxswc/S
+--- Score : 498624 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.5 (Benchmark, threads, full cycle)
---- Score : 119639 threads/S
+--- Score : 127308 threads/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.6 (Benchmark, threads, create only)
---- Score : 169698 threads/S
+--- Score : 162820 threads/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
---- Test Case 11.7 (Benchmark, mass reschedule, 5 threads)
---- Score : 47811 reschedules/S, 286866 ctxswc/S
+--- Test Case 11.7 (Benchmark, mass reschedulation, 5 threads)
+--- Score : 43439 reschedulations/S, 260634 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.8 (Benchmark, round robin context switching)
---- Score : 363260 ctxswc/S
+--- Score : 371820 reschedulations/S, 371820 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.9 (Benchmark, I/O Queues throughput)
---- Score : 380600 bytes/S
+--- Score : 377504 bytes/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.10 (Benchmark, virtual timers set/reset)
---- Score : 514634 timers/S
+--- Score : 526068 timers/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.11 (Benchmark, semaphores wait/signal)
---- Score : 676488 wait+signal/S
+--- Score : 686360 wait+signal/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.12 (Benchmark, mutexes lock/unlock)
---- Score : 494716 lock+unlock/S
+--- Score : 475188 lock+unlock/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.13 (Benchmark, RAM footprint)
---- System: 340 bytes
---- Thread: 68 bytes
+--- System: 300 bytes
+--- Thread: 60 bytes
 --- Timer : 20 bytes
 --- Semaph: 12 bytes
 --- EventS: 4 bytes

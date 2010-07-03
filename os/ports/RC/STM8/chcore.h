@@ -10,25 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
  * @file    RC/STM8/chcore.h
- * @brief   STM8 architecture port macros and structures.
+ * @brief   STM8 (Raisonance) architecture port macros and structures.
  *
- * @addtogroup STM8_CORE
+ * @addtogroup STM8_RAISONANCE_CORE
  * @{
  */
 
@@ -60,7 +53,7 @@
 /**
  * @brief   Name of the implemented architecture.
  */
-#define CH_ARCHITECTURE_NAME "STM8"
+#define CH_ARCHITECTURE_NAME    "STM8"
 
 /*===========================================================================*/
 /* Port implementation part.                                                 */
@@ -162,19 +155,16 @@ struct stm8_startctx {
  *          by @p INT_REQUIRED_STACK.
  */
 #ifndef IDLE_THREAD_STACK_SIZE
-#define IDLE_THREAD_STACK_SIZE  0
+#define IDLE_THREAD_STACK_SIZE      0
 #endif
 
 /**
  * @brief   Per-thread stack overhead for interrupts servicing.
- * @details This constant is used in the calculation of the correct working
- *          area size.
- *          This value can be zero on those architecture where there is a
- *          separate interrupt stack and the stack space between @p intctx and
- *          @p extctx is known to be zero.
+ * @details This is a safe value, you may trim it down after reading the
+ *          right size in the map file.
  */
 #ifndef INT_REQUIRED_STACK
-#define INT_REQUIRED_STACK      32
+#define INT_REQUIRED_STACK          48
 #endif
 
 /**
@@ -219,7 +209,7 @@ struct stm8_startctx {
  * @note    @p id can be a function name or a vector number depending on the
  *          port implementation.
  */
-#define PORT_IRQ_HANDLER(id) void irq##id(void) interrupt id
+#define PORT_IRQ_HANDLER(id) void vector##id(void) interrupt id
 
 /**
  * @brief   Port-related initialization code.
@@ -296,9 +286,9 @@ struct stm8_startctx {
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void port_halt(void);
   void _port_switch(Thread *otp);
   void _port_thread_start(void);
+  void port_halt(void);
 #ifdef __cplusplus
 }
 #endif
@@ -325,7 +315,7 @@ typedef struct {
 #endif
 } ReadyList;
 
-extern page0 ReadyList rlist;
+page0 extern ReadyList rlist;
 
 #endif /* _CHCORE_H_ */
 
