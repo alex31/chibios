@@ -31,7 +31,7 @@ PROJECT_NAME           = ChibiOS/RT
 # This could be handy for archiving the generated documentation or 
 # if some version control system is used.
 
-PROJECT_NUMBER         = 2.1.0
+PROJECT_NUMBER         = 2.0.2
 
 # The OUTPUT_DIRECTORY tag is used to specify the (relative or absolute) 
 # base path where the generated documentation will be put. 
@@ -681,8 +681,6 @@ RECURSIVE              = NO
 # subdirectory from a directory tree whose root is specified with the INPUT tag.
 
 EXCLUDE                = ../os/hal/platforms/STM32/stm32f10x.h \
-                         ../os/hal/platforms/STM8/stm8s.h \
-                         ../os/hal/platforms/STM8/stm8s_type.h \
                          ../os/hal/platforms/LPC11xx/LPC11xx.h \
                          ../os/hal/platforms/LPC11xx/system_LPC11xx.h \
                          ../os/hal/platforms/LPC13xx/LPC13xx.h \

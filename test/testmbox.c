@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -70,6 +77,11 @@ static MAILBOX_DECL(mb1, test.wa.T0, MB_SIZE);
  * in order to stimulate all the possible code paths inside the mailbox.<br>
  * The test expects to find a consistent mailbox status after each operation.
  */
+
+static char *mbox1_gettest(void) {
+
+  return "Mailboxes, queuing and timeouts";
+}
 
 static void mbox1_setup(void) {
 
@@ -155,8 +167,8 @@ static void mbox1_execute(void) {
   test_assert(21, mb1.mb_buffer == mb1.mb_rdptr, "read pointer not aligned to base");
 }
 
-ROMCONST struct testcase testmbox1 = {
-  "Mailboxes, queuing and timeouts",
+const struct testcase testmbox1 = {
+  mbox1_gettest,
   mbox1_setup,
   NULL,
   mbox1_execute
@@ -167,7 +179,7 @@ ROMCONST struct testcase testmbox1 = {
 /**
  * @brief   Test sequence for mailboxes.
  */
-ROMCONST struct testcase * ROMCONST patternmbox[] = {
+const struct testcase * const patternmbox[] = {
 #if CH_USE_MAILBOXES
   &testmbox1,
 #endif

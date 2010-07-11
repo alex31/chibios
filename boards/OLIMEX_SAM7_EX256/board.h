@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #ifndef _BOARD_H_
@@ -72,7 +79,6 @@
 #define PIOA_USB_PUP_MASK       (1 << PIOA_USB_PUP)
 #define PIOA_USB_PR             26
 #define PIOA_USB_PR_MASK        (1 << PIOA_USB_PR)
-#define PIOA_CS_MMC             13
 
 #define PIOB_PHY_PD             18
 #define PIOB_PHY_PD_MASK        (1 << PIOB_PHY_PD)
@@ -90,14 +96,5 @@
 #define PIOB_SW2_MASK           (1 << PIOB_SW2)
 #define PIOB_PHY_IRQ            26
 #define PIOB_PHY_IRQ_MASK       (1 << PIOB_PHY_IRQ)
-
-#define MMC_CSR_NUM             1
-
-/*
- * SPI0 pins
- */
-#define SPI_MISO                (1 << 16) 
-#define SPI_MOSI                (1 << 17)
-#define SPI_SCK                 (1 << 18)
 
 #endif /* _BOARD_H_ */

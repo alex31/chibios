@@ -10,20 +10,24 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @defgroup ARMCMx ARM Cortex-Mx
- * @details ARM Cortex-Mx port for the GCC compiler.
- 
- * @section ARMCMx_INTRO
- * This port supports all the cores implementing the ARMv6-M and ARMv7-M
- * architectures.
+ * @details This port supports the ARMv6-M and ARMv7-M architectures (all the
+ * Cortex-Mx cores).
  *
  * @section ARMCMx_STATES_A System logical states in ARMv6-M
  * - <b>Init</b>. This state is represented by the startup code and the
@@ -105,7 +109,7 @@
  * - The threads are started in thread-privileged mode.
  * - Interrupt nesting and the other advanced core/NVIC features are supported.
  * .
- * @ingroup gcc
+ * @ingroup ports
  */
 
 /**

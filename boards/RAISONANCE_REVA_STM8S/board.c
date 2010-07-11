@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -37,7 +44,7 @@ CH_IRQ_HANDLER(13) {
   chSysTimerHandlerI();
   chSysUnlockFromIsr();
 
-  TIM2->SR1 = 0;
+  TIM2_SR1 = 0;
 
   CH_IRQ_EPILOGUE();
 }
@@ -55,13 +62,13 @@ void hwinit(void) {
   /*
    * TIM2 initialization as system tick.
    */
-  CLK->PCKENR1 |= 32;           /* PCKEN15, TIM2 clock source.*/
-  TIM2->PSCR    = 4;            /* Prescaler divide by 2^4=16.*/
-  TIM2->ARRH    = TIM2_ARR >> 8;
-  TIM2->ARRL    = TIM2_ARR;
-  TIM2->CNTRH   = 0;
-  TIM2->CNTRL   = 0;
-  TIM2->SR1     = 0;
-  TIM2->IER     = 1;            /* UIE */
-  TIM2->CR1     = 1;            /* CEN */
+  CLK_PCKENR1 |= 32;            /* PCKEN15, TIM2 clock source.*/
+  TIM2_PSCR    = 4;             /* Prescaler divide by 2^4=16.*/
+  TIM2_ARRH    = TIM2_ARR >> 8;
+  TIM2_ARRL    = TIM2_ARR;
+  TIM2_CNTRH   = 0;
+  TIM2_CNTRL   = 0;
+  TIM2_SR1     = 0;
+  TIM2_IER     = 1;             /* UIE */
+  TIM2_CR1     = 1;             /* CEN */
 }

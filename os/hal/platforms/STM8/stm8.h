@@ -10,27 +10,39 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #ifndef _STM8_H_
 #define _STM8_H_
 
-#undef FALSE
-#undef TRUE
+/*
+ * Supported platforms.
+ */
+#define PLATFORM_STM8S208RB     1
+#define PLATFORM_STM8AF51AA     2
 
-#if defined(STM8S208) || defined(STM8S207) || defined(STM8S105) ||          \
-    defined(STM8S103) || defined (STM8S903)
-#include "stm8s.h"
+#ifndef STM8_PLATFORM
+#error "STM8 platform not defined"
+#endif
+
+#if STM8_PLATFORM == PLATFORM_STM8S208RB
+#include "STM8/STM8S208RB.h"
+#elif STM8_PLATFORM == PLATFORM_STM8AF51AA
+#include "STM8/STM8AF51AA.h"
 #else
 #error "unsupported or invalid STM8 platform"
 #endif
-
-#define FALSE 0
-#define TRUE (!FALSE)
 
 #endif /* _STM8_H_ */

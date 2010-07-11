@@ -10,15 +10,22 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @defgroup AT91SAM7 AT91SAM7 Drivers
+ * @defgroup AT91SAM7 AT91SAM7 Support
  * @brief AT91SAM7 specific support.
  * @details The AT91SAM7 support includes:
  * - Buffered, interrupt driven, serial driver.
@@ -27,7 +34,7 @@
  * - A Web server demo using the uIP TCP/IP stack.
  * - A Web server demo using the lwIP TCP/IP stack.
  * .
- * @ingroup platforms
+ * @ingroup ARM7
  */
 
 /**
@@ -70,15 +77,6 @@
  * @defgroup AT91SAM7_SERIAL AT91SAM7 USART Support
  * @brief USART peripherals support.
  * @details The serial driver supports the AT91SAM7 USART peripherals.
- *
- * @ingroup AT91SAM7
- */
-
-/**
- * @defgroup AT91SAM7_SPI AT91SAM7 SPI Support
- * @brief SPI peripheral support.
- * @details The SPI driver supports the AT91SAM7 SPI, the driver works in
- * polling mode.
  *
  * @ingroup AT91SAM7
  */

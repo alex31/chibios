@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -49,13 +56,9 @@ ROMCONST PALConfig pal_default_config =
     {VAL_GPIODODR, 0, VAL_GPIODDDR, VAL_GPIODCR1, VAL_GPIODCR2},
     {VAL_GPIOEODR, 0, VAL_GPIOEDDR, VAL_GPIOECR1, VAL_GPIOECR2},
     {VAL_GPIOFODR, 0, VAL_GPIOFDDR, VAL_GPIOFCR1, VAL_GPIOFCR2},
-#if defined(STM8S207) || defined(STM8S208) || defined(STM8S105)
     {VAL_GPIOGODR, 0, VAL_GPIOGDDR, VAL_GPIOGCR1, VAL_GPIOGCR2},
-#endif
-#if defined(STM8S207) || defined(STM8S208)
     {VAL_GPIOHODR, 0, VAL_GPIOHDDR, VAL_GPIOHCR1, VAL_GPIOHCR2},
-    {VAL_GPIOIODR, 0, VAL_GPIOIDDR, VAL_GPIOICR1, VAL_GPIOICR2},
-#endif
+    {VAL_GPIOIODR, 0, VAL_GPIOIDDR, VAL_GPIOICR1, VAL_GPIOICR2}
   }
 };
 
@@ -78,37 +81,37 @@ void hal_lld_init(void) {
 
 #if STM8_CLOCK_SOURCE != CLK_SOURCE_DEFAULT
 #if STM8_CLOCK_SOURCE == CLK_SOURCE_HSI
-  CLK->ICKR    = 1;                 /* HSIEN */
-  while ((CLK->ICKR & 2) == 0)      /* HSIRDY */
+  CLK_ICKR    = 1;                  /* HSIEN */
+  while ((CLK_ICKR & 2) == 0)       /* HSIRDY */
     ;
 #elif STM8_CLOCK_SOURCE == CLK_SOURCE_LSI
-  CLK->ICKR    = 8;                 /* LSIEN */
-  while ((CLK->ICKR & 16) == 0)     /* LSIRDY */
+  CLK_ICKR    = 8;                  /* LSIEN */
+  while ((CLK_ICKR & 16) == 0)      /* LSIRDY */
     ;
 #else /* STM8_CLOCK_SOURCE == CLK_SOURCE_HSE */
-  CLK->ECKR    = 1;                 /* HSEEN */
-  while ((CLK->ECKR & 2) == 0)      /* HSERDY */
+  CLK_ECKR    = 1;                  /* HSEEN */
+  while ((CLK_ECKR & 2) == 0)       /* HSERDY */
     ;
 #endif
 #if STM8_CLOCK_SOURCE != CLK_SOURCE_HSI
   /* Switching clock (manual switch mode).*/
-  CLK->SWCR    = 0;
-  CLK->SWR     = STM8_CLOCK_SOURCE;
-  while ((CLK->SWCR & 8) == 0)      /* SWIF */
+  CLK_SWCR    = 0;
+  CLK_SWR     = STM8_CLOCK_SOURCE;
+  while ((CLK_SWCR & 8) == 0)       /* SWIF */
     ;
-  CLK->SWCR    = 2;                 /* SWEN */
+  CLK_SWCR    = 2;                  /* SWEN */
 #endif
   /* Setting up clock dividers.*/
-  CLK->CKDIVR  = (STM8_HSI_DIVIDER << 3) | (STM8_CPU_DIVIDER << 0);
+  CLK_CKDIVR  = (STM8_HSI_DIVIDER << 3) | (STM8_CPU_DIVIDER << 0);
 
   /* Clocks initially all disabled.*/
-  CLK->PCKENR1 = 0;
-  CLK->PCKENR2 = 0;
+  CLK_PCKENR1 = 0;
+  CLK_PCKENR2 = 0;
 
   /* Other clock related initializations.*/
-  CLK->CSSR    = 0;
-  CLK->CCOR    = 0;
-  CLK->CANCCR  = 0;
+  CLK_CSSR    = 0;
+  CLK_CCOR    = 0;
+  CLK_CANCCR  = 0;
 #endif /* STM8_CLOCK_SOURCE != CLK_SOURCE_DEFAULT */
 }
 
