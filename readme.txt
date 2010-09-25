@@ -58,6 +58,15 @@
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 2.0.5 ***
+- FIX: Incorrect AT91SAM7X initialization, thanks Leszek (bug 3075354).
+- FIX: Fixed race condition in function chSchGoSleepTimeoutS, thanks Balázs
+  (bug 3074984).
+- FIX: Fixed race condition in threads creation (bug 3069854).
+- FIX: Fixed broken CH_DBG_ENABLE_STACK_CHECK option in legacy CM3 port (bug
+  3064274).
+- FIX: Fixed CAN_USE_SLEEP_MODE setting (bug 3064204).
+
 *** 2.0.4 ***
 - FIX: Fixed potential issue with GCC reorganizing instructions around "asm
   volatile" statements (bug 3058731).
