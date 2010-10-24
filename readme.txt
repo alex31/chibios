@@ -58,6 +58,17 @@
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 2.0.6 ***
+- FIX: Fixed typo in memstreams.h (bug 3089567).
+- FIX: Fixed wrong macro check in LPC214x and AT91SAM7 serial drivers (bug
+  3088776).
+- FIX: Fixed non functioning option SPI_USE_MUTUAL_EXCLUSION=FALSE (bug
+  3084764).
+- FIX: Fixed wrong macro check in STM32 serial support (but 3078891).
+- FIX: Fixed lwIP demo not working (bug 3076354).
+- FIX: Fixed non functioning option CH_USE_NESTED_LOCKS (bug 3075544).
+- CHANGE: The API chThdInit() has been renamed to chThdCreateI().
+
 *** 2.0.5 ***
 - FIX: Incorrect AT91SAM7X initialization, thanks Leszek (bug 3075354).
 - FIX: Fixed race condition in function chSchGoSleepTimeoutS, thanks Balázs

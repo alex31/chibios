@@ -69,11 +69,13 @@ void spiInit(void) {
 void spiObjectInit(SPIDriver *spip) {
 
   spip->spd_state = SPI_STOP;
+#if SPI_USE_MUTUAL_EXCLUSION
 #if CH_USE_MUTEXES
   chMtxInit(&spip->spd_mutex);
-#elif CH_USE_SEMAPHORES
+#else
   chSemInit(&spip->spd_semaphore, 1);
 #endif
+#endif /* SPI_USE_MUTUAL_EXCLUSION */
   spip->spd_config = NULL;
 }
 
@@ -196,7 +198,7 @@ void spiExchange(SPIDriver *spip, size_t n, const void *txbuf, void *rxbuf) {
 }
 
 /**
- * @brief   Sends data ever the SPI bus.
+ * @brief   Sends data over the SPI bus.
  * @note    The buffers are organized as uint8_t arrays for data sizes below
  *          or equal to 8 bits else it is organized as uint16_t arrays.
  *
