@@ -28,7 +28,7 @@
 #ifndef _UART_H_
 #define _UART_H_
 
-#if CH_HAL_USE_UART || defined(__DOXYGEN__)
+#if HAL_USE_UART || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -63,27 +63,27 @@
  * @brief   Driver state machine possible states.
  */
 typedef enum {
-  UART_UNINIT = 0,                  /**< @brief Not initialized.            */
-  UART_STOP = 1,                    /**< @brief Stopped.                    */
-  UART_READY = 2                    /**< @brief Ready.                      */
+  UART_UNINIT = 0,                  /**< Not initialized.                   */
+  UART_STOP = 1,                    /**< Stopped.                           */
+  UART_READY = 2                    /**< Ready.                             */
 } uartstate_t;
 
 /**
  * @brief   Transmitter state machine states.
  */
 typedef enum {
-  UART_TX_IDLE = 0,                 /**< @brief Not transmitting.           */
-  UART_TX_ACTIVE = 1,               /**< @brief Transmitting.               */
-  UART_TX_COMPLETE = 2              /**< @brief Buffer complete.            */
+  UART_TX_IDLE = 0,                 /**< Not transmitting.                  */
+  UART_TX_ACTIVE = 1,               /**< Transmitting.                      */
+  UART_TX_COMPLETE = 2              /**< Buffer complete.                   */
 } uarttxstate_t;
 
 /**
  * @brief   Receiver state machine states.
  */
 typedef enum {
-  UART_RX_IDLE = 0,                 /**< @brief Not receiving.              */
-  UART_RX_ACTIVE = 1,               /**< @brief Receiving.                  */
-  UART_RX_COMPLETE = 2              /**< @brief Buffer complete.            */
+  UART_RX_IDLE = 0,                 /**< Not receiving.                     */
+  UART_RX_ACTIVE = 1,               /**< Receiving.                         */
+  UART_RX_COMPLETE = 2              /**< Buffer complete.                   */
 } uartrxstate_t;
 
 #include "uart_lld.h"
@@ -115,7 +115,7 @@ extern "C" {
 }
 #endif
 
-#endif /* CH_HAL_USE_UART */
+#endif /* HAL_USE_UART */
 
 #endif /* _UART_H_ */
 

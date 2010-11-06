@@ -28,7 +28,7 @@
 #ifndef _CAN_H_
 #define _CAN_H_
 
-#if CH_HAL_USE_CAN || defined(__DOXYGEN__)
+#if HAL_USE_CAN || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -82,11 +82,11 @@
  * @brief   Driver state machine possible states.
  */
 typedef enum {
-  CAN_UNINIT = 0,                           /**< @brief Not initialized.    */
-  CAN_STOP = 1,                             /**< @brief Stopped.            */
-  CAN_STARTING = 2,                         /**< @brief Starting.           */
-  CAN_READY = 3,                            /**< @brief Ready.              */
-  CAN_SLEEP = 4                             /**< @brief Sleep state.        */
+  CAN_UNINIT = 0,                           /**< Not initialized.           */
+  CAN_STOP = 1,                             /**< Stopped.                   */
+  CAN_STARTING = 2,                         /**< Starting.                  */
+  CAN_READY = 3,                            /**< Ready.                     */
+  CAN_SLEEP = 4                             /**< Sleep state.               */
 } canstate_t;
 
 #include "can_lld.h"
@@ -127,7 +127,7 @@ extern "C" {
 }
 #endif
 
-#endif /* CH_HAL_USE_CAN */
+#endif /* HAL_USE_CAN */
 
 #endif /* _CAN_H_ */
 

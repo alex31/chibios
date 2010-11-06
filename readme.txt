@@ -58,10 +58,32 @@
   |  +--coverage/       - Code coverage project.
   +--testhal/           - HAL integration test demos.
      +--STM32/          - STM32 HAL demos.
+     +--STM8/           - STM8 HAL demos.
 
 *****************************************************************************
 *** Releases                                                              ***
 *****************************************************************************
+
+*** 2.1.3 ***
+- FIX: Fixed broken STM32 synchronous UART driver (bug 3100946).
+- FIX: Broken C++ wrapper (bug 3100925).
+- FIX: Broken lwIP/uIP demos (bug 3100901).
+- FIX: DMA not initialized under some conditions (bug 3099701).
+- FIX: Restored the RIDE7 build files in the STM32F103 demo, note the RIDE7
+  build files are not supported so this has not been tracked as a bug.
+- NEW: Added an SPI driver to the STM8 platform support.
+- NEW: Added a simple STM8 SPI demo under ./testhal/STM8/SPI.
+- NEW: Divided the file STM32/vectors.s in several files, one for each
+  STM32 sub-family. This has been done in order to remove the preprocessor
+  directives from assembler files and to support all the various STM32
+  sub-families.
+- CHANGE: Renamed ./os/ports/GCC/ARMCMx/STM32F10x in STM32.
+- CHANGE: Divided the file ARMCMx/crt0.s in crt0_v6m.s and crt0_v7m.s in
+  order to remove the preprocessor directives from assembler files.
+- CHANGE: Renamed the HAL settings macro names, removed the CH_ prefix
+  because it is reserved for the kernel namespace.
+      NOTE: ****** Make sure to use a mcuconf.h file taken from ******
+            ****** this version in your project.                ******
 
 *** 2.1.2 ***
 - FIX: Fixed typo in memstreams.h (bug 3089567)(backported to 2.0.6).

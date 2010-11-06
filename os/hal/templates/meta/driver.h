@@ -28,7 +28,7 @@
 #ifndef _XXX_H_
 #define _XXX_H_
 
-#if CH_HAL_USE_XXX || defined(__DOXYGEN__)
+#if HAL_USE_XXX || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -50,9 +50,9 @@
  * @brief   Driver state machine possible states.
  */
 typedef enum {
-  XXX_UNINIT = 0,                   /**< @brief Not initialized.            */
-  XXX_STOP = 1,                     /**< @brief Stopped.                    */
-  XXX_READY = 2,                    /**< @brief Ready.                      */
+  XXX_UNINIT = 0,                   /**< Not initialized.                   */
+  XXX_STOP = 1,                     /**< Stopped.                           */
+  XXX_READY = 2,                    /**< Ready.                             */
 } xxxstate_t;
 
 #include "xxx_lld.h"
@@ -76,7 +76,7 @@ extern "C" {
 }
 #endif
 
-#endif /* CH_HAL_USE_XXX */
+#endif /* HAL_USE_XXX */
 
 #endif /* _XXX_H_ */
 

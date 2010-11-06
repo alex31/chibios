@@ -28,7 +28,7 @@
 #ifndef _I2C_H_
 #define _I2C_H_
 
-#if CH_HAL_USE_I2C || defined(__DOXYGEN__)
+#if HAL_USE_I2C || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -57,13 +57,13 @@
  * @brief   Driver state machine possible states.
  */
 typedef enum {
-  I2C_UNINIT = 0,                   /**< @brief Not initialized.            */
-  I2C_STOP = 1,                     /**< @brief Stopped.                    */
-  I2C_READY = 2,                    /**< @brief Ready.                      */
-  I2C_MREADY = 3,                   /**< @brief START and address sent.     */
-  I2C_MTRANSMIT = 4,                /**< @brief Master transmitting.        */
-  I2C_MRECEIVE = 5,                 /**< @brief Master receiving.           */
-  I2C_MERROR = 6                    /**< @brief Error condition.            */
+  I2C_UNINIT = 0,                   /**< Not initialized.                   */
+  I2C_STOP = 1,                     /**< Stopped.                           */
+  I2C_READY = 2,                    /**< Ready.                             */
+  I2C_MREADY = 3,                   /**< START and address sent.            */
+  I2C_MTRANSMIT = 4,                /**< Master transmitting.               */
+  I2C_MRECEIVE = 5,                 /**< Master receiving.                  */
+  I2C_MERROR = 6                    /**< Error condition.                   */
 } i2cstate_t;
 
 #include "i2c_lld.h"
@@ -137,7 +137,7 @@ extern "C" {
 }
 #endif
 
-#endif /* CH_HAL_USE_I2C */
+#endif /* HAL_USE_I2C */
 
 #endif /* _I2C_H_ */
 

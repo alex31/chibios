@@ -28,7 +28,7 @@
 #ifndef _PWM_H_
 #define _PWM_H_
 
-#if CH_HAL_USE_PWM || defined(__DOXYGEN__)
+#if HAL_USE_PWM || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -50,19 +50,18 @@
  * @brief   Driver state machine possible states.
  */
 typedef enum {
-  PWM_UNINIT = 0,                   /**< @brief Not initialized.            */
-  PWM_STOP = 1,                     /**< @brief Stopped.                    */
-  PWM_READY = 2,                    /**< @brief Ready.                      */
+  PWM_UNINIT = 0,                   /**< Not initialized.                   */
+  PWM_STOP = 1,                     /**< Stopped.                           */
+  PWM_READY = 2,                    /**< Ready.                             */
 } pwmstate_t;
 
 /**
  * @brief PWM logic mode.
  */
 typedef enum {
-  PWM_OUTPUT_DISABLED = 0,          /**< @brief Output not driven, callback
-                                                only.                       */
-  PWM_OUTPUT_ACTIVE_HIGH = 1,       /**< @brief Idle is logic level 0.      */
-  PWM_OUTPUT_ACTIVE_LOW = 2         /**< @brief Idle is logic level 1.      */
+  PWM_OUTPUT_DISABLED = 0,          /**< Output not driven, callback only.  */
+  PWM_OUTPUT_ACTIVE_HIGH = 1,       /**< Idle is logic level 0.             */
+  PWM_OUTPUT_ACTIVE_LOW = 2         /**< Idle is logic level 1.             */
 } pwmmode_t;
 
 #include "pwm_lld.h"
@@ -120,7 +119,7 @@ extern "C" {
 }
 #endif
 
-#endif /* CH_HAL_USE_PWM */
+#endif /* HAL_USE_PWM */
 
 #endif /* _PWM_H_ */
 

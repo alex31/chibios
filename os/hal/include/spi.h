@@ -28,7 +28,7 @@
 #ifndef _SPI_H_
 #define _SPI_H_
 
-#if CH_HAL_USE_SPI || defined(__DOXYGEN__)
+#if HAL_USE_SPI || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -257,14 +257,14 @@ typedef enum {
  * @notapi
  */
 #define _spi_isr_code(spip) {                                               \
-  if (spip->spd_config->spc_endcb) {                                        \
-    spip->spd_state = SPI_COMPLETE;                                         \
-    spip->spd_config->spc_endcb(spip);                                      \
-    if (spip->spd_state == SPI_COMPLETE)                                    \
-      spip->spd_state = SPI_READY;                                          \
+  if ((spip)->spd_config->spc_endcb) {                                      \
+    (spip)->spd_state = SPI_COMPLETE;                                       \
+    (spip)->spd_config->spc_endcb(spip);                                    \
+    if ((spip)->spd_state == SPI_COMPLETE)                                  \
+    (spip)->spd_state = SPI_READY;                                          \
   }                                                                         \
   else {                                                                    \
-    spip->spd_state = SPI_READY;                                            \
+    (spip)->spd_state = SPI_READY;                                          \
     _spi_wakeup(spip);                                                      \
   }                                                                         \
 }
@@ -301,7 +301,7 @@ extern "C" {
 }
 #endif
 
-#endif /* CH_HAL_USE_SPI */
+#endif /* HAL_USE_SPI */
 
 #endif /* _SPI_H_ */
 

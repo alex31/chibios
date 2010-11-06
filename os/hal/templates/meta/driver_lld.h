@@ -28,7 +28,7 @@
 #ifndef _XXX_LLD_H_
 #define _XXX_LLD_H_
 
-#if CH_HAL_USE_XXX || defined(__DOXYGEN__)
+#if HAL_USE_XXX || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -46,6 +46,12 @@
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
 
+
+/**
+ * @brief   Type of a structure representing an XXX driver.
+ */
+typedef struct XXXDriver XXXDriver;
+
 /**
  * @brief   Driver configuration structure.
  * @note    It could be empty on some architectures.
@@ -57,7 +63,7 @@ typedef struct {
 /**
  * @brief   Structure representing an XXX driver.
  */
-typedef struct {
+struct XXXDriver {
   /**
    * @brief Driver state.
    */
@@ -67,7 +73,7 @@ typedef struct {
    */
   const XXXConfig           *xxx_config;
   /* End of the mandatory fields.*/
-} XXXDriver;
+};
 
 /*===========================================================================*/
 /* Driver macros.                                                            */
@@ -87,7 +93,7 @@ extern "C" {
 }
 #endif
 
-#endif /* CH_HAL_USE_XXX */
+#endif /* HAL_USE_XXX */
 
 #endif /* _XXX_LLD_H_ */
 

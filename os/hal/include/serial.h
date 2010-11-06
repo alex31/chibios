@@ -28,7 +28,7 @@
 #ifndef _SERIAL_H_
 #define _SERIAL_H_
 
-#if CH_HAL_USE_SERIAL || defined(__DOXYGEN__)
+#if HAL_USE_SERIAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -91,9 +91,9 @@
  * @brief Driver state machine possible states.
  */
 typedef enum {
-  SD_UNINIT = 0,                    /**< @brief Not initialized.            */
-  SD_STOP = 1,                      /**< @brief Stopped.                    */
-  SD_READY = 2                      /**< @brief Ready.                      */
+  SD_UNINIT = 0,                    /**< Not initialized.                   */
+  SD_STOP = 1,                      /**< Stopped.                           */
+  SD_READY = 2                      /**< Ready.                             */
 } sdstate_t;
 
 /**
@@ -317,7 +317,7 @@ extern "C" {
 }
 #endif
 
-#endif /* CH_HAL_USE_SERIAL */
+#endif /* HAL_USE_SERIAL */
 
 #endif /* _SERIAL_H_ */
 

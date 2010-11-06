@@ -28,7 +28,7 @@
 #ifndef _MMC_SPI_H_
 #define _MMC_SPI_H_
 
-#if CH_HAL_USE_MMC_SPI || defined(__DOXYGEN__)
+#if HAL_USE_MMC_SPI || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -90,8 +90,8 @@
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
-#if !CH_HAL_USE_SPI || !CH_USE_EVENTS
-#error "MMC_SPI driver requires CH_HAL_USE_SPI and CH_USE_EVENTS"
+#if !HAL_USE_SPI || !CH_USE_EVENTS
+#error "MMC_SPI driver requires HAL_USE_SPI and CH_USE_EVENTS"
 #endif
 
 /*===========================================================================*/
@@ -102,13 +102,13 @@
  * @brief   Driver state machine possible states.
  */
 typedef enum {
-  MMC_UNINIT = 0,                           /**< @brief Not initialized.    */
-  MMC_STOP = 1,                             /**< @brief Stopped.            */
-  MMC_WAIT = 2,                             /**< @brief Waiting card.       */
-  MMC_INSERTED = 3,                         /**< @brief Card inserted.      */
-  MMC_READY = 4,                            /**< @brief Card ready.         */
-  MMC_READING = 5,                          /**< @brief Reading.            */
-  MMC_WRITING = 6                           /**< @brief Writing.            */
+  MMC_UNINIT = 0,                           /**< Not initialized.           */
+  MMC_STOP = 1,                             /**< Stopped.                   */
+  MMC_WAIT = 2,                             /**< Waiting card.              */
+  MMC_INSERTED = 3,                         /**< Card inserted.             */
+  MMC_READY = 4,                            /**< Card ready.                */
+  MMC_READING = 5,                          /**< Reading.                   */
+  MMC_WRITING = 6                           /**< Writing.                   */
 } mmcstate_t;
 
 /**
@@ -226,7 +226,7 @@ extern "C" {
 }
 #endif
 
-#endif /* CH_HAL_USE_MMC_SPI */
+#endif /* HAL_USE_MMC_SPI */
 
 #endif /* _MMC_SPI_H_ */
 
