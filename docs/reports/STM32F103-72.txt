@@ -1,11 +1,11 @@
 ***************************************************************************
-Options:  -O2 -fomit-frame-pointer -mabi=apcs-gnu -falign-functions=16
+Options:  -O2 -fomit-frame-pointer -falign-functions=16
 Settings: SYSCLK=72, ACR=0x12 (2 wait states)
 ***************************************************************************
 
 *** ChibiOS/RT test suite
 ***
-*** Kernel:       2.1.3unstable
+*** Kernel:       2.0.7
 *** GCC Version:  4.5.1
 *** Architecture: ARMv7-M
 *** Core Variant: Cortex-M3
@@ -32,9 +32,6 @@ Settings: SYSCLK=72, ACR=0x12 (2 wait states)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 2.3 (Semaphores, atomic signal-wait)
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 2.4 (Binary Semaphores, functionality)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 3.1 (Mutexes, priority enqueuing test)

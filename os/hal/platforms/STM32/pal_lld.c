@@ -10,25 +10,32 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    STM32/pal_lld.c
  * @brief   STM32 GPIO low level driver code.
  *
- * @addtogroup PAL
+ * @addtogroup STM32_PAL
  * @{
  */
 
 #include "ch.h"
 #include "hal.h"
 
-#if HAL_USE_PAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_PAL || defined(__DOXYGEN__)
 
 #if defined(STM32F10X_LD)
 #define APB2_RST_MASK (RCC_APB2RSTR_IOPARST | RCC_APB2RSTR_IOPBRST |    \
@@ -81,8 +88,6 @@
  * @details Ports A-D(E, F, G) clocks enabled, AFIO clock enabled.
  *
  * @param[in] config    the STM32 ports configuration
- *
- * @notapi
  */
 void _pal_lld_init(const PALConfig *config) {
 
@@ -138,8 +143,6 @@ void _pal_lld_init(const PALConfig *config) {
  * @param[in] port      the port identifier
  * @param[in] mask      the group mask
  * @param[in] mode      the mode
- *
- * @notapi
  */
 void _pal_lld_setgroupmode(ioportid_t port,
                            ioportmask_t mask,
@@ -192,6 +195,6 @@ void _pal_lld_setgroupmode(ioportid_t port,
   port->CRL = (port->CRL & ml) | crl;
 }
 
-#endif /* HAL_USE_PAL */
+#endif /* CH_HAL_USE_PAL */
 
 /** @} */

@@ -10,19 +10,19 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * @defgroup STM32F103_HAL STM32F103 HAL Support
- * @brief HAL support for STM32 LD, MD and HD families.
- *
- * @ingroup HAL
- */
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
+*/
 
 /**
  * @file    STM32/hal_lld_f103.h
@@ -421,7 +421,7 @@
 #endif
 
 /**
- * @brief   Timers 1, 8, 9, 10, 11 clock.
+ * @brief   Timers 1, 8, 9, 10 and 11 clock.
  */
 #if (STM32_PPRE2 == STM32_PPRE2_DIV1) || defined(__DOXYGEN__)
 #define STM32_TIMCLK2               (STM32_PCLK2 * 1)

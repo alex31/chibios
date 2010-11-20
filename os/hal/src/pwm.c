@@ -10,17 +10,23 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    pwm.c
  * @brief   PWM Driver code.
- *
  * @addtogroup PWM
  * @{
  */
@@ -28,7 +34,7 @@
 #include "ch.h"
 #include "hal.h"
 
-#if HAL_USE_PWM || defined(__DOXYGEN__)
+#if CH_HAL_USE_PWM || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -48,8 +54,6 @@
 
 /**
  * @brief   PWM Driver initialization.
- *
- * @init
  */
 void pwmInit(void) {
 
@@ -60,16 +64,11 @@ void pwmInit(void) {
  * @brief   Initializes the standard part of a @p PWMDriver structure.
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
- *
- * @init
  */
 void pwmObjectInit(PWMDriver *pwmp) {
 
   pwmp->pd_state    = PWM_STOP;
   pwmp->pd_config   = NULL;
-#if defined(PWM_DRIVER_EXT_INIT_HOOK)
-  PWM_DRIVER_EXT_INIT_HOOK(pwmp);
-#endif
 }
 
 /**
@@ -77,8 +76,6 @@ void pwmObjectInit(PWMDriver *pwmp) {
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
  * @param[in] config    pointer to a @p PWMConfig object
- *
- * @api
  */
 void pwmStart(PWMDriver *pwmp, const PWMConfig *config) {
 
@@ -86,7 +83,8 @@ void pwmStart(PWMDriver *pwmp, const PWMConfig *config) {
 
   chSysLock();
   chDbgAssert((pwmp->pd_state == PWM_STOP) || (pwmp->pd_state == PWM_READY),
-              "pwmStart(), #1", "invalid state");
+              "pwmStart(), #1",
+              "invalid state");
   pwmp->pd_config = config;
   pwm_lld_start(pwmp);
   pwmp->pd_state = PWM_READY;
@@ -97,8 +95,6 @@ void pwmStart(PWMDriver *pwmp, const PWMConfig *config) {
  * @brief   Deactivates the PWM peripheral.
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
- *
- * @api
  */
 void pwmStop(PWMDriver *pwmp) {
 
@@ -106,7 +102,8 @@ void pwmStop(PWMDriver *pwmp) {
 
   chSysLock();
   chDbgAssert((pwmp->pd_state == PWM_STOP) || (pwmp->pd_state == PWM_READY),
-              "pwmStop(), #1", "invalid state");
+              "pwmStop(), #1",
+              "invalid state");
   pwm_lld_stop(pwmp);
   pwmp->pd_state = PWM_STOP;
   chSysUnlock();
@@ -114,13 +111,10 @@ void pwmStop(PWMDriver *pwmp) {
 
 /**
  * @brief   Enables a PWM channel.
- * @details Programs (or reprograms) a PWM channel.
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
  * @param[in] channel   PWM channel identifier
  * @param[in] width     PWM pulse width as clock pulses number
- *
- * @api
  */
 void pwmEnableChannel(PWMDriver *pwmp,
                       pwmchannel_t channel,
@@ -131,7 +125,7 @@ void pwmEnableChannel(PWMDriver *pwmp,
 
   chSysLock();
   chDbgAssert(pwmp->pd_state == PWM_READY,
-              "pwmEnableChannel(), #1", "not ready");
+              "pwmEnableChannel(), #1", "invalid state");
   pwm_lld_enable_channel(pwmp, channel, width);
   chSysUnlock();
 }
@@ -143,8 +137,6 @@ void pwmEnableChannel(PWMDriver *pwmp,
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
  * @param[in] channel   PWM channel identifier
- *
- * @api
  */
 void pwmDisableChannel(PWMDriver *pwmp, pwmchannel_t channel) {
 
@@ -153,11 +145,11 @@ void pwmDisableChannel(PWMDriver *pwmp, pwmchannel_t channel) {
 
   chSysLock();
   chDbgAssert(pwmp->pd_state == PWM_READY,
-              "pwmDisableChannel(), #1", "not ready");
+              "pwmDisableChannel(), #1", "invalid state");
   pwm_lld_disable_channel(pwmp, channel);
   chSysUnlock();
 }
 
-#endif /* HAL_USE_PWM */
+#endif /* CH_HAL_USE_PWM */
 
 /** @} */

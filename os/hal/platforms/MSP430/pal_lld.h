@@ -10,25 +10,31 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    MSP430/pal_lld.h
- * @brief   MSP430 Digital I/O low level driver header.
- *
- * @addtogroup PAL
+ * @file MSP430/pal_lld.h
+ * @brief MSP430 Digital I/O low level driver header.
+ * @addtogroup MSP430_PAL
  * @{
  */
 
 #ifndef _PAL_LLD_H_
 #define _PAL_LLD_H_
 
-#if HAL_USE_PAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_PAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Unsupported modes and specific modes                                      */
@@ -44,27 +50,27 @@
 /*===========================================================================*/
 
 /**
- * @brief   Simplified MSP430 I/O port representation.
+ * @brief Simplified MSP430 I/O port representation.
  * @details This structure represents the common part of all the MSP430 I/O
  *          ports.
  */
-struct msp430_port_common {
+struct port_common_t {
   ioregister_t  in;
   ioregister_t  out;
   ioregister_t  dir;
 };
 
 /**
- * @brief   Generic MSP430 I/O port.
+ * @brief Generic MSP430 I/O port.
  */
-typedef union {
-  struct msp430_port_common     iop_common;
-  struct port_simple_t          iop_simple;
-  struct port_full_t            iop_full;
-} msp430_ioport_t;
+union __ioport {
+  struct port_common_t iop_common;
+  struct port_simple_t iop_simple;
+  struct port_full_t iop_full;
+};
 
 /**
- * @brief   Setup registers common to all the MSP430 ports.
+ * @brief Setup registers common to all the MSP430 ports.
  */
 typedef struct  {
   ioregister_t  out;
@@ -72,7 +78,7 @@ typedef struct  {
 } msp430_dio_setup_t;
 
 /**
- * @brief   MSP430 I/O ports static initializer.
+ * @brief MSP430 I/O ports static initializer.
  * @details An instance of this structure must be passed to @p palInit() at
  *          system startup time in order to initialize the digital I/O
  *          subsystem. This represents only the initial setup, specific pads
@@ -118,35 +124,35 @@ typedef struct {
 } PALConfig;
 
 /**
- * @brief   Width, in bits, of an I/O port.
+ * @brief Width, in bits, of an I/O port.
  */
 #define PAL_IOPORTS_WIDTH 8
 
 /**
- * @brief   Whole port mask.
- * @details This macro specifies all the valid bits into a port.
+ * @brief Whole port mask.
+ * @brief This macro specifies all the valid bits into a port.
  */
 #define PAL_WHOLE_PORT ((ioportmask_t)0xFF)
 
 /**
- * @brief   Digital I/O port sized unsigned type.
+ * @brief Digital I/O port sized unsigned type.
  */
 typedef uint8_t ioportmask_t;
 
 /**
- * @brief   Port Identifier.
+ * @brief Port Identifier.
  * @details This type can be a scalar or some kind of pointer, do not make
  *          any assumption about it, use the provided macros when populating
  *          variables of this type.
  */
-typedef msp430_ioport_t *ioportid_t;
+typedef union __ioport * ioportid_t;
 
 /*===========================================================================*/
 /* I/O Ports Identifiers.                                                    */
 /*===========================================================================*/
 
 /**
- * @brief   I/O port A identifier.
+ * @brief I/O port A identifier.
  * @details This port identifier is mapped on the MSP430 port 1 (P1).
  */
 #if defined(__MSP430_HAS_PORT1__) ||                                    \
@@ -156,7 +162,7 @@ typedef msp430_ioport_t *ioportid_t;
 #endif
 
 /**
- * @brief   I/O port B identifier.
+ * @brief I/O port B identifier.
  * @details This port identifier is mapped on the MSP430 port 2 (P2).
  */
 #if defined(__MSP430_HAS_PORT2__) ||                                    \
@@ -166,7 +172,7 @@ typedef msp430_ioport_t *ioportid_t;
 #endif
 
 /**
- * @brief   I/O port C identifier.
+ * @brief I/O port C identifier.
  * @details This port identifier is mapped on the MSP430 port 3 (P3).
  */
 #if defined(__MSP430_HAS_PORT3__) ||                                    \
@@ -176,7 +182,7 @@ typedef msp430_ioport_t *ioportid_t;
 #endif
 
 /**
- * @brief   I/O port D identifier.
+ * @brief I/O port D identifier.
  * @details This port identifier is mapped on the MSP430 port 4 (P4).
  */
 #if defined(__MSP430_HAS_PORT4__) ||                                    \
@@ -186,7 +192,7 @@ typedef msp430_ioport_t *ioportid_t;
 #endif
 
 /**
- * @brief   I/O port E identifier.
+ * @brief I/O port E identifier.
  * @details This port identifier is mapped on the MSP430 port 5 (P5).
  */
 #if defined(__MSP430_HAS_PORT5__) ||                                    \
@@ -196,7 +202,7 @@ typedef msp430_ioport_t *ioportid_t;
 #endif
 
 /**
- * @brief   I/O port F identifier.
+ * @brief I/O port F identifier.
  * @details This port identifier is mapped on the MSP430 port 6 (P6).
  */
 #if defined(__MSP430_HAS_PORT6__) ||                                    \
@@ -211,67 +217,69 @@ typedef msp430_ioport_t *ioportid_t;
 /*===========================================================================*/
 
 /**
- * @brief   Low level PAL subsystem initialization.
+ * @brief Low level PAL subsystem initialization.
  * @details In MSP430 programs all the ports as input.
  *
  * @param[in] config the MSP430 ports configuration
- *
- * @notapi
  */
 #define pal_lld_init(config) _pal_lld_init(config)
 
 /**
- * @brief   Reads the physical I/O port states.
+ * @brief Reads the physical I/O port states.
  * @details This function is implemented by reading the PxIN register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
- * @return              The port bits.
+ * @param[in] port the port identifier
+ * @return The port bits.
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
  */
 #define pal_lld_readport(port) ((port)->iop_common.in.reg_p)
 
 /**
- * @brief   Reads the output latch.
+ * @brief Reads the output latch.
  * @details This function is implemented by reading the PxOUT register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
- * @return              The latched logical states.
+ * @param[in] port the port identifier
+ * @return The latched logical states.
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
  */
 #define pal_lld_readlatch(port) ((port)->iop_common.out.reg_p)
 
 /**
- * @brief   Writes a bits mask on a I/O port.
+ * @brief Writes a bits mask on a I/O port.
  * @details This function is implemented by writing the PxOUT register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
- * @param[in] bits      the bits to be written on the specified port
+ * @param[in] port the port identifier
+ * @param[in] bits the bits to be written on the specified port
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
  */
 #define pal_lld_writeport(port, bits) {                                 \
   (port)->iop_common.out.reg_p = (bits);                                \
 }
 
 /**
- * @brief   Pads group mode setup.
+ * @brief Pads group mode setup.
  * @details This function programs a pads group belonging to the same port
  *          with the specified mode.
- * @note    @p PAL_MODE_UNCONNECTED is implemented as output as recommended by
- *          the MSP430x1xx Family User's Guide.
- * @note    This function does not alter the @p PxSEL registers. Alternate
- *          functions setup must be handled by device-specific code.
  *
- * @param[in] port      the port identifier
- * @param[in] mask      the group mask
- * @param[in] mode      the mode
+ * @param[in] port the port identifier
+ * @param[in] mask the group mask
+ * @param[in] mode the mode
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
+ * @note @p PAL_MODE_UNCONNECTED is implemented as output as recommended by
+ *       the MSP430x1xx Family User's Guide.
+ * @note This function does not alter the @p PxSEL registers. Alternate
+ *       functions setup must be handled by device-specific code.
  */
 #define pal_lld_setgroupmode(port, mask, mode) \
   _pal_lld_setgroupmode(port, mask, mode)
@@ -291,6 +299,6 @@ extern "C" {
 
 #endif /* _PAL_LLD_H_ */
 
-#endif /* HAL_USE_PAL */
+#endif /* CH_HAL_USE_PAL */
 
 /** @} */

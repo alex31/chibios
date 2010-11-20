@@ -1,11 +1,11 @@
 ***************************************************************************
-Options:  -O2 -fomit-frame-pointer -mabi=apcs-gnu -falign-functions=16
+Options:  -O2 -fomit-frame-pointer -falign-functions=16
 Settings: CCLK=48, MAMCR=2, MAMTIM=3 (3 wait states)
 ***************************************************************************
 
 *** ChibiOS/RT test suite
 ***
-*** Kernel:       2.1.2unstable
+*** Kernel:       2.0.6
 *** GCC Version:  4.5.1
 *** Architecture: ARM
 *** Core Variant: ARM7TDMI
@@ -32,9 +32,6 @@ Settings: CCLK=48, MAMCR=2, MAMTIM=3 (3 wait states)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 2.3 (Semaphores, atomic signal-wait)
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 2.4 (Binary Semaphores, functionality)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 3.1 (Mutexes, priority enqueuing test)
@@ -98,7 +95,7 @@ Settings: CCLK=48, MAMCR=2, MAMTIM=3 (3 wait states)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.1 (Benchmark, messages #1)
---- Score : 145385 msgs/S, 290770 ctxswc/S
+--- Score : 145386 msgs/S, 290772 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.2 (Benchmark, messages #2)
@@ -114,7 +111,7 @@ Settings: CCLK=48, MAMCR=2, MAMTIM=3 (3 wait states)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.5 (Benchmark, threads, full cycle)
---- Score : 89746 threads/S
+--- Score : 89745 threads/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.6 (Benchmark, threads, create only)
@@ -126,7 +123,7 @@ Settings: CCLK=48, MAMCR=2, MAMTIM=3 (3 wait states)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.8 (Benchmark, round robin context switching)
---- Score : 276084 ctxswc/S
+--- Score : 276080 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.9 (Benchmark, I/O Queues throughput)

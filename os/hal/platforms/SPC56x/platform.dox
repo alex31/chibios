@@ -10,60 +10,39 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @defgroup SPC563 SPC563Mx Drivers
- * @details This section describes all the supported drivers on the
- *          SPC563Mx/MPC563xM platform and the implementation details
- *          of the single drivers.
+ * @defgroup SPC563_DRIVERS SPC563 Drivers
+ * @brief Device drivers included in the SPC563 support.
  *
- * @ingroup platforms
+ * @ingroup PPC
  */
 
 /**
- * @defgroup SPC563_HAL SPC563Mx Initialization Support
- * @details The SPC563Mx/MPC563xM HAL support is responsible for system
- *          initialization.
+ * @defgroup SPC563_HAL SPC563 HAL Support
+ * @brief HAL support.
  *
- * @section spc563_hal_1 Supported HW resources
- * - FMPLL.
- * - INTC.
- * - XBAR.
- * - CFLASH0.
- * .
- * @section spc563_hal_2 SPC563Mx HAL driver implementation features
- * - FMPLL startup and stabilization.
- * - Clock tree initialization.
- * - Clock source selection.
- * - Flash wait states initialization based on the selected clock options.
- * - SYSTICK initialization based on current clock and kernel required rate.
- * - DMA support initialization.
- * .
- * @ingroup SPC563
+ * @ingroup SPC563_DRIVERS
  */
 
 /**
- * @defgroup SPC563_SERIAL SPC563Mx ESCI Support (buffered)
- * @details The SPC563Mx/MPC563xM Serial driver uses the ESCI peripherals
- *          in a buffered, interrupt driven, implementation.
+ * @defgroup SPC563_SERIAL SPC563 ESCI Support
+ * @brief ESCI support.
+ * @details The serial driver supports both the SPC563 ESCIs in asynchronous
+ * mode.
  *
- * @section spc563_serial_1 Supported HW resources
- * The serial driver can support any of the following hardware resources:
- * - ESCIA.
- * - ESCIB.
- * .
- * @section spc563_serial_2 SPC563Mx Serial driver implementation features
- * - Clock stop for reduced power usage when the driver is in stop state.
- * - Each ESCI can be independently enabled and programmed. Unused
- *   peripherals are left in low power mode.
- * - Fully interrupt driven.
- * - Programmable priority levels for each ESCI.
- * .
- * @ingroup SPC563
+ * @ingroup SPC563_DRIVERS
  */

@@ -10,22 +10,19 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
-
-/**
- * @file    LPC13xx/vectors.s
- * @brief   Interrupt vectors for the LPC13xx family.
- *
- * @addtogroup ARMCMx_CORE
- * @{
- */
-
-#if !defined(__DOXYGEN__)
 
 .syntax unified
 .thumb
@@ -315,10 +312,4 @@ Vector118:
 .weak Vector11C
 Vector11C:
 
-        .global _unhandled_exception
-_unhandled_exception:
-        b       _unhandled_exception
-
-#endif
-
-/** @} */
+here:   b       here

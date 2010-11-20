@@ -10,25 +10,31 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    STM32/adc_lld.h
- * @brief   STM32 ADC subsystem low level driver header.
- *
- * @addtogroup ADC
+ * @file STM32/adc_lld.h
+ * @brief STM32 ADC subsystem low level driver header.
+ * @addtogroup STM32_ADC
  * @{
  */
 
 #ifndef _ADC_LLD_H_
 #define _ADC_LLD_H_
 
-#if HAL_USE_ADC || defined(__DOXYGEN__)
+#if CH_HAL_USE_ADC || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -61,32 +67,32 @@
 /*===========================================================================*/
 
 /**
- * @brief   ADC1 driver enable switch.
+ * @brief ADC1 driver enable switch.
  * @details If set to @p TRUE the support for ADC1 is included.
- * @note    The default is @p TRUE.
+ * @note The default is @p TRUE.
  */
-#if !defined(STM32_ADC_USE_ADC1) || defined(__DOXYGEN__)
-#define STM32_ADC_USE_ADC1                  TRUE
+#if !defined(USE_STM32_ADC1) || defined(__DOXYGEN__)
+#define USE_STM32_ADC1              TRUE
 #endif
 
 /**
- * @brief   ADC1 DMA priority (0..3|lowest..highest).
+ * @brief ADC1 DMA priority (0..3|lowest..highest).
  */
-#if !defined(STM32_ADC_ADC1_DMA_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_ADC_ADC1_DMA_PRIORITY         3
+#if !defined(STM32_ADC1_DMA_PRIORITY) || defined(__DOXYGEN__)
+#define STM32_ADC1_DMA_PRIORITY     3
 #endif
 
 /**
- * @brief   ADC1 interrupt priority level setting.
+ * @brief ADC1 interrupt priority level setting.
  */
-#if !defined(STM32_ADC_ADC1_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_ADC_ADC1_IRQ_PRIORITY         5
+#if !defined(STM32_ADC1_IRQ_PRIORITY) || defined(__DOXYGEN__)
+#define STM32_ADC1_IRQ_PRIORITY     5
 #endif
 
 /**
- * @brief   ADC1 DMA error hook.
- * @note    The default action for DMA errors is a system halt because DMA error
- *          can only happen because programming errors.
+ * @brief ADC1 DMA error hook.
+ * @note The default action for DMA errors is a system halt because DMA error
+ *       can only happen because programming errors.
  */
 #if !defined(STM32_ADC1_DMA_ERROR_HOOK) || defined(__DOXYGEN__)
 #define STM32_ADC1_DMA_ERROR_HOOK() chSysHalt()
@@ -96,46 +102,31 @@
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
-#if !STM32_ADC_USE_ADC1
-#error "ADC driver activated but no ADC peripheral assigned"
-#endif
-
 /*===========================================================================*/
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
 
 /**
- * @brief   ADC sample data type.
+ * @brief ADC sample data type.
  */
 typedef uint16_t adcsample_t;
 
 /**
- * @brief   Channels number in a conversion group.
+ * @brief Channels number in a conversion group.
  */
 typedef uint16_t adc_channels_num_t;
 
 /**
- * @brief   Type of a structure representing an ADC driver.
+ * @brief ADC notification callback type.
+ * @param[in] buffer pointer to the most recent samples data
+ * @param[in] n number of buffer rows available starting from @p buffer
  */
-typedef struct ADCDriver ADCDriver;
+typedef void (*adccallback_t)(adcsample_t *buffer, size_t n);
 
 /**
- * @brief   ADC notification callback type.
- *
- * @param[in] adcp      pointer to the @p ADCDriver object triggering the
- *                      callback
- * @param[in] buffer    pointer to the most recent samples data
- * @param[in] n         number of buffer rows available starting from @p buffer
- */
-typedef void (*adccallback_t)(ADCDriver *adcp, adcsample_t *buffer, size_t n);
-
-/**
- * @brief   Conversion group configuration structure.
+ * @brief Conversion group configuration structure.
  * @details This implementation-dependent structure describes a conversion
  *          operation.
- * @note    The use of this configuration structure requires knowledge of
- *          STM32 ADC cell registers interface, please refer to the STM32
- *          reference manual for details.
  */
 typedef struct {
   /**
@@ -146,25 +137,18 @@ typedef struct {
    * @brief Number of the analog channels belonging to the conversion group.
    */
   adc_channels_num_t        acg_num_channels;
-  /**
-   * @brief Callback function associated to the group or @p NULL.
-   * @note  In order to use synchronous functions this field must be set to
-   *        @p NULL, callbacks and synchronous operations are mutually
-   *        exclusive.
-   */
-  adccallback_t             acg_endcb;
   /* End of the mandatory fields.*/
   /**
    * @brief ADC CR1 register initialization data.
-   * @note  All the required bits must be defined into this field except
-   *        @p ADC_CR1_SCAN that is enforced inside the driver.
+   * @note All the required bits must be defined into this field except
+   *       @p ADC_CR1_SCAN that is enforced inside the driver.
    */
   uint32_t                  acg_cr1;
   /**
    * @brief ADC CR2 register initialization data.
-   * @note  All the required bits must be defined into this field except
-   *        @p ADC_CR2_DMA and @p ADC_CR2_ADON that are enforced inside the
-   *        driver.
+   * @note All the required bits must be defined into this field except
+   *       @p ADC_CR2_DMA and @p ADC_CR2_ADON that are enforced inside the
+   *       driver.
    */
   uint32_t                  acg_cr2;
   /**
@@ -190,16 +174,23 @@ typedef struct {
 } ADCConversionGroup;
 
 /**
- * @brief   Driver configuration structure.
- * @note    It could be empty on some architectures.
+ * @brief Driver configuration structure.
+ * @note It could be empty on some architectures.
  */
 typedef struct {
+  /* * <----------
+   * @brief ADC prescaler setting.
+   * @note This field can assume one of the following values:
+   *       @p RCC_CFGR_ADCPRE_DIV2, @p RCC_CFGR_ADCPRE_DIV4,
+   *       @p RCC_CFGR_ADCPRE_DIV6, @p RCC_CFGR_ADCPRE_DIV8.
+   */
+/*  uint32_t              ac_prescaler;*/
 } ADCConfig;
 
 /**
- * @brief   Structure representing an ADC driver.
+ * @brief Structure representing an ADC driver.
  */
-struct ADCDriver {
+typedef struct {
   /**
    * @brief Driver state.
    */
@@ -208,6 +199,14 @@ struct ADCDriver {
    * @brief Current configuration data.
    */
   const ADCConfig           *ad_config;
+  /**
+   * @brief Synchronization semaphore.
+   */
+  Semaphore                 ad_sem;
+  /**
+   * @brief Current callback function or @p NULL.
+   */
+  adccallback_t             ad_callback;
   /**
    * @brief Current samples buffer pointer or @p NULL.
    */
@@ -220,39 +219,20 @@ struct ADCDriver {
    * @brief Current conversion group pointer or @p NULL.
    */
   const ADCConversionGroup  *ad_grpp;
-#if ADC_USE_WAIT || defined(__DOXYGEN__)
-  /**
-   * @brief Waiting thread.
-   */
-  Thread                    *ad_thread;
-#endif
-#if ADC_USE_MUTUAL_EXCLUSION || defined(__DOXYGEN__)
-#if CH_USE_MUTEXES || defined(__DOXYGEN__)
-  /**
-   * @brief Mutex protecting the peripheral.
-   */
-  Mutex                     ad_mutex;
-#elif CH_USE_SEMAPHORES
-  Semaphore                 ad_semaphore;
-#endif
-#endif /* ADC_USE_MUTUAL_EXCLUSION */
-#if defined(ADC_DRIVER_EXT_FIELDS)
-  ADC_DRIVER_EXT_FIELDS
-#endif
   /* End of the mandatory fields.*/
   /**
    * @brief Pointer to the ADCx registers block.
    */
   ADC_TypeDef               *ad_adc;
   /**
-   * @brief Pointer to the DMA registers block.
+   * @brief Pointer to the DMA channel registers block.
    */
-  stm32_dma_channel_t       *ad_dmachp;
+  DMA_Channel_TypeDef       *ad_dma;
   /**
-   * @brief DMA CCR register bit mask.
+   * @brief DMA priority bit mask.
    */
-  uint32_t                  ad_dmaccr;
-};
+  uint32_t                  ad_dmaprio;
+} ADCDriver;
 
 /*===========================================================================*/
 /* Driver macros.                                                            */
@@ -283,7 +263,7 @@ struct ADCDriver {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
-#if STM32_ADC_USE_ADC1 && !defined(__DOXYGEN__)
+#if USE_STM32_ADC1 && !defined(__DOXYGEN__)
 extern ADCDriver ADCD1;
 #endif
 
@@ -299,7 +279,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_ADC */
+#endif /* CH_HAL_USE_ADC */
 
 #endif /* _ADC_LLD_H_ */
 

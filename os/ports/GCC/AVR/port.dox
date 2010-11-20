@@ -10,16 +10,24 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @defgroup AVR MegaAVR
- * @details AVR port for the GCC compiler.
+ * @details AVR port details. This section how the ChibiOS/RT features are
+ * implemented on this architecture.
  *
  * @section AVR_STATES Mapping of the System States in the AVR port
  * The ChibiOS/RT logical @ref system_states are mapped as follow in the AVR
@@ -49,19 +57,20 @@
  *   by modifying the @p INT_REQUIRED_STACK macro into
  *   <b>./ports/AVR/chcore.h</b>.
  * .
- * @ingroup gcc
+ * @ingroup ports
  */
 
 /**
  * @defgroup AVR_CONF Configuration Options
- * @details AVR Configuration Options. The AVR port allows some
- * architecture-specific configurations settings that can be overridden
- * by redefining them in @p chconf.h. Usually there is no need to change
- * the default values.
+ * @brief AVR Configuration Options.
+ * @details The AVR port allows some architecture-specific configurations
+ * settings that can be overridden by redefining them in @p chconf.h.
+ * Usually there is no need to change the default values.
  * - @p INT_REQUIRED_STACK, this value represent the amount of stack space
  *   used by the interrupt handlers.<br>
  *   The default for this value is @p 32, this space is allocated for each
- *   thread so be careful in order to not waste precious RAM space.
+ *   thread so be careful in order to not waste precious RAM space.<br>
+ *   The default value is set into <b>./os/ports/GCC/AVR/chcore.h</b>.
  * - @p IDLE_THREAD_STACK_SIZE, stack area size to be assigned to the IDLE
  *   thread. Usually there is no need to change this value unless inserting
  *   code in the IDLE thread hook macro.
@@ -70,17 +79,11 @@
  */
 
 /**
- * @defgroup AVR_CORE Core Port Implementation
- * @details AVR specific port code, structures and macros.
+ * @defgroup AVR_CORE AVR Core Implementation
+ * @brief AVR specific port code, structures and macros.
  *
  * @ingroup AVR
- */
-
- /**
- * @defgroup AVR_STARTUP Startup Support
- * @details ChibiOS/RT doed not provide startup files for the AVR, there
- * are no special startup requirement so the normal toolchain-provided
- * startup files can be used.
- *
- * @ingroup AVR
+ * @file AVR/chtypes.h Port types.
+ * @file AVR/chcore.h Port related structures and macros.
+ * @file AVR/chcore.c Port related code.
  */

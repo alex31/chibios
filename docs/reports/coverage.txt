@@ -17,11 +17,11 @@ Lines executed:100.00% of 29
 ../../os/kernel/src/chvt.c:creating `chvt.c.gcov'
 
 File `../../os/kernel/src/chschd.c'
-Lines executed:100.00% of 68
+Lines executed:100.00% of 67
 ../../os/kernel/src/chschd.c:creating `chschd.c.gcov'
 
 File `../../os/kernel/src/chthreads.c'
-Lines executed:100.00% of 134
+Lines executed:95.52% of 134
 ../../os/kernel/src/chthreads.c:creating `chthreads.c.gcov'
 
 File `../../os/kernel/src/chregistry.c'
@@ -29,11 +29,11 @@ Lines executed:100.00% of 18
 ../../os/kernel/src/chregistry.c:creating `chregistry.c.gcov'
 
 File `../../os/kernel/src/chsem.c'
-Lines executed:100.00% of 81
+Lines executed:100.00% of 74
 ../../os/kernel/src/chsem.c:creating `chsem.c.gcov'
 
 File `../../os/kernel/src/chmtx.c'
-Lines executed:100.00% of 111
+Lines executed:99.10% of 111
 ../../os/kernel/src/chmtx.c:creating `chmtx.c.gcov'
 
 File `../../os/kernel/src/chcond.c'
@@ -41,7 +41,7 @@ Lines executed:100.00% of 59
 ../../os/kernel/src/chcond.c:creating `chcond.c.gcov'
 
 File `../../os/kernel/src/chevents.c'
-Lines executed:100.00% of 105
+Lines executed:100.00% of 111
 ../../os/kernel/src/chevents.c:creating `chevents.c.gcov'
 
 File `../../os/kernel/src/chmsg.c'

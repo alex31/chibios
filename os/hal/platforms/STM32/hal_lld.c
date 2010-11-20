@@ -10,18 +10,25 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    STM32/hal_lld.c
  * @brief   STM32 HAL subsystem low level driver source.
  *
- * @addtogroup HAL
+ * @addtogroup STM32_HAL
  * @{
  */
 
@@ -39,7 +46,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   PAL setup.
+ * @brief PAL setup.
  * @details Digital I/O ports static configuration as defined in @p board.h.
  */
 const PALConfig pal_default_config =
@@ -70,9 +77,7 @@ const PALConfig pal_default_config =
 /*===========================================================================*/
 
 /**
- * @brief   Low level HAL driver initialization.
- *
- * @notapi
+ * @brief Low level HAL driver initialization.
  */
 void hal_lld_init(void) {
 
@@ -83,17 +88,14 @@ void hal_lld_init(void) {
                   SysTick_CTRL_ENABLE_Msk |
                   SysTick_CTRL_TICKINT_Msk;
 
-#if HAL_USE_ADC || HAL_USE_SPI || HAL_USE_UART
+#if CH_HAL_USE_ADC || CH_HAL_USE_SPI
   dmaInit();
 #endif
 }
 
 /**
- * @brief   STM32 clocks and PLL initialization.
- * @note    All the involved constants come from the file @p board.h.
- * @note    This function must be invoked only after the system reset.
- *
- * @special
+ * @brief STM32 clocks and PLL initialization.
+ * @note All the involved constants come from the file @p board.h.
  */
 #if defined(STM32F10X_LD) || defined(STM32F10X_MD) ||                       \
     defined(STM32F10X_HD) || defined(__DOXYGEN__)

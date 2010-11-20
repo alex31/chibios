@@ -10,25 +10,32 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    templates/can_lld.c
  * @brief   CAN Driver subsystem low level driver source template.
  *
- * @addtogroup CAN
+ * @addtogroup CAN_LLD
  * @{
  */
 
 #include "ch.h"
 #include "hal.h"
 
-#if HAL_USE_CAN || defined(__DOXYGEN__)
+#if CH_HAL_USE_CAN || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -52,8 +59,6 @@
 
 /**
  * @brief   Low level CAN driver initialization.
- *
- * @notapi
  */
 void can_lld_init(void) {
 
@@ -63,8 +68,6 @@ void can_lld_init(void) {
  * @brief   Configures and activates the CAN peripheral.
  *
  * @param[in] canp      pointer to the @p CANDriver object
- *
- * @notapi
  */
 void can_lld_start(CANDriver *canp) {
 
@@ -74,8 +77,6 @@ void can_lld_start(CANDriver *canp) {
  * @brief   Deactivates the CAN peripheral.
  *
  * @param[in] canp      pointer to the @p CANDriver object
- *
- * @notapi
  */
 void can_lld_stop(CANDriver *canp) {
 
@@ -93,8 +94,6 @@ void can_lld_stop(CANDriver *canp) {
  * @return              The queue space availability.
  * @retval FALSE        no space in the transmit queue.
  * @retval TRUE         transmit slot available.
- *
- * @notapi
  */
 bool_t can_lld_can_transmit(CANDriver *canp) {
 
@@ -106,8 +105,6 @@ bool_t can_lld_can_transmit(CANDriver *canp) {
  *
  * @param[in] canp      pointer to the @p CANDriver object
  * @param[in] ctfp      pointer to the CAN frame to be transmitted
- *
- * @notapi
  */
 void can_lld_transmit(CANDriver *canp, const CANTxFrame *ctfp) {
 
@@ -120,8 +117,6 @@ void can_lld_transmit(CANDriver *canp, const CANTxFrame *ctfp) {
  * @return              The queue space availability.
  * @retval FALSE        no space in the transmit queue.
  * @retval TRUE         transmit slot available.
- *
- * @notapi
  */
 bool_t can_lld_can_receive(CANDriver *canp) {
 
@@ -133,8 +128,6 @@ bool_t can_lld_can_receive(CANDriver *canp) {
  *
  * @param[in] canp      pointer to the @p CANDriver object
  * @param[out] crfp     pointer to the buffer where the CAN frame is copied
- *
- * @notapi
  */
 void can_lld_receive(CANDriver *canp, CANRxFrame *crfp) {
 
@@ -145,8 +138,6 @@ void can_lld_receive(CANDriver *canp, CANRxFrame *crfp) {
  * @brief   Enters the sleep mode.
  *
  * @param[in] canp      pointer to the @p CANDriver object
- *
- * @notapi
  */
 void can_lld_sleep(CANDriver *canp) {
 
@@ -156,14 +147,12 @@ void can_lld_sleep(CANDriver *canp) {
  * @brief   Enforces leaving the sleep mode.
  *
  * @param[in] canp      pointer to the @p CANDriver object
- *
- * @notapi
  */
 void can_lld_wakeup(CANDriver *canp) {
 
 }
 #endif /* CAN_USE_SLEEP_MODE */
 
-#endif /* HAL_USE_CAN */
+#endif /* CH_HAL_USE_CAN */
 
 /** @} */

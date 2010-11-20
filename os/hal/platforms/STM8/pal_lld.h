@@ -10,25 +10,32 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    STM8/pal_lld.h
  * @brief   STM8 GPIO low level driver header.
  *
- * @addtogroup PAL
+ * @addtogroup STM8_PAL
  * @{
  */
 
 #ifndef _PAL_LLD_H_
 #define _PAL_LLD_H_
 
-#if HAL_USE_PAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_PAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Unsupported modes and specific modes                                      */
@@ -51,6 +58,17 @@
 /*===========================================================================*/
 
 /**
+ * @brief   GPIO port representation.
+ */
+typedef struct {
+  volatile uint8_t      ODR;
+  volatile uint8_t      IDR;
+  volatile uint8_t      DDR;
+  volatile uint8_t      CR1;
+  volatile uint8_t      CR2;
+} gpio_t;
+
+/**
  * @brief   Generic I/O ports static initializer.
  * @details An instance of this structure must be passed to @p palInit() at
  *          system startup time in order to initialized the digital I/O
@@ -58,13 +76,7 @@
  *          or whole ports can be reprogrammed at later time.
  */
 typedef struct {
-#if defined(STM8S105) || defined(__DOXYGEN__)
-  GPIO_TypeDef          P[7];
-#elif defined(STM8S207) || defined(STM8S208)
-  GPIO_TypeDef          P[9];
-#else
-  GPIO_TypeDef          P[6];
-#endif
+  gpio_t                P[9];
 } PALConfig;
 
 /**
@@ -86,7 +98,7 @@ typedef uint8_t ioportmask_t;
 /**
  * @brief   Port Identifier.
  */
-typedef GPIO_TypeDef *ioportid_t;
+typedef gpio_t *ioportid_t;
 
 /*===========================================================================*/
 /* I/O Ports Identifiers.                                                    */
@@ -100,52 +112,56 @@ typedef GPIO_TypeDef *ioportid_t;
 /**
  * @brief   GPIO port A identifier.
  */
-#define IOPORT1         GPIOA
+#define IOPORT1         ((gpio_t *)0x5000)
+#define GPIOA           IOPORT1
 
 /**
  * @brief   GPIO port B identifier.
  */
-#define IOPORT2         GPIOB
+#define IOPORT2         ((gpio_t *)0x5005)
+#define GPIOB           IOPORT2
 
 /**
  * @brief   GPIO port C identifier.
  */
-#define IOPORT3         GPIOC
+#define IOPORT3         ((gpio_t *)0x500A)
+#define GPIOC           IOPORT3
 
 /**
  * @brief   GPIO port D identifier.
  */
-#define IOPORT4         GPIOD
+#define IOPORT4         ((gpio_t *)0x500F)
+#define GPIOD           IOPORT4
 
 /**
  * @brief   GPIO port E identifier.
  */
-#define IOPORT5         GPIOE
+#define IOPORT5         ((gpio_t *)0x5014)
+#define GPIOE           IOPORT5
 
 /**
  * @brief   GPIO port F identifier.
  */
-#define IOPORT6         GPIOF
+#define IOPORT6         ((gpio_t *)0x5019)
+#define GPIOF           IOPORT6
 
-#if defined(STM8S207) || defined(STM8S208) || defined(STM8S105) ||          \
-    defined(__DOXYGEN__)
 /**
  * @brief   GPIO port G identifier.
  */
-#define IOPORT7         GPIOG
-#endif
+#define IOPORT7         ((gpio_t *)0x501E)
+#define GPIOG           IOPORT7
 
-#if defined(STM8S207) || defined(STM8S208) || defined(__DOXYGEN__)
 /**
  * @brief   GPIO port H identifier.
  */
-#define IOPORT8         GPIOH
+#define IOPORT8         ((gpio_t *)0x5023)
+#define GPIOH           IOPORT8
 
 /**
  * @brief   GPIO port I identifier.
  */
-#define IOPORT9         GPIOI
-#endif
+#define IOPORT9         ((gpio_t *)0x5028)
+#define GPIOI           IOPORT9
 
 /*===========================================================================*/
 /* Implementation, some of the following macros could be implemented as      */
@@ -156,8 +172,6 @@ typedef GPIO_TypeDef *ioportid_t;
  * @brief   Low level PAL subsystem initialization.
  *
  * @param[in] config    architecture-dependent ports configuration
- *
- * @notapi
  */
 #define pal_lld_init(config)    *IOPORTS = *(config)
 
@@ -168,8 +182,6 @@ typedef GPIO_TypeDef *ioportid_t;
  *
  * @param[in] port      port identifier
  * @return              The port bits.
- *
- * @notapi
  */
 #define pal_lld_readport(port) ((port)->IDR)
 
@@ -182,8 +194,6 @@ typedef GPIO_TypeDef *ioportid_t;
  *
  * @param[in] port      port identifier
  * @return              The latched logical states.
- *
- * @notapi
  */
 #define pal_lld_readlatch(port) ((port)->ODR)
 
@@ -194,8 +204,6 @@ typedef GPIO_TypeDef *ioportid_t;
  *
  * @param[in] port      port identifier
  * @param[in] bits      bits to be written on the specified port
- *
- * @notapi
  */
 #define pal_lld_writeport(port, bits) ((port)->ODR = (bits))
 
@@ -211,8 +219,6 @@ typedef GPIO_TypeDef *ioportid_t;
  * @param[in] port      port identifier
  * @param[in] mask      group mask
  * @param[in] mode      group mode
- *
- * @notapi
  */
 #define pal_lld_setgroupmode(port, mask, mode)                              \
     _pal_lld_setgroupmode(port, mask, mode)
@@ -229,7 +235,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_PAL */
+#endif /* CH_HAL_USE_PAL */
 
 #endif /* _PAL_LLD_H_ */
 
