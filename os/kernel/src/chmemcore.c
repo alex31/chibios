@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -35,23 +42,22 @@
  *          By having a centralized memory provider the various allocators can
  *          coexist and share the main memory.<br>
  *          This allocator, alone, is also useful for very simple applications
- *          that just require a simple way to get memory blocks.
- * @pre     In order to use the core memory manager APIs the @p CH_USE_MEMCORE
+ *          that just require a simple way to get memory blocks.<br>
+ *          In order to use the core memory manager APIs the @p CH_USE_MEMCORE
  *          option must be enabled in @p chconf.h.
  * @{
  */
 
 #include "ch.h"
 
-#if CH_USE_MEMCORE || defined(__DOXYGEN__)
+#if CH_USE_MEMCORE
 
 static uint8_t *nextmem;
 static uint8_t *endmem;
 
 /**
  * @brief   Low level memory manager initialization.
- *
- * @notapi
+ * @note    Internal use only.
  */
 void core_init(void) {
 #if CH_MEMCORE_SIZE == 0
@@ -74,11 +80,10 @@ void core_init(void) {
  *          type @p stkalign_t so it is not possible to allocate less
  *          than <code>sizeof(stkalign_t)</code>.
  *
+ *
  * @param[in] size      the size of the block to be allocated
  * @return              A pointer to the allocated memory block.
  * @retval NULL         allocation failed, core memory exhausted.
- *
- * @api
  */
 void *chCoreAlloc(size_t size) {
   void *p;
@@ -98,8 +103,6 @@ void *chCoreAlloc(size_t size) {
  * @param[in] size      the size of the block to be allocated.
  * @return              A pointer to the allocated memory block.
  * @retval NULL         allocation failed, core memory exhausted.
- *
- * @iclass
  */
 void *chCoreAllocI(size_t size) {
   void *p;
@@ -116,8 +119,6 @@ void *chCoreAllocI(size_t size) {
  * @brief   Core memory status.
  *
  * @return              The size, in bytes, of the free core memory.
- *
- * @api
  */
 size_t chCoreStatus(void) {
 

@@ -10,18 +10,25 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    RC/STM8/chtypes.h
- * @brief   STM8 (Raisonance) port system types.
+ * @file    STM8/chtypes.h
+ * @brief   STM8 port system types.
  *
- * @addtogroup STM8_RAISONANCE_CORE
+ * @addtogroup STM8_CORE
  * @{
  */
 
@@ -94,7 +101,7 @@ typedef uint16_t        systime_t;
 /**
  * @brief   Counter, recommended fastest signed.
  */
-typedef int8_t          cnt_t;
+typedef int16_t         cnt_t;
 
 /**
  * @brief   Inline function modifier.
@@ -103,7 +110,7 @@ typedef int8_t          cnt_t;
 
 /**
  * @brief   ROM constant modifier.
- * @note    Uses the "const" keyword in this port.
+ * @note    Uses the custom "code" keyword in this port.
  */
 #define ROMCONST code
 

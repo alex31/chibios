@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -101,7 +108,7 @@ typedef int32_t         cnt_t;
  * @note    This is required because some compilers require a custom keyword,
  *          usually this macro is just set to "const" for the GCC compiler.
  * @note    This macro is not used to place constants in different address
- *          spaces (like AVR requires for example) because it is assumed that
+ *          spaces (like AVR requires as example) because it is assumed that
  *          a pointer to a ROMCONST constant is compatible with a pointer
  *          to a normal variable. It is just like the "const" keyword but
  *          requires that the constant is placed in ROM if the architecture

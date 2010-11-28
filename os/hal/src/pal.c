@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -28,7 +35,7 @@
 #include "ch.h"
 #include "hal.h"
 
-#if HAL_USE_PAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_PAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -58,8 +65,6 @@
  *
  * @param[in] bus       the I/O bus, pointer to a @p IOBus structure
  * @return              The bus logical states.
- *
- * @api
  */
 ioportmask_t palReadBus(IOBus *bus) {
 
@@ -83,8 +88,6 @@ ioportmask_t palReadBus(IOBus *bus) {
  * @param[in] bits      the bits to be written on the I/O bus. Values exceeding
  *                      the bus width are masked so most significant bits are
  *                      lost.
- *
- * @api
  */
 void palWriteBus(IOBus *bus, ioportmask_t bits) {
 
@@ -106,8 +109,6 @@ void palWriteBus(IOBus *bus, ioportmask_t bits) {
  *
  * @param[in] bus       the I/O bus, pointer to a @p IOBus structure
  * @param[in] mode      the mode
- *
- * @api
  */
 void palSetBusMode(IOBus *bus, uint_fast8_t mode) {
 
@@ -117,6 +118,6 @@ void palSetBusMode(IOBus *bus, uint_fast8_t mode) {
   palSetGroupMode(bus->bus_portid, bus->bus_mask, mode);
 }
 
-#endif /* HAL_USE_PAL */
+#endif /* CH_HAL_USE_PAL */
 
 /** @} */

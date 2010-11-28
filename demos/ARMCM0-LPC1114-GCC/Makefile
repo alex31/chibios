@@ -96,7 +96,8 @@ TCSRC =
 TCPPSRC =
 
 # List ASM source files here
-ASMSRC = $(PORTASM)
+ASMSRC = $(PORTASM) \
+         $(CHIBIOS)/os/ports/GCC/ARMCMx/LPC11xx/vectors.s
 
 INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) \
@@ -188,4 +189,4 @@ ULIBS =
 # End of user defines
 ##############################################################################
 
-include $(CHIBIOS)/os/ports/GCC/ARMCMx/rules.mk
+include $(CHIBIOS)/os/ports/GCC/ARM/rules.mk

@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #ifndef _BOARD_H_
@@ -28,7 +35,7 @@
  * Board identifier.
  */
 #define BOARD_OLIMEX_STM32_P103
-#define BOARD_NAME              "Olimex STM32-P103"
+#define BOARD_NAME "Olimex STM32-P103"
 
 /*
  * Board frequencies.
@@ -37,7 +44,8 @@
 #define STM32_HSECLK            8000000
 
 /*
- * MCU type, supported types are defined in ./os/hal/platforms/hal_lld.h.
+ * MCU type, this macro is used by both the ST library and the ChibiOS/RT
+ * native STM32 HAL.
  */
 #define STM32F10X_MD
 

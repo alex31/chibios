@@ -10,23 +10,23 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @defgroup STM32F103_HAL STM32F103 HAL Support
- * @details HAL support for STM32 Performance Line LD, MD and HD sub-families.
- *
- * @ingroup HAL
- */
-
-/**
  * @file    STM32/hal_lld_f103.h
- * @brief   STM32F103 Performance Line HAL subsystem low level driver header.
+ * @brief   STM32F103 HAL subsystem low level driver header.
  *
  * @addtogroup STM32F103_HAL
  * @{
@@ -124,22 +124,22 @@
 #define TIM1_CC_IRQHandler      VectorAC    /**< TIM1 Capture Compare.      */
 #define TIM2_IRQHandler         VectorB0    /**< TIM2.                      */
 #define TIM3_IRQHandler         VectorB4    /**< TIM3.                      */
-#if !defined(STM32F10X_LD) || defined(__DOXYGEN__)
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(__DOXYGEN__)
 #define TIM4_IRQHandler         VectorB8    /**< TIM4.                      */
 #endif
 #define I2C1_EV_IRQHandler      VectorBC    /**< I2C1 Event.                */
 #define I2C1_ER_IRQHandler      VectorC0    /**< I2C1 Error.                */
-#if !defined(STM32F10X_LD) || defined(__DOXYGEN__)
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(__DOXYGEN__)
 #define I2C2_EV_IRQHandler      VectorC4    /**< I2C2 Event.                */
 #define I2C2_ER_IRQHandler      VectorC8    /**< I2C2 Error.                */
 #endif
 #define SPI1_IRQHandler         VectorCC    /**< SPI1.                      */
-#if !defined(STM32F10X_LD) || defined(__DOXYGEN__)
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(__DOXYGEN__)
 #define SPI2_IRQHandler         VectorD0    /**< SPI2.                      */
 #endif
 #define USART1_IRQHandler       VectorD4    /**< USART1.                    */
 #define USART2_IRQHandler       VectorD8    /**< USART2.                    */
-#if !defined(STM32F10X_LD) || defined(__DOXYGEN__)
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(__DOXYGEN__)
 #define USART3_IRQHandler       VectorDC    /**< USART3.                    */
 #endif
 #define EXTI15_10_IRQHandler    VectorE0    /**< EXTI Line 15..10.          */
@@ -262,7 +262,7 @@
 /**
  * @brief   PLLMUL field.
  */
-#if ((STM32_PLLMUL_VALUE >= 2) && (STM32_PLLMUL_VALUE <= 16)) ||            \
+#if ((STM32_PLLMUL_VALUE >= 2) && (STM32_PLLMUL_VALUE <= 16)) ||             \
     defined(__DOXYGEN__)
 #define STM32_PLLMUL                ((STM32_PLLMUL_VALUE - 2) << 18)
 #else
@@ -421,7 +421,7 @@
 #endif
 
 /**
- * @brief   Timers 1, 8, 9, 10, 11 clock.
+ * @brief   Timers 1, 8, 9, 10 and 11 clock.
  */
 #if (STM32_PPRE2 == STM32_PPRE2_DIV1) || defined(__DOXYGEN__)
 #define STM32_TIMCLK2               (STM32_PCLK2 * 1)

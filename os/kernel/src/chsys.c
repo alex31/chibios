@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -34,11 +41,7 @@
 
 #include "ch.h"
 
-/**
- * @brief   Idle thread working area.
- * @see     IDLE_THREAD_STACK_SIZE
- */
-WORKING_AREA(_idle_thread_wa, IDLE_THREAD_STACK_SIZE);
+static WORKING_AREA(idle_thread_wa, IDLE_THREAD_STACK_SIZE);
 
 /**
  * @brief   This function implements the idle thread infinite loop.
@@ -50,7 +53,7 @@ WORKING_AREA(_idle_thread_wa, IDLE_THREAD_STACK_SIZE);
  *
  * @param[in] p the thread parameter, unused in this scenario
  */
-void _idle_thread(void *p) {
+static void idle_thread(void *p) {
 
   (void)p;
   while (TRUE) {
@@ -63,13 +66,9 @@ void _idle_thread(void *p) {
  * @brief   ChibiOS/RT initialization.
  * @details After executing this function the current instructions stream
  *          becomes the main thread.
- * @pre     Interrupts must be still disabled when @p chSysInit() is invoked
+ * @note    Interrupts should be still disabled when @p chSysInit() is invoked
  *          and are internally enabled.
- * @post    The main thread is created with priority @p NORMALPRIO.
- * @note    This function has special, architecture-dependent, requirements,
- *          see the notes into the various port reference manuals.
- *
- * @special
+ * @note    The main thread is created with priority @p NORMALPRIO.
  */
 void chSysInit(void) {
   static Thread mainthread;
@@ -88,15 +87,15 @@ void chSysInit(void) {
 #endif
 
   /* Now this instructions flow becomes the main thread.*/
-  setcurrp(_thread_init(&mainthread, NORMALPRIO));
+  setcurrp(init_thread(&mainthread, NORMALPRIO));
   currp->p_state = THD_STATE_CURRENT;
   chSysEnable();
 
   /* This thread has the lowest priority in the system, its role is just to
      serve interrupts in its context while keeping the lowest energy saving
      mode compatible with the system status.*/
-  chThdCreateStatic(_idle_thread_wa, sizeof(_idle_thread_wa), IDLEPRIO,
-                    (tfunc_t)_idle_thread, NULL);
+  chThdCreateStatic(idle_thread_wa, sizeof(idle_thread_wa), IDLEPRIO,
+                    (tfunc_t)idle_thread, NULL);
 }
 
 /**
@@ -104,11 +103,10 @@ void chSysInit(void) {
  * @details Decrements the remaining time quantum of the running thread
  *          and preempts it when the quantum is used up. Increments system
  *          time and manages the timers.
+ *
  * @note    The frequency of the timer determines the system tick granularity
  *          and, together with the @p CH_TIME_QUANTUM macro, the round robin
  *          interval.
- *
- * @iclass
  */
 void chSysTimerHandlerI(void) {
 
@@ -122,9 +120,6 @@ void chSysTimerHandlerI(void) {
   currp->p_time++;
 #endif
   chVTDoTickI();
-#if defined(SYSTEM_TICK_EVENT_HOOK)
-  SYSTEM_TICK_EVENT_HOOK();
-#endif
 }
 
 #if CH_USE_NESTED_LOCKS && !CH_OPTIMIZE_SPEED

@@ -1,4 +1,4 @@
-# ARM7/9 common makefile scripts and rules.
+# ARM7 common makefile scripts and rules.
 
 # Output
 OUTFILES = $(BUILDDIR)/$(PROJECT).elf $(BUILDDIR)/$(PROJECT).hex $(BUILDDIR)/$(PROJECT).bin $(BUILDDIR)/$(PROJECT).dmp

@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -28,7 +35,7 @@
 #include "ch.h"
 #include "hal.h"
 
-#if HAL_USE_SERIAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_SERIAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -61,12 +68,12 @@ static size_t reads(void *ip, uint8_t *bp, size_t n) {
 
 static bool_t putwouldblock(void *ip) {
 
-  return chOQIsFullI(&((SerialDriver *)ip)->oqueue);
+  return chOQIsFull(&((SerialDriver *)ip)->oqueue);
 }
 
 static bool_t getwouldblock(void *ip) {
 
-  return chIQIsEmptyI(&((SerialDriver *)ip)->iqueue);
+  return chIQIsEmpty(&((SerialDriver *)ip)->iqueue);
 }
 
 static msg_t putt(void *ip, uint8_t b, systime_t timeout) {
@@ -99,8 +106,6 @@ static const struct SerialDriverVMT vmt = {
 
 /**
  * @brief   Serial Driver initialization.
- *
- * @init
  */
 void sdInit(void) {
 
@@ -119,8 +124,6 @@ void sdInit(void) {
  * @param[in] onotify   pointer to a callback function that is invoked when
  *                      some data is written in the Queue. The value can be
  *                      @p NULL.
- *
- * @init
  */
 void sdObjectInit(SerialDriver *sdp, qnotify_t inotify, qnotify_t onotify) {
 
@@ -141,8 +144,6 @@ void sdObjectInit(SerialDriver *sdp, qnotify_t inotify, qnotify_t onotify) {
  * @param[in] config    the architecture-dependent serial driver configuration.
  *                      If this parameter is set to @p NULL then a default
  *                      configuration is used.
- *
- * @api
  */
 void sdStart(SerialDriver *sdp, const SerialConfig *config) {
 
@@ -163,8 +164,6 @@ void sdStart(SerialDriver *sdp, const SerialConfig *config) {
  *          the message @p Q_RESET.
  *
  * @param[in] sdp       pointer to a @p SerialDrive object
- *
- * @api
  */
 void sdStop(SerialDriver *sdp) {
 
@@ -195,14 +194,12 @@ void sdStop(SerialDriver *sdp) {
  *
  * @param[in] sdp       pointer to a @p SerialDriver structure
  * @param[in] b         the byte to be written in the driver's Input Queue
- *
- * @iclass
  */
 void sdIncomingDataI(SerialDriver *sdp, uint8_t b) {
 
   chDbgCheck(sdp != NULL, "sdIncomingDataI");
 
-  if (chIQIsEmptyI(&sdp->iqueue))
+  if (chIQIsEmpty(&sdp->iqueue))
     chEvtBroadcastI(&sdp->ievent);
   if (chIQPutI(&sdp->iqueue, b) < Q_OK)
     sdAddFlagsI(sdp, SD_OVERRUN_ERROR);
@@ -220,8 +217,6 @@ void sdIncomingDataI(SerialDriver *sdp, uint8_t b) {
  * @return              The byte value read from the driver's output queue.
  * @retval Q_EMPTY      if the queue is empty (the lower driver usually
  *                      disables the interrupt source when this happens).
- *
- * @iclass
  */
 msg_t sdRequestDataI(SerialDriver *sdp) {
   msg_t  b;
@@ -241,8 +236,6 @@ msg_t sdRequestDataI(SerialDriver *sdp) {
  *
  * @param[in] sdp       pointer to a @p SerialDriver structure
  * @param[in] mask      condition flags to be added to the mask
- *
- * @iclass
  */
 void sdAddFlagsI(SerialDriver *sdp, sdflags_t mask) {
 
@@ -258,8 +251,6 @@ void sdAddFlagsI(SerialDriver *sdp, sdflags_t mask) {
  * @param[in] sdp       pointer to a @p SerialDriver structure
  * @return              The condition flags modified since last time this
  *                      function was invoked.
- *
- * @api
  */
 sdflags_t sdGetAndClearFlags(SerialDriver *sdp) {
   sdflags_t mask;
@@ -273,6 +264,6 @@ sdflags_t sdGetAndClearFlags(SerialDriver *sdp) {
   return mask;
 }
 
-#endif /* HAL_USE_SERIAL */
+#endif /* CH_HAL_USE_SERIAL */
 
 /** @} */

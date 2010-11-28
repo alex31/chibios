@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -39,7 +46,7 @@
 /**
  * @brief   Kernel version string.
  */
-#define CH_KERNEL_VERSION       "2.1.4unstable"
+#define CH_KERNEL_VERSION       "2.0.8"
 
 /**
  * @brief   Kernel version major number.
@@ -49,12 +56,12 @@
 /**
  * @brief   Kernel version minor number.
  */
-#define CH_KERNEL_MINOR         1
+#define CH_KERNEL_MINOR         0
 
 /**
  * @brief   Kernel version patch number.
  */
-#define CH_KERNEL_PATCH         4
+#define CH_KERNEL_PATCH         8
 
 /*
  * Common values.
@@ -74,7 +81,6 @@
 #include "chvt.h"
 #include "chschd.h"
 #include "chsem.h"
-#include "chbsem.h"
 #include "chmtx.h"
 #include "chcond.h"
 #include "chevents.h"
@@ -84,26 +90,12 @@
 #include "chheap.h"
 #include "chmempools.h"
 #include "chthreads.h"
-#include "chdynamic.h"
 #include "chregistry.h"
 #include "chinline.h"
 #include "chqueues.h"
 #include "chstreams.h"
 #include "chioch.h"
-#include "chfiles.h"
 #include "chdebug.h"
-
-#if !defined(__DOXYGEN__)
-extern WORKING_AREA(_idle_thread_wa, IDLE_THREAD_STACK_SIZE);
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-  void _idle_thread(void *p);
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _CH_H_ */
 

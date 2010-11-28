@@ -10,16 +10,22 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 /**
- * @file    ch.cpp
- * @brief   C++ wrapper code.
- *
+ * @file ch.cpp
+ * @brief C++ wrapper code.
  * @addtogroup cpp_library
  * @{
  */
@@ -284,14 +290,14 @@ namespace chibios_rt {
     chEvtBroadcast(&event);
   }
 
-  eventmask_t Event::ClearFlags(eventmask_t mask) {
+  eventmask_t Event::Clear(eventmask_t mask) {
 
-    return chEvtClearFlags(mask);
+    return chEvtClear(mask);
   }
 
-  eventmask_t Event::AddFlags(eventmask_t mask) {
+  eventmask_t Event::Pend(eventmask_t mask) {
 
-    return chEvtAddFlags(mask);
+    return chEvtPend(mask);
   }
 
   void Event::Dispatch(const evhandler_t handlers[], eventmask_t mask) {

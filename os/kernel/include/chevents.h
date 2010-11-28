@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -28,7 +35,7 @@
 #ifndef _CHEVENTS_H_
 #define _CHEVENTS_H_
 
-#if CH_USE_EVENTS || defined(__DOXYGEN__)
+#if CH_USE_EVENTS
 
 typedef struct EventListener EventListener;
 
@@ -90,33 +97,26 @@ typedef struct EventSource {
  *                      function.
  *                      The value must range between zero and the size, in bit,
  *                      of the @p eventid_t type minus one.
- *
- * @api
  */
-#define chEvtRegister(esp, elp, eid) \
-  chEvtRegisterMask(esp, elp, EVENT_MASK(eid))
+#define chEvtRegister(esp, elp, eid) chEvtRegisterMask(esp, elp, EVENT_MASK(eid))
 
 /**
  * @brief   Initializes an Event Source.
- * @note    This function can be invoked before the kernel is initialized
- *          because it just prepares a @p EventSource structure.
+ * @note    Can be used with interrupts disabled or enabled.
  *
  * @param[in] esp       pointer to the @p EventSource structure
- *
- * @init
  */
 #define chEvtInit(esp) \
-  ((esp)->es_next = (EventListener *)(void *)(esp))
+        ((esp)->es_next = (EventListener *)(void *)(esp))
 
 /**
  * @brief   Verifies if there is at least one @p EventListener registered.
+ * @note    Can be called with interrupts disabled or enabled.
  *
  * @param[in] esp       pointer to the @p EventSource structure
- *
- * @iclass
  */
-#define chEvtIsListeningI(esp) \
-  ((void *)(esp) != (void *)(esp)->es_next)
+#define chEvtIsListening(esp) \
+                ((void *)(esp) != (void *)(esp)->es_next)
 
 /**
  * @brief   Event Handler callback function.
@@ -130,8 +130,8 @@ extern "C" {
                          EventListener *elp,
                          eventmask_t mask);
   void chEvtUnregister(EventSource *esp, EventListener *elp);
-  eventmask_t chEvtClearFlags(eventmask_t mask);
-  eventmask_t chEvtAddFlags(eventmask_t mask);
+  eventmask_t chEvtClear(eventmask_t mask);
+  eventmask_t chEvtPend(eventmask_t mask);
   void chEvtSignal(Thread *tp, eventmask_t mask);
   void chEvtSignalI(Thread *tp, eventmask_t mask);
   void chEvtBroadcast(EventSource *esp);
