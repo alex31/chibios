@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -50,21 +43,23 @@
  *          possible approach is to allocate memory (from a memory pool as
  *          example) from the posting side and free it on the fetching side.
  *          Another approach is to set a "done" flag into the structure pointed
- *          by the message.<br>
- *          In order to use the mailboxes APIs the @p CH_USE_MAILBOXES option
+ *          by the message.
+ * @pre     In order to use the mailboxes APIs the @p CH_USE_MAILBOXES option
  *          must be enabled in @p chconf.h.
  * @{
  */
 
 #include "ch.h"
 
-#if CH_USE_MAILBOXES
+#if CH_USE_MAILBOXES || defined(__DOXYGEN__)
 /**
  * @brief   Initializes a Mailbox object.
  *
  * @param[out] mbp      the pointer to the Mailbox structure to be initialized
  * @param[in] buf       the circular messages buffer
  * @param[in] n         the buffer size as number of @p msg_t
+ *
+ * @init
  */
 void chMBInit(Mailbox *mbp, msg_t *buf, cnt_t n) {
 
@@ -82,6 +77,8 @@ void chMBInit(Mailbox *mbp, msg_t *buf, cnt_t n) {
  *          the queued messages are lost.
  *
  * @param[in] mbp       the pointer to an initialized Mailbox object
+ *
+ * @api
  */
 void chMBReset(Mailbox *mbp) {
 
@@ -108,9 +105,11 @@ void chMBReset(Mailbox *mbp) {
  *                      - @a TIME_INFINITE no timeout.
  *                      .
  * @return              The operation status.
- * @retval RDY_OK       if the message was correctly posted.
- * @retval RDY_RESET    if the mailbox was reset while waiting.
- * @retval RDY_TIMEOUT  if the operation timed out.
+ * @retval RDY_OK       if a message has been correctly posted.
+ * @retval RDY_RESET    if the mailbox has been reset while waiting.
+ * @retval RDY_TIMEOUT  if the operation has timed out.
+ *
+ * @api
  */
 msg_t chMBPost(Mailbox *mbp, msg_t msg, systime_t time) {
   msg_t rdymsg;
@@ -134,9 +133,11 @@ msg_t chMBPost(Mailbox *mbp, msg_t msg, systime_t time) {
  *                      - @a TIME_INFINITE no timeout.
  *                      .
  * @return              The operation status.
- * @retval RDY_OK       if the message was correctly posted.
- * @retval RDY_RESET    if the mailbox was reset while waiting.
- * @retval RDY_TIMEOUT  if the operation timed out.
+ * @retval RDY_OK       if a message has been correctly posted.
+ * @retval RDY_RESET    if the mailbox has been reset while waiting.
+ * @retval RDY_TIMEOUT  if the operation has timed out.
+ *
+ * @sclass
  */
 msg_t chMBPostS(Mailbox *mbp, msg_t msg, systime_t time) {
   msg_t rdymsg;
@@ -167,9 +168,11 @@ msg_t chMBPostS(Mailbox *mbp, msg_t msg, systime_t time) {
  *                      - @a TIME_INFINITE no timeout.
  *                      .
  * @return              The operation status.
- * @retval RDY_OK       if the message was correctly posted.
- * @retval RDY_RESET    if the mailbox was reset while waiting.
- * @retval RDY_TIMEOUT  if the operation timed out.
+ * @retval RDY_OK       if a message has been correctly posted.
+ * @retval RDY_RESET    if the mailbox has been reset while waiting.
+ * @retval RDY_TIMEOUT  if the operation has timed out.
+ *
+ * @api
  */
 msg_t chMBPostAhead(Mailbox *mbp, msg_t msg, systime_t time) {
   msg_t rdymsg;
@@ -193,9 +196,11 @@ msg_t chMBPostAhead(Mailbox *mbp, msg_t msg, systime_t time) {
  *                      - @a TIME_INFINITE no timeout.
  *                      .
  * @return              The operation status.
- * @retval RDY_OK       if the message was correctly posted.
- * @retval RDY_RESET    if the mailbox was reset while waiting.
- * @retval RDY_TIMEOUT  if the operation timed out.
+ * @retval RDY_OK       if a message has been correctly posted.
+ * @retval RDY_RESET    if the mailbox has been reset while waiting.
+ * @retval RDY_TIMEOUT  if the operation has timed out.
+ *
+ * @sclass
  */
 msg_t chMBPostAheadS(Mailbox *mbp, msg_t msg, systime_t time) {
   msg_t rdymsg;
@@ -226,9 +231,11 @@ msg_t chMBPostAheadS(Mailbox *mbp, msg_t msg, systime_t time) {
  *                      - @a TIME_INFINITE no timeout.
  *                      .
  * @return              The operation status.
- * @retval RDY_OK       if a message was correctly fetched.
- * @retval RDY_RESET    if the mailbox was reset while waiting.
- * @retval RDY_TIMEOUT  if the operation timed out.
+ * @retval RDY_OK       if a message has been correctly fetched.
+ * @retval RDY_RESET    if the mailbox has been reset while waiting.
+ * @retval RDY_TIMEOUT  if the operation has timed out.
+ *
+ * @api
  */
 msg_t chMBFetch(Mailbox *mbp, msg_t *msgp, systime_t time) {
   msg_t rdymsg;
@@ -252,9 +259,11 @@ msg_t chMBFetch(Mailbox *mbp, msg_t *msgp, systime_t time) {
  *                      - @a TIME_INFINITE no timeout.
  *                      .
  * @return              The operation status.
- * @retval RDY_OK       if a message was correctly fetched.
- * @retval RDY_RESET    if the mailbox was reset while waiting.
- * @retval RDY_TIMEOUT  if the operation timed out.
+ * @retval RDY_OK       if a message has been correctly fetched.
+ * @retval RDY_RESET    if the mailbox has been reset while waiting.
+ * @retval RDY_TIMEOUT  if the operation has timed out.
+ *
+ * @sclass
  */
 msg_t chMBFetchS(Mailbox *mbp, msg_t *msgp, systime_t time) {
   msg_t rdymsg;

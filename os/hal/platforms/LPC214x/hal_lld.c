@@ -10,24 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file LPC214x/hal_lld.c
- * @brief LPC214x HAL subsystem low level driver source.
- * @addtogroup LPC214x_HAL
+ * @file    LPC214x/hal_lld.c
+ * @brief   LPC214x HAL subsystem low level driver source.
+ *
+ * @addtogroup HAL
  * @{
  */
 
@@ -41,19 +35,6 @@
 /*===========================================================================*/
 /* Driver local variables.                                                   */
 /*===========================================================================*/
-
-/**
- * @brief PAL setup.
- * @details Digital I/O ports static configuration as defined in @p board.h.
- */
-const PALConfig pal_default_config =
-{
-  VAL_PINSEL0,
-  VAL_PINSEL1,
-  VAL_PINSEL2,
-  {VAL_FIO0PIN, VAL_FIO0DIR},
-  {VAL_FIO1PIN, VAL_FIO1DIR}
-};
 
 /*===========================================================================*/
 /* Driver local functions.                                                   */
@@ -82,7 +63,9 @@ static CH_IRQ_HANDLER(irq_handler) {
 /*===========================================================================*/
 
 /**
- * @brief Low level HAL driver initialization.
+ * @brief   Low level HAL driver initialization.
+ *
+ * @notapi
  */
 void hal_lld_init(void) {
 
@@ -92,8 +75,11 @@ void hal_lld_init(void) {
 }
 
 /**
- * @brief LPC214x clocks and PLL initialization.
- * @note All the involved constants come from the file @p board.h.
+ * @brief   LPC214x clocks and PLL initialization.
+ * @note    All the involved constants come from the file @p board.h.
+ * @note    This function must be invoked only after the system reset.
+ *
+ * @special
  */
 void lpc214x_clock_init(void) {
 

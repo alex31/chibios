@@ -10,25 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
  * @file    STM32/hal_lld.c
  * @brief   STM32 HAL subsystem low level driver source.
  *
- * @addtogroup STM32_HAL
+ * @addtogroup HAL
  * @{
  */
 
@@ -45,25 +38,6 @@
 /* Driver local variables.                                                   */
 /*===========================================================================*/
 
-/**
- * @brief PAL setup.
- * @details Digital I/O ports static configuration as defined in @p board.h.
- */
-const PALConfig pal_default_config =
-{
-  {VAL_GPIOAODR, VAL_GPIOACRL, VAL_GPIOACRH},
-  {VAL_GPIOBODR, VAL_GPIOBCRL, VAL_GPIOBCRH},
-  {VAL_GPIOCODR, VAL_GPIOCCRL, VAL_GPIOCCRH},
-  {VAL_GPIODODR, VAL_GPIODCRL, VAL_GPIODCRH},
-#if !defined(STM32F10X_LD)
-  {VAL_GPIOEODR, VAL_GPIOECRL, VAL_GPIOECRH},
-#endif
-#if defined(STM32F10X_HD)
-  {VAL_GPIOFODR, VAL_GPIOFCRL, VAL_GPIOFCRH},
-  {VAL_GPIOGODR, VAL_GPIOGCRL, VAL_GPIOGCRH},
-#endif
-};
-
 /*===========================================================================*/
 /* Driver local functions.                                                   */
 /*===========================================================================*/
@@ -77,7 +51,9 @@ const PALConfig pal_default_config =
 /*===========================================================================*/
 
 /**
- * @brief Low level HAL driver initialization.
+ * @brief   Low level HAL driver initialization.
+ *
+ * @notapi
  */
 void hal_lld_init(void) {
 
@@ -88,17 +64,21 @@ void hal_lld_init(void) {
                   SysTick_CTRL_ENABLE_Msk |
                   SysTick_CTRL_TICKINT_Msk;
 
-#if CH_HAL_USE_ADC || CH_HAL_USE_SPI
+#if HAL_USE_ADC || HAL_USE_SPI || HAL_USE_UART
   dmaInit();
 #endif
 }
 
 /**
- * @brief STM32 clocks and PLL initialization.
- * @note All the involved constants come from the file @p board.h.
+ * @brief   STM32 clocks and PLL initialization.
+ * @note    All the involved constants come from the file @p board.h.
+ * @note    This function must be invoked only after the system reset.
+ *
+ * @special
  */
-#if defined(STM32F10X_LD) || defined(STM32F10X_MD) ||                       \
-    defined(STM32F10X_HD) || defined(__DOXYGEN__)
+#if defined(STM32F10X_LD)    || defined(STM32F10X_MD)    ||                 \
+    defined(STM32F10X_HD)    || defined(STM32F10X_LD_VL) ||                 \
+    defined(STM32F10X_MD_VL) || defined(__DOXYGEN__)
 /*
  * Clocks initialization for the LD, MD and HD sub-families.
  */
@@ -146,6 +126,7 @@ void stm32_clock_init(void) {
     ;
 #endif
 }
+
 #elif defined(STM32F10X_CL)
 /*
  * Clocks initialization for the CL sub-family.

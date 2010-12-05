@@ -10,32 +10,25 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
  * @file    AVR/serial_lld.c
  * @brief   AVR low level serial driver code.
  *
- * @addtogroup AVR_SERIAL
+ * @addtogroup SERIAL
  * @{
  */
 
 #include "ch.h"
 #include "hal.h"
 
-#if CH_HAL_USE_SERIAL || defined(__DOXYGEN__)
+#if HAL_USE_SERIAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -156,6 +149,11 @@ static void usart1_deinit(void) {
 /*===========================================================================*/
 
 #if USE_AVR_USART0 || defined(__DOXYGEN__)
+/**
+ * @brief   USART0 RX interrupt handler.
+ *
+ * @isr
+ */
 CH_IRQ_HANDLER(USART0_RX_vect) {
   uint8_t sra;
 
@@ -171,6 +169,11 @@ CH_IRQ_HANDLER(USART0_RX_vect) {
   CH_IRQ_EPILOGUE();
 }
 
+/**
+ * @brief   USART0 TX interrupt handler.
+ *
+ * @isr
+ */
 CH_IRQ_HANDLER(USART0_UDRE_vect) {
   msg_t b;
 
@@ -189,6 +192,11 @@ CH_IRQ_HANDLER(USART0_UDRE_vect) {
 #endif /* USE_AVR_USART0 */
 
 #if USE_AVR_USART1 || defined(__DOXYGEN__)
+/**
+ * @brief   USART1 RX interrupt handler.
+ *
+ * @isr
+ */
 CH_IRQ_HANDLER(USART1_RX_vect) {
   uint8_t sra;
 
@@ -204,6 +212,11 @@ CH_IRQ_HANDLER(USART1_RX_vect) {
   CH_IRQ_EPILOGUE();
 }
 
+/**
+ * @brief   USART1 TX interrupt handler.
+ *
+ * @isr
+ */
 CH_IRQ_HANDLER(USART1_UDRE_vect) {
   msg_t b;
 
@@ -227,6 +240,8 @@ CH_IRQ_HANDLER(USART1_UDRE_vect) {
 
 /**
  * @brief   Low level serial driver initialization.
+ *
+ * @notapi
  */
 void sd_lld_init(void) {
 
@@ -245,6 +260,8 @@ void sd_lld_init(void) {
  * @param[in] config    the architecture-dependent serial driver configuration.
  *                      If this parameter is set to @p NULL then a default
  *                      configuration is used.
+ *
+ * @notapi
  */
 void sd_lld_start(SerialDriver *sdp, const SerialConfig *config) {
 
@@ -271,6 +288,8 @@ void sd_lld_start(SerialDriver *sdp, const SerialConfig *config) {
  *          interrupt vector.
  *
  * @param[in] sdp       pointer to a @p SerialDriver object
+ *
+ * @notapi
  */
 void sd_lld_stop(SerialDriver *sdp) {
 
@@ -284,6 +303,6 @@ void sd_lld_stop(SerialDriver *sdp) {
 #endif
 }
 
-#endif /* CH_HAL_USE_SERIAL */
+#endif /* HAL_USE_SERIAL */
 
 /** @} */

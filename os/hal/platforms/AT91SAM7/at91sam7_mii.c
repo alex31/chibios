@@ -10,23 +10,17 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file AT91SAM7/at91sam7_mii.c
- * @brief AT91SAM7 low level MII driver code.
+ * @file    AT91SAM7/at91sam7_mii.c
+ * @brief   AT91SAM7 low level MII driver code.
+ *
  * @addtogroup AT91SAM7_MII
  * @{
  */
@@ -35,7 +29,7 @@
 #include "hal.h"
 #include "at91sam7_mii.h"
 
-#if CH_HAL_USE_MAC || defined(__DOXYGEN__)
+#if HAL_USE_MAC || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -58,16 +52,20 @@
 /*===========================================================================*/
 
 /**
- * @brief Low level MII driver initialization.
+ * @brief   Low level MII driver initialization.
+ *
+ * @notapi
  */
 void miiInit(void) {
 
 }
 
 /**
- * @brief Resets a PHY device.
+ * @brief   Resets a PHY device.
  *
- * @param[in] macp pointer to the @p MACDriver object
+ * @param[in] macp      pointer to the @p MACDriver object
+ *
+ * @notapi
  */
 void miiReset(MACDriver *macp) {
 
@@ -101,11 +99,13 @@ void miiReset(MACDriver *macp) {
 }
 
 /**
- * @brief Reads a PHY register through the MII interface.
+ * @brief   Reads a PHY register through the MII interface.
  *
- * @param[in] macp pointer to the @p MACDriver object
- * @param addr the register address
- * @return The register value.
+ * @param[in] macp      pointer to the @p MACDriver object
+ * @param[in] addr      the register address
+ * @return              The register value.
+ *
+ * @notapi
  */
 phyreg_t miiGet(MACDriver *macp, phyaddr_t addr) {
 
@@ -121,11 +121,13 @@ phyreg_t miiGet(MACDriver *macp, phyaddr_t addr) {
 }
 
 /**
- * @brief Writes a PHY register through the MII interface.
+ * @brief   Writes a PHY register through the MII interface.
  *
- * @param[in] macp pointer to the @p MACDriver object
- * @param addr the register address
- * @param value the new register value
+ * @param[in] macp      pointer to the @p MACDriver object
+ * @param[in] addr      the register address
+ * @param[in] value     the new register value
+ *
+ * @notapi
  */
 void miiPut(MACDriver *macp, phyaddr_t addr, phyreg_t value) {
 
@@ -140,6 +142,6 @@ void miiPut(MACDriver *macp, phyaddr_t addr, phyreg_t value) {
     ;
 }
 
-#endif /* CH_HAL_USE_MAC */
+#endif /* HAL_USE_MAC */
 
 /** @} */

@@ -10,32 +10,25 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
  * @file    templates/mac_lld.h
  * @brief   MAC Driver subsystem low level driver header template.
  *
- * @addtogroup MAC_LLD
+ * @addtogroup MAC
  * @{
  */
 
 #ifndef _MAC_LLD_H_
 #define _MAC_LLD_H_
 
-#if CH_HAL_USE_MAC || defined(__DOXYGEN__)
+#if HAL_USE_MAC || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -76,6 +69,8 @@
 
 /**
  * @brief   Structure representing a MAC driver.
+ * @note    Implementations may extend this structure to contain more,
+ *          architecture dependent, fields.
  */
 typedef struct {
   Semaphore             md_tdsem;       /**< Transmit semaphore.        */
@@ -88,6 +83,8 @@ typedef struct {
 
 /**
  * @brief   Structure representing a transmit descriptor.
+ * @note    Implementations may extend this structure to contain more,
+ *          architecture dependent, fields.
  */
 typedef struct {
   size_t                td_offset;      /**< Current write offset.      */
@@ -97,6 +94,8 @@ typedef struct {
 
 /**
  * @brief   Structure representing a receive descriptor.
+ * @note    Implementations may extend this structure to contain more,
+ *          architecture dependent, fields.
  */
 typedef struct {
   size_t                rd_offset;      /**< Current read offset.       */
@@ -134,7 +133,7 @@ extern "C" {
 }
 #endif
 
-#endif /* CH_HAL_USE_MAC */
+#endif /* HAL_USE_MAC */
 
 #endif /* _MAC_LLD_H_ */
 

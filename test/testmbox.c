@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "ch.h"
@@ -78,11 +71,6 @@ static MAILBOX_DECL(mb1, test.wa.T0, MB_SIZE);
  * The test expects to find a consistent mailbox status after each operation.
  */
 
-static char *mbox1_gettest(void) {
-
-  return "Mailboxes, queuing and timeouts";
-}
-
 static void mbox1_setup(void) {
 
   chMBInit(&mb1, (msg_t *)test.wa.T0, MB_SIZE);
@@ -95,7 +83,7 @@ static void mbox1_execute(void) {
   /*
    * Testing initial space.
    */
-  test_assert(1, chMBGetEmpty(&mb1) == MB_SIZE, "wrong size");
+  test_assert(1, chMBGetFreeCountI(&mb1) == MB_SIZE, "wrong size");
 
   /*
    * Testing enqueuing and backward circularity.
@@ -116,8 +104,8 @@ static void mbox1_execute(void) {
   /*
    * Testing final conditions.
    */
-  test_assert(5, chMBGetEmpty(&mb1) == 0, "still empty");
-  test_assert(6, chMBGetFull(&mb1) == MB_SIZE, "not full");
+  test_assert(5, chMBGetFreeCountI(&mb1) == 0, "still empty");
+  test_assert(6, chMBGetUsedCountI(&mb1) == MB_SIZE, "not full");
   test_assert(7, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
 
   /*
@@ -149,8 +137,8 @@ static void mbox1_execute(void) {
   /*
    * Testing final conditions.
    */
-  test_assert(15, chMBGetEmpty(&mb1) == MB_SIZE, "not empty");
-  test_assert(16, chMBGetFull(&mb1) == 0, "still full");
+  test_assert(15, chMBGetFreeCountI(&mb1) == MB_SIZE, "not empty");
+  test_assert(16, chMBGetUsedCountI(&mb1) == 0, "still full");
   test_assert(17, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
 
   /*
@@ -161,14 +149,14 @@ static void mbox1_execute(void) {
   /*
    * Re-testing final conditions.
    */
-  test_assert(18, chMBGetEmpty(&mb1) == MB_SIZE, "not empty");
-  test_assert(19, chMBGetFull(&mb1) == 0, "still full");
+  test_assert(18, chMBGetFreeCountI(&mb1) == MB_SIZE, "not empty");
+  test_assert(19, chMBGetUsedCountI(&mb1) == 0, "still full");
   test_assert(20, mb1.mb_buffer == mb1.mb_wrptr, "write pointer not aligned to base");
   test_assert(21, mb1.mb_buffer == mb1.mb_rdptr, "read pointer not aligned to base");
 }
 
-const struct testcase testmbox1 = {
-  mbox1_gettest,
+ROMCONST struct testcase testmbox1 = {
+  "Mailboxes, queuing and timeouts",
   mbox1_setup,
   NULL,
   mbox1_execute
@@ -179,7 +167,7 @@ const struct testcase testmbox1 = {
 /**
  * @brief   Test sequence for mailboxes.
  */
-const struct testcase * const patternmbox[] = {
+ROMCONST struct testcase * ROMCONST patternmbox[] = {
 #if CH_USE_MAILBOXES
   &testmbox1,
 #endif

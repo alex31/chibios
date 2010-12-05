@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -53,34 +46,42 @@
 
 /**
  * @brief   HAL initialization.
+ *
+ * @init
  */
 void halInit(void) {
 
   hal_lld_init();
 
-#if CH_HAL_USE_PAL
+#if HAL_USE_PAL
   palInit(&pal_default_config);
 #endif
-#if CH_HAL_USE_ADC
+#if HAL_USE_ADC
   adcInit();
 #endif
-#if CH_HAL_USE_CAN
+#if HAL_USE_CAN
   canInit();
 #endif
-#if CH_HAL_USE_MAC
+#if HAL_USE_I2C
+  i2cInit();
+#endif
+#if HAL_USE_MAC
   macInit();
 #endif
-#if CH_HAL_USE_PWM
+#if HAL_USE_PWM
   pwmInit();
 #endif
-#if CH_HAL_USE_SERIAL
+#if HAL_USE_SERIAL
   sdInit();
 #endif
-#if CH_HAL_USE_SPI
+#if HAL_USE_SPI
   spiInit();
 #endif
-#if CH_HAL_USE_MMC_SPI
+#if HAL_USE_MMC_SPI
   mmcInit();
+#endif
+#if HAL_USE_UART
+  uartInit();
 #endif
 }
 

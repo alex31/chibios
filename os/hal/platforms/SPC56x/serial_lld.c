@@ -10,32 +10,25 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
  * @file    SPC56x/serial_lld.c
  * @brief   SPC563 low level serial driver code.
  *
- * @addtogroup SPC563_SERIAL
+ * @addtogroup SERIAL
  * @{
  */
 
 #include "ch.h"
 #include "hal.h"
 
-#if CH_HAL_USE_SERIAL || defined(__DOXYGEN__)
+#if HAL_USE_SERIAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -222,6 +215,8 @@ static void notify2(void) {
 #if USE_SPC563_ESCIA || defined(__DOXYGEN__)
 /**
  * @brief   eSCI-A interrupt handler.
+ *
+ * @isr
  */
 CH_IRQ_HANDLER(vector146) {
 
@@ -236,6 +231,8 @@ CH_IRQ_HANDLER(vector146) {
 #if USE_SPC563_ESCIB || defined(__DOXYGEN__)
 /**
  * @brief   eSCI-B interrupt handler.
+ *
+ * @isr
  */
 CH_IRQ_HANDLER(vector149) {
 
@@ -253,6 +250,8 @@ CH_IRQ_HANDLER(vector149) {
 
 /**
  * @brief   Low level serial driver initialization.
+ *
+ * @notapi
  */
 void sd_lld_init(void) {
 
@@ -278,6 +277,8 @@ void sd_lld_init(void) {
  * @param[in] config    the architecture-dependent serial driver configuration.
  *                      If this parameter is set to @p NULL then a default
  *                      configuration is used.
+ *
+ * @notapi
  */
 void sd_lld_start(SerialDriver *sdp, const SerialConfig *config) {
 
@@ -290,6 +291,8 @@ void sd_lld_start(SerialDriver *sdp, const SerialConfig *config) {
  * @brief   Low level serial driver stop.
  *
  * @param[in] sdp       pointer to a @p SerialDriver object
+ *
+ * @notapi
  */
 void sd_lld_stop(SerialDriver *sdp) {
 
@@ -297,6 +300,6 @@ void sd_lld_stop(SerialDriver *sdp) {
     esci_deinit(sdp->escip);
 }
 
-#endif /* CH_HAL_USE_SERIAL */
+#endif /* HAL_USE_SERIAL */
 
 /** @} */

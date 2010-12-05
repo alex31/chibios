@@ -10,38 +10,32 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file STM32/adc_lld.c
- * @brief STM32 ADC subsystem low level driver source.
- * @addtogroup STM32_ADC
+ * @file    STM32/adc_lld.c
+ * @brief   STM32 ADC subsystem low level driver source.
+ *
+ * @addtogroup ADC
  * @{
  */
 
 #include "ch.h"
 #include "hal.h"
 
-#if CH_HAL_USE_ADC || defined(__DOXYGEN__)
+#if HAL_USE_ADC || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
 
 /** @brief ADC1 driver identifier.*/
-#if USE_STM32_ADC1 || defined(__DOXYGEN__)
+#if STM32_ADC_USE_ADC1 || defined(__DOXYGEN__)
 ADCDriver ADCD1;
 #endif
 
@@ -57,52 +51,30 @@ ADCDriver ADCD1;
 /* Driver interrupt handlers.                                                */
 /*===========================================================================*/
 
-#if USE_STM32_ADC1 || defined(__DOXYGEN__)
+#if STM32_ADC_USE_ADC1 || defined(__DOXYGEN__)
 /**
- * @brief ADC1 DMA interrupt handler (channel 1).
+ * @brief   ADC1 DMA interrupt handler (channel 1).
+ *
+ * @isr
  */
-CH_IRQ_HANDLER(Vector6C) {
+CH_IRQ_HANDLER(DMA1_Ch1_IRQHandler) {
   uint32_t isr;
 
   CH_IRQ_PROLOGUE();
 
-  isr = DMA1->ISR;
-  DMA1->IFCR |= DMA_IFCR_CGIF1  | DMA_IFCR_CTCIF1 |
-                DMA_IFCR_CHTIF1 | DMA_IFCR_CTEIF1;
-  if ((isr & DMA_ISR_HTIF1) != 0) {
-    /* Half transfer processing.*/
-    if (ADCD1.ad_callback != NULL) {
-      /* Invokes the callback passing the 1st half of the buffer.*/
-      ADCD1.ad_callback(ADCD1.ad_samples, ADCD1.ad_depth / 2);
-    }
-  }
-  if ((isr & DMA_ISR_TCIF1) != 0) {
-    /* Transfer complete processing.*/
-    if (!ADCD1.ad_grpp->acg_circular) {
-      /* End conversion.*/
-      adc_lld_stop_conversion(&ADCD1);
-      ADCD1.ad_grpp  = NULL;
-      ADCD1.ad_state = ADC_COMPLETE;
-      chSysLockFromIsr();
-      chSemResetI(&ADCD1.ad_sem, 0);
-      chSysUnlockFromIsr();
-    }
-    /* Callback handling.*/
-    if (ADCD1.ad_callback != NULL) {
-      if (ADCD1.ad_depth > 1) {
-        /* Invokes the callback passing the 2nd half of the buffer.*/
-        size_t half = ADCD1.ad_depth / 2;
-        ADCD1.ad_callback(ADCD1.ad_samples + half, half);
-      }
-      else {
-        /* Invokes the callback passing the whole buffer.*/
-        ADCD1.ad_callback(ADCD1.ad_samples, ADCD1.ad_depth);
-      }
-    }
-  }
+  isr = STM32_DMA1->ISR;
+  dmaClearChannel(STM32_DMA1, STM32_DMA_CHANNEL_1);
   if ((isr & DMA_ISR_TEIF1) != 0) {
     /* DMA error processing.*/
     STM32_ADC1_DMA_ERROR_HOOK();
+  }
+  if ((isr & DMA_ISR_HTIF1) != 0) {
+    /* Half transfer processing.*/
+    _adc_isr_half_code(&ADCD1);
+  }
+  if ((isr & DMA_ISR_TCIF1) != 0) {
+    /* Transfer complete processing.*/
+    _adc_isr_full_code(&ADCD1);
   }
 
   CH_IRQ_EPILOGUE();
@@ -114,11 +86,13 @@ CH_IRQ_HANDLER(Vector6C) {
 /*===========================================================================*/
 
 /**
- * @brief Low level ADC driver initialization.
+ * @brief   Low level ADC driver initialization.
+ *
+ * @notapi
  */
 void adc_lld_init(void) {
 
-#if USE_STM32_ADC1
+#if STM32_ADC_USE_ADC1
   /* ADC reset, ensures reset state in order to avoid trouble with JTAGs.*/
   RCC->APB2RSTR = RCC_APB2RSTR_ADC1RST;
   RCC->APB2RSTR = 0;
@@ -126,8 +100,10 @@ void adc_lld_init(void) {
   /* Driver initialization.*/
   adcObjectInit(&ADCD1);
   ADCD1.ad_adc = ADC1;
-  ADCD1.ad_dma = DMA1_Channel1;
-  ADCD1.ad_dmaprio = STM32_ADC1_DMA_PRIORITY << 12;
+  ADCD1.ad_dmachp = STM32_DMA1_CH1;
+  ADCD1.ad_dmaccr = (STM32_ADC_ADC1_DMA_PRIORITY << 12) |
+                    DMA_CCR1_EN   | DMA_CCR1_MSIZE_0 | DMA_CCR1_PSIZE_0 |
+                    DMA_CCR1_MINC | DMA_CCR1_TCIE    | DMA_CCR1_TEIE;
 
   /* Temporary activation.*/
   RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
@@ -151,20 +127,22 @@ void adc_lld_init(void) {
 }
 
 /**
- * @brief Configures and activates the ADC peripheral.
+ * @brief   Configures and activates the ADC peripheral.
  *
  * @param[in] adcp      pointer to the @p ADCDriver object
+ *
+ * @notapi
  */
 void adc_lld_start(ADCDriver *adcp) {
 
   /* If in stopped state then enables the ADC and DMA clocks.*/
   if (adcp->ad_state == ADC_STOP) {
-#if USE_STM32_ADC1
+#if STM32_ADC_USE_ADC1
     if (&ADCD1 == adcp) {
       dmaEnable(DMA1_ID);   /* NOTE: Must be enabled before the IRQs.*/
       NVICEnableVector(DMA1_Channel1_IRQn,
-                       CORTEX_PRIORITY_MASK(STM32_ADC1_IRQ_PRIORITY));
-      DMA1_Channel1->CPAR = (uint32_t)&ADC1->DR;
+                       CORTEX_PRIORITY_MASK(STM32_ADC_ADC1_IRQ_PRIORITY));
+      dmaChannelSetPeripheral(adcp->ad_dmachp, &ADC1->DR);
       RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
     }
 #endif
@@ -177,15 +155,17 @@ void adc_lld_start(ADCDriver *adcp) {
 }
 
 /**
- * @brief Deactivates the ADC peripheral.
+ * @brief   Deactivates the ADC peripheral.
  *
  * @param[in] adcp      pointer to the @p ADCDriver object
+ *
+ * @notapi
  */
 void adc_lld_stop(ADCDriver *adcp) {
 
   /* If in ready state then disables the ADC clock.*/
   if (adcp->ad_state == ADC_READY) {
-#if USE_STM32_ADC1
+#if STM32_ADC_USE_ADC1
     if (&ADCD1 == adcp) {
       ADC1->CR1 = 0;
       ADC1->CR2 = 0;
@@ -198,18 +178,18 @@ void adc_lld_stop(ADCDriver *adcp) {
 }
 
 /**
- * @brief Starts an ADC conversion.
+ * @brief   Starts an ADC conversion.
  *
  * @param[in] adcp      pointer to the @p ADCDriver object
+ *
+ * @notapi
  */
 void adc_lld_start_conversion(ADCDriver *adcp) {
   uint32_t ccr, n;
   const ADCConversionGroup *grpp = adcp->ad_grpp;
 
   /* DMA setup.*/
-  adcp->ad_dma->CMAR  = (uint32_t)adcp->ad_samples;
-  ccr = adcp->ad_dmaprio | DMA_CCR1_EN   | DMA_CCR1_MSIZE_0 | DMA_CCR1_PSIZE_0 |
-                           DMA_CCR1_MINC | DMA_CCR1_TCIE    | DMA_CCR1_TEIE;
+  ccr = adcp->ad_dmaccr;
   if (grpp->acg_circular)
     ccr |= DMA_CCR1_CIRC;
   if (adcp->ad_depth > 1) {
@@ -220,8 +200,7 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
   }
   else
     n = (uint32_t)grpp->acg_num_channels;
-  adcp->ad_dma->CNDTR = n;
-  adcp->ad_dma->CCR = ccr;
+  dmaChannelSetup(adcp->ad_dmachp, n, adcp->ad_samples, ccr);
 
   /* ADC setup.*/
   adcp->ad_adc->SMPR1 = grpp->acg_smpr1;
@@ -237,16 +216,18 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
 }
 
 /**
- * @brief Stops an ongoing conversion.
+ * @brief   Stops an ongoing conversion.
  *
  * @param[in] adcp      pointer to the @p ADCDriver object
+ *
+ * @notapi
  */
 void adc_lld_stop_conversion(ADCDriver *adcp) {
 
-  adcp->ad_dma->CCR = 0;
+  dmaChannelDisable(adcp->ad_dmachp);
   adcp->ad_adc->CR2 = 0;
 }
 
-#endif /* CH_HAL_USE_ADC */
+#endif /* HAL_USE_ADC */
 
 /** @} */

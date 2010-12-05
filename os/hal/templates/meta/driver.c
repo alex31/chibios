@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -35,7 +28,7 @@
 #include "ch.h"
 #include "hal.h"
 
-#if CH_HAL_USE_XXX || defined(__DOXYGEN__)
+#if HAL_USE_XXX || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -55,6 +48,8 @@
 
 /**
  * @brief   XXX Driver initialization.
+ *
+ * @init
  */
 void xxxInit(void) {
 
@@ -65,6 +60,8 @@ void xxxInit(void) {
  * @brief   Initializes the standard part of a @p XXXDriver structure.
  *
  * @param[in] xxxp      pointer to the @p XXXDriver object
+ *
+ * @init
  */
 void xxxObjectInit(XXXDriver *xxxp) {
 
@@ -77,6 +74,8 @@ void xxxObjectInit(XXXDriver *xxxp) {
  *
  * @param[in] xxxp      pointer to the @p XXXDriver object
  * @param[in] config    pointer to the @p XXXConfig object
+ *
+ * @api
  */
 void xxxStart(XXXDriver *xxxp, const XXXConfig *config) {
 
@@ -96,6 +95,8 @@ void xxxStart(XXXDriver *xxxp, const XXXConfig *config) {
  * @brief   Deactivates the XXX peripheral.
  *
  * @param[in] xxxp      pointer to the @p XXXDriver object
+ *
+ * @api
  */
 void xxxStop(XXXDriver *xxxp) {
 
@@ -110,6 +111,6 @@ void xxxStop(XXXDriver *xxxp) {
   chSysUnlock();
 }
 
-#endif /* CH_HAL_USE_XXX */
+#endif /* HAL_USE_XXX */
 
 /** @} */

@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -40,32 +33,33 @@
  *          - <b>Next</b>, returns the next, in creation order, active thread
  *            in the system.
  *          .
- *          The registry is meant to be mainly a debug feature, as example,
+ *          The registry is meant to be mainly a debug feature, for example,
  *          using the registry a debugger can enumerate the active threads
  *          in any given moment or the shell can print the active threads
  *          and their state.<br>
  *          Another possible use is for centralized threads memory management,
  *          terminating threads can pulse an event source and an event handler
  *          can perform a scansion of the registry in order to recover the
- *          memory.<br>
- *          In order to use the threads registry the @p CH_USE_REGISTRY option
+ *          memory.
+ * @pre     In order to use the threads registry the @p CH_USE_REGISTRY option
  *          must be enabled in @p chconf.h.
  * @{
  */
 #include "ch.h"
 
-#if CH_USE_REGISTRY
+#if CH_USE_REGISTRY || defined(__DOXYGEN__)
 
 /**
  * @brief   Returns the first thread in the system.
  * @details Returns the most ancient thread in the system, usually this is
- *          the main thread unless it terminated.
- * @note    A reference is added to the returned thread in order to make sure
- *          it status is not lost.
+ *          the main thread unless it terminated. A reference is added to the
+ *          returned thread in order to make sure its status is not lost.
  * @note    This function cannot return @p NULL because there is always at
  *          least one thread in the system.
  *
- * @return              A reference to the first thread.
+ * @return              A reference to the most ancient thread.
+ *
+ * @api
  */
 Thread *chRegFirstThread(void) {
   Thread *tp;
@@ -87,6 +81,8 @@ Thread *chRegFirstThread(void) {
  * @param[in] tp        pointer to the thread
  * @return              A reference to the next thread.
  * @retval NULL         if there is no next thread.
+ *
+ * @api
  */
 Thread *chRegNextThread(Thread *tp) {
   Thread *ntp;

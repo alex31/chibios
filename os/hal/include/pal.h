@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -35,7 +28,7 @@
 #ifndef _PAL_H_
 #define _PAL_H_
 
-#if CH_HAL_USE_PAL || defined(__DOXYGEN__)
+#if HAL_USE_PAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -46,7 +39,7 @@
  * @details The other bits are not defined and may be used as device-specific
  *          option bits.
  */
-#define PAL_MODE_MASK                   0xF
+#define PAL_MODE_MASK                   0x1F
 
 /**
  * @brief   After reset state.
@@ -196,6 +189,8 @@ typedef struct {
  * @param[in] config pointer to an architecture specific configuration
  *            structure. This structure is defined in the low level driver
  *            header.
+ *
+ * @init
  */
 #define palInit(config) pal_lld_init(config)
 
@@ -206,6 +201,8 @@ typedef struct {
  *
  * @param[in] port      port identifier
  * @return              The port logical states.
+ *
+ * @api
  */
 #if !defined(pal_lld_readport) || defined(__DOXYGEN__)
 #define palReadPort(port) ((void)(port), 0)
@@ -222,6 +219,8 @@ typedef struct {
  *
  * @param[in] port      port identifier
  * @return              The latched logical states.
+ *
+ * @api
  */
 #if !defined(pal_lld_readlatch) || defined(__DOXYGEN__)
 #define palReadLatch(port) ((void)(port), 0)
@@ -236,6 +235,8 @@ typedef struct {
  *
  * @param[in] port      port identifier
  * @param[in] bits      bits to be written on the specified port
+ *
+ * @api
  */
 #if !defined(pal_lld_writeport) || defined(__DOXYGEN__)
 #define palWritePort(port, bits) ((void)(port), (void)(bits))
@@ -255,6 +256,8 @@ typedef struct {
  *
  * @param[in] port      port identifier
  * @param[in] bits      bits to be ORed on the specified port
+ *
+ * @api
  */
 #if !defined(pal_lld_setport) || defined(__DOXYGEN__)
 #define palSetPort(port, bits) {                                        \
@@ -277,6 +280,7 @@ typedef struct {
  * @param[in] port      port identifier
  * @param[in] bits      bits to be cleared on the specified port
  *
+ * @api
  */
 #if !defined(pal_lld_clearport) || defined(__DOXYGEN__)
 #define palClearPort(port, bits) {                                      \
@@ -298,6 +302,8 @@ typedef struct {
  *
  * @param[in] port      port identifier
  * @param[in] bits      bits to be XORed on the specified port
+ *
+ * @api
  */
 #if !defined(pal_lld_toggleport) || defined(__DOXYGEN__)
 #define palTogglePort(port, bits) {                                     \
@@ -315,6 +321,8 @@ typedef struct {
  *                      data
  * @param[in] offset    group bit offset within the port
  * @return              The group logical states.
+ *
+ * @api
  */
 #if !defined(pal_lld_readgroup) || defined(__DOXYGEN__)
 #define palReadGroup(port, mask, offset)                               \
@@ -332,6 +340,8 @@ typedef struct {
  * @param[in] offset    group bit offset within the port
  * @param[in] bits      bits to be written. Values exceeding the group
  *                      width are masked.
+ *
+ * @api
  */
 #if !defined(pal_lld_writegroup) || defined(__DOXYGEN__)
 #define palWriteGroup(port, mask, offset, bits) {                       \
@@ -354,6 +364,7 @@ typedef struct {
  * @param[in] mask      group mask
  * @param[in] mode      group mode
  *
+ * @api
  */
 #if !defined(pal_lld_setgroupmode) || defined(__DOXYGEN__)
 #define palSetGroupMode(port, mask, mode)
@@ -374,6 +385,7 @@ typedef struct {
  * @retval PAL_LOW      low logical state.
  * @retval PAL_HIGH     high logical state.
  *
+ * @api
  */
 #if !defined(pal_lld_readpad) || defined(__DOXYGEN__)
 #define palReadPad(port, pad) ((palReadPort(port) >> (pad)) & 1)
@@ -397,6 +409,8 @@ typedef struct {
  * @param[in] pad       pad number within the port
  * @param[in] bit       logical value, the value must be @p PAL_LOW or
  *                      @p PAL_HIGH
+ *
+ * @api
  */
 #if !defined(pal_lld_writepad) || defined(__DOXYGEN__)
 #define palWritePad(port, pad, bit) {                                   \
@@ -420,6 +434,8 @@ typedef struct {
  *
  * @param[in] port      port identifier
  * @param[in] pad       pad number within the port
+ *
+ * @api
  */
 #if !defined(pal_lld_setpad) || defined(__DOXYGEN__)
 #define palSetPad(port, pad) palSetPort(port, PAL_PORT_BIT(pad))
@@ -440,6 +456,8 @@ typedef struct {
  *
  * @param[in] port      port identifier
  * @param[in] pad       pad number within the port
+ *
+ * @api
  */
 #if !defined(pal_lld_clearpad) || defined(__DOXYGEN__)
 #define palClearPad(port, pad) palClearPort(port, PAL_PORT_BIT(pad))
@@ -460,6 +478,8 @@ typedef struct {
  *
  * @param[in] port      port identifier
  * @param[in] pad       pad number within the port
+ *
+ * @api
  */
 #if !defined(pal_lld_togglepad) || defined(__DOXYGEN__)
 #define palTogglePad(port, pad) palTogglePort(port, PAL_PORT_BIT(pad))
@@ -479,6 +499,8 @@ typedef struct {
  * @param[in] port      port identifier
  * @param[in] pad       pad number within the port
  * @param[in] mode      pad mode
+ *
+ * @api
  */
 #if !defined(pal_lld_setpadmode) || defined(__DOXYGEN__)
 #define palSetPadMode(port, pad, mode)                                  \
@@ -503,6 +525,6 @@ extern "C" {
 
 #endif /* _PAL_H_ */
 
-#endif /* CH_HAL_USE_PAL */
+#endif /* HAL_USE_PAL */
 
 /** @} */

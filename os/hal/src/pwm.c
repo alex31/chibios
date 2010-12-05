@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -35,7 +28,7 @@
 #include "ch.h"
 #include "hal.h"
 
-#if CH_HAL_USE_PWM || defined(__DOXYGEN__)
+#if HAL_USE_PWM || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -55,6 +48,8 @@
 
 /**
  * @brief   PWM Driver initialization.
+ *
+ * @init
  */
 void pwmInit(void) {
 
@@ -65,6 +60,8 @@ void pwmInit(void) {
  * @brief   Initializes the standard part of a @p PWMDriver structure.
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
+ *
+ * @init
  */
 void pwmObjectInit(PWMDriver *pwmp) {
 
@@ -80,6 +77,8 @@ void pwmObjectInit(PWMDriver *pwmp) {
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
  * @param[in] config    pointer to a @p PWMConfig object
+ *
+ * @api
  */
 void pwmStart(PWMDriver *pwmp, const PWMConfig *config) {
 
@@ -98,6 +97,8 @@ void pwmStart(PWMDriver *pwmp, const PWMConfig *config) {
  * @brief   Deactivates the PWM peripheral.
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
+ *
+ * @api
  */
 void pwmStop(PWMDriver *pwmp) {
 
@@ -118,6 +119,8 @@ void pwmStop(PWMDriver *pwmp) {
  * @param[in] pwmp      pointer to a @p PWMDriver object
  * @param[in] channel   PWM channel identifier (0...PWM_CHANNELS-1)
  * @param[in] width     PWM pulse width as clock pulses number
+ *
+ * @api
  */
 void pwmEnableChannel(PWMDriver *pwmp,
                       pwmchannel_t channel,
@@ -140,6 +143,8 @@ void pwmEnableChannel(PWMDriver *pwmp,
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
  * @param[in] channel   PWM channel identifier (0...PWM_CHANNELS-1)
+ *
+ * @api
  */
 void pwmDisableChannel(PWMDriver *pwmp, pwmchannel_t channel) {
 
@@ -153,6 +158,6 @@ void pwmDisableChannel(PWMDriver *pwmp, pwmchannel_t channel) {
   chSysUnlock();
 }
 
-#endif /* CH_HAL_USE_PWM */
+#endif /* HAL_USE_PWM */
 
 /** @} */

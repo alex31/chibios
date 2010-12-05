@@ -10,32 +10,25 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
  * @file    templates/can_lld.h
  * @brief   CAN Driver subsystem low level driver header template.
  *
- * @addtogroup CAN_LLD
+ * @addtogroup CAN
  * @{
  */
 
 #ifndef _CAN_LLD_H_
 #define _CAN_LLD_H_
 
-#if CH_HAL_USE_CAN || defined(__DOXYGEN__)
+#if HAL_USE_CAN || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -137,6 +130,8 @@ typedef struct {
 
 /**
  * @brief   CAN filter.
+ * @note    Implementations may extend this structure to contain more,
+ *          architecture dependent, fields.
  * @note    It could not be present on some architectures.
  */
 typedef struct {
@@ -144,6 +139,8 @@ typedef struct {
 
 /**
  * @brief   Driver configuration structure.
+ * @note    Implementations may extend this structure to contain more,
+ *          architecture dependent, fields.
  * @note    It could be empty on some architectures.
  */
 typedef struct {
@@ -151,6 +148,8 @@ typedef struct {
 
 /**
  * @brief   Structure representing an CAN driver.
+ * @note    Implementations may extend this structure to contain more,
+ *          architecture dependent, fields.
  */
 typedef struct {
   /**
@@ -230,7 +229,7 @@ extern "C" {
 }
 #endif
 
-#endif /* CH_HAL_USE_CAN */
+#endif /* HAL_USE_CAN */
 
 #endif /* _CAN_LLD_H_ */
 

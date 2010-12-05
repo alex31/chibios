@@ -10,18 +10,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "ch.h"
@@ -73,11 +66,6 @@ static msg_t thread(void *p) {
   return 0;
 }
 
-static char *thd1_gettest(void) {
-
-  return "Threads, enqueuing test #1";
-}
-
 static void thd1_execute(void) {
 
   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-5, thread, "E");
@@ -89,8 +77,8 @@ static void thd1_execute(void) {
   test_assert_sequence(1, "ABCDE");
 }
 
-const struct testcase testthd1 = {
-  thd1_gettest,
+ROMCONST struct testcase testthd1 = {
+  "Threads, enqueuing test #1",
   NULL,
   NULL,
   thd1_execute
@@ -106,24 +94,23 @@ const struct testcase testthd1 = {
  * priority order regardless of the initial order.
  */
 
-static char *thd2_gettest(void) {
-
-  return "Threads, enqueuing test #2";
-}
-
 static void thd2_execute(void) {
 
   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-4, thread, "D");
   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-5, thread, "E");
   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()-1, thread, "A");
   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()-2, thread, "B");
-  threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()-3, thread, "C");
+  /* Done this way for coverage of chThdCreateI() and chThdResume().*/
+  chSysLock();
+  threads[2] = chThdCreateI(wa[2], WA_SIZE, chThdGetPriority()-3, thread, "C");
+  chSysUnlock();
+  chThdResume(threads[2]);
   test_wait_threads();
   test_assert_sequence(1, "ABCDE");
 }
 
-const struct testcase testthd2 = {
-  thd2_gettest,
+ROMCONST struct testcase testthd2 = {
+  "Threads, enqueuing test #2",
   NULL,
   NULL,
   thd2_execute
@@ -138,11 +125,6 @@ const struct testcase testthd2 = {
  * If the @p CH_USE_MUTEXES option is enabled then the priority changes are
  * also tested under priority inheritance boosted priority state.
  */
-
-static char *thd3_gettest(void) {
-
-  return "Threads, priority change";
-}
 
 static void thd3_execute(void) {
   tprio_t prio, p1;
@@ -192,8 +174,8 @@ static void thd3_execute(void) {
 #endif
 }
 
-const struct testcase testthd3 = {
-  thd3_gettest,
+ROMCONST struct testcase testthd3 = {
+  "Threads, priority change",
   NULL,
   NULL,
   thd3_execute
@@ -206,11 +188,6 @@ const struct testcase testthd3 = {
  * Delay APIs and associated macros are tested, the invoking thread is verified
  * to wake up at the exact expected time.
  */
-
-static char *thd4_gettest(void) {
-
-  return "Threads, delays";
-}
 
 static void thd4_execute(void) {
   systime_t time;
@@ -238,8 +215,8 @@ static void thd4_execute(void) {
   test_assert_time_window(4, time, time + 1);
 }
 
-const struct testcase testthd4 = {
-  thd4_gettest,
+ROMCONST struct testcase testthd4 = {
+  "Threads, delays",
   NULL,
   NULL,
   thd4_execute
@@ -248,7 +225,7 @@ const struct testcase testthd4 = {
 /**
  * @brief   Test sequence for threads.
  */
-const struct testcase * const patternthd[] = {
+ROMCONST struct testcase * ROMCONST patternthd[] = {
   &testthd1,
   &testthd2,
   &testthd3,

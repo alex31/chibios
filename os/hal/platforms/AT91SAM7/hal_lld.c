@@ -10,24 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file AT91SAM7/hal_lld.c
- * @brief AT91SAM7 HAL subsystem low level driver source.
- * @addtogroup AT91SAM7_HAL
+ * @file    AT91SAM7/hal_lld.c
+ * @brief   AT91SAM7 HAL subsystem low level driver source.
+ *
+ * @addtogroup HAL
  * @{
  */
 
@@ -41,19 +35,6 @@
 /*===========================================================================*/
 /* Driver local variables.                                                   */
 /*===========================================================================*/
-
-/**
- * @brief PAL setup.
- * @details Digital I/O ports static configuration as defined in @p board.h.
- */
-const PALConfig pal_default_config =
-{
-  {VAL_PIOA_ODSR, VAL_PIOA_OSR, VAL_PIOA_PUSR},
-#if (SAM7_PLATFORM == SAM7X128) || (SAM7_PLATFORM == SAM7X256) || \
-    (SAM7_PLATFORM == SAM7X512)
-  {VAL_PIOB_ODSR, VAL_PIOB_OSR, VAL_PIOB_PUSR}
-#endif
-};
 
 /*===========================================================================*/
 /* Driver local functions.                                                   */
@@ -79,7 +60,9 @@ static CH_IRQ_HANDLER(spurious_handler) {
 /*===========================================================================*/
 
 /**
- * @brief Low level HAL driver initialization.
+ * @brief   Low level HAL driver initialization.
+ *
+ * @notapi
  */
 void hal_lld_init(void) {
   unsigned i;
@@ -100,8 +83,11 @@ void hal_lld_init(void) {
 }
 
 /**
- * @brief AT91SAM7 clocks and PLL initialization.
- * @note All the involved constants come from the file @p board.h.
+ * @brief   AT91SAM7 clocks and PLL initialization.
+ * @note    All the involved constants come from the file @p board.h.
+ * @note    This function must be invoked only after the system reset.
+ *
+ * @special
  */
 void at91sam7_clock_init(void) {
 
