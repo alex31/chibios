@@ -10,17 +10,23 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    stm32_dma.c
- * @brief   STM32 DMA helper driver code.
- *
+ * @file stm32_dma.c
+ * @brief STM32 DMA helper driver code.
  * @addtogroup STM32_DMA
  * @{
  */
@@ -37,7 +43,7 @@
 /*===========================================================================*/
 
 static cnt_t dmacnt1;
-#if STM32_HAS_DMA2
+#if defined(STM32F10X_HD) || defined (STM32F10X_CL)
 static cnt_t dmacnt2;
 #endif
 
@@ -54,31 +60,20 @@ static cnt_t dmacnt2;
 /*===========================================================================*/
 
 /**
- * @brief   STM32 DMA helper initialization.
- *
- * @init
+ * @brief STM32 DMA helper initialization.
  */
 void dmaInit(void) {
-  int i;
 
   dmacnt1 = 0;
-  for (i = STM32_DMA_CHANNEL_7; i >= STM32_DMA_CHANNEL_1; i--)
-    dmaDisableChannel(STM32_DMA1, i);
-  STM32_DMA1->IFCR = 0xFFFFFFFF;
-#if STM32_HAS_DMA2
+#if defined(STM32F10X_HD) || defined (STM32F10X_CL)
   dmacnt2 = 0;
-  for (i = STM32_DMA_CHANNEL_5; i >= STM32_DMA_CHANNEL_1; i--)
-    dmaDisableChannel(STM32_DMA2, i);
-  STM32_DMA1->IFCR = 0xFFFFFFFF;
 #endif
 }
 
 /**
- * @brief   Enables the specified DMA controller clock.
+ * @brief Enables the specified DMA controller clock.
  *
- * @param[in] dma       the DMA controller id
- *
- * @api
+ * @param[in] dma the DMA controller id
  */
 void dmaEnable(uint32_t dma) {
 
@@ -89,7 +84,7 @@ void dmaEnable(uint32_t dma) {
       DMA1->IFCR = 0x0FFFFFFF;
     }
     break;
-#if STM32_HAS_DMA2
+#if defined(STM32F10X_HD) || defined (STM32F10X_CL)
   case DMA2_ID:
     if (dmacnt2++ == 0) {
       RCC->AHBENR |= RCC_AHBENR_DMA2EN;
@@ -103,9 +98,7 @@ void dmaEnable(uint32_t dma) {
 /**
  * @brief Disables the specified DMA controller clock.
  *
- * @param[in] dma       the DMA controller id
- *
- * @api
+ * @param[in] dma the DMA controller id
  */
 void dmaDisable(uint32_t dma) {
 
@@ -114,7 +107,7 @@ void dmaDisable(uint32_t dma) {
     if (--dmacnt1 == 0)
       RCC->AHBENR &= ~RCC_AHBENR_DMA1EN;
     break;
-#if STM32_HAS_DMA2
+#if defined(STM32F10X_HD) || defined (STM32F10X_CL)
   case DMA2_ID:
     if (--dmacnt2 == 0)
       RCC->AHBENR &= ~RCC_AHBENR_DMA2EN;

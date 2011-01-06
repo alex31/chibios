@@ -10,18 +10,24 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    AT91SAM7/hal_lld.h
- * @brief   AT91SAM7 HAL subsystem low level driver header.
- *
- * @addtogroup HAL
+ * @file AT91SAM7/hal_lld.h
+ * @brief AT91SAM7 HAL subsystem low level driver header.
+ * @addtogroup AT91SAM7_HAL
  * @{
  */
 
@@ -45,14 +51,14 @@
 /*===========================================================================*/
 
 /**
- * @brief   Default action for the spurious handler, nothing.
+ * @brief Default action for the spurious handler, nothing.
  */
 #if !defined(AT91SAM7_SPURIOUS_HANDLER_HOOK) || defined(__DOXYGEN__)
 #define AT91SAM7_SPURIOUS_HANDLER_HOOK()
 #endif
 
 /**
- * @brief   Default divider for the USB clock - half the PLL clock.
+ * @brief Default divider for the USB clock - half the PLL clock.
  */
 #if !defined(AT91SAM7_USBDIV) || defined(__DOXYGEN__)
 #define AT91SAM7_USBDIV AT91C_CKGR_USBDIV_1

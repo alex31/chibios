@@ -10,25 +10,32 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    templates/pwm_lld.h
  * @brief   PWM Driver subsystem low level driver header template.
  *
- * @addtogroup PWM
+ * @addtogroup PWM_LLD
  * @{
  */
 
 #ifndef _PWM_LLD_H_
 #define _PWM_LLD_H_
 
-#if HAL_USE_PWM || defined(__DOXYGEN__)
+#if CH_HAL_USE_PWM || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -148,8 +155,6 @@ struct PWMDriver {
  * @param[in] numerator numerator of the fraction
  * @param[in] denominator percentage as an integer between 0 and numerator
  * @return              The pulse width to be passed to @p pwmEnableChannel().
- *
- * @api
  */
 #define PWM_FRACTION_TO_WIDTH(pwmp, numerator, denominator) 0
 
@@ -163,8 +168,6 @@ struct PWMDriver {
  * @param[in] pwmp      pointer to a @p PWMDriver object
  * @param[in] degrees   degrees as an integer between 0 and 36000
  * @return              The pulse width to be passed to @p pwmEnableChannel().
- *
- * @api
  */
 #define PWM_DEGREES_TO_WIDTH(pwmp, degrees)                                 \
   PWM_FRACTION_TO_WIDTH(pwmp, 36000, degrees)
@@ -179,8 +182,6 @@ struct PWMDriver {
  * @param[in] pwmp      pointer to a @p PWMDriver object
  * @param[in] percentage percentage as an integer between 0 and 10000
  * @return              The pulse width to be passed to @p pwmEnableChannel().
- *
- * @api
  */
 #define PWM_PERCENTAGE_TO_WIDTH(pwmp, percentage)                           \
   PWM_FRACTION_TO_WIDTH(pwmp, 10000, percentage)
@@ -204,7 +205,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_PWM */
+#endif /* CH_HAL_USE_PWM */
 
 #endif /* _PWM_LLD_H_ */
 

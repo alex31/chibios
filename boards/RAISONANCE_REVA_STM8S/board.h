@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #ifndef _BOARD_H_
@@ -28,17 +35,18 @@
  * Board identifiers.
  */
 #define BOARD_REVA_V3_STM8S208RB
-#define BOARD_NAME      "Raisonance REva V3 + STM8S208RB"
+#define BOARD_NAME "Raisonance REva V3 + STM8S208RB"
 
 /*
  * Board frequencies.
  */
-#define HSECLK          0
+#define HSECLK          24000000
 
 /*
  * MCU model used on the board.
+ * The available models are listed in the file ./os/hal/platforms/stm8/stm8.h
  */
-#define STM8S208
+#define STM8_PLATFORM   PLATFORM_STM8S208RB
 
 /*
  * Pin definitions.
@@ -174,14 +182,12 @@
 #define VAL_GPIOICR1    0xFF            /* All pull-up.                     */
 #define VAL_GPIOICR2    0
 
-#if !defined(_FROM_ASM_)
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void boardInit(void);
+  void hwinit(void);
 #ifdef __cplusplus
 }
 #endif
-#endif /* _FROM_ASM_ */
 
 #endif /* _BOARD_H_ */

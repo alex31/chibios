@@ -10,44 +10,44 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
 #include "hal.h"
 
-/**
- * @brief   PAL setup.
- * @details Digital I/O ports static configuration as defined in @p board.h.
- *          This variable is used by the HAL when initializing the PAL driver.
- */
-#if HAL_USE_PAL || defined(__DOXYGEN__)
-const PALConfig pal_default_config = {
- {VAL_GPIO0DATA, VAL_GPIO0DIR},
- {VAL_GPIO1DATA, VAL_GPIO1DIR},
- {VAL_GPIO2DATA, VAL_GPIO2DIR},
- {VAL_GPIO3DATA, VAL_GPIO3DIR},
-};
-#endif
-
 /*
  * Early initialization code.
- * This initialization must be performed just after stack setup and before
- * any other initialization.
+ * This initialization is performed just after reset before BSS and DATA
+ * segments initialization.
  */
-void __early_init(void) {
+void hwinit0(void) {
 
   LPC13xx_clock_init();
 }
 
 /*
- * Board-specific initialization code.
+ * Late initialization code.
+ * This initialization is performed after BSS and DATA segments initialization
+ * and before invoking the main() function.
  */
-void boardInit(void) {
+void hwinit1(void) {
+
+  /*
+   * HAL initialization.
+   */
+  halInit();
 
   /*
    * Extra, board-specific, initializations.
@@ -59,4 +59,9 @@ void boardInit(void) {
                                            and makes it GPIO1_2.            */
   LPC_IOCON->PIO1_9 = 0xC0;             /* Disables pull-up on LED3R output.*/
   LPC_IOCON->PIO1_10 = 0xC0;            /* Disables pull-up on LED3G output.*/
+
+  /*
+   * ChibiOS/RT initialization.
+   */
+  chSysInit();
 }

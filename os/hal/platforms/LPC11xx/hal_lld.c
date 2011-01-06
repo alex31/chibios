@@ -10,18 +10,25 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    LPC11xx/hal_lld.c
  * @brief   LPC11xx HAL subsystem low level driver source.
  *
- * @addtogroup HAL
+ * @addtogroup LPC11xx_HAL
  * @{
  */
 
@@ -41,6 +48,17 @@
 /* Driver local variables.                                                   */
 /*===========================================================================*/
 
+/**
+ * @brief PAL setup.
+ * @details Digital I/O ports static configuration as defined in @p board.h.
+ */
+const PALConfig pal_default_config = {
+ {VAL_GPIO0DATA, VAL_GPIO0DIR},
+ {VAL_GPIO1DATA, VAL_GPIO1DIR},
+ {VAL_GPIO2DATA, VAL_GPIO2DIR},
+ {VAL_GPIO3DATA, VAL_GPIO3DIR},
+};
+
 /*===========================================================================*/
 /* Driver local functions.                                                   */
 /*===========================================================================*/
@@ -55,8 +73,6 @@
 
 /**
  * @brief   Low level HAL driver initialization.
- *
- * @notapi
  */
 void hal_lld_init(void) {
 
@@ -72,9 +88,6 @@ void hal_lld_init(void) {
 /**
  * @brief   LPC11xx clocks and PLL initialization.
  * @note    All the involved constants come from the file @p board.h.
- * @note    This function must be invoked only after the system reset.
- *
- * @special
  */
 void lpc111x_clock_init(void) {
   unsigned i;
@@ -115,6 +128,9 @@ void lpc111x_clock_init(void) {
      IOCON that are left enabled.*/
   LPC_SYSCON->SYSAHBCLKDIV = LPC11xx_SYSABHCLK_DIV;
   LPC_SYSCON->SYSAHBCLKCTRL = 0x0001005F;
+
+  /* Peripheral clock dividers initialization.*/
+  LPC_SYSCON->UARTCLKDIV = LPC11xx_UART_PCLK_DIV;
 
   /* Memory remapping, vectors always in ROM.*/
   LPC_SYSCON->SYSMEMREMAP = 2;

@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -36,8 +43,6 @@ VTList vtlist;
 /**
  * @brief   Virtual Timers initialization.
  * @note    Internal use only.
- *
- * @notapi
  */
 void vt_init(void) {
 
@@ -61,8 +66,6 @@ void vt_init(void) {
  *                      be disposed or reused.
  * @param[in] par       a parameter that will be passed to the callback
  *                      function
- *
- * @iclass
  */
 void chVTSetI(VirtualTimer *vtp, systime_t time, vtfunc_t vtfunc, void *par) {
   VirtualTimer *p;
@@ -90,8 +93,6 @@ void chVTSetI(VirtualTimer *vtp, systime_t time, vtfunc_t vtfunc, void *par) {
  * @note    The timer MUST be active when this function is invoked.
  *
  * @param[in] vtp       the @p VirtualTimer structure pointer
- *
- * @iclass
  */
 void chVTResetI(VirtualTimer *vtp) {
 
@@ -117,8 +118,6 @@ void chVTResetI(VirtualTimer *vtp) {
  * @param[in] end       the end of the time window (non inclusive)
  * @retval TRUE         current time within the specified time window.
  * @retval FALSE        current time not within the specified time window.
- *
- * @api
  */
 bool_t chTimeIsWithin(systime_t start, systime_t end) {
 

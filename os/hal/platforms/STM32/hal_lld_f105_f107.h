@@ -10,19 +10,19 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * @defgroup STM32F10X_CL_HAL STM32F105/F107 HAL Support
- * @details HAL support for STM32 Connectivity Line sub-family.
- *
- * @ingroup HAL
- */
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
+*/
 
 /**
  * @file    STM32/hal_lld_f105_f107.h
@@ -290,7 +290,7 @@
 /**
  * @brief   PREDIV1 field.
  */
-#if (STM32_PREDIV1_VALUE >= 1) && (STM32_PREDIV1_VALUE <= 16) ||            \
+#if (STM32_PREDIV1_VALUE >= 1) && (STM32_PREDIV1_VALUE <= 16) ||             \
     defined(__DOXYGEN__)
 #define STM32_PREDIV1               ((STM32_PREDIV1_VALUE - 1) << 0)
 #else
@@ -300,7 +300,7 @@
 /**
  * @brief   PREDIV2 field.
  */
-#if (STM32_PREDIV2_VALUE >= 1) && (STM32_PREDIV2_VALUE <= 16) ||            \
+#if (STM32_PREDIV2_VALUE >= 1) && (STM32_PREDIV2_VALUE <= 16) ||             \
     defined(__DOXYGEN__)
 #define STM32_PREDIV2               ((STM32_PREDIV2_VALUE - 1) << 4)
 #else

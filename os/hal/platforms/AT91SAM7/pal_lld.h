@@ -10,25 +10,31 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    AT91SAM7/pal_lld.h
- * @brief   AT91SAM7 PIO low level driver header.
- *
- * @addtogroup PAL
+ * @file AT91SAM7/pal_lld.h
+ * @brief AT91SAM7 PIO low level driver header.
+ * @addtogroup AT91SAM7_PAL
  * @{
  */
 
 #ifndef _PAL_LLD_H_
 #define _PAL_LLD_H_
 
-#if HAL_USE_PAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_PAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Unsupported modes and specific modes                                      */
@@ -41,7 +47,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   PIO port setup info.
+ * @brief PIO port setup info.
  */
 typedef struct {
   /** Initial value for ODSR register (data).*/
@@ -53,7 +59,7 @@ typedef struct {
 } at91sam7_pio_setup_t;
 
 /**
- * @brief   AT91SAM7 PIO static initializer.
+ * @brief AT91SAM7 PIO static initializer.
  * @details An instance of this structure must be passed to @p palInit() at
  *          system startup time in order to initialize the digital I/O
  *          subsystem. This represents only the initial setup, specific pads
@@ -70,23 +76,17 @@ typedef struct {
 } PALConfig;
 
 /**
- * @brief   Width, in bits, of an I/O port.
+ * @brief Width, in bits, of an I/O port.
  */
 #define PAL_IOPORTS_WIDTH 32
 
 /**
- * @brief   Whole port mask.
- * @details This macro specifies all the valid bits into a port.
- */
-#define PAL_WHOLE_PORT ((ioportmask_t)0xFFFFFFFF)
-
-/**
- * @brief   Digital I/O port sized unsigned type.
+ * @brief Digital I/O port sized unsigned type.
  */
 typedef uint32_t ioportmask_t;
 
 /**
- * @brief   Port Identifier.
+ * @brief Port Identifier.
  * @details This type can be a scalar or some kind of pointer, do not make
  *          any assumption about it, use the provided macros when populating
  *          variables of this type.
@@ -98,12 +98,12 @@ typedef AT91PS_PIO ioportid_t;
 /*===========================================================================*/
 
 /**
- * @brief   PIO port A identifier.
+ * @brief PIO port A identifier.
  */
 #define IOPORT1         AT91C_BASE_PIOA
 
 /**
- * @brief   PIO port B identifier.
+ * @brief PIO port B identifier.
  */
 #if (SAM7_PLATFORM == SAM7X128) || (SAM7_PLATFORM == SAM7X256) || \
     (SAM7_PLATFORM == SAM7X512) || defined(__DOXYGEN__)
@@ -116,89 +116,96 @@ typedef AT91PS_PIO ioportid_t;
 /*===========================================================================*/
 
 /**
- * @brief   Low level PAL subsystem initialization.
+ * @brief Low level PAL subsystem initialization.
  */
 #define pal_lld_init(config) _pal_lld_init(config)
 
 /**
- * @brief   Reads the physical I/O port states.
+ * @brief Reads the physical I/O port states.
  * @details This function is implemented by reading the PIO_PDSR register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
- * @return              The port bits.
+ * @param[in] port the port identifier
+ * @return The port bits.
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
  */
 #define pal_lld_readport(port) ((port)->PIO_PDSR)
 
 /**
- * @brief   Reads the output latch.
+ * @brief Reads the output latch.
  * @details This function is implemented by reading the PIO_ODSR register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
- * @return              The latched logical states.
+ * @param[in] port the port identifier
+ * @return The latched logical states.
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
  */
 #define pal_lld_readlatch(port) ((port)->PIO_ODSR)
 
 /**
- * @brief   Writes a bits mask on a I/O port.
+ * @brief Writes a bits mask on a I/O port.
  * @details This function is implemented by writing the PIO_ODSR register, the
  *          implementation has no side effects.
  *
  * @param[in] port the port identifier
  * @param[in] bits the bits to be written on the specified port
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
  */
 #define pal_lld_writeport(port, bits) {                                 \
   (port)->PIO_ODSR = (bits);                                            \
 }
 
 /**
- * @brief   Sets a bits mask on a I/O port.
+ * @brief Sets a bits mask on a I/O port.
  * @details This function is implemented by writing the PIO_SODR register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
- * @param[in] bits      the bits to be ORed on the specified port
+ * @param[in] port the port identifier
+ * @param[in] bits the bits to be ORed on the specified port
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
  */
 #define pal_lld_setport(port, bits) {                                   \
   (port)->PIO_SODR = (bits);                                            \
 }
 
+
 /**
- * @brief   Clears a bits mask on a I/O port.
+ * @brief Clears a bits mask on a I/O port.
  * @details This function is implemented by writing the PIO_CODR register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
- * @param[in] bits      the bits to be cleared on the specified port
+ * @param[in] port the port identifier
+ * @param[in] bits the bits to be cleared on the specified port
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
  */
 #define pal_lld_clearport(port, bits) {                                 \
   (port)->PIO_CODR = (bits);                                            \
 }
 
 /**
- * @brief   Writes a group of bits.
+ * @brief Writes a group of bits.
  * @details This function is implemented by writing the PIO_OWER, PIO_ODSR and
  *          PIO_OWDR registers, the implementation is not atomic because the
  *          multiple accesses.
  *
- * @param[in] port      the port identifier
- * @param[in] mask      the group mask
- * @param[in] offset    the group bit offset within the port
- * @param[in] bits      the bits to be written. Values exceeding the group
- *                      width are masked.
+ * @param[in] port the port identifier
+ * @param[in] mask the group mask
+ * @param[in] offset the group bit offset within the port
+ * @param[in] bits the bits to be written. Values exceeding the group width
+ *            are masked.
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
  */
 #define pal_lld_writegroup(port, mask, offset, bits) {                  \
   (port)->PIO_OWER = (mask) << (offset);                                \
@@ -207,30 +214,31 @@ typedef AT91PS_PIO ioportid_t;
 }
 
 /**
- * @brief   Pads group mode setup.
+ * @brief Pads group mode setup.
  * @details This function programs a pads group belonging to the same port
  *          with the specified mode.
- * @note    @p PAL_MODE_UNCONNECTED is implemented as push pull output with
- *          high state.
  *
- * @param[in] port      the port identifier
- * @param[in] mask      the group mask
- * @param[in] mode      the mode
+ * @param[in] port the port identifier
+ * @param[in] mask the group mask
+ * @param[in] mode the mode
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
+ * @note @p PAL_MODE_UNCONNECTED is implemented as push pull output with high
+ *       state.
  */
 #define pal_lld_setgroupmode(port, mask, mode) \
   _pal_lld_setgroupmode(port, mask, mode)
 
 /**
- * @brief   Writes a logical state on an output pad.
+ * @brief Writes a logical state on an output pad.
  *
- * @param[in] port      the port identifier
- * @param[in] pad       the pad number within the port
- * @param[in] bit       logical value, the value must be @p PAL_LOW or
- *                      @p PAL_HIGH
+ * @param[in] port the port identifier
+ * @param[in] pad the pad number within the port
+ * @param[out] bit the logical value, the value must be @p 0 or @p 1
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
  */
 #define pal_lld_writepad(port, pad, bit) pal_lld_writegroup(port, 1, pad, bit)
 
@@ -247,7 +255,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_PAL */
+#endif /* CH_HAL_USE_PAL */
 
 #endif /* _PAL_LLD_H_ */
 

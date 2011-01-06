@@ -57,7 +57,6 @@ UADEFS =
 
 # Imported source files
 CHIBIOS = ../..
-include $(CHIBIOS)/boards/simulator/board.mk
 include ${CHIBIOS}/os/hal/hal.mk
 include ${CHIBIOS}/os/hal/platforms/Posix/platform.mk
 include ${CHIBIOS}/os/ports/GCC/SIMIA32/port.mk
@@ -70,7 +69,6 @@ SRC  = ${PORTSRC} \
        ${TESTSRC} \
        ${HALSRC} \
        ${PLATFORMSRC} \
-       $(BOARDSRC) \
        ${CHIBIOS}/os/various/shell.c \
        main.c
 
@@ -78,8 +76,7 @@ SRC  = ${PORTSRC} \
 ASRC =
 
 # List all user directories here
-UINCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
-          $(HALINC) $(PLATFORMINC) $(BOARDINC) \
+UINCDIR = $(PORTINC) $(KERNINC) $(TESTINC) $(HALINC) $(PLATFORMINC) \
           ${CHIBIOS}/os/various
 
 # List the user directory to look for the libraries here

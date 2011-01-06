@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -44,7 +51,7 @@
 /*
  * Array of all the test patterns.
  */
-static ROMCONST struct testcase * ROMCONST *patterns[] = {
+static const struct testcase **patterns[] = {
   patternthd,
   patternsem,
   patternmtx,
@@ -78,8 +85,8 @@ Thread *threads[MAX_THREADS];
 /*
  * Pointers to the working areas.
  */
-void * ROMCONST wa[5] = {test.wa.T0, test.wa.T1, test.wa.T2,
-                         test.wa.T3, test.wa.T4};
+void * const wa[5] = {test.wa.T0, test.wa.T1, test.wa.T2,
+                      test.wa.T3, test.wa.T4};
 
 /*
  * Console output.
@@ -110,7 +117,7 @@ void test_printn(uint32_t n) {
  *
  * @param[in] msgp      the message
  */
-void test_print(const char *msgp) {
+void test_print(char *msgp) {
 
   while (*msgp)
     chIOPut(chp, *msgp++);
@@ -121,7 +128,7 @@ void test_print(const char *msgp) {
  *
  * @param[in] msgp      the message
  */
-void test_println(const char *msgp) {
+void test_println(char *msgp) {
 
   test_print(msgp);
   chIOPut(chp, '\r');
@@ -195,7 +202,7 @@ bool_t _test_assert_time_window(unsigned point, systime_t start, systime_t end) 
  */
 
 /**
- * @brief   Sets a termination request in all the test-spawned threads.
+ * @brief   Pends a termination request in all the test-spawned threads.
  */
 void test_terminate_threads(void) {
   int i;
@@ -242,7 +249,7 @@ void test_cpu_pulse(unsigned duration) {
 #endif
 
 /**
- * @brief   Delays execution until next system time tick.
+ * @brief Delays execution until next system time tick.
  *
  * @return              The system time.
  */
@@ -256,9 +263,7 @@ systime_t test_wait_tick(void) {
  * Timer utils.
  */
 
-/**
- * @brief   Set to @p TRUE when the test timer reaches its deadline.
- */
+/** @brief Set to @p TRUE when the test timer reaches its deadline.*/
 bool_t test_timer_done;
 
 static VirtualTimer vt;
@@ -358,7 +363,7 @@ msg_t TestThread(void *p) {
       test_print(".");
       test_printn(j + 1);
       test_print(" (");
-      test_print(patterns[i][j]->name);
+      test_print(patterns[i][j]->gettest());
       test_println(")");
 #if DELAY_BETWEEN_TESTS > 0
       chThdSleepMilliseconds(DELAY_BETWEEN_TESTS);

@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -63,6 +70,7 @@ typedef uint16_t stkalign_t;
  */
 typedef void *regmsp_t;
 
+#if !defined(__DOXYGEN__)
 /**
  * @brief   Interrupt saved context.
  * @details This structure represents the stack frame saved during a
@@ -76,7 +84,9 @@ struct extctx {
   regmsp_t      sr;
   regmsp_t      pc;
 };
+#endif
 
+#if !defined(__DOXYGEN__)
 /**
  * @brief   System saved context.
  * @details This structure represents the inner stack frame during a context
@@ -93,7 +103,9 @@ struct intctx {
   regmsp_t      r11;
   regmsp_t      pc;
 };
+#endif
 
+#if !defined(__DOXYGEN__)
 /**
  * @brief   Platform dependent part of the @p Thread structure.
  * @details This structure usually contains just the saved stack pointer
@@ -102,9 +114,10 @@ struct intctx {
 struct context {
   struct intctx *sp;
 };
+#endif
 
 /**
- * @brief   Platform dependent part of the @p chThdCreateI() API.
+ * @brief   Platform dependent part of the @p chThdInit() API.
  * @details This code usually setup the context switching frame represented
  *          by an @p intctx structure.
  */
@@ -158,7 +171,7 @@ struct context {
  * @details This macro is used to allocate a static thread working area
  *          aligned as both position and size.
  */
-#define WORKING_AREA(s, n) stkalign_t s[THD_WA_SIZE(n) / sizeof(stkalign_t)]
+#define WORKING_AREA(s, n) stkalign_t s[THD_WA_SIZE(n) / sizeof(stkalign_t)];
 
 /**
  * @brief   IRQ prologue code.

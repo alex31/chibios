@@ -10,25 +10,32 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    templates/adc_lld.h
  * @brief   ADC Driver subsystem low level driver header template.
  *
- * @addtogroup ADC
+ * @addtogroup ADC_LLD
  * @{
  */
 
 #ifndef _ADC_LLD_H_
 #define _ADC_LLD_H_
 
-#if HAL_USE_ADC || defined(__DOXYGEN__)
+#if CH_HAL_USE_ADC || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -61,26 +68,17 @@ typedef uint16_t adcsample_t;
 typedef uint16_t adc_channels_num_t;
 
 /**
- * @brief   Type of a structure representing an ADC driver.
- */
-typedef struct ADCDriver ADCDriver;
-
-/**
  * @brief   ADC notification callback type.
  *
- * @param[in] adcp      pointer to the @p ADCDriver object triggering the
- *                      callback
  * @param[in] buffer    pointer to the most recent samples data
  * @param[in] n         number of buffer rows available starting from @p buffer
  */
-typedef void (*adccallback_t)(ADCDriver *adcp, adcsample_t *buffer, size_t n);
+typedef void (*adccallback_t)(adcsample_t *buffer, size_t n);
 
 /**
  * @brief   Conversion group configuration structure.
  * @details This implementation-dependent structure describes a conversion
  *          operation.
- * @note    Implementations may extend this structure to contain more,
- *          architecture dependent, fields.
  */
 typedef struct {
   /**
@@ -91,17 +89,11 @@ typedef struct {
    * @brief Number of the analog channels belonging to the conversion group.
    */
   adc_channels_num_t        acg_num_channels;
-  /**
-   * @brief Callback function associated to the group or @p NULL.
-   */
-  adccallback_t             acg_endcb;
   /* End of the mandatory fields.*/
 } ADCConversionGroup;
 
 /**
  * @brief   Driver configuration structure.
- * @note    Implementations may extend this structure to contain more,
- *          architecture dependent, fields.
  * @note    It could be empty on some architectures.
  */
 typedef struct {
@@ -110,10 +102,8 @@ typedef struct {
 
 /**
  * @brief   Structure representing an ADC driver.
- * @note    Implementations may extend this structure to contain more,
- *          architecture dependent, fields.
  */
-struct ADCDriver {
+typedef struct {
   /**
    * @brief Driver state.
    */
@@ -122,6 +112,14 @@ struct ADCDriver {
    * @brief Current configuration data.
    */
   const ADCConfig           *ad_config;
+  /**
+   * @brief Synchronization semaphore.
+   */
+  Semaphore                 ad_sem;
+  /**
+   * @brief Current callback function or @p NULL.
+   */
+  adccallback_t             ad_callback;
   /**
    * @brief Current samples buffer pointer or @p NULL.
    */
@@ -134,27 +132,8 @@ struct ADCDriver {
    * @brief Current conversion group pointer or @p NULL.
    */
   const ADCConversionGroup  *ad_grpp;
-#if ADC_USE_WAIT || defined(__DOXYGEN__)
-  /**
-   * @brief Waiting thread.
-   */
-  Thread                    *ad_thread;
-#endif /* SPI_USE_WAIT */
-#if ADC_USE_MUTUAL_EXCLUSION || defined(__DOXYGEN__)
-#if CH_USE_MUTEXES || defined(__DOXYGEN__)
-  /**
-   * @brief Mutex protecting the peripheral.
-   */
-  Mutex                     ad_mutex;
-#elif CH_USE_SEMAPHORES
-  Semaphore                 ad_semaphore;
-#endif
-#endif /* ADC_USE_MUTUAL_EXCLUSION */
-#if defined(ADC_DRIVER_EXT_FIELDS)
-  ADC_DRIVER_EXT_FIELDS
-#endif
   /* End of the mandatory fields.*/
-};
+} ADCDriver;
 
 /*===========================================================================*/
 /* Driver macros.                                                            */
@@ -176,7 +155,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_ADC */
+#endif /* CH_HAL_USE_ADC */
 
 #endif /* _ADC_LLD_H_ */
 

@@ -10,31 +10,22 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
 #include "hal.h"
-
-/**
- * @brief   PAL setup.
- * @details Digital I/O ports static configuration as defined in @p board.h.
- *          This variable is used by the HAL when initializing the PAL driver.
- */
-#if HAL_USE_PAL || defined(__DOXYGEN__)
-const PALConfig pal_default_config =
-{
-  {VAL_PIOA_ODSR, VAL_PIOA_OSR, VAL_PIOA_PUSR},
-#if (SAM7_PLATFORM == SAM7X128) || (SAM7_PLATFORM == SAM7X256) || \
-    (SAM7_PLATFORM == SAM7X512)
-  {VAL_PIOB_ODSR, VAL_PIOB_OSR, VAL_PIOB_PUSR}
-#endif
-};
-#endif
 
 /*
  * SYS IRQ handling here.
@@ -62,10 +53,10 @@ static CH_IRQ_HANDLER(SYSIrqHandler) {
 
 /*
  * Early initialization code.
- * This initialization must be performed just after stack setup and before
- * any other initialization.
+ * This initialization is performed just after reset before BSS and DATA
+ * segments initialization.
  */
-void __early_init(void) {
+void hwinit0(void) {
   
   /* Watchdog disabled.*/
   AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDDIS;
@@ -74,9 +65,16 @@ void __early_init(void) {
 }
 
 /*
- * Board-specific initialization code.
+ * Late initialization code.
+ * This initialization is performed after BSS and DATA segments initialization
+ * and before invoking the main() function.
  */
-void boardInit(void) {
+void hwinit1(void) {
+
+  /*
+   * HAL initialization.
+   */
+  halInit();
 
   /*
    * LCD pins setup.
@@ -119,4 +117,9 @@ void boardInit(void) {
   AT91C_BASE_PIOA->PIO_PDR   = AT91C_PA3_RTS0 | AT91C_PA4_CTS0;
   AT91C_BASE_PIOA->PIO_ASR   = AT91C_PIO_PA3 | AT91C_PIO_PA4;
   AT91C_BASE_PIOA->PIO_PPUDR = AT91C_PIO_PA3 | AT91C_PIO_PA4;
+
+  /*
+   * ChibiOS/RT initialization.
+   */
+  chSysInit();
 }

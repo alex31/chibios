@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -82,7 +89,7 @@ typedef struct {
 
 #define __QUOTE_THIS(p) #p
 
-#if CH_DBG_ENABLE_CHECKS || defined(__DOXYGEN__)
+#if CH_DBG_ENABLE_CHECKS
 /**
  * @brief   Function parameter check.
  * @details If the condition check fails then the kernel panics and halts.
@@ -91,8 +98,6 @@ typedef struct {
  *
  * @param[in] c         the condition to be verified to be true
  * @param[in] func      the undecorated function name
- *
- * @api
  */
 #define chDbgCheck(c, func) {                                           \
   if (!(c))                                                             \
@@ -104,7 +109,7 @@ typedef struct {
 }
 #endif /* !CH_DBG_ENABLE_CHECKS */
 
-#if CH_DBG_ENABLE_ASSERTS || defined(__DOXYGEN__)
+#if CH_DBG_ENABLE_ASSERTS
 /**
  * @brief   Condition assertion.
  * @details If the condition check fails then the kernel panics with the
@@ -119,8 +124,6 @@ typedef struct {
  * @param[in] c         the condition to be verified to be true
  * @param[in] m         the text message
  * @param[in] r         a remark string
- *
- * @api
  */
 #define chDbgAssert(c, m, r) {                                          \
   if (!(c))                                                             \
@@ -148,7 +151,7 @@ typedef struct {
 #ifdef __cplusplus
 extern "C" {
 #endif
-#if CH_DBG_ENABLE_TRACE || defined(__DOXYGEN__)
+#if CH_DBG_ENABLE_TRACE
   extern TraceBuffer trace_buffer;
   void trace_init(void);
   void chDbgTrace(Thread *otp);

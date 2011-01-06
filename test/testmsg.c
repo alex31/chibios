@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -59,6 +66,11 @@
  * not find a fifth message waiting.
  */
 
+static char *msg1_gettest(void) {
+
+  return "Messages, loop";
+}
+
 static msg_t thread(void *p) {
 
   chMsgSend(p, 'A');
@@ -101,8 +113,8 @@ static void msg1_execute(void) {
   test_assert(3, msg == 0, "unknown message");
 }
 
-ROMCONST struct testcase testmsg1 = {
-  "Messages, loop",
+const struct testcase testmsg1 = {
+  msg1_gettest,
   NULL,
   NULL,
   msg1_execute
@@ -113,7 +125,7 @@ ROMCONST struct testcase testmsg1 = {
 /**
  * @brief   Test sequence for messages.
  */
-ROMCONST struct testcase * ROMCONST patternmsg[] = {
+const struct testcase * const patternmsg[] = {
 #if CH_USE_MESSAGES
   &testmsg1,
 #endif

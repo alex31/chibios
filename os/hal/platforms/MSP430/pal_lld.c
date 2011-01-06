@@ -10,25 +10,31 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    MSP430/pal_lld.c
- * @brief   MSP430 Digital I/O low level driver code.
- *
- * @addtogroup PAL
+ * @file MSP430/pal_lld.c
+ * @brief MSP430 Digital I/O low level driver code.
+ * @addtogroup MSP430_PAL
  * @{
  */
 
 #include "ch.h"
 #include "hal.h"
 
-#if HAL_USE_PAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_PAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -51,13 +57,12 @@
 /*===========================================================================*/
 
 /**
- * @brief   MSP430 I/O ports configuration.
- * @note    The @p PxIFG, @p PxIE and @p PxSEL registers are cleared. @p PxOUT
- *          and @p PxDIR are configured as specified.
+ * @brief MSP430 I/O ports configuration.
  *
  * @param[in] config the MSP430 ports configuration
  *
- * @notapi
+ * @note The @p PxIFG, @p PxIE and @p PxSEL registers are cleared. @p PxOUT
+ *       and @p PxDIR are configured as specified.
  */
 void _pal_lld_init(const PALConfig *config) {
 
@@ -103,20 +108,21 @@ void _pal_lld_init(const PALConfig *config) {
 }
 
 /**
- * @brief   Pads mode setup.
+ * @brief Pads mode setup.
  * @details This function programs a pads group belonging to the same port
  *          with the specified mode.
- * @note    @p PAL_MODE_UNCONNECTED is implemented as output as recommended by
- *          the MSP430x1xx Family User's Guide. Unconnected pads are set to
- *          high logic state by default.
- * @note    This function does not alter the @p PxSEL registers. Alternate
- *          functions setup must be handled by device-specific code.
  *
- * @param[in] port      the port identifier
- * @param[in] mask      the group mask
- * @param[in] mode      the mode
+ * @param[in] port the port identifier
+ * @param[in] mask the group mask
+ * @param[in] mode the mode
  *
- * @notapi
+ * @note This function is not meant to be invoked directly by the application
+ *       code.
+ * @note @p PAL_MODE_UNCONNECTED is implemented as output as recommended by
+ *       the MSP430x1xx Family User's Guide. Unconnected pads are set to
+ *       high logic state by default.
+ * @note This function does not alter the @p PxSEL registers. Alternate
+ *       functions setup must be handled by device-specific code.
  */
 void _pal_lld_setgroupmode(ioportid_t port,
                            ioportmask_t mask,
@@ -135,6 +141,6 @@ void _pal_lld_setgroupmode(ioportid_t port,
   }
 }
 
-#endif /* HAL_USE_PAL */
+#endif /* CH_HAL_USE_PAL */
 
 /** @} */

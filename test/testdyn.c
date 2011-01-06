@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -78,6 +85,11 @@ static msg_t thread(void *p) {
 }
 
 #if CH_USE_HEAP
+static char *dyn1_gettest(void) {
+
+  return "Dynamic APIs, threads creation from heap";
+}
+
 static void dyn1_setup(void) {
 
   chHeapInit(&heap1, test.buffer, sizeof(union test_buffers));
@@ -117,8 +129,8 @@ static void dyn1_execute(void) {
   test_assert(4, n == sz, "heap size changed");
 }
 
-ROMCONST struct testcase testdyn1 = {
-  "Dynamic APIs, threads creation from heap",
+const struct testcase testdyn1 = {
+  dyn1_gettest,
   dyn1_setup,
   NULL,
   dyn1_execute
@@ -135,6 +147,11 @@ ROMCONST struct testcase testdyn1 = {
  * The test expects the first four threads to successfully start and the last
  * one to fail.
  */
+
+static char *dyn2_gettest(void) {
+
+  return "Dynamic APIs, threads creation from memory pool";
+}
 
 static void dyn2_setup(void) {
 
@@ -173,8 +190,8 @@ static void dyn2_execute(void) {
   test_assert(4, chPoolAlloc(&mp1) == NULL, "pool list not empty");
 }
 
-ROMCONST struct testcase testdyn2 = {
-  "Dynamic APIs, threads creation from memory pool",
+const struct testcase testdyn2 = {
+  dyn2_gettest,
   dyn2_setup,
   NULL,
   dyn2_execute
@@ -200,6 +217,11 @@ static bool_t regfind(Thread *tp) {
     ftp = chRegNextThread(ftp);
   } while (ftp != NULL);
   return found;
+}
+
+static char *dyn3_gettest(void) {
+
+  return "Dynamic APIs, registry and references";
 }
 
 static void dyn3_setup(void) {
@@ -237,8 +259,8 @@ static void dyn3_execute(void) {
   test_assert(12, !regfind(tp), "thread still in registry");
 }
 
-ROMCONST struct testcase testdyn3 = {
-  "Dynamic APIs, registry and references",
+const struct testcase testdyn3 = {
+  dyn3_gettest,
   dyn3_setup,
   NULL,
   dyn3_execute
@@ -249,7 +271,7 @@ ROMCONST struct testcase testdyn3 = {
 /**
  * @brief   Test sequence for dynamic APIs.
  */
-ROMCONST struct testcase * ROMCONST patterndyn[] = {
+const struct testcase * const patterndyn[] = {
 #if CH_USE_DYNAMIC
 #if CH_USE_HEAP
   &testdyn1,

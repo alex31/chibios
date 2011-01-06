@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -58,8 +65,6 @@
 
 /**
  * @brief   Returns the priority of the first thread on the given ready list.
- *
- * @notapi
  */
 #define firstprio(rlp)  ((rlp)->p_next->p_prio)
 
@@ -113,8 +118,6 @@ register Thread *currp asm(CH_CURRP_REGISTER_CACHE);
  * @brief   Current thread pointer change macro.
  * @note    This macro is not meant to be used in the application code but
  *          only from within the kernel.
- *
- * @notapi
  */
 #if !defined(PORT_OPTIMIZED_SETCURRP) || defined(__DOXYGEN__)
 #define setcurrp(tp) (currp = (tp))
@@ -156,8 +159,6 @@ extern "C" {
  * @brief   Determines if the current thread must reschedule.
  * @details This function returns @p TRUE if there is a ready thread with
  *          higher priority.
- *
- * @iclass
  */
 #if !defined(PORT_OPTIMIZED_ISRESCHREQUIREDI) || defined(__DOXYGEN__)
 #define chSchIsRescRequiredI() (firstprio(&rlist.r_queue) > currp->p_prio)
@@ -167,8 +168,6 @@ extern "C" {
  * @brief   Determines if yielding is possible.
  * @details This function returns @p TRUE if there is a ready thread with
  *          equal or higher priority.
- *
- * @sclass
  */
 #if !defined(PORT_OPTIMIZED_CANYIELDS) || defined(__DOXYGEN__)
 #define chSchCanYieldS() (firstprio(&rlist.r_queue) >= currp->p_prio)
@@ -178,8 +177,6 @@ extern "C" {
  * @brief   Yields the time slot.
  * @details Yields the CPU control to the next thread in the ready list with
  *          equal or higher priority, if any.
- *
- * @sclass
  */
 #if !defined(PORT_OPTIMIZED_DOYIELDS) || defined(__DOXYGEN__)
 #define chSchDoYieldS() {                                                   \

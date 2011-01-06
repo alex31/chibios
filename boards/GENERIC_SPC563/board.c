@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -22,18 +29,20 @@
 
 /*
  * Early initialization code.
- * This initialization must be performed just after stack setup and before
- * any other initialization.
+ * This initialization is performed just after reset before BSS and DATA
+ * segments initialization.
  */
-void __early_init(void) {
+void hwinit0(void) {
 
   spc563_clock_init();
 }
 
 /*
- * Board-specific initialization code.
+ * Late initialization code.
+ * This initialization is performed after BSS and DATA segments initialization
+ * and before invoking the main() function.
  */
-void boardInit(void) {
+void hwinit1(void) {
 
   /*
    * Various initialization (temporary code).
@@ -48,4 +57,14 @@ void boardInit(void) {
   SIU.PCR[GPIO_BUTTON4].R  = 0x0100;                /* IBE.                 */
   SIU.PCR[GPIO_SCI_A_TX].R = 0x0500;                /* Primary | IBE.       */
   SIU.PCR[GPIO_SCI_A_RX].R = 0x0500;                /* Primary | IBE.       */
+
+  /*
+   * HAL initialization.
+   */
+  halInit();
+
+  /*
+   * ChibiOS/RT initialization.
+   */
+  chSysInit();
 }

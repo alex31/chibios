@@ -10,17 +10,23 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    AT91SAM7/at91sam7_mii.h
- * @brief   AT91SAM7 low level MII driver header.
- *
+ * @file AT91SAM7/at91sam7_mii.h
+ * @brief AT91SAM7 low level MII driver header.
  * @addtogroup AT91SAM7_MII
  * @{
  */
@@ -28,7 +34,7 @@
 #ifndef _AT91SAM7_MII_H_
 #define _AT91SAM7_MII_H_
 
-#if HAL_USE_MAC || defined(__DOXYGEN__)
+#if CH_HAL_USE_MAC || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -42,7 +48,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   PHY manufacturer and model.
+ * @brief PHY manufacturer and model.
  */
 #if !defined(PHY_HARDWARE) || defined(__DOXYGEN__)
 #define PHY_HARDWARE            PHY_MICREL_KS8721
@@ -53,7 +59,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   Pins latched by the PHY at reset.
+ * @brief Pins latched by the PHY at reset.
  */
 #if PHY_HARDWARE == PHY_MICREL_KS8721
 #define PHY_ADDRESS             1
@@ -79,12 +85,12 @@
 /*===========================================================================*/
 
 /**
- * @brief   Type of a PHY register value.
+ * @brief Type of a PHY register value.
  */
 typedef uint16_t phyreg_t;
 
 /**
- * @brief   Type of a PHY register address.
+ * @brief Type of a PHY register address.
  */
 typedef uint8_t phyaddr_t;
 
@@ -107,7 +113,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_MAC */
+#endif /* CH_HAL_USE_MAC */
 
 #endif /* _AT91SAM7_MII_H_ */
 

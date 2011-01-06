@@ -10,25 +10,32 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    STM32/pal_lld.h
  * @brief   STM32 GPIO low level driver header.
  *
- * @addtogroup PAL
+ * @addtogroup STM32_PAL
  * @{
  */
 
 #ifndef _PAL_LLD_H_
 #define _PAL_LLD_H_
 
-#if HAL_USE_PAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_PAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Unsupported modes and specific modes                                      */
@@ -76,17 +83,15 @@ typedef struct {
   stm32_gpio_setup_t    PCData;
   /** @brief Port D setup data.*/
   stm32_gpio_setup_t    PDData;
-#if STM32_HAS_GPIOE || defined(__DOXYGEN__)
+#if !defined(STM32F10X_LD) || defined(__DOXYGEN__)
   /** @brief Port E setup data.*/
   stm32_gpio_setup_t    PEData;
-#if STM32_HAS_GPIOF || defined(__DOXYGEN__)
+#endif
+#if defined(STM32F10X_HD) || defined(__DOXYGEN__)
   /** @brief Port F setup data.*/
   stm32_gpio_setup_t    PFData;
-#if STM32_HAS_GPIOG || defined(__DOXYGEN__)
   /** @brief Port G setup data.*/
   stm32_gpio_setup_t    PGData;
-#endif
-#endif
 #endif
 } PALConfig;
 
@@ -97,7 +102,7 @@ typedef struct {
 
 /**
  * @brief   Whole port mask.
- * @details This macro specifies all the valid bits into a port.
+ * @brief   This macro specifies all the valid bits into a port.
  */
 #define PAL_WHOLE_PORT ((ioportmask_t)0xFFFF)
 
@@ -123,49 +128,39 @@ typedef GPIO_TypeDef * ioportid_t;
 /**
  * @brief   GPIO port A identifier.
  */
-#if STM32_HAS_GPIOA || defined(__DOXYGEN__)
 #define IOPORT1         GPIOA
-#endif
 
 /**
  * @brief   GPIO port B identifier.
  */
-#if STM32_HAS_GPIOB || defined(__DOXYGEN__)
 #define IOPORT2         GPIOB
-#endif
 
 /**
  * @brief   GPIO port C identifier.
  */
-#if STM32_HAS_GPIOC || defined(__DOXYGEN__)
 #define IOPORT3         GPIOC
-#endif
 
 /**
  * @brief   GPIO port D identifier.
  */
-#if STM32_HAS_GPIOD || defined(__DOXYGEN__)
 #define IOPORT4         GPIOD
-#endif
 
 /**
  * @brief   GPIO port E identifier.
  */
-#if STM32_HAS_GPIOE || defined(__DOXYGEN__)
+#if !defined(STM32F10X_LD) || defined(__DOXYGEN__)
 #define IOPORT5         GPIOE
 #endif
 
 /**
  * @brief   GPIO port F identifier.
  */
-#if STM32_HAS_GPIOF || defined(__DOXYGEN__)
+#if defined(STM32F10X_HD) || defined(__DOXYGEN__)
 #define IOPORT6         GPIOF
-#endif
 
 /**
  * @brief   GPIO port G identifier.
  */
-#if STM32_HAS_GPIOG || defined(__DOXYGEN__)
 #define IOPORT7         GPIOG
 #endif
 
@@ -176,8 +171,6 @@ typedef GPIO_TypeDef * ioportid_t;
 
 /**
  * @brief   GPIO ports subsystem initialization.
- *
- * @notapi
  */
 #define pal_lld_init(config) _pal_lld_init(config)
 
@@ -190,8 +183,6 @@ typedef GPIO_TypeDef * ioportid_t;
  *
  * @param[in] port      the port identifier
  * @return              The port bits.
- *
- * @notapi
  */
 #define pal_lld_readport(port) ((port)->IDR)
 
@@ -204,8 +195,6 @@ typedef GPIO_TypeDef * ioportid_t;
  *
  * @param[in] port      the port identifier
  * @return              The latched logical states.
- *
- * @notapi
  */
 #define pal_lld_readlatch(port) ((port)->ODR)
 
@@ -221,8 +210,6 @@ typedef GPIO_TypeDef * ioportid_t;
  *
  * @param[in] port      the port identifier
  * @param[in] bits      the bits to be written on the specified port
- *
- * @notapi
  */
 #define pal_lld_writeport(port, bits) ((port)->ODR = (bits))
 
@@ -238,8 +225,6 @@ typedef GPIO_TypeDef * ioportid_t;
  *
  * @param[in] port      the port identifier
  * @param[in] bits      the bits to be ORed on the specified port
- *
- * @notapi
  */
 #define pal_lld_setport(port, bits) ((port)->BSRR = (bits))
 
@@ -255,8 +240,6 @@ typedef GPIO_TypeDef * ioportid_t;
  *
  * @param[in] port      the port identifier
  * @param[in] bits      the bits to be cleared on the specified port
- *
- * @notapi
  */
 #define pal_lld_clearport(port, bits) ((port)->BRR = (bits))
 
@@ -275,8 +258,6 @@ typedef GPIO_TypeDef * ioportid_t;
  * @param[in] offset    the group bit offset within the port
  * @param[in] bits      the bits to be written. Values exceeding the group
  *                      width are masked.
- *
- * @notapi
  */
 #define pal_lld_writegroup(port, mask, offset, bits) {                      \
   (port)->BSRR = ((~(bits) & (mask)) << (16 + (offset))) |                  \
@@ -296,8 +277,6 @@ typedef GPIO_TypeDef * ioportid_t;
  * @param[in] port      the port identifier
  * @param[in] mask      the group mask
  * @param[in] mode      the mode
- *
- * @notapi
  */
 #define pal_lld_setgroupmode(port, mask, mode)                              \
   _pal_lld_setgroupmode(port, mask, mode)
@@ -314,8 +293,6 @@ typedef GPIO_TypeDef * ioportid_t;
  * @param[in] pad       the pad number within the port
  * @param[in] bit       logical value, the value must be @p PAL_LOW or
  *                      @p PAL_HIGH
- *
- * @notapi
  */
 #define pal_lld_writepad(port, pad, bit) pal_lld_writegroup(port, 1, pad, bit)
 
@@ -332,7 +309,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_PAL */
+#endif /* CH_HAL_USE_PAL */
 
 #endif /* _PAL_LLD_H_ */
 
