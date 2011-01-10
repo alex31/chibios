@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -29,44 +36,19 @@
 #define _CHSYS_H_
 
 /**
- * @brief   Returns a pointer to the idle thread.
- * @note    The reference counter of the idle thread is not incremented but
- *          it is not strictly required being the idle thread a static
- *          object.
- *
- * @return              Pointer to the idle thread.
- *
- * @api
- */
-#define chSysGetIdleThread() ((Thread *)_idle_thread_wa)
-
-/**
  * @brief   Halts the system.
  * @details This function is invoked by the operating system when an
- *          unrecoverable error is detected, for example because a programming
+ *          unrecoverable error is detected, as example because a programming
  *          error in the application code that triggers an assertion while
  *          in debug mode.
- * @note    Can be invoked from any system state.
- *
- * @special
  */
-#if !defined(SYSTEM_HALT_HOOK) || defined(__DOXYGEN__)
 #define chSysHalt() port_halt()
-#else
-#define chSysHalt() {                                                       \
-  SYSTEM_HALT_HOOK();                                                       \
-  port_halt();                                                              \
-}
-#endif
 
 /**
  * @brief   Performs a context switch.
- * @note    This function should nevel be used from user code directly.
  *
  * @param[in] ntp       the thread to be switched in
  * @param[in] otp       the thread to be switched out
- *
- * @special
  */
 #define chSysSwitchI(ntp, otp) port_switch(ntp, otp)
 
@@ -74,9 +56,9 @@
  * @brief   Raises the system interrupt priority mask to the maximum level.
  * @details All the maskable interrupt sources are disabled regardless their
  *          hardware priority.
+ * @note    The implementation is architecture dependent, it may just disable
+ *          the interrupts or be exactly equivalent to @p chSysDisable().
  * @note    Do not invoke this API from within a kernel lock.
- *
- * @special
  */
 #define chSysDisable() port_disable()
 
@@ -85,22 +67,22 @@
  * @details The interrupt sources that should not be able to preempt the kernel
  *          are disabled, interrupt sources with higher priority are still
  *          enabled.
+ * @note    The implementation is architecture dependent, it may just disable
+ *          the interrupts.
  * @note    Do not invoke this API from within a kernel lock.
  * @note    This API is no replacement for @p chSysLock(), the @p chSysLock()
  *          could do more than just disable the interrupts.
- *
- * @special
  */
 #define chSysSuspend() port_suspend()
 
 /**
  * @brief   Lowers the system interrupt priority mask to user level.
  * @details All the interrupt sources are enabled.
+ * @note    The implementation is architecture dependent, it may just enable
+ *          the interrupts.
  * @note    Do not invoke this API from within a kernel lock.
  * @note    This API is no replacement for @p chSysUnlock(), the
  *          @p chSysUnlock() could do more than just enable the interrupts.
- *
- * @special
  */
 #define chSysEnable() port_enable()
 
@@ -109,8 +91,6 @@
  * @note    The use of kernel lock mode is not recommended in the user code,
  *          it is a better idea to use the semaphores or mutexes instead.
  * @see     CH_USE_NESTED_LOCKS
- *
- * @special
  */
 #if CH_USE_NESTED_LOCKS || defined(__DOXYGEN__)
 #if CH_OPTIMIZE_SPEED || defined(__DOXYGEN__)
@@ -128,8 +108,6 @@
  * @note    The use of kernel lock mode is not recommended in the user code,
  *          it is a better idea to use the semaphores or mutexes instead.
  * @see     CH_USE_NESTED_LOCKS
- *
- * @special
  */
 #if CH_USE_NESTED_LOCKS || defined(__DOXYGEN__)
 #if CH_OPTIMIZE_SPEED || defined(__DOXYGEN__)
@@ -151,8 +129,6 @@
  *          It is good practice to invoke this API before invoking any I-class
  *          syscall from an interrupt handler.
  * @note    This API must be invoked exclusively from interrupt handlers.
- *
- * @special
  */
 #define chSysLockFromIsr() port_lock_from_isr()
 
@@ -165,9 +141,7 @@
  *          the system mutual exclusion zone.<br>
  *          It is good practice to invoke this API after invoking any I-class
  *          syscall from an interrupt handler.
- * @note    This API must be invoked exclusively from interrupt handlers.
- *
- * @special
+ * @note This API must be invoked exclusively from interrupt handlers.
  */
 #define chSysUnlockFromIsr() port_unlock_from_isr()
 

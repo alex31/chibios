@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -30,22 +37,20 @@
  *          that messages are not copied between the client and server threads
  *          but just a pointer passed so the exchange is very time
  *          efficient.<br>
- *          Messages are scalar data types of type @p msg_t that are guaranteed
- *          to be size compatible with data pointers. Note that on some
- *          architectures function pointers can be larger that @p msg_t.<br>
  *          Messages are usually processed in FIFO order but it is possible to
  *          process them in priority order by enabling the
  *          @p CH_USE_MESSAGES_PRIORITY option in @p chconf.h.<br>
- * @pre     In order to use the message APIs the @p CH_USE_MESSAGES option
+ *          Applications do not need to allocate buffers for synchronous
+ *          message queues, the mechanism just requires two extra pointers in
+ *          the @p Thread structure (the message queue header).<br>
+ *          In order to use the Messages APIs the @p CH_USE_MESSAGES option
  *          must be enabled in @p chconf.h.
- * @post    Enabling messages requires 6-12 (depending on the architecture)
- *          extra bytes in the @p Thread structure.
  * @{
  */
 
 #include "ch.h"
 
-#if CH_USE_MESSAGES || defined(__DOXYGEN__)
+#if CH_USE_MESSAGES
 
 #if CH_USE_MESSAGES_PRIORITY
 #define msg_insert(tp, qp) prio_insert(tp, qp)
@@ -61,8 +66,6 @@
  * @param[in] tp        the pointer to the thread
  * @param[in] msg       the message
  * @return              The answer message from @p chMsgRelease().
- *
- * @api
  */
 msg_t chMsgSend(Thread *tp, msg_t msg) {
   Thread *ctp = currp;
@@ -83,15 +86,13 @@ msg_t chMsgSend(Thread *tp, msg_t msg) {
 
 /**
  * @brief   Suspends the thread and waits for an incoming message.
- * @post    After receiving a message the function @p chMsgRelease() must be
- *          invoked in order to acknowledge the reception and send the answer.
- * @note    If the message is a pointer then you can assume that the data
- *          pointed by the message is stable until you invoke @p chMsgRelease()
- *          because the sending thread is suspended until then.
+ * @note    You can assume that the data contained in the message is stable
+ *          until you invoke @p chMsgRelease() because the sending thread is
+ *          suspended until then.
  *
- * @return              The message.
- *
- * @api
+ * @return              The pointer to the message structure. Note, it is
+ *                      always the message associated to the thread on the
+ *                      top of the messages queue.
  */
 msg_t chMsgWait(void) {
   msg_t msg;
@@ -110,16 +111,16 @@ msg_t chMsgWait(void) {
 
 /**
  * @brief   Returns the next message in the queue.
- * @post    After receiving a message the function @p chMsgRelease() must be
- *          invoked in order to acknowledge the reception and send the answer.
- * @note    If the message is a pointer then you can assume that the data
- *          pointed by the message is stable until you invoke @p chMsgRelease()
- *          because the sending thread is suspended until then.
+ * @note    You can assume that the data pointed by the message is stable until
+ *          you invoke @p chMsgRelease() because the sending thread is
+ *          suspended until then. Always remember that the message data is not
+ *          copied between the sender and the receiver, just a pointer is
+ *          passed.
  *
- * @return              The message.
- * @retval 0            if the queue is empty.
- *
- * @api
+ * @return              The pointer to the message structure. Note, it is
+ *                      always the message associated to the thread on the
+ *                      top of the messages queue.
+ * @retval NULL         if the queue is empty.
  */
 msg_t chMsgGet(void) {
   msg_t msg;
@@ -132,12 +133,14 @@ msg_t chMsgGet(void) {
 
 /**
  * @brief   Releases the thread waiting on top of the messages queue.
- * @pre     Invoke this function only after a message has been received
- *          using @p chMsgWait() or @p chMsgGet().
+ * @note    You can call this function only if there is a message already in
+ *          the queue else the result will be unpredictable (a crash most likely).
+ *          Exiting from the @p chMsgWait() ensures you have at least one
+ *          message in the queue so it is not a big deal.<br>
+ *          The condition is only tested in debug mode in order to make this
+ *          code as fast as possible.
  *
  * @param[in] msg       the message returned to the message sender
- *
- * @api
  */
 void chMsgRelease(msg_t msg) {
 

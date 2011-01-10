@@ -10,15 +10,22 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    GCC/ARMCMx/chcore_v6m.c
+ * @file    ARMCMx/chcore_v6m.c
  * @brief   ARMv6-M architecture port code.
  *
  * @addtogroup ARMCMx_V6M_CORE
@@ -33,7 +40,7 @@
 regarm_t _port_saved_pc;
 
 /**
- * @brief   IRQ nesting counter.
+ * @brief	IRQ nesting counter.
  */
 unsigned _port_irq_nesting;
 
@@ -62,7 +69,7 @@ CH_IRQ_HANDLER(SysTickVector) {
 #if !defined(__DOXYGEN__)
 __attribute__((naked))
 #endif
-void _port_switch_from_isr(void) {
+void _port_switch_from_irq(void) {
   /* Note, saves r4 to make space for the PC.*/
   asm volatile ("push    {r0, r1, r2, r3, r4}                   \n\t"
                 "mrs     r0, APSR                               \n\t"

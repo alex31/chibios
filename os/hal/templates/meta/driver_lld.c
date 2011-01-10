@@ -10,25 +10,32 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    templates/xxx_lld.c
  * @brief   XXX Driver subsystem low level driver source template.
  *
- * @addtogroup XXX
+ * @addtogroup XXX_LLD
  * @{
  */
 
 #include "ch.h"
 #include "hal.h"
 
-#if HAL_USE_XXX || defined(__DOXYGEN__)
+#if CH_HAL_USE_XXX || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -52,8 +59,6 @@
 
 /**
  * @brief   Low level XXX driver initialization.
- *
- * @notapi
  */
 void xxx_lld_init(void) {
 
@@ -63,8 +68,6 @@ void xxx_lld_init(void) {
  * @brief   Configures and activates the XXX peripheral.
  *
  * @param[in] xxxp      pointer to the @p XXXDriver object
- *
- * @notapi
  */
 void xxx_lld_start(XXXDriver *xxxp) {
 
@@ -78,13 +81,11 @@ void xxx_lld_start(XXXDriver *xxxp) {
  * @brief   Deactivates the XXX peripheral.
  *
  * @param[in] xxxp      pointer to the @p XXXDriver object
- *
- * @notapi
  */
 void xxx_lld_stop(XXXDriver *xxxp) {
 
 }
 
-#endif /* HAL_USE_XXX */
+#endif /* CH_HAL_USE_XXX */
 
 /** @} */

@@ -10,21 +10,26 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @defgroup PPC Power Architecture
- * @details Power Architecture port for the GCC compiler.
+ * @defgroup PPC PowerPC
+ * @details PowerPC port details. This section describes how the ChibiOS/RT
+ * features are implemented on this architecture.
  *
- * @section PPC_INTRO Introduction
- * This port supports cores implementing a 32 bits Power Architecture.
- *
- * @section PPC_STATES Mapping of the System States in the Power Architecture port
+ * @section PPC_STATES Mapping of the System States in the PowerPC port
  * The ChibiOS/RT logical @ref system_states are mapped as follow in the
  * PowerPC port:
  * - <b>Init</b>. This state is represented by the startup code and the
@@ -55,20 +60,21 @@
  * - The Book-E Decrementer Timer, mapped on IVOR10, is used for system tick.
  * - Interrupt nesting is not currently supported.
  * .
- * @ingroup gcc
+ * @ingroup ports
  */
 
 /**
  * @defgroup PPC_CONF Configuration Options
- * @details PowerPC Configuration Options. The PowerPC port allows some
- * architecture-specific configurations settings that can be overridden by
- * redefining them in @p chconf.h. Usually there is no need to change the
- * default values.
+ * @brief PowerPC Configuration Options.
+ * @details The PowerPC port allows some architecture-specific configurations
+ * settings that can be overridden by redefining them in @p chconf.h.
+ * Usually there is no need to change the default values.
  * - @p INT_REQUIRED_STACK, this value represent the amount of stack space used
  *   by an interrupt handler between the @p extctx and @p intctx
  *   structures.
  *   The default for this value is @p 128 bytes, this space is allocated for
- *   each thread so be careful in order to not waste precious RAM space.
+ *   each thread so be careful in order to not waste precious RAM space.<br>
+ *   The default value is set into <b>./os/ports/GCC/PPC/chcore.h</b>.
  * - @p IDLE_THREAD_STACK_SIZE, stack area size to be assigned to the IDLE
  *   thread. Usually there is no need to change this value unless inserting
  *   code in the IDLE thread hook macro.
@@ -89,13 +95,13 @@
 
 /**
  * @defgroup PPC_STARTUP Startup Support
- * @brief 
- * @details PPC startup code support. ChibiOS/RT provides its own generic
- * startup file for the PowerPC port.
+ * @brief PPC startup code support.
+ * @details ChibiOS/RT provides its own generic startup file for the PowerPC
+ * port.
  * Of course it is not mandatory to use it but care should be taken about the
  * startup phase details.
  *
- * @section PPC_STARTUP_1 Startup Process
+ * <h2>Startup Process</h2>
  * The startup process, as implemented, is the following:
  * -# The stacks pointer is initialized into the area defined in the linker
  *    script.
@@ -112,9 +118,9 @@
  * -# The @p main() function is invoked with the parameters @p argc and @p argv
  *    set to zero.
  * -# Should the @p main() function return a branch is performed to the weak
- *    symbol @p _main_exit_handler. The default code is an endless empty loop.
+ *    symbol @p main_exit. The default code is an endless empty loop.
  * .
- * @section PPC_STARTUP_2 Expected linker symbols
+ * <h2>Expected linker symbols</h2>
  * The startup code starts at the symbol @p _boot_address and expects the
  * following symbols to be defined in the linker script:
  * - @p __ram_end__ RAM end location +1.
@@ -128,4 +134,5 @@
  * - @p __ivpr_base__ IVPR register initialization address.
  * .
  * @ingroup PPC
+ * @file PPC/crt0.s Startup code.
  */

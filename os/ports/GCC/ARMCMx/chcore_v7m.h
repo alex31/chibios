@@ -10,15 +10,22 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    GCC/ARMCMx/chcore_v7m.h
+ * @file    ARMCMx/chcore_v7m.h
  * @brief   ARMv7-M architecture port macros and structures.
  *
  * @addtogroup ARMCMx_V7M_CORE
@@ -33,6 +40,12 @@
 /*===========================================================================*/
 
 #if !defined(__DOXYGEN__)
+/**
+ * @brief   Interrupt saved context.
+ * @details This structure represents the stack frame saved during a
+ *          preemption-capable interrupt handler.
+ * @note    It is implemented to match the Cortex-Mx exception context.
+ */
 struct extctx {
   regarm_t      r0;
   regarm_t      r1;
@@ -43,7 +56,14 @@ struct extctx {
   regarm_t      pc;
   regarm_t      xpsr;
 };
+#endif
 
+#if !defined(__DOXYGEN__)
+/**
+ * @brief   System saved context.
+ * @details This structure represents the inner stack frame during a context
+ *          switching.
+ */
 struct intctx {
   regarm_t      r4;
   regarm_t      r5;
@@ -60,7 +80,7 @@ struct intctx {
 #endif
 
 /**
- * @brief   Platform dependent part of the @p chThdCreateI() API.
+ * @brief   Platform dependent part of the @p chThdInit() API.
  * @details This code usually setup the context switching frame represented
  *          by an @p intctx structure.
  */

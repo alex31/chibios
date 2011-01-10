@@ -10,53 +10,62 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    STM32/serial_lld.c
  * @brief   STM32 low level serial driver code.
  *
- * @addtogroup SERIAL
+ * @addtogroup STM32_SERIAL
  * @{
  */
 
 #include "ch.h"
 #include "hal.h"
 
-#if HAL_USE_SERIAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_SERIAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
 
 /** @brief USART1 serial driver identifier.*/
-#if STM32_SERIAL_USE_USART1 || defined(__DOXYGEN__)
+#if USE_STM32_USART1 || defined(__DOXYGEN__)
 SerialDriver SD1;
 #endif
 
 /** @brief USART2 serial driver identifier.*/
-#if STM32_SERIAL_USE_USART2 || defined(__DOXYGEN__)
+#if USE_STM32_USART2 || defined(__DOXYGEN__)
 SerialDriver SD2;
 #endif
 
 /** @brief USART3 serial driver identifier.*/
-#if STM32_SERIAL_USE_USART3 || defined(__DOXYGEN__)
+#if USE_STM32_USART3 || defined(__DOXYGEN__)
 SerialDriver SD3;
 #endif
 
+#if defined(STM32F10X_HD) || defined(STM32F10X_CL) || defined(__DOXYGEN__)
 /** @brief UART4 serial driver identifier.*/
-#if STM32_SERIAL_USE_UART4 || defined(__DOXYGEN__)
+#if USE_STM32_UART4 || defined(__DOXYGEN__)
 SerialDriver SD4;
 #endif
 
 /** @brief UART5 serial driver identifier.*/
-#if STM32_SERIAL_USE_UART5 || defined(__DOXYGEN__)
+#if USE_STM32_UART5 || defined(__DOXYGEN__)
 SerialDriver SD5;
+#endif
 #endif
 
 /*===========================================================================*/
@@ -119,17 +128,14 @@ static void usart_deinit(USART_TypeDef *u) {
   u->CR3 = 0;
 }
 
-#if STM32_SERIAL_USE_USART1 || STM32_SERIAL_USE_USART2 ||                   \
-    STM32_SERIAL_USE_USART3 || STM32_SERIAL_USE_UART4  ||                   \
-    USE_STM32_USART5
 /**
- * @brief   Error handling routine.
+ * @brief Error handling routine.
  *
  * @param[in] sdp       pointer to a @p SerialDriver object
  * @param[in] sr        USART SR register value
  */
 static void set_error(SerialDriver *sdp, uint16_t sr) {
-  ioflags_t sts = 0;
+  sdflags_t sts = 0;
 
   if (sr & USART_SR_ORE)
     sts |= SD_OVERRUN_ERROR;
@@ -142,7 +148,7 @@ static void set_error(SerialDriver *sdp, uint16_t sr) {
   if (sr & USART_SR_LBD)
     sts |= SD_BREAK_DETECTED;
   chSysLockFromIsr();
-  chIOAddFlagsI(sdp, sts);
+  sdAddFlagsI(sdp, sts);
   chSysUnlockFromIsr();
 }
 
@@ -172,7 +178,7 @@ static void serve_interrupt(SerialDriver *sdp) {
     chSysLockFromIsr();
     b = chOQGetI(&sdp->oqueue);
     if (b < Q_OK) {
-      chIOAddFlagsI(sdp, IO_OUTPUT_EMPTY);
+      chEvtBroadcastI(&sdp->oevent);
       u->CR1 = cr1 & ~USART_CR1_TXEIE;
     }
     else
@@ -180,59 +186,50 @@ static void serve_interrupt(SerialDriver *sdp) {
     chSysUnlockFromIsr();
   }
 }
-#endif
 
-#if STM32_SERIAL_USE_USART1 || defined(__DOXYGEN__)
-static void notify1(GenericQueue *qp) {
+#if USE_STM32_USART1 || defined(__DOXYGEN__)
+static void notify1(void) {
 
-  (void)qp;
   USART1->CR1 |= USART_CR1_TXEIE;
 }
 #endif
 
-#if STM32_SERIAL_USE_USART2 || defined(__DOXYGEN__)
-static void notify2(GenericQueue *qp) {
+#if USE_STM32_USART2 || defined(__DOXYGEN__)
+static void notify2(void) {
 
-  (void)qp;
   USART2->CR1 |= USART_CR1_TXEIE;
 }
 #endif
 
-#if STM32_SERIAL_USE_USART3 || defined(__DOXYGEN__)
-static void notify3(GenericQueue *qp) {
+#if USE_STM32_USART3 || defined(__DOXYGEN__)
+static void notify3(void) {
 
-  (void)qp;
   USART3->CR1 |= USART_CR1_TXEIE;
 }
 #endif
 
-#if STM32_SERIAL_USE_UART4 || defined(__DOXYGEN__)
-static void notify4(GenericQueue *qp) {
+#if defined(STM32F10X_HD) || defined(STM32F10X_CL) || defined(__DOXYGEN__)
+#if USE_STM32_UART4 || defined(__DOXYGEN__)
+static void notify4(void) {
 
-  (void)qp;
   UART4->CR1 |= USART_CR1_TXEIE;
 }
 #endif
 
-#if STM32_SERIAL_USE_UART5 || defined(__DOXYGEN__)
-static void notify5(GenericQueue *qp) {
+#if USE_STM32_UART5 || defined(__DOXYGEN__)
+static void notify5(void) {
 
-  (void)qp;
   UART5->CR1 |= USART_CR1_TXEIE;
 }
+#endif
 #endif
 
 /*===========================================================================*/
 /* Driver interrupt handlers.                                                */
 /*===========================================================================*/
 
-#if STM32_SERIAL_USE_USART1 || defined(__DOXYGEN__)
-/**
- * @brief   USART1 interrupt handler.
- *
- * @isr
- */
-CH_IRQ_HANDLER(USART1_IRQHandler) {
+#if USE_STM32_USART1 || defined(__DOXYGEN__)
+CH_IRQ_HANDLER(VectorD4) {
 
   CH_IRQ_PROLOGUE();
 
@@ -242,13 +239,8 @@ CH_IRQ_HANDLER(USART1_IRQHandler) {
 }
 #endif
 
-#if STM32_SERIAL_USE_USART2 || defined(__DOXYGEN__)
-/**
- * @brief   USART2 interrupt handler.
- *
- * @isr
- */
-CH_IRQ_HANDLER(USART2_IRQHandler) {
+#if USE_STM32_USART2 || defined(__DOXYGEN__)
+CH_IRQ_HANDLER(VectorD8) {
 
   CH_IRQ_PROLOGUE();
 
@@ -258,13 +250,8 @@ CH_IRQ_HANDLER(USART2_IRQHandler) {
 }
 #endif
 
-#if STM32_SERIAL_USE_USART3 || defined(__DOXYGEN__)
-/**
- * @brief   USART3 interrupt handler.
- *
- * @isr
- */
-CH_IRQ_HANDLER(USART3_IRQHandler) {
+#if USE_STM32_USART3 || defined(__DOXYGEN__)
+CH_IRQ_HANDLER(VectorDC) {
 
   CH_IRQ_PROLOGUE();
 
@@ -274,13 +261,9 @@ CH_IRQ_HANDLER(USART3_IRQHandler) {
 }
 #endif
 
-#if STM32_SERIAL_USE_UART4 || defined(__DOXYGEN__)
-/**
- * @brief   UART4 interrupt handler.
- *
- * @isr
- */
-CH_IRQ_HANDLER(UART4_IRQHandler) {
+#if defined(STM32F10X_HD) || defined(STM32F10X_CL) || defined(__DOXYGEN__)
+#if USE_STM32_UART4 || defined(__DOXYGEN__)
+CH_IRQ_HANDLER(Vector110) {
 
   CH_IRQ_PROLOGUE();
 
@@ -290,13 +273,8 @@ CH_IRQ_HANDLER(UART4_IRQHandler) {
 }
 #endif
 
-#if STM32_SERIAL_USE_UART5 || defined(__DOXYGEN__)
-/**
- * @brief   UART5 interrupt handler.
- *
- * @isr
- */
-CH_IRQ_HANDLER(UART5_IRQHandler) {
+#if USE_STM32_UART5 || defined(__DOXYGEN__)
+CH_IRQ_HANDLER(Vector114) {
 
   CH_IRQ_PROLOGUE();
 
@@ -305,6 +283,7 @@ CH_IRQ_HANDLER(UART5_IRQHandler) {
   CH_IRQ_EPILOGUE();
 }
 #endif
+#endif
 
 /*===========================================================================*/
 /* Driver exported functions.                                                */
@@ -312,34 +291,34 @@ CH_IRQ_HANDLER(UART5_IRQHandler) {
 
 /**
  * @brief   Low level serial driver initialization.
- *
- * @notapi
  */
 void sd_lld_init(void) {
 
-#if STM32_SERIAL_USE_USART1
+#if USE_STM32_USART1
   sdObjectInit(&SD1, NULL, notify1);
   SD1.usart = USART1;
 #endif
 
-#if STM32_SERIAL_USE_USART2
+#if USE_STM32_USART2
   sdObjectInit(&SD2, NULL, notify2);
   SD2.usart = USART2;
 #endif
 
-#if STM32_SERIAL_USE_USART3
+#if USE_STM32_USART3
   sdObjectInit(&SD3, NULL, notify3);
   SD3.usart = USART3;
 #endif
 
-#if STM32_SERIAL_USE_UART4
+#if defined(STM32F10X_HD) || defined(STM32F10X_CL)
+#if USE_STM32_UART4
   sdObjectInit(&SD4, NULL, notify4);
   SD4.usart = UART4;
 #endif
 
-#if STM32_SERIAL_USE_UART5
+#if USE_STM32_UART5
   sdObjectInit(&SD5, NULL, notify5);
   SD5.usart = UART5;
+#endif
 #endif
 }
 
@@ -350,8 +329,6 @@ void sd_lld_init(void) {
  * @param[in] config    the architecture-dependent serial driver configuration.
  *                      If this parameter is set to @p NULL then a default
  *                      configuration is used.
- *
- * @notapi
  */
 void sd_lld_start(SerialDriver *sdp, const SerialConfig *config) {
 
@@ -359,40 +336,42 @@ void sd_lld_start(SerialDriver *sdp, const SerialConfig *config) {
     config = &default_config;
 
   if (sdp->state == SD_STOP) {
-#if STM32_SERIAL_USE_USART1
+#if USE_STM32_USART1
     if (&SD1 == sdp) {
       RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
       NVICEnableVector(USART1_IRQn,
-                       CORTEX_PRIORITY_MASK(STM32_SERIAL_USART1_PRIORITY));
+                       CORTEX_PRIORITY_MASK(STM32_USART1_PRIORITY));
     }
 #endif
-#if STM32_SERIAL_USE_USART2
+#if USE_STM32_USART2
     if (&SD2 == sdp) {
       RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
       NVICEnableVector(USART2_IRQn,
-                       CORTEX_PRIORITY_MASK(STM32_SERIAL_USART2_PRIORITY));
+                       CORTEX_PRIORITY_MASK(STM32_USART2_PRIORITY));
     }
 #endif
-#if STM32_SERIAL_USE_USART3
+#if USE_STM32_USART3
     if (&SD3 == sdp) {
       RCC->APB1ENR |= RCC_APB1ENR_USART3EN;
       NVICEnableVector(USART3_IRQn,
-                       CORTEX_PRIORITY_MASK(STM32_SERIAL_USART3_PRIORITY));
+                       CORTEX_PRIORITY_MASK(STM32_USART3_PRIORITY));
     }
 #endif
-#if STM32_SERIAL_USE_UART4
+#if defined(STM32F10X_HD) || defined(STM32F10X_CL)
+#if USE_STM32_UART4
     if (&SD4 == sdp) {
       RCC->APB1ENR |= RCC_APB1ENR_UART4EN;
       NVICEnableVector(UART4_IRQn,
-                       CORTEX_PRIORITY_MASK(STM32_SERIAL_UART4_PRIORITY));
+                       CORTEX_PRIORITY_MASK(STM32_UART4_PRIORITY));
     }
 #endif
-#if STM32_SERIAL_USE_UART5
+#if USE_STM32_UART5
     if (&SD5 == sdp) {
       RCC->APB1ENR |= RCC_APB1ENR_UART5EN;
       NVICEnableVector(UART5_IRQn,
-                       CORTEX_PRIORITY_MASK(STM32_SERIAL_UART5_PRIORITY));
+                       CORTEX_PRIORITY_MASK(STM32_UART5_PRIORITY));
     }
+#endif
 #endif
   }
   usart_init(sdp, config);
@@ -404,51 +383,51 @@ void sd_lld_start(SerialDriver *sdp, const SerialConfig *config) {
  *          interrupt vector.
  *
  * @param[in] sdp       pointer to a @p SerialDriver object
- *
- * @notapi
  */
 void sd_lld_stop(SerialDriver *sdp) {
 
   if (sdp->state == SD_READY) {
     usart_deinit(sdp->usart);
-#if STM32_SERIAL_USE_USART1
+#if USE_STM32_USART1
     if (&SD1 == sdp) {
       RCC->APB2ENR &= ~RCC_APB2ENR_USART1EN;
       NVICDisableVector(USART1_IRQn);
       return;
     }
 #endif
-#if STM32_SERIAL_USE_USART2
+#if USE_STM32_USART2
     if (&SD2 == sdp) {
       RCC->APB1ENR &= ~RCC_APB1ENR_USART2EN;
       NVICDisableVector(USART2_IRQn);
       return;
     }
 #endif
-#if STM32_SERIAL_USE_USART3
+#if USE_STM32_USART3
     if (&SD3 == sdp) {
       RCC->APB1ENR &= ~RCC_APB1ENR_USART3EN;
       NVICDisableVector(USART3_IRQn);
       return;
     }
 #endif
-#if STM32_SERIAL_USE_UART4
+#if defined(STM32F10X_HD) || defined(STM32F10X_CL)
+#if USE_STM32_UART4
     if (&SD4 == sdp) {
       RCC->APB1ENR &= ~RCC_APB1ENR_UART4EN;
       NVICDisableVector(UART4_IRQn);
       return;
     }
 #endif
-#if STM32_SERIAL_USE_UART5
+#if USE_STM32_UART5
     if (&SD5 == sdp) {
       RCC->APB1ENR &= ~RCC_APB1ENR_UART5EN;
       NVICDisableVector(UART5_IRQn);
       return;
     }
 #endif
+#endif
   }
 }
 
-#endif /* HAL_USE_SERIAL */
+#endif /* CH_HAL_USE_SERIAL */
 
 /** @} */

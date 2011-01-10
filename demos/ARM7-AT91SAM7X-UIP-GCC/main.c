@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -24,11 +31,11 @@
 #include "web/webthread.h"
 
 static WORKING_AREA(waWebThread, 1024);
-
 static WORKING_AREA(waThread1, 128);
-static msg_t Thread1(void *p) {
 
-  (void)p;
+static msg_t Thread1(void *arg) {
+
+  (void)arg;
   while (TRUE) {
     palSetPad(IOPORT2, PIOB_LCD_BL);
     chThdSleepMilliseconds(100);
@@ -39,19 +46,13 @@ static msg_t Thread1(void *p) {
 }
 
 /*
- * Application entry point.
+ * Entry point, note, the main() function is already a thread in the system
+ * on entry.
  */
-int main(void) {
+int main(int argc, char **argv) {
 
-  /*
-   * System initializations.
-   * - HAL initialization, this also initializes the configured device drivers
-   *   and performs the board-specific initializations.
-   * - Kernel initialization, the main() function becomes a thread and the
-   *   RTOS is active.
-   */
-  halInit();
-  chSysInit();
+  (void)argc;
+  (void)argv;
 
   /*
    * Activates the serial driver 2 using the driver default configuration.

@@ -10,25 +10,32 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    SPC56x/serial_lld.c
  * @brief   SPC563 low level serial driver code.
  *
- * @addtogroup SERIAL
+ * @addtogroup SPC563_SERIAL
  * @{
  */
 
 #include "ch.h"
 #include "hal.h"
 
-#if HAL_USE_SERIAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_SERIAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -116,7 +123,7 @@ static void esci_deinit(volatile struct ESCI_tag *escip) {
  * @param[in] sr        eSCI SR register value
  */
 static void set_error(SerialDriver *sdp, uint32_t sr) {
-  ioflags_t sts = 0;
+  sdflags_t sts = 0;
 
   if (sr & 0x08000000)
     sts |= SD_OVERRUN_ERROR;
@@ -129,7 +136,7 @@ static void set_error(SerialDriver *sdp, uint32_t sr) {
 /*  if (sr & 0x00000000)
     sts |= SD_BREAK_DETECTED;*/
   chSysLockFromIsr();
-  chIOAddFlagsI(sdp, sts);
+  sdAddFlagsI(sdp, sts);
   chSysUnlockFromIsr();
 }
 
@@ -155,7 +162,7 @@ static void serve_interrupt(SerialDriver *sdp) {
     chSysLockFromIsr();
     b = chOQGetI(&sdp->oqueue);
     if (b < Q_OK) {
-      chIOAddFlagsI(sdp, IO_OUTPUT_EMPTY);
+      chEvtBroadcastI(&sdp->oevent);
       escip->CR1.B.TIE = 0;
     }
     else {
@@ -167,9 +174,8 @@ static void serve_interrupt(SerialDriver *sdp) {
 }
 
 #if USE_SPC563_ESCIA || defined(__DOXYGEN__)
-static void notify1(GenericQueue *qp) {
+static void notify1(void) {
 
-  (void)qp;
   if (ESCI_A.SR.B.TDRE) {
     msg_t b = sdRequestDataI(&SD1);
     if (b != Q_EMPTY) {
@@ -178,13 +184,19 @@ static void notify1(GenericQueue *qp) {
       ESCI_A.DR.R = (uint16_t)b;
     }
   }
+/*  if (!ESCI_A.CR1.B.TIE) {
+    msg_t b = sdRequestDataI(&SD1);
+    if (b != Q_EMPTY) {
+      ESCI_A.CR1.B.TIE = 1;
+      ESCI_A.DR.R = (uint16_t)b;
+    }
+  }*/
 }
 #endif
 
 #if USE_SPC563_ESCIB || defined(__DOXYGEN__)
-static void notify2(GenericQueue *qp) {
+static void notify2(void) {
 
-  (void)qp;
   if (ESCI_B.SR.B.TDRE) {
     msg_t b = sdRequestDataI(&SD2);
     if (b != Q_EMPTY) {
@@ -193,6 +205,13 @@ static void notify2(GenericQueue *qp) {
       ESCI_B.DR.R = (uint16_t)b;
     }
   }
+/*  if (!ESCI_B.CR1.B.TIE) {
+    msg_t b = sdRequestDataI(&SD2);
+    if (b != Q_EMPTY) {
+      ESCI_B.CR1.B.TIE = 1;
+      ESCI_B.DR.R = (uint16_t)b;
+    }
+  }*/
 }
 #endif
 
@@ -203,8 +222,6 @@ static void notify2(GenericQueue *qp) {
 #if USE_SPC563_ESCIA || defined(__DOXYGEN__)
 /**
  * @brief   eSCI-A interrupt handler.
- *
- * @isr
  */
 CH_IRQ_HANDLER(vector146) {
 
@@ -219,8 +236,6 @@ CH_IRQ_HANDLER(vector146) {
 #if USE_SPC563_ESCIB || defined(__DOXYGEN__)
 /**
  * @brief   eSCI-B interrupt handler.
- *
- * @isr
  */
 CH_IRQ_HANDLER(vector149) {
 
@@ -238,8 +253,6 @@ CH_IRQ_HANDLER(vector149) {
 
 /**
  * @brief   Low level serial driver initialization.
- *
- * @notapi
  */
 void sd_lld_init(void) {
 
@@ -265,8 +278,6 @@ void sd_lld_init(void) {
  * @param[in] config    the architecture-dependent serial driver configuration.
  *                      If this parameter is set to @p NULL then a default
  *                      configuration is used.
- *
- * @notapi
  */
 void sd_lld_start(SerialDriver *sdp, const SerialConfig *config) {
 
@@ -279,8 +290,6 @@ void sd_lld_start(SerialDriver *sdp, const SerialConfig *config) {
  * @brief   Low level serial driver stop.
  *
  * @param[in] sdp       pointer to a @p SerialDriver object
- *
- * @notapi
  */
 void sd_lld_stop(SerialDriver *sdp) {
 
@@ -288,6 +297,6 @@ void sd_lld_stop(SerialDriver *sdp) {
     esci_deinit(sdp->escip);
 }
 
-#endif /* HAL_USE_SERIAL */
+#endif /* CH_HAL_USE_SERIAL */
 
 /** @} */

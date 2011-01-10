@@ -10,25 +10,31 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    STM32/adc_lld.h
- * @brief   STM32 ADC subsystem low level driver header.
- *
- * @addtogroup ADC
+ * @file STM32/adc_lld.h
+ * @brief STM32 ADC subsystem low level driver header.
+ * @addtogroup STM32_ADC
  * @{
  */
 
 #ifndef _ADC_LLD_H_
 #define _ADC_LLD_H_
 
-#if HAL_USE_ADC || defined(__DOXYGEN__)
+#if CH_HAL_USE_ADC || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -56,46 +62,37 @@
 #define ADC_CHANNEL_SENSOR      16  /**< @brief Internal temperature sensor.*/
 #define ADC_CHANNEL_VREFINT     17  /**< @brief Internal reference.         */
 
-#define ADC_SAMPLE_1P5          0   /**< @brief 1.5 cycles sampling time.   */
-#define ADC_SAMPLE_7P5          1   /**< @brief 7.5 cycles sampling time.   */
-#define ADC_SAMPLE_13P5         2   /**< @brief 13.5 cycles sampling time.  */
-#define ADC_SAMPLE_28P5         3   /**< @brief 28.5 cycles sampling time.  */
-#define ADC_SAMPLE_41P5         4   /**< @brief 41.5 cycles sampling time.  */
-#define ADC_SAMPLE_55P5         5   /**< @brief 55.5 cycles sampling time.  */
-#define ADC_SAMPLE_71P5         6   /**< @brief 71.5 cycles sampling time.  */
-#define ADC_SAMPLE_239P5        7   /**< @brief 239.5 cycles sampling time. */
-
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
 
 /**
- * @brief   ADC1 driver enable switch.
+ * @brief ADC1 driver enable switch.
  * @details If set to @p TRUE the support for ADC1 is included.
- * @note    The default is @p TRUE.
+ * @note The default is @p TRUE.
  */
-#if !defined(STM32_ADC_USE_ADC1) || defined(__DOXYGEN__)
-#define STM32_ADC_USE_ADC1                  TRUE
+#if !defined(USE_STM32_ADC1) || defined(__DOXYGEN__)
+#define USE_STM32_ADC1              TRUE
 #endif
 
 /**
- * @brief   ADC1 DMA priority (0..3|lowest..highest).
+ * @brief ADC1 DMA priority (0..3|lowest..highest).
  */
-#if !defined(STM32_ADC_ADC1_DMA_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_ADC_ADC1_DMA_PRIORITY         3
+#if !defined(STM32_ADC1_DMA_PRIORITY) || defined(__DOXYGEN__)
+#define STM32_ADC1_DMA_PRIORITY     3
 #endif
 
 /**
- * @brief   ADC1 interrupt priority level setting.
+ * @brief ADC1 interrupt priority level setting.
  */
-#if !defined(STM32_ADC_ADC1_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_ADC_ADC1_IRQ_PRIORITY         5
+#if !defined(STM32_ADC1_IRQ_PRIORITY) || defined(__DOXYGEN__)
+#define STM32_ADC1_IRQ_PRIORITY     5
 #endif
 
 /**
- * @brief   ADC1 DMA error hook.
- * @note    The default action for DMA errors is a system halt because DMA error
- *          can only happen because programming errors.
+ * @brief ADC1 DMA error hook.
+ * @note The default action for DMA errors is a system halt because DMA error
+ *       can only happen because programming errors.
  */
 #if !defined(STM32_ADC1_DMA_ERROR_HOOK) || defined(__DOXYGEN__)
 #define STM32_ADC1_DMA_ERROR_HOOK() chSysHalt()
@@ -105,119 +102,95 @@
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
-#if STM32_ADC_USE_ADC1 && !STM32_HAS_ADC1
-#error "ADC1 not present in the selected device"
-#endif
-
-#if !STM32_ADC_USE_ADC1
-#error "ADC driver activated but no ADC peripheral assigned"
-#endif
-
 /*===========================================================================*/
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
 
 /**
- * @brief   ADC sample data type.
+ * @brief ADC sample data type.
  */
 typedef uint16_t adcsample_t;
 
 /**
- * @brief   Channels number in a conversion group.
+ * @brief Channels number in a conversion group.
  */
 typedef uint16_t adc_channels_num_t;
 
 /**
- * @brief   Type of a structure representing an ADC driver.
+ * @brief ADC notification callback type.
+ * @param[in] buffer pointer to the most recent samples data
+ * @param[in] n number of buffer rows available starting from @p buffer
  */
-typedef struct ADCDriver ADCDriver;
+typedef void (*adccallback_t)(adcsample_t *buffer, size_t n);
 
 /**
- * @brief   ADC notification callback type.
- *
- * @param[in] adcp      pointer to the @p ADCDriver object triggering the
- *                      callback
- * @param[in] buffer    pointer to the most recent samples data
- * @param[in] n         number of buffer rows available starting from @p buffer
- */
-typedef void (*adccallback_t)(ADCDriver *adcp, adcsample_t *buffer, size_t n);
-
-/**
- * @brief   Conversion group configuration structure.
+ * @brief Conversion group configuration structure.
  * @details This implementation-dependent structure describes a conversion
  *          operation.
- * @note    The use of this configuration structure requires knowledge of
- *          STM32 ADC cell registers interface, please refer to the STM32
- *          reference manual for details.
  */
 typedef struct {
   /**
-   * @brief   Enables the circular buffer mode for the group.
+   * @brief Enables the circular buffer mode for the group.
    */
   bool_t                    acg_circular;
   /**
-   * @brief   Number of the analog channels belonging to the conversion group.
+   * @brief Number of the analog channels belonging to the conversion group.
    */
   adc_channels_num_t        acg_num_channels;
-  /**
-   * @brief   Callback function associated to the group or @p NULL.
-   */
-  adccallback_t             acg_endcb;
   /* End of the mandatory fields.*/
   /**
-   * @brief   ADC CR1 register initialization data.
-   * @note    All the required bits must be defined into this field except
-   *          @p ADC_CR1_SCAN that is enforced inside the driver.
+   * @brief ADC CR1 register initialization data.
+   * @note All the required bits must be defined into this field except
+   *       @p ADC_CR1_SCAN that is enforced inside the driver.
    */
   uint32_t                  acg_cr1;
   /**
-   * @brief   ADC CR2 register initialization data.
-   * @note    All the required bits must be defined into this field except
-   *          @p ADC_CR2_DMA, @p ADC_CR2_CONT and @p ADC_CR2_ADON that are
-   *          enforced inside the driver.
+   * @brief ADC CR2 register initialization data.
+   * @note All the required bits must be defined into this field except
+   *       @p ADC_CR2_DMA and @p ADC_CR2_ADON that are enforced inside the
+   *       driver.
    */
   uint32_t                  acg_cr2;
   /**
-   * @brief   ADC SMPR1 register initialization data.
-   * @details In this field must be specified the sample times for channels
-   *          10...17.
+   * @brief ADC SMPR1 register initialization data.
    */
   uint32_t                  acg_smpr1;
   /**
-   * @brief   ADC SMPR2 register initialization data.
-   * @details In this field must be specified the sample times for channels
-   *          0...9.
+   * @brief ADC SMPR2 register initialization data.
    */
   uint32_t                  acg_smpr2;
   /**
-   * @brief   ADC SQR1 register initialization data.
-   * @details Conversion group sequence 13...16 + sequence length.
+   * @brief ADC SQR1 register initialization data.
    */
   uint32_t                  acg_sqr1;
   /**
-   * @brief   ADC SQR2 register initialization data.
-   * @details Conversion group sequence 7...12.
+   * @brief ADC SQR2 register initialization data.
    */
   uint32_t                  acg_sqr2;
   /**
-   * @brief   ADC SQR3 register initialization data.
-   * @details Conversion group sequence 0...6.
+   * @brief ADC SQR3 register initialization data.
    */
   uint32_t                  acg_sqr3;
 } ADCConversionGroup;
 
 /**
- * @brief   Driver configuration structure.
- * @note    It could be empty on some architectures.
+ * @brief Driver configuration structure.
+ * @note It could be empty on some architectures.
  */
 typedef struct {
-  uint32_t                  dummy;
+  /* * <----------
+   * @brief ADC prescaler setting.
+   * @note This field can assume one of the following values:
+   *       @p RCC_CFGR_ADCPRE_DIV2, @p RCC_CFGR_ADCPRE_DIV4,
+   *       @p RCC_CFGR_ADCPRE_DIV6, @p RCC_CFGR_ADCPRE_DIV8.
+   */
+/*  uint32_t              ac_prescaler;*/
 } ADCConfig;
 
 /**
- * @brief   Structure representing an ADC driver.
+ * @brief Structure representing an ADC driver.
  */
-struct ADCDriver {
+typedef struct {
   /**
    * @brief Driver state.
    */
@@ -226,6 +199,14 @@ struct ADCDriver {
    * @brief Current configuration data.
    */
   const ADCConfig           *ad_config;
+  /**
+   * @brief Synchronization semaphore.
+   */
+  Semaphore                 ad_sem;
+  /**
+   * @brief Current callback function or @p NULL.
+   */
+  adccallback_t             ad_callback;
   /**
    * @brief Current samples buffer pointer or @p NULL.
    */
@@ -238,95 +219,51 @@ struct ADCDriver {
    * @brief Current conversion group pointer or @p NULL.
    */
   const ADCConversionGroup  *ad_grpp;
-#if ADC_USE_WAIT || defined(__DOXYGEN__)
-  /**
-   * @brief Waiting thread.
-   */
-  Thread                    *ad_thread;
-#endif
-#if ADC_USE_MUTUAL_EXCLUSION || defined(__DOXYGEN__)
-#if CH_USE_MUTEXES || defined(__DOXYGEN__)
-  /**
-   * @brief Mutex protecting the peripheral.
-   */
-  Mutex                     ad_mutex;
-#elif CH_USE_SEMAPHORES
-  Semaphore                 ad_semaphore;
-#endif
-#endif /* ADC_USE_MUTUAL_EXCLUSION */
-#if defined(ADC_DRIVER_EXT_FIELDS)
-  ADC_DRIVER_EXT_FIELDS
-#endif
   /* End of the mandatory fields.*/
   /**
    * @brief Pointer to the ADCx registers block.
    */
   ADC_TypeDef               *ad_adc;
   /**
-   * @brief Pointer to the DMA registers block.
+   * @brief Pointer to the DMA channel registers block.
    */
-  stm32_dma_channel_t       *ad_dmachp;
+  DMA_Channel_TypeDef       *ad_dma;
   /**
-   * @brief DMA CCR register bit mask.
+   * @brief DMA priority bit mask.
    */
-  uint32_t                  ad_dmaccr;
-};
+  uint32_t                  ad_dmaprio;
+} ADCDriver;
 
 /*===========================================================================*/
 /* Driver macros.                                                            */
 /*===========================================================================*/
 
-/**
- * @brief   Number of channels in a conversion sequence.
- */
 #define ADC_SQR1_NUM_CH(n)      (((n) - 1) << 20)
 
-#define ADC_SQR3_SQ0_N(n)       ((n) << 0)  /**< @brief 1st channel in seq. */
-#define ADC_SQR3_SQ1_N(n)       ((n) << 5)  /**< @brief 2nd channel in seq. */
-#define ADC_SQR3_SQ2_N(n)       ((n) << 10) /**< @brief 3rd channel in seq. */
-#define ADC_SQR3_SQ3_N(n)       ((n) << 15) /**< @brief 4th channel in seq. */
-#define ADC_SQR3_SQ4_N(n)       ((n) << 20) /**< @brief 5th channel in seq. */
-#define ADC_SQR3_SQ5_N(n)       ((n) << 25) /**< @brief 6th channel in seq. */
+#define ADC_SQR3_SQ0_N(n)       ((n) << 0)
+#define ADC_SQR3_SQ1_N(n)       ((n) << 5)
+#define ADC_SQR3_SQ2_N(n)       ((n) << 10)
+#define ADC_SQR3_SQ3_N(n)       ((n) << 15)
+#define ADC_SQR3_SQ4_N(n)       ((n) << 20)
+#define ADC_SQR3_SQ5_N(n)       ((n) << 25)
 
-#define ADC_SQR2_SQ6_N(n)       ((n) << 0)  /**< @brief 7th channel in seq. */
-#define ADC_SQR2_SQ7_N(n)       ((n) << 5)  /**< @brief 8th channel in seq. */
-#define ADC_SQR2_SQ8_N(n)       ((n) << 10) /**< @brief 9th channel in seq. */
-#define ADC_SQR2_SQ9_N(n)       ((n) << 15) /**< @brief 10th channel in seq.*/
-#define ADC_SQR2_SQ10_N(n)      ((n) << 20) /**< @brief 11th channel in seq.*/
-#define ADC_SQR2_SQ11_N(n)      ((n) << 25) /**< @brief 12th channel in seq.*/
+#define ADC_SQR2_SQ6_N(n)       ((n) << 0)
+#define ADC_SQR2_SQ7_N(n)       ((n) << 5)
+#define ADC_SQR2_SQ8_N(n)       ((n) << 10)
+#define ADC_SQR2_SQ9_N(n)       ((n) << 15)
+#define ADC_SQR2_SQ10_N(n)      ((n) << 20)
+#define ADC_SQR2_SQ11_N(n)      ((n) << 25)
 
-#define ADC_SQR1_SQ13_N(n)      ((n) << 0)  /**< @brief 13th channel in seq.*/
-#define ADC_SQR1_SQ14_N(n)      ((n) << 5)  /**< @brief 14th channel in seq.*/
-#define ADC_SQR1_SQ15_N(n)      ((n) << 10) /**< @brief 15th channel in seq.*/
-#define ADC_SQR1_SQ16_N(n)      ((n) << 15) /**< @brief 16th channel in seq.*/
-
-#define ADC_SMPR2_SMP_AN0(n)    ((n) << 0)  /**< @brief AN0 sampling time.  */
-#define ADC_SMPR2_SMP_AN1(n)    ((n) << 3)  /**< @brief AN1 sampling time.  */
-#define ADC_SMPR2_SMP_AN2(n)    ((n) << 6)  /**< @brief AN2 sampling time.  */
-#define ADC_SMPR2_SMP_AN3(n)    ((n) << 9)  /**< @brief AN3 sampling time.  */
-#define ADC_SMPR2_SMP_AN4(n)    ((n) << 12) /**< @brief AN4 sampling time.  */
-#define ADC_SMPR2_SMP_AN5(n)    ((n) << 15) /**< @brief AN5 sampling time.  */
-#define ADC_SMPR2_SMP_AN6(n)    ((n) << 18) /**< @brief AN6 sampling time.  */
-#define ADC_SMPR2_SMP_AN7(n)    ((n) << 21) /**< @brief AN7 sampling time.  */
-#define ADC_SMPR2_SMP_AN8(n)    ((n) << 24) /**< @brief AN8 sampling time.  */
-#define ADC_SMPR2_SMP_AN9(n)    ((n) << 27) /**< @brief AN9 sampling time.  */
-
-#define ADC_SMPR1_SMP_AN10(n)   ((n) << 0)  /**< @brief AN10 sampling time. */
-#define ADC_SMPR1_SMP_AN11(n)   ((n) << 3)  /**< @brief AN11 sampling time. */
-#define ADC_SMPR1_SMP_AN12(n)   ((n) << 6)  /**< @brief AN12 sampling time. */
-#define ADC_SMPR1_SMP_AN13(n)   ((n) << 9)  /**< @brief AN13 sampling time. */
-#define ADC_SMPR1_SMP_AN14(n)   ((n) << 12) /**< @brief AN14 sampling time. */
-#define ADC_SMPR1_SMP_AN15(n)   ((n) << 15) /**< @brief AN15 sampling time. */
-#define ADC_SMPR1_SMP_SENSOR(n) ((n) << 18) /**< @brief Temperature Sensor
-                                                 sampling time.             */
-#define ADC_SMPR1_SMP_VREF(n)   ((n) << 21) /**< @brief Voltage Reference
-                                                 sampling time.             */
+#define ADC_SQR1_SQ13_N(n)      ((n) << 0)
+#define ADC_SQR1_SQ14_N(n)      ((n) << 5)
+#define ADC_SQR1_SQ15_N(n)      ((n) << 10)
+#define ADC_SQR1_SQ16_N(n)      ((n) << 15)
 
 /*===========================================================================*/
 /* External declarations.                                                    */
 /*===========================================================================*/
 
-#if STM32_ADC_USE_ADC1 && !defined(__DOXYGEN__)
+#if USE_STM32_ADC1 && !defined(__DOXYGEN__)
 extern ADCDriver ADCD1;
 #endif
 
@@ -342,7 +279,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_ADC */
+#endif /* CH_HAL_USE_ADC */
 
 #endif /* _ADC_LLD_H_ */
 

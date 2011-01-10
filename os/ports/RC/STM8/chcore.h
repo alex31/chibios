@@ -10,18 +10,25 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    RC/STM8/chcore.h
- * @brief   STM8 (Raisonance) architecture port macros and structures.
+ * @brief   STM8 architecture port macros and structures.
  *
- * @addtogroup STM8_RAISONANCE_CORE
+ * @addtogroup STM8_CORE
  * @{
  */
 
@@ -53,7 +60,7 @@
 /**
  * @brief   Name of the implemented architecture.
  */
-#define CH_ARCHITECTURE_NAME    "STM8"
+#define CH_ARCHITECTURE_NAME "STM8"
 
 /*===========================================================================*/
 /* Port implementation part.                                                 */
@@ -72,6 +79,7 @@ typedef uint8_t stkalign_t;
  */
 typedef void (*stm8func_t)(void);
 
+#if !defined(__DOXYGEN__)
 /**
  * @brief   Interrupt saved context.
  * @details This structure represents the stack frame saved during a
@@ -91,7 +99,9 @@ struct extctx {
   uint8_t       pch;
   uint8_t       pcl;
 };
+#endif
 
+#if !defined(__DOXYGEN__)
 /**
  * @brief   System saved context.
  * @details This structure represents the inner stack frame during a context
@@ -103,7 +113,9 @@ struct intctx {
   uint8_t       _next;
   stm8func_t    pc;             /* Function pointer sized return address.   */
 };
+#endif
 
+#if !defined(__DOXYGEN__)
 /**
  * @brief   Platform dependent part of the @p Thread structure.
  * @details This structure usually contains just the saved stack pointer
@@ -112,6 +124,7 @@ struct intctx {
 struct context {
   struct intctx *sp;
 };
+#endif
 
 /**
  * @brief   Start context.
@@ -127,7 +140,7 @@ struct stm8_startctx {
 };
 
 /**
- * @brief   Platform dependent part of the @p chThdCreateI() API.
+ * @brief   Platform dependent part of the @p chThdInit() API.
  * @details This code usually setup the context switching frame represented
  *          by an @p intctx structure.
  */
@@ -149,16 +162,19 @@ struct stm8_startctx {
  *          by @p INT_REQUIRED_STACK.
  */
 #ifndef IDLE_THREAD_STACK_SIZE
-#define IDLE_THREAD_STACK_SIZE      0
+#define IDLE_THREAD_STACK_SIZE  0
 #endif
 
 /**
  * @brief   Per-thread stack overhead for interrupts servicing.
- * @details This is a safe value, you may trim it down after reading the
- *          right size in the map file.
+ * @details This constant is used in the calculation of the correct working
+ *          area size.
+ *          This value can be zero on those architecture where there is a
+ *          separate interrupt stack and the stack space between @p intctx and
+ *          @p extctx is known to be zero.
  */
 #ifndef INT_REQUIRED_STACK
-#define INT_REQUIRED_STACK          48
+#define INT_REQUIRED_STACK      32
 #endif
 
 /**
@@ -186,8 +202,7 @@ struct stm8_startctx {
  * @details This macro must be inserted at the start of all IRQ handlers
  *          enabled to invoke system APIs.
  */
-#define PORT_IRQ_PROLOGUE() {                                               \
-}
+#define PORT_IRQ_PROLOGUE()
 
 /**
  * @brief   IRQ epilogue code.
@@ -204,7 +219,7 @@ struct stm8_startctx {
  * @note    @p id can be a function name or a vector number depending on the
  *          port implementation.
  */
-#define PORT_IRQ_HANDLER(id) void vector##id(void) interrupt id
+#define PORT_IRQ_HANDLER(id) void irq##id(void) interrupt id
 
 /**
  * @brief   Port-related initialization code.
@@ -281,9 +296,9 @@ struct stm8_startctx {
 #ifdef __cplusplus
 extern "C" {
 #endif
+  void port_halt(void);
   void _port_switch(Thread *otp);
   void _port_thread_start(void);
-  void port_halt(void);
 #ifdef __cplusplus
 }
 #endif
@@ -310,7 +325,7 @@ typedef struct {
 #endif
 } ReadyList;
 
-page0 extern ReadyList rlist;
+extern page0 ReadyList rlist;
 
 #endif /* _CHCORE_H_ */
 

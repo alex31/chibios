@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -28,25 +35,25 @@
 #ifndef _MMC_SPI_H_
 #define _MMC_SPI_H_
 
-#if HAL_USE_MMC_SPI || defined(__DOXYGEN__)
+#if CH_HAL_USE_MMC_SPI || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
 /*===========================================================================*/
 
-#define MMC_CMD0_RETRY              10
-#define MMC_CMD1_RETRY              100
-#define MMC_WAIT_DATA               10000
+#define MMC_CMD0_RETRY          10
+#define MMC_CMD1_RETRY          100
+#define MMC_WAIT_DATA           10000
 
-#define MMC_CMDGOIDLE               0
-#define MMC_CMDINIT                 1
-#define MMC_CMDREADCSD              9
-#define MMC_CMDSTOP                 12
-#define MMC_CMDSETBLOCKLEN          16
-#define MMC_CMDREAD                 17
-#define MMC_CMDREADMULTIPLE         18
-#define MMC_CMDWRITE                24
-#define MMC_CMDWRITEMULTIPLE        25
+#define MMC_CMDGOIDLE           0
+#define MMC_CMDINIT             1
+#define MMC_CMDREADCSD          9
+#define MMC_CMDSTOP             12
+#define MMC_CMDSETBLOCKLEN      16
+#define MMC_CMDREAD             17
+#define MMC_CMDREADMULTIPLE     18
+#define MMC_CMDWRITE            24
+#define MMC_CMDWRITEMULTIPLE    25
 
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
@@ -56,7 +63,7 @@
  * @brief   Block size for MMC transfers.
  */
 #if !defined(MMC_SECTOR_SIZE) || defined(__DOXYGEN__)
-#define MMC_SECTOR_SIZE             512
+#define MMC_SECTOR_SIZE         512
 #endif
 
 /**
@@ -68,7 +75,7 @@
  *          use a DMA channel and heavily loads the CPU.
  */
 #if !defined(MMC_NICE_WAITING) || defined(__DOXYGEN__)
-#define MMC_NICE_WAITING            TRUE
+#define MMC_NICE_WAITING        TRUE
 #endif
 
 /**
@@ -76,22 +83,22 @@
  *          insertion event.
  */
 #if !defined(MMC_POLLING_INTERVAL) || defined(__DOXYGEN__)
-#define MMC_POLLING_INTERVAL        10
+#define MMC_POLLING_INTERVAL    10
 #endif
 
 /**
  * @brief   Interval, in milliseconds, between insertion queries.
  */
 #if !defined(MMC_POLLING_DELAY) || defined(__DOXYGEN__)
-#define MMC_POLLING_DELAY           10
+#define MMC_POLLING_DELAY       10
 #endif
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
-#if !HAL_USE_SPI || !CH_USE_EVENTS
-#error "MMC_SPI driver requires HAL_USE_SPI and CH_USE_EVENTS"
+#if !CH_HAL_USE_SPI || !CH_USE_EVENTS
+#error "MMC_SPI driver requires CH_HAL_USE_SPI and CH_USE_EVENTS"
 #endif
 
 /*===========================================================================*/
@@ -102,13 +109,13 @@
  * @brief   Driver state machine possible states.
  */
 typedef enum {
-  MMC_UNINIT = 0,                           /**< Not initialized.           */
-  MMC_STOP = 1,                             /**< Stopped.                   */
-  MMC_WAIT = 2,                             /**< Waiting card.              */
-  MMC_INSERTED = 3,                         /**< Card inserted.             */
-  MMC_READY = 4,                            /**< Card ready.                */
-  MMC_READING = 5,                          /**< Reading.                   */
-  MMC_WRITING = 6                           /**< Writing.                   */
+  MMC_UNINIT = 0,                           /**< @brief Not initialized.    */
+  MMC_STOP = 1,                             /**< @brief Stopped.            */
+  MMC_WAIT = 2,                             /**< @brief Waiting card.       */
+  MMC_INSERTED = 3,                         /**< @brief Card inserted.      */
+  MMC_READY = 4,                            /**< @brief Card ready.         */
+  MMC_READING = 5,                          /**< @brief Reading.            */
+  MMC_WRITING = 6                           /**< @brief Writing.            */
 } mmcstate_t;
 
 /**
@@ -120,10 +127,9 @@ typedef bool_t (*mmcquery_t)(void);
 
 /**
  * @brief   Driver configuration structure.
- * @note    Not required in the current implementation.
  */
 typedef struct {
-  uint8_t               dummy;
+
 } MMCConfig;
 
 /**
@@ -182,23 +188,11 @@ typedef struct {
 
 /**
  * @brief   Returns the driver state.
- *
- * @param[in] mmcp      pointer to the @p MMCDriver object
- * @return              The driver state.
- *
- * @api
  */
 #define mmcGetDriverState(mmcp) ((mmcp)->mmc_state)
 
 /**
  * @brief   Returns the write protect status.
- *
- * @param[in] mmcp      pointer to the @p MMCDriver object
- * @return              The card state.
- * @retval FALSE        card not inserted.
- * @retval TRUE         card inserted.
- *
- * @api
  */
 #define mmcIsWriteProtected(mmcp) ((mmcp)->mmc_is_protected())
 
@@ -227,7 +221,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_MMC_SPI */
+#endif /* CH_HAL_USE_MMC_SPI */
 
 #endif /* _MMC_SPI_H_ */
 

@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -91,13 +98,11 @@ typedef struct {
  *          block.
  *
  * @param[in] ip        pointer to a @p BaseChannel or derived class
- * @return              The output queue status.
+ * @return              The output queue status:
  * @retval FALSE        if the output queue has space and would not block a
  *                      write operation.
  * @retval TRUE         if the output queue is full and would block a write
  *                      operation.
- *
- * @api
  */
 #define chIOPutWouldBlock(ip) ((ip)->vmt->putwouldblock(ip))
 
@@ -107,13 +112,11 @@ typedef struct {
  *          block.
  *
  * @param[in] ip        pointer to a @p BaseChannel or derived class
- * @return              The input queue status.
+ * @return              The input queue status:
  * @retval FALSE        if the input queue contains data and would not block a
  *                      read operation.
  * @retval TRUE         if the input queue is empty and would block a read
  *                      operation.
- *
- * @api
  */
 #define chIOGetWouldBlock(ip) ((ip)->vmt->getwouldblock(ip))
 
@@ -124,11 +127,9 @@ typedef struct {
  *
  * @param[in] ip        pointer to a @p BaseChannel or derived class
  * @param[in] b         the byte value to be written to the channel
- * @return              The operation status.
+ * @return              The operation status:
  * @retval Q_OK         if the operation succeeded.
  * @retval Q_RESET      if the channel associated queue (if any) was reset.
- *
- * @api
  */
 #define chIOPut(ip, b) ((ip)->vmt->put(ip, b, TIME_INFINITE))
 
@@ -144,12 +145,10 @@ typedef struct {
  *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      - @a TIME_INFINITE no timeout.
  *                      .
- * @return              The operation status.
+ * @return              The operation status:
  * @retval Q_OK         if the operation succeeded.
  * @retval Q_TIMEOUT    if the specified time expired.
  * @retval Q_RESET      if the channel associated queue (if any) was reset.
- *
- * @api
  */
 #define chIOPutTimeout(ip, b, time) ((ip)->vmt->put(ip, b, time))
 
@@ -159,11 +158,8 @@ typedef struct {
  *          is not available then the calling thread is suspended.
  *
  * @param[in] ip        pointer to a @p BaseChannel or derived class
- * @return              A byte value from the queue.
- * @retval Q_RESET      if the channel associated queue (if any) has been
- *                      reset.
- *
- * @api
+ * @return              A byte value from the queue or:
+ * @retval Q_RESET      if the channel associated queue (if any) was reset.
  */
 #define chIOGet(ip) ((ip)->vmt->get(ip, TIME_INFINITE))
 
@@ -178,12 +174,9 @@ typedef struct {
  *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      - @a TIME_INFINITE no timeout.
  *                      .
- * @return              A byte value from the queue.
+ * @return              A byte value from the queue or:
  * @retval Q_TIMEOUT    if the specified time expired.
- * @retval Q_RESET      if the channel associated queue (if any) has been
- *                      reset.
- *
- * @api
+ * @retval Q_RESET      if the channel associated queue (if any) was reset.
  */
 #define chIOGetTimeout(ip, time) ((ip)->vmt->get(ip, time))
 
@@ -201,8 +194,6 @@ typedef struct {
  *                      - @a TIME_INFINITE no timeout.
  *                      .
  * @return              The number of bytes transferred.
- *
- * @api
  */
 #define chIOWriteTimeout(ip, bp, n, time)                                   \
   ((ip)->vmt->writet(ip, bp, n, time))
@@ -221,47 +212,26 @@ typedef struct {
  *                      - @a TIME_INFINITE no timeout.
  *                      .
  * @return              The number of bytes transferred.
- *
- * @api
  */
 #define chIOReadTimeout(ip, bp, n, time)                                    \
   ((ip)->vmt->readt(ip, bp, n, time))
 
 #if CH_USE_EVENTS
-
-/** @brief No pending conditions.*/
-#define IO_NO_ERROR             0
-/** @brief Connection happened.*/
-#define IO_CONNECTED            1
-/** @brief Disconnection happened.*/
-#define IO_DISCONNECTED         2
-/** @brief Data available in the input queue.*/
-#define IO_INPUT_AVAILABLE      4
-/** @brief Output queue empty.*/
-#define IO_OUTPUT_EMPTY         8
-
-/**
- * @brief   Type of an I/O condition flags mask.
- */
-typedef uint_fast16_t ioflags_t;
-
 /**
  * @brief   @p BaseAsynchronousChannel specific methods.
  */
 #define _base_asynchronous_channel_methods                                  \
-  _base_channel_methods                                                     \
-  /* Channel read method with timeout specification.*/                      \
-  ioflags_t (*getflags)(void *instance);
+  _base_channel_methods
 
 /**
  * @brief   @p BaseAsynchronousChannel specific data.
  */
 #define _base_asynchronous_channel_data                                     \
   _base_channel_data                                                        \
-  /* I/O condition event source.*/                                          \
-  EventSource           event;                                              \
-  /* I/O condition flags.*/                                                 \
-  ioflags_t             flags;
+  /* Data Available EventSource.*/                                          \
+  EventSource           ievent;                                             \
+  /* Data Transmitted EventSource.*/                                        \
+  EventSource           oevent;
 
 /**
  * @brief   @p BaseAsynchronousChannel virtual methods table.
@@ -284,63 +254,28 @@ typedef struct {
 } BaseAsynchronousChannel;
 
 /**
- * @brief   Returns the I/O condition event source.
- * @details The event source is broadcasted when an I/O condition happens.
+ * @brief   Returns the write event source.
+ * @details The write event source is broadcasted when the channel is ready
+ *          for write operations. This usually happens when the internal
+ *          output queue becomes empty.
  *
  * @param[in] ip        pointer to a @p BaseAsynchronousChannel or derived
  *                      class
  * @return              A pointer to an @p EventSource object.
- *
- * @api
  */
-#define chIOGetEventSource(ip) (&((ip)->event))
+#define chIOGetWriteEventSource(ip) (&((ip)->oevent))
 
 /**
- * @brief   Adds condition flags to the channel's mask.
- * @details This function is usually called from the I/O ISTs in order to
- *          notify I/O conditions such as data events, errors, signalù
- *          changes etc.
+ * @brief   Returns the read event source.
+ * @details The read event source is broadcasted when the channel is ready
+ *          for read operations. This usually happens when the internal
+ *          input queue becomes non-empty.
  *
  * @param[in] ip        pointer to a @p BaseAsynchronousChannel or derived
  *                      class
- * @param[in] mask      condition flags to be added to the mask
- *
- * @iclass
+ * @return              A pointer to an @p EventSource object.
  */
-#define chIOAddFlagsI(ip, mask) {                                           \
-  (ip)->flags |= (mask);                                                    \
-  chEvtBroadcastI(&(ip)->event);                                            \
-}
-
-/**
- * @brief   Returns and clears the errors mask associated to the channel.
- *
- * @param[in] ip        pointer to a @p BaseAsynchronousChannel or derived
- *                      class
- * @return              The condition flags modified since last time this
- *                      function was invoked.
- *
- * @api
- */
-#define chIOGetAndClearFlags(ip) ((ip)->vmt->getflags(ip))
-
-/**
- * @brief   Default implementation of the @p getflags virtual method.
- *
- * @param[in] ip        pointer to a @p BaseAsynchronousChannel or derived
- *                      class
- * @return              The condition flags modified since last time this
- *                      function was invoked.
- *
- * @notapi
- */
-#define _ch_get_and_clear_flags_impl(ip)                                    \
-  ioflags_t mask;                                                           \
-  chSysLock();                                                              \
-  mask = ((BaseAsynchronousChannel *)(ip))->flags;                          \
-  ((BaseAsynchronousChannel *)(ip))->flags = IO_NO_ERROR;                   \
-  chSysUnlock();                                                            \
-  return mask
+#define chIOGetReadEventSource(ip) (&((ip)->ievent))
 
 #endif /* CH_USE_EVENTS */
 

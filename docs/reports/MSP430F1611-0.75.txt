@@ -5,7 +5,7 @@ Settings: MCLK=DCOCLK 750KHz
 
 *** ChibiOS/RT test suite
 ***
-*** Kernel:       2.1.6unstable
+*** Kernel:       2.0.6
 *** GCC Version:  3.2.3
 *** Architecture: MSP430
 *** Core Variant: MSP430
@@ -32,9 +32,6 @@ Settings: MCLK=DCOCLK 750KHz
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 2.3 (Semaphores, atomic signal-wait)
---- Result: SUCCESS
-----------------------------------------------------------------------------
---- Test Case 2.4 (Binary Semaphores, functionality)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 3.1 (Mutexes, priority enqueuing test)
@@ -98,7 +95,7 @@ Settings: MCLK=DCOCLK 750KHz
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.1 (Benchmark, messages #1)
---- Score : 1970 msgs/S, 3940 ctxswc/S
+--- Score : 1971 msgs/S, 3942 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.2 (Benchmark, messages #2)
@@ -114,11 +111,11 @@ Settings: MCLK=DCOCLK 750KHz
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.5 (Benchmark, threads, full cycle)
---- Score : 1120 threads/S
+--- Score : 1145 threads/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.6 (Benchmark, threads, create only)
---- Score : 1523 threads/S
+--- Score : 1545 threads/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.7 (Benchmark, mass reschedule, 5 threads)
@@ -134,7 +131,7 @@ Settings: MCLK=DCOCLK 750KHz
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.10 (Benchmark, virtual timers set/reset)
---- Score : 5628 timers/S
+--- Score : 5644 timers/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.11 (Benchmark, semaphores wait/signal)

@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #ifndef _BOARD_H_
@@ -28,7 +35,7 @@
  * Board identifier.
  */
 #define BOARD_ST_STM3210C_EVAL
-#define BOARD_NAME              "ST STM3210C-EVAL"
+#define BOARD_NAME "ST STM3210C-EVAL"
 
 /*
  * Board frequencies.
@@ -37,7 +44,8 @@
 #define STM32_HSECLK            25000000
 
 /*
- * MCU type, supported types are defined in ./os/hal/platforms/hal_lld.h.
+ * MCU type, this macro is used by both the ST library and the ChibiOS/RT
+ * native STM32 HAL.
  */
 #define STM32F10X_CL
 
@@ -112,15 +120,5 @@
 #define VAL_GPIOECRL            0x44444444      /*  PE7...PE0 */
 #define VAL_GPIOECRH            0x44444444      /* PE15...PE8 */
 #define VAL_GPIOEODR            0xFFFFFFFF
-
-#if !defined(_FROM_ASM_)
-#ifdef __cplusplus
-extern "C" {
-#endif
-  void boardInit(void);
-#ifdef __cplusplus
-}
-#endif
-#endif /* _FROM_ASM_ */
 
 #endif /* _BOARD_H_ */

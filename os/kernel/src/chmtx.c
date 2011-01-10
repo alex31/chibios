@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -27,8 +34,8 @@
  *          <h2>Operation mode</h2>
  *          A mutex is a threads synchronization object that can be in two
  *          distinct states:
- *          - Not owned (unlocked).
- *          - Owned by a thread (locked).
+ *          - Not owned.
+ *          - Owned by a thread.
  *          .
  *          Operations defined for mutexes:
  *          - <b>Lock</b>: The mutex is checked, if the mutex is not owned by
@@ -39,6 +46,8 @@
  *            priority thread waiting in the queue, if any, is resumed and made
  *            owner of the mutex.
  *          .
+ *          In order to use the Mutexes APIs the @p CH_USE_MUTEXES option must
+ *          be enabled in @p chconf.h.
  *          <h2>Constraints</h2>
  *          In ChibiOS/RT the Unlock operations are always performed in
  *          lock-reverse order. The unlock API does not even have a parameter,
@@ -57,23 +66,17 @@
  *          The mechanism works with any number of nested mutexes and any
  *          number of involved threads. The algorithm complexity (worst case)
  *          is N with N equal to the number of nested mutexes.
- * @pre     In order to use the mutex APIs the @p CH_USE_MUTEXES option
- *          must be enabled in @p chconf.h.
- * @post    Enabling mutexes requires 5-12 (depending on the architecture)
- *          extra bytes in the @p Thread structure.
  * @{
  */
 
 #include "ch.h"
 
-#if CH_USE_MUTEXES || defined(__DOXYGEN__)
+#if CH_USE_MUTEXES
 
 /**
  * @brief   Initializes s @p Mutex structure.
  *
  * @param[out] mp       pointer to a @p Mutex structure
- *
- * @init
  */
 void chMtxInit(Mutex *mp) {
 
@@ -85,12 +88,8 @@ void chMtxInit(Mutex *mp) {
 
 /**
  * @brief   Locks the specified mutex.
- * @post    The mutex is locked and inserted in the per-thread stack of owned
- *          mutexes.
  *
  * @param[in] mp        pointer to the @p Mutex structure
- *
- * @api
  */
 void chMtxLock(Mutex *mp) {
 
@@ -103,12 +102,8 @@ void chMtxLock(Mutex *mp) {
 
 /**
  * @brief   Locks the specified mutex.
- * @post    The mutex is locked and inserted in the per-thread stack of owned
- *          mutexes.
  *
  * @param[in] mp        pointer to the @p Mutex structure
- *
- * @sclass
  */
 void chMtxLockS(Mutex *mp) {
   Thread *ctp = currp;
@@ -148,11 +143,7 @@ void chMtxLockS(Mutex *mp) {
         break;
 #endif
       case THD_STATE_READY:
-#if CH_DBG_ENABLE_ASSERTS
-        /* Prevents an assertion in chSchReadyI().*/
-        tp->p_state = THD_STATE_CURRENT;
-#endif
-        /* Re-enqueues tp with its new priority on the ready list.*/
+        /* Re-enqueues  tp with its new priority on the ready list.*/
         chSchReadyI(dequeue(tp));
       }
       break;
@@ -176,20 +167,13 @@ void chMtxLockS(Mutex *mp) {
 
 /**
  * @brief   Tries to lock a mutex.
- * @details This function attempts to lock a mutex, if the mutex is already
- *          locked by another thread then the function exits without waiting.
- * @post    The mutex is locked and inserted in the per-thread stack of owned
- *          mutexes.
- * @note    This function does not have any overhead related to the
- *          priority inheritance mechanism because it does not try to
- *          enter a sleep state.
+ * @details This function does not have any overhead related to
+ *          the priority inheritance mechanism because it does not try to
+ *          enter a sleep state on the mutex.
  *
  * @param[in] mp        pointer to the @p Mutex structure
- * @return              The operation status.
- * @retval TRUE         if the mutex has been successfully acquired
+ * @retval TRUE         if the mutex was successfully acquired
  * @retval FALSE        if the lock attempt failed.
- *
- * @api
  */
 bool_t chMtxTryLock(Mutex *mp) {
   bool_t b;
@@ -204,20 +188,13 @@ bool_t chMtxTryLock(Mutex *mp) {
 
 /**
  * @brief   Tries to lock a mutex.
- * @details This function attempts to lock a mutex, if the mutex is already
- *          taken by another thread then the function exits without waiting.
- * @post    The mutex is locked and inserted in the per-thread stack of owned
- *          mutexes.
- * @note    This function does not have any overhead related to the
- *          priority inheritance mechanism because it does not try to
- *          enter a sleep state.
+ * @details This function does not have any overhead related to
+ *          the priority inheritance mechanism because it does not try to
+ *          enter a sleep state on the mutex.
  *
  * @param[in] mp        pointer to the @p Mutex structure
- * @return              The operation status.
- * @retval TRUE         if the mutex has been successfully acquired
+ * @retval TRUE         if the mutex was successfully acquired
  * @retval FALSE        if the lock attempt failed.
- *
- * @sclass
  */
 bool_t chMtxTryLockS(Mutex *mp) {
 
@@ -233,13 +210,8 @@ bool_t chMtxTryLockS(Mutex *mp) {
 
 /**
  * @brief   Unlocks the next owned mutex in reverse lock order.
- * @pre     The invoking thread <b>must</b> have at least one owned mutex.
- * @post    The mutex is unlocked and removed from the per-thread stack of
- *          owned mutexes.
  *
- * @return              A pointer to the unlocked mutex.
- *
- * @api
+ * @return              The pointer to the unlocked mutex.
  */
 Mutex *chMtxUnlock(void) {
   Thread *ctp = currp;
@@ -291,15 +263,9 @@ Mutex *chMtxUnlock(void) {
 
 /**
  * @brief   Unlocks the next owned mutex in reverse lock order.
- * @pre     The invoking thread <b>must</b> have at least one owned mutex.
- * @post    The mutex is unlocked and removed from the per-thread stack of
- *          owned mutexes.
- * @post    This function does not reschedule so a call to a rescheduling
- *          function must be performed before unlocking the kernel.
+ * @note    This function does not reschedule internally.
  *
- * @return              A pointer to the unlocked mutex.
- *
- * @sclass
+ * @return              The pointer to the unlocked mutex.
  */
 Mutex *chMtxUnlockS(void) {
   Thread *ctp = currp;
@@ -348,14 +314,10 @@ Mutex *chMtxUnlockS(void) {
 
 /**
  * @brief   Unlocks all the mutexes owned by the invoking thread.
- * @post    The stack of owned mutexes is emptied and all the found
- *          mutexes are unlocked.
- * @note    This function is <b>MUCH MORE</b> efficient than releasing the
+ * @details This function is <b>MUCH MORE</b> efficient than releasing the
  *          mutexes one by one and not just because the call overhead,
  *          this function does not have any overhead related to the priority
  *          inheritance mechanism.
- *
- * @api
  */
 void chMtxUnlockAll(void) {
   Thread *ctp = currp;

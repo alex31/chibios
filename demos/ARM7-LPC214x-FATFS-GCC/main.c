@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include <stdio.h>
@@ -43,21 +50,24 @@ static bool_t fs_ready = FALSE;
 
 /* Maximum speed SPI configuration (18MHz, CPHA=0, CPOL=0).*/
 static SPIConfig hs_spicfg = {
-  NULL,
   IOPORT1,
   PA_SSEL1,
   CR0_DSS8BIT | CR0_FRFSPI | CR0_CLOCKRATE(0),
+  0,
   2
 };
 
 /* Low speed SPI configuration (281.250KHz, CPHA=0, CPOL=0).*/
 static SPIConfig ls_spicfg = {
-  NULL,
   IOPORT1,
   PA_SSEL1,
   CR0_DSS8BIT | CR0_FRFSPI | CR0_CLOCKRATE(0),
+  0,
   254
 };
+
+/* MMC configuration (empty).*/
+static const MMCConfig mmc_cfg = {};
 
 /* Card insertion verification.*/
 static bool_t mmc_is_inserted(void) {
@@ -218,9 +228,10 @@ static void RemoveHandler(eventid_t id) {
 }
 
 /*
- * Application entry point.
+ * Entry point, note, the main() function is already a thread in the system
+ * on entry.
  */
-int main(void) {
+int main(int argc, char **argv) {
   static const evhandler_t evhndl[] = {
     TimerHandler,
     InsertHandler,
@@ -229,15 +240,8 @@ int main(void) {
   static EvTimer evt;
   struct EventListener el0, el1, el2;
 
-  /*
-   * System initializations.
-   * - HAL initialization, this also initializes the configured device drivers
-   *   and performs the board-specific initializations.
-   * - Kernel initialization, the main() function becomes a thread and the
-   *   RTOS is active.
-   */
-  halInit();
-  chSysInit();
+  (void)argc;
+  (void)argv;
 
   /*
    * Activates the serial driver 2 using the driver default configuration.
@@ -255,7 +259,7 @@ int main(void) {
   mmcObjectInit(&MMCD1, &SPID1,
                 &ls_spicfg, &hs_spicfg,
                 mmc_is_protected, mmc_is_inserted);
-  mmcStart(&MMCD1, NULL);
+  mmcStart(&MMCD1, &mmc_cfg);
 
   /*
    * Creates the blinker threads.

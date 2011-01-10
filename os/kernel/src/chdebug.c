@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -27,15 +34,12 @@
  *          - Parameters check.
  *          - Kernel assertions.
  *          .
- * @pre     In order to use the debug APIs the @p CH_DBG_ENABLE_TRACE,
- *          @p CH_DBG_ENABLE_ASSERTS, @p CH_DBG_ENABLE_CHECKS options must
- *          be enabled in @p chconf.h.
  * @{
  */
 
 #include "ch.h"
 
-#if CH_DBG_ENABLE_TRACE || defined(__DOXYGEN__)
+#if CH_DBG_ENABLE_TRACE
 /**
  * @brief   Public trace buffer.
  */
@@ -43,7 +47,6 @@ TraceBuffer trace_buffer;
 
 /**
  * @brief   Trace circular buffer subsystem initialization.
- * @note    Internal use only.
  */
 void trace_init(void) {
 
@@ -55,8 +58,6 @@ void trace_init(void) {
  * @brief   Inserts in the circular debug trace buffer a context switch record.
  *
  * @param[in] otp       the thread being switched out
- *
- * @notapi
  */
 void chDbgTrace(Thread *otp) {
 
@@ -69,8 +70,7 @@ void chDbgTrace(Thread *otp) {
 }
 #endif /* CH_DBG_ENABLE_TRACE */
 
-#if CH_DBG_ENABLE_ASSERTS || CH_DBG_ENABLE_CHECKS ||                        \
-    CH_DBG_ENABLE_STACK_CHECK || defined(__DOXYGEN__)
+#if CH_DBG_ENABLE_ASSERTS || CH_DBG_ENABLE_CHECKS || CH_DBG_ENABLE_STACK_CHECK
 /**
  * @brief   Pointer to the panic message.
  * @details This pointer is meant to be accessed through the debugger, it is

@@ -10,18 +10,24 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    AT91SAM7/mac_lld.c
- * @brief   AT91SAM7 low level MAC driver code.
- *
- * @addtogroup MAC
+ * @file AT91SAM7/mac_lld.c
+ * @brief AT91SAM7 low level MAC driver code.
+ * @addtogroup AT91SAM7_MAC
  * @{
  */
 
@@ -32,7 +38,7 @@
 #include "mii.h"
 #include "at91sam7_mii.h"
 
-#if HAL_USE_MAC || defined(__DOXYGEN__)
+#if CH_HAL_USE_MAC || defined(__DOXYGEN__)
 
 #define EMAC_PIN_MASK (AT91C_PB0_ETXCK_EREFCK  | AT91C_PB1_ETXEN         | \
                        AT91C_PB2_ETX0          | AT91C_PB3_ETX1          | \
@@ -54,7 +60,7 @@
 /*===========================================================================*/
 
 /**
- * @brief   Ethernet driver 1.
+ * @brief Ethernet driver 1.
  */
 MACDriver ETH1;
 
@@ -84,7 +90,7 @@ static uint8_t tb[EMAC_TRANSMIT_DESCRIPTORS * EMAC_TRANSMIT_BUFFERS_SIZE]
 /*===========================================================================*/
 
 /**
- * @brief   IRQ handler.
+ * @brief IRQ handler.
  */
 /** @cond never*/
 __attribute__((noinline))
@@ -121,9 +127,8 @@ static void serve_interrupt(void) {
 }
 
 /**
- * @brief   Cleans an incomplete frame.
- *
- * @param[in] from      the start position of the incomplete frame
+ * @brief Cleans an incomplete frame.
+ * @param from the start position of the incomplete frame
  */
 static void cleanup(EMACDescriptor *from) {
 
@@ -139,9 +144,7 @@ static void cleanup(EMACDescriptor *from) {
 /*===========================================================================*/
 
 /**
- * @brief   EMAC IRQ handler.
- *
- * @isr
+ * @brief EMAC IRQ veneer handler.
  */
 CH_IRQ_HANDLER(irq_handler) {
 
@@ -157,9 +160,7 @@ CH_IRQ_HANDLER(irq_handler) {
 /*===========================================================================*/
 
 /**
- * @brief   Low level MAC initialization.
- *
- * @notapi
+ * @brief Low level MAC initialization.
  */
 void mac_lld_init(void) {
   unsigned i;
@@ -234,15 +235,13 @@ void mac_lld_init(void) {
 }
 
 /**
- * @brief   Low level MAC address setup.
+ * @brief Low level MAC address setup.
  *
- * @param[in] macp      pointer to the @p MACDriver object
- * @param[in] p         pointer to a six bytes buffer containing the MAC
- *                      address. If this parameter is set to @p NULL then
- *                      a system default MAC is used. The MAC address must
- *                      be aligned with the most significant byte first.
- *
- * @notapi
+ * @param[in] macp pointer to the @p MACDriver object
+ * @param[in] p pointer to a six bytes buffer containing the MAC address. If
+ *            this parameter is set to @p NULL then a system default MAC is
+ *            used. The MAC address must be aligned with the most significant
+ *            byte first.
  */
 void mac_lld_set_address(MACDriver *macp, const uint8_t *p) {
 
@@ -253,17 +252,15 @@ void mac_lld_set_address(MACDriver *macp, const uint8_t *p) {
 }
 
 /**
- * @brief   Returns a transmission descriptor.
+ * @brief Returns a transmission descriptor.
  * @details One of the available transmission descriptors is locked and
  *          returned.
  *
- * @param[in] macp      pointer to the @p MACDriver object
- * @param[out] tdp      pointer to a @p MACTransmitDescriptor structure
- * @return              The operation status.
- * @retval RDY_OK       the descriptor has been obtained.
- * @retval RDY_TIMEOUT  descriptor not available.
- *
- * @notapi
+ * @param[in] macp pointer to the @p MACDriver object
+ * @param[out] tdp pointer to a @p MACTransmitDescriptor structure
+ * @return The operation status.
+ * @retval RDY_OK the descriptor was obtained.
+ * @retval RDY_TIMEOUT descriptor not available.
  */
 msg_t max_lld_get_transmit_descriptor(MACDriver *macp,
                                       MACTransmitDescriptor *tdp) {
@@ -298,18 +295,14 @@ msg_t max_lld_get_transmit_descriptor(MACDriver *macp,
 }
 
 /**
- * @brief   Writes to a transmit descriptor's stream.
+ * @brief Writes to a transmit descriptor's stream.
  *
- * @param[in] tdp       pointer to a @p MACTransmitDescriptor structure
- * @param[in] buf       pointer to the buffer cointaining the data to be
- *                      written
- * @param[in] size      number of bytes to be written
- * @return              The number of bytes written into the descriptor's
- *                      stream, this value can be less than the amount
- *                      specified in the parameter @p size if the maximum
- *                      frame size is reached.
- *
- * @notapi
+ * @param[in] tdp pointer to a @p MACTransmitDescriptor structure
+ * @param[in] buf pointer to the buffer cointaining the data to be written
+ * @param[in] size number of bytes to be written
+ * @return The number of bytes written into the descriptor's stream, this
+ *         value can be less than the amount specified in the parameter
+ *         @p size if the maximum frame size is reached.
  */
 size_t mac_lld_write_transmit_descriptor(MACTransmitDescriptor *tdp,
                                          uint8_t *buf,
@@ -327,12 +320,10 @@ size_t mac_lld_write_transmit_descriptor(MACTransmitDescriptor *tdp,
 }
 
 /**
- * @brief   Releases a transmit descriptor and starts the transmission of the
- *          enqueued data as a single frame.
+ * @brief Releases a transmit descriptor and starts the transmission of the
+ *        enqueued data as a single frame.
  *
- * @param[in] tdp       the pointer to the @p MACTransmitDescriptor structure
- *
- * @notapi
+ * @param[in] tdp the pointer to the @p MACTransmitDescriptor structure
  */
 void mac_lld_release_transmit_descriptor(MACTransmitDescriptor *tdp) {
 
@@ -345,15 +336,13 @@ void mac_lld_release_transmit_descriptor(MACTransmitDescriptor *tdp) {
 }
 
 /**
- * @brief   Returns a receive descriptor.
+ * @brief Returns a receive descriptor.
  *
- * @param[in] macp      pointer to the @p MACDriver object
- * @param[out] rdp      pointer to a @p MACReceiveDescriptor structure
- * @return              The operation status.
- * @retval RDY_OK       the descriptor has been obtained.
- * @retval RDY_TIMEOUT  descriptor not available.
- *
- * @notapi
+ * @param[in] macp pointer to the @p MACDriver object
+ * @param[out] rdp pointer to a @p MACReceiveDescriptor structure
+ * @return The operation status.
+ * @retval RDY_OK the descriptor was obtained.
+ * @retval RDY_TIMEOUT descriptor not available.
  */
 msg_t max_lld_get_receive_descriptor(MACDriver *macp,
                                      MACReceiveDescriptor *rdp) {
@@ -420,17 +409,14 @@ restart:
 }
 
 /**
- * @brief   Reads from a receive descriptor's stream.
+ * @brief Reads from a receive descriptor's stream.
  *
- * @param[in] rdp       pointer to a @p MACReceiveDescriptor structure
- * @param[in] buf       pointer to the buffer that will receive the read data
- * @param[in] size      number of bytes to be read
- * @return              The number of bytes read from the descriptor's
- *                      stream, this value can be less than the amount
- *                      specified in the parameter @p size if there are
- *                      no more bytes to read.
- *
- * @notapi
+ * @param[in] rdp pointer to a @p MACReceiveDescriptor structure
+ * @param[in] buf pointer to the buffer that will receive the read data
+ * @param[in] size number of bytes to be read
+ * @return The number of bytes read from the descriptor's stream, this
+ *         value can be less than the amount specified in the parameter
+ *         @p size if there are no more bytes to read.
  */
 size_t mac_lld_read_receive_descriptor(MACReceiveDescriptor *rdp,
                                          uint8_t *buf,
@@ -455,13 +441,11 @@ size_t mac_lld_read_receive_descriptor(MACReceiveDescriptor *rdp,
 }
 
 /**
- * @brief   Releases a receive descriptor.
+ * @brief Releases a receive descriptor.
  * @details The descriptor and its buffer are made available for more incoming
  *          frames.
  *
- * @param[in] rdp       the pointer to the @p MACReceiveDescriptor structure
- *
- * @notapi
+ * @param[in] rdp the pointer to the @p MACReceiveDescriptor structure
  */
 void mac_lld_release_receive_descriptor(MACReceiveDescriptor *rdp) {
   bool_t done;
@@ -487,14 +471,12 @@ void mac_lld_release_receive_descriptor(MACReceiveDescriptor *rdp) {
 }
 
 /**
- * @brief   Updates and returns the link status.
+ * @brief Updates and returns the link status.
  *
- * @param[in] macp      pointer to the @p MACDriver object
- * @return              The link status.
- * @retval TRUE         if the link is active.
- * @retval FALSE        if the link is down.
- *
- * @notapi
+ * @param[in] macp pointer to the @p MACDriver object
+ * @return The link status.
+ * @retval TRUE if the link is active.
+ * @retval FALSE if the link is down.
  */
 bool_t mac_lld_poll_link_status(MACDriver *macp) {
   uint32_t ncfgr, bmsr, bmcr, lpa;
@@ -527,6 +509,6 @@ bool_t mac_lld_poll_link_status(MACDriver *macp) {
   return link_up = TRUE;
 }
 
-#endif /* HAL_USE_MAC */
+#endif /* CH_HAL_USE_MAC */
 
 /** @} */

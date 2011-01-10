@@ -10,25 +10,32 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    STM32/serial_lld.h
  * @brief   STM32 low level serial driver header.
  *
- * @addtogroup SERIAL
+ * @addtogroup STM32_SERIAL
  * @{
  */
 
 #ifndef _SERIAL_LLD_H_
 #define _SERIAL_LLD_H_
 
-#if HAL_USE_SERIAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_SERIAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -43,8 +50,8 @@
  * @details If set to @p TRUE the support for USART1 is included.
  * @note    The default is @p FALSE.
  */
-#if !defined(STM32_SERIAL_USE_USART1) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USE_USART1             TRUE
+#if !defined(USE_STM32_USART1) || defined(__DOXYGEN__)
+#define USE_STM32_USART1            TRUE
 #endif
 
 /**
@@ -52,8 +59,8 @@
  * @details If set to @p TRUE the support for USART2 is included.
  * @note    The default is @p TRUE.
  */
-#if !defined(STM32_SERIAL_USE_USART2) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USE_USART2             TRUE
+#if !defined(USE_STM32_USART2) || defined(__DOXYGEN__)
+#define USE_STM32_USART2            TRUE
 #endif
 
 /**
@@ -61,17 +68,19 @@
  * @details If set to @p TRUE the support for USART3 is included.
  * @note    The default is @p FALSE.
  */
-#if !defined(STM32_SERIAL_USE_USART3) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USE_USART3             TRUE
+#if !defined(USE_STM32_USART3) || defined(__DOXYGEN__)
+#define USE_STM32_USART3            TRUE
 #endif
 
+
+#if defined(STM32F10X_HD) || defined(STM32F10X_CL) || defined(__DOXYGEN__)
 /**
  * @brief   UART4 driver enable switch.
  * @details If set to @p TRUE the support for UART4 is included.
  * @note    The default is @p FALSE.
  */
-#if !defined(STM32_SERIAL_USE_UART4) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USE_UART4              TRUE
+#if !defined(USE_STM32_UART4) || defined(__DOXYGEN__)
+#define USE_STM32_UART4             TRUE
 #endif
 
 /**
@@ -79,78 +88,60 @@
  * @details If set to @p TRUE the support for UART5 is included.
  * @note    The default is @p FALSE.
  */
-#if !defined(STM32_SERIAL_USE_UART5) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USE_UART5              TRUE
+#if !defined(USE_STM32_UART5) || defined(__DOXYGEN__)
+#define USE_STM32_UART5             TRUE
+#endif
 #endif
 
 /**
  * @brief   USART1 interrupt priority level setting.
  */
-#if !defined(STM32_SERIAL_USART1_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USART1_PRIORITY        12
+#if !defined(STM32_USART1_PRIORITY) || defined(__DOXYGEN__)
+#define STM32_USART1_PRIORITY       12
 #endif
 
 /**
  * @brief   USART2 interrupt priority level setting.
  */
-#if !defined(STM32_SERIAL_USART2_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USART2_PRIORITY        12)
+#if !defined(STM32_USART2_PRIORITY) || defined(__DOXYGEN__)
+#define STM32_USART2_PRIORITY       12)
 #endif
 
 /**
  * @brief   USART3 interrupt priority level setting.
  */
-#if !defined(STM32_SERIAL_USART3_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USART3_PRIORITY        12
+#if !defined(STM32_USART3_PRIORITY) || defined(__DOXYGEN__)
+#define STM32_USART3_PRIORITY       12
 #endif
 
+#if defined(STM32F10X_HD) || defined(STM32F10X_CL) || defined(__DOXYGEN__)
 /**
  * @brief   UART4 interrupt priority level setting.
  */
-#if !defined(STM32_SERIAL_UART4_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_SERIAL_UART4_PRIORITY         12
+#if !defined(STM32_UART4_PRIORITY) || defined(__DOXYGEN__)
+#define STM32_UART4_PRIORITY        12
 #endif
 
 /**
  * @brief   UART5 interrupt priority level setting.
  */
-#if !defined(STM32_SERIAL_UART5_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_SERIAL_UART5_PRIORITY         12
+#if !defined(STM32_UART5_PRIORITY) || defined(__DOXYGEN__)
+#define STM32_UART5_PRIORITY        12
+#endif
 #endif
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
-#if STM32_SERIAL_USE_USART1 && !STM32_HAS_USART1
-#error "USART1 not present in the selected device"
-#endif
-
-#if STM32_SERIAL_USE_USART2 && !STM32_HAS_USART2
-#error "USART2 not present in the selected device"
-#endif
-
-#if STM32_SERIAL_USE_USART3 && !STM32_HAS_USART3
-#error "USART3 not present in the selected device"
-#endif
-
-#if STM32_SERIAL_USE_UART4 && !STM32_HAS_UART4
-#error "UART4 not present in the selected device"
-#endif
-
-#if STM32_SERIAL_USE_UART5 && !STM32_HAS_UART5
-#error "UART5 not present in the selected device"
-#endif
-
-#if !STM32_SERIAL_USE_USART1 && !STM32_SERIAL_USE_USART2 &&                 \
-    !STM32_SERIAL_USE_USART3 && !STM32_SERIAL_USE_UART4  &&                 \
-    !STM32_SERIAL_USE_UART5
-#error "SERIAL driver activated but no USART/UART peripheral assigned"
-#endif
-
 /*===========================================================================*/
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
+
+/**
+ * @brief   Serial Driver condition flags type.
+ */
+typedef uint32_t sdflags_t;
 
 /**
  * @brief   STM32 Serial Driver configuration structure.
@@ -190,6 +181,10 @@ typedef struct {
   InputQueue                iqueue;                                         \
   /* Output queue.*/                                                        \
   OutputQueue               oqueue;                                         \
+  /* Status Change @p EventSource.*/                                        \
+  EventSource               sevent;                                         \
+  /* I/O driver status flags.*/                                             \
+  sdflags_t                 flags;                                          \
   /* Input circular buffer.*/                                               \
   uint8_t                   ib[SERIAL_BUFFERS_SIZE];                        \
   /* Output circular buffer.*/                                              \
@@ -214,20 +209,22 @@ typedef struct {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
-#if STM32_SERIAL_USE_USART1 && !defined(__DOXYGEN__)
+#if USE_STM32_USART1 && !defined(__DOXYGEN__)
 extern SerialDriver SD1;
 #endif
-#if STM32_SERIAL_USE_USART2 && !defined(__DOXYGEN__)
+#if USE_STM32_USART2 && !defined(__DOXYGEN__)
 extern SerialDriver SD2;
 #endif
-#if STM32_SERIAL_USE_USART3 && !defined(__DOXYGEN__)
+#if USE_STM32_USART3 && !defined(__DOXYGEN__)
 extern SerialDriver SD3;
 #endif
-#if STM32_SERIAL_USE_UART4 && !defined(__DOXYGEN__)
+#if defined(STM32F10X_HD) || defined(STM32F10X_CL)
+#if USE_STM32_UART4 && !defined(__DOXYGEN__)
 extern SerialDriver SD4;
 #endif
-#if STM32_SERIAL_USE_UART5 && !defined(__DOXYGEN__)
+#if USE_STM32_UART5 && !defined(__DOXYGEN__)
 extern SerialDriver SD5;
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -240,7 +237,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_SERIAL */
+#endif /* CH_HAL_USE_SERIAL */
 
 #endif /* _SERIAL_LLD_H_ */
 

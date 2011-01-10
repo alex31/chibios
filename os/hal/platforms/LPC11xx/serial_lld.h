@@ -10,25 +10,32 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    LPC11xx/serial_lld.h
  * @brief   LPC11xx low level serial driver header.
  *
- * @addtogroup SERIAL
+ * @addtogroup LPC11xx_SERIAL
  * @{
  */
 
 #ifndef _SERIAL_LLD_H_
 #define _SERIAL_LLD_H_
 
-#if HAL_USE_SERIAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_SERIAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -88,8 +95,8 @@
  * @details If set to @p TRUE the support for UART0 is included.
  * @note    The default is @p TRUE .
  */
-#if !defined(LPC11xx_SERIAL_USE_UART0) || defined(__DOXYGEN__)
-#define LPC11xx_SERIAL_USE_UART0            TRUE
+#if !defined(USE_LPC11xx_UART0) || defined(__DOXYGEN__)
+#define USE_LPC11xx_UART0           TRUE
 #endif
 
 /**
@@ -101,45 +108,33 @@
  *          also increase the worst case interrupt response time because the
  *          preload loops.
  */
-#if !defined(LPC11xx_SERIAL_FIFO_PRELOAD) || defined(__DOXYGEN__)
-#define LPC11xx_SERIAL_FIFO_PRELOAD         16
-#endif
-
-/**
- * @brief   UART0 PCLK divider.
- */
-#if !defined(LPC11xx_SERIAL_UART0CLKDIV) || defined(__DOXYGEN__)
-#define LPC11xx_SERIAL_UART0CLKDIV          1
+#if !defined(LPC11xx_UART_FIFO_PRELOAD) || defined(__DOXYGEN__)
+#define LPC11xx_UART_FIFO_PRELOAD   16
 #endif
 
 /**
  * @brief   UART0 interrupt priority level setting.
  */
-#if !defined(LPC11xx_SERIAL_UART0_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define LPC11xx_SERIAL_UART0_IRQ_PRIORITY   3
+#if !defined(LPC11xx_UART0_PRIORITY) || defined(__DOXYGEN__)
+#define LPC11xx_UART0_PRIORITY      3
 #endif
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
-#if (LPC11xx_SERIAL_UART0CLKDIV < 1) || (LPC11xx_SERIAL_UART0CLKDIV > 255)
-#error "invalid LPC11xx_SERIAL_UART0CLKDIV setting"
+#if (LPC11xx_UART_FIFO_PRELOAD < 1) || (LPC11xx_UART_FIFO_PRELOAD > 16)
+#error "invalid LPC11xx_UART_FIFO_PRELOAD setting"
 #endif
-
-#if (LPC11xx_SERIAL_FIFO_PRELOAD < 1) || (LPC11xx_SERIAL_FIFO_PRELOAD > 16)
-#error "invalid LPC11xx_SERIAL_FIFO_PRELOAD setting"
-#endif
-
-/**
- * @brief   UART0 clock.
- */
-#define  LPC11xx_SERIAL_UART0_PCLK                                          \
-  (LPC11xx_MAINCLK / LPC11xx_SERIAL_UART0CLKDIV)
 
 /*===========================================================================*/
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
+
+/**
+ * @brief Serial Driver condition flags type.
+ */
+typedef uint32_t sdflags_t;
 
 /**
  * @brief   LPC11xx Serial Driver configuration structure.
@@ -162,7 +157,7 @@ typedef struct {
 } SerialConfig;
 
 /**
- * @brief   @p SerialDriver specific data.
+ * @brief @p SerialDriver specific data.
  */
 #define _serial_driver_data                                                 \
   _base_asynchronous_channel_data                                           \
@@ -172,6 +167,10 @@ typedef struct {
   InputQueue                iqueue;                                         \
   /* Output queue.*/                                                        \
   OutputQueue               oqueue;                                         \
+  /* Status Change @p EventSource.*/                                        \
+  EventSource               sevent;                                         \
+  /* I/O driver status flags.*/                                             \
+  sdflags_t                 flags;                                          \
   /* Input circular buffer.*/                                               \
   uint8_t                   ib[SERIAL_BUFFERS_SIZE];                        \
   /* Output circular buffer.*/                                              \
@@ -188,7 +187,7 @@ typedef struct {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
-#if LPC11xx_SERIAL_USE_UART0 && !defined(__DOXYGEN__)
+#if USE_LPC11xx_UART0 && !defined(__DOXYGEN__)
 extern SerialDriver SD1;
 #endif
 
@@ -202,7 +201,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_SERIAL */
+#endif /* CH_HAL_USE_SERIAL */
 
 #endif /* _SERIAL_LLD_H_ */
 

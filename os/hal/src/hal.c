@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -46,49 +53,35 @@
 
 /**
  * @brief   HAL initialization.
- * @details This function invokes the low level initialization code then
- *          initializes all the drivers enabled in the HAL. Finally the
- *          board-specific initialization is performed by invoking
- *          @p boardInit() (usually defined in @p board.c).
- *
- * @init
  */
 void halInit(void) {
 
   hal_lld_init();
 
-#if HAL_USE_PAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_PAL
   palInit(&pal_default_config);
 #endif
-#if HAL_USE_ADC || defined(__DOXYGEN__)
+#if CH_HAL_USE_ADC
   adcInit();
 #endif
-#if HAL_USE_CAN || defined(__DOXYGEN__)
+#if CH_HAL_USE_CAN
   canInit();
 #endif
-#if HAL_USE_I2C || defined(__DOXYGEN__)
-  i2cInit();
-#endif
-#if HAL_USE_MAC || defined(__DOXYGEN__)
+#if CH_HAL_USE_MAC
   macInit();
 #endif
-#if HAL_USE_PWM || defined(__DOXYGEN__)
+#if CH_HAL_USE_PWM
   pwmInit();
 #endif
-#if HAL_USE_SERIAL || defined(__DOXYGEN__)
+#if CH_HAL_USE_SERIAL
   sdInit();
 #endif
-#if HAL_USE_SPI || defined(__DOXYGEN__)
+#if CH_HAL_USE_SPI
   spiInit();
 #endif
-#if HAL_USE_MMC_SPI || defined(__DOXYGEN__)
+#if CH_HAL_USE_MMC_SPI
   mmcInit();
 #endif
-#if HAL_USE_UART || defined(__DOXYGEN__)
-  uartInit();
-#endif
-  /* Board specific initialization.*/
-  boardInit();
 }
 
 /** @} */

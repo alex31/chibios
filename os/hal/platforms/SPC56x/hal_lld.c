@@ -10,18 +10,25 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    SPC56x/hal_lld.c
  * @brief   SPC563 HAL subsystem low level driver source.
  *
- * @addtogroup HAL
+ * @addtogroup SPC563_HAL
  * @{
  */
 
@@ -50,8 +57,6 @@
 
 /**
  * @brief   Low level HAL driver initialization.
- *
- * @notapi
  */
 void hal_lld_init(void) {
   extern void _vectors(void);
@@ -109,9 +114,6 @@ void hal_lld_init(void) {
  * @brief   SPC563 clocks and PLL initialization.
  * @note    All the involved constants come from the file @p board.h and
  *          @p hal_lld.h
- * @note    This function must be invoked only after the system reset.
- *
- * @special
  */
 void spc563_clock_init(void) {
 

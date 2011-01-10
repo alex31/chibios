@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -38,24 +45,19 @@ static void TimerHandler(eventid_t id) {
     TestThread(&SD2);
 }
 
-/*
- * Application entry point.
- */
-int main(void) {
+int main(int argc, char **argv) {
   static EvTimer evt;
   static evhandler_t handlers[1] = {
     TimerHandler
   };
   static EventListener el0;
 
+  hwinit();
+
   /*
-   * System initializations.
-   * - HAL initialization, this also initializes the configured device drivers
-   *   and performs the board-specific initializations.
-   * - Kernel initialization, the main() function becomes a thread and the
-   *   RTOS is active.
+   * The main() function becomes a thread here then the interrupts are
+   * enabled and ChibiOS/RT goes live.
    */
-  halInit();
   chSysInit();
 
   /*

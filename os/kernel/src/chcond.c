@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 /*
    Concepts and parts of this file have been contributed by Leon Woestenberg.
@@ -31,22 +38,23 @@
  *          <h2>Operation mode</h2>
  *          The condition variable is a synchronization object meant to be
  *          used inside a zone protected by a @p Mutex. Mutexes and CondVars
- *          together can implement a Monitor construct.
- * @pre     In order to use the condition variable APIs the @p CH_USE_CONDVARS
+ *          together can implement a Monitor construct.<br>
+ *          In order to use the Condition Variables APIs the @p CH_USE_CONDVARS
  *          option must be enabled in @p chconf.h.
  * @{
  */
 
 #include "ch.h"
 
-#if (CH_USE_CONDVARS && CH_USE_MUTEXES) || defined(__DOXYGEN__)
+#if CH_USE_CONDVARS && CH_USE_MUTEXES
 
 /**
  * @brief   Initializes s @p CondVar structure.
+ * @note    This function can be invoked from within an interrupt handler even
+ *          if it is not an I-Class API because it does not touch any critical
+ *          kernel data structure.
  *
  * @param[out] cp       pointer to a @p CondVar structure
- *
- * @init
  */
 void chCondInit(CondVar *cp) {
 
@@ -59,8 +67,6 @@ void chCondInit(CondVar *cp) {
  * @brief   Signals one thread that is waiting on the condition variable.
  *
  * @param[in] cp        pointer to the @p CondVar structure
- *
- * @api
  */
 void chCondSignal(CondVar *cp) {
 
@@ -74,14 +80,8 @@ void chCondSignal(CondVar *cp) {
 
 /**
  * @brief   Signals one thread that is waiting on the condition variable.
- * @post    This function does not reschedule so a call to a rescheduling
- *          function must be performed before unlocking the kernel. Note that
- *          interrupt handlers always reschedule on exit so an explicit
- *          reschedule must not be performed in ISRs.
  *
  * @param[in] cp        pointer to the @p CondVar structure
- *
- * @iclass
  */
 void chCondSignalI(CondVar *cp) {
 
@@ -95,8 +95,6 @@ void chCondSignalI(CondVar *cp) {
  * @brief   Signals all threads that are waiting on the condition variable.
  *
  * @param[in] cp        pointer to the @p CondVar structure
- *
- * @api
  */
 void chCondBroadcast(CondVar *cp) {
 
@@ -108,14 +106,8 @@ void chCondBroadcast(CondVar *cp) {
 
 /**
  * @brief   Signals all threads that are waiting on the condition variable.
- * @post    This function does not reschedule so a call to a rescheduling
- *          function must be performed before unlocking the kernel. Note that
- *          interrupt handlers always reschedule on exit so an explicit
- *          reschedule must not be performed in ISRs.
  *
  * @param[in] cp        pointer to the @p CondVar structure
- *
- * @iclass
  */
 void chCondBroadcastI(CondVar *cp) {
 
@@ -133,17 +125,13 @@ void chCondBroadcastI(CondVar *cp) {
  * @details Releases the currently owned mutex, waits on the condition
  *          variable, and finally acquires the mutex again. All the sequence
  *          is performed atomically.
- * @pre     The invoking thread <b>must</b> have at least one owned mutex.
+ * @note    The invoking thread <b>must</b> have at least one owned mutex on
+ *          entry.
  *
  * @param[in] cp        pointer to the @p CondVar structure
- * @return              A message specifying how the invoking thread has been
- *                      released from the condition variable.
- * @retval RDY_OK       if the condvar has been signaled using
- *                      @p chCondSignal().
- * @retval RDY_RESET    if the condvar has been signaled using
- *                      @p chCondBroadcast().
- *
- * @api
+ * @return              The wakep mode.
+ * @retval RDY_OK       if the condvar was signaled using @p chCondSignal().
+ * @retval RDY_RESET    if the condvar was signaled using @p chCondBroadcast().
  */
 msg_t chCondWait(CondVar *cp) {
   msg_t msg;
@@ -159,17 +147,13 @@ msg_t chCondWait(CondVar *cp) {
  * @details Releases the currently owned mutex, waits on the condition
  *          variable, and finally acquires the mutex again. All the sequence
  *          is performed atomically.
- * @pre     The invoking thread <b>must</b> have at least one owned mutex.
+ * @note    The invoking thread <b>must</b> have at least one owned mutex on
+ *          entry.
  *
  * @param[in] cp        pointer to the @p CondVar structure
- * @return              A message specifying how the invoking thread has been
- *                      released from the condition variable.
- * @retval RDY_OK       if the condvar has been signaled using
- *                      @p chCondSignal().
- * @retval RDY_RESET    if the condvar has been signaled using
- *                      @p chCondBroadcast().
- *
- * @sclass
+ * @return              The wakep mode.
+ * @retval RDY_OK       if the condvar was signaled using @p chCondSignal().
+ * @retval RDY_RESET    if the condvar was signaled using @p chCondBroadcast().
  */
 msg_t chCondWaitS(CondVar *cp) {
   Thread *ctp = currp;
@@ -190,16 +174,15 @@ msg_t chCondWaitS(CondVar *cp) {
   return msg;
 }
 
-#if CH_USE_CONDVARS_TIMEOUT || defined(__DOXYGEN__)
+#if CH_USE_CONDVARS_TIMEOUT
 /**
  * @brief   Waits on the condition variable releasing the mutex lock.
  * @details Releases the currently owned mutex, waits on the condition
  *          variable, and finally acquires the mutex again. All the sequence
  *          is performed atomically.
- * @pre     The invoking thread <b>must</b> have at least one owned mutex.
- * @pre     The configuration option @p CH_USE_CONDVARS_TIMEOUT must be enabled
- *          in order to use this function.
- * @post    Exiting the function because a timeout does not re-acquire the
+ * @note    The invoking thread <b>must</b> have at least one owned mutex on
+ *          entry.
+ * @note    Exiting the function because a timeout does not re-acquire the
  *          mutex, the mutex ownership is lost.
  *
  * @param[in] cp        pointer to the @p CondVar structure
@@ -208,16 +191,11 @@ msg_t chCondWaitS(CondVar *cp) {
  *                      It is not possible to specify zero @p TIME_IMMEDIATE
  *                      as timeout specification because it would make no sense
  *                      in this function.
- * @return              A message specifying how the invoking thread has been
- *                      released from the condition variable.
- * @retval RDY_OK       if the condvar has been signaled using
- *                      @p chCondSignal().
- * @retval RDY_RESET    if the condvar has been signaled using
- *                      @p chCondBroadcast().
- * @retval RDY_TIMEOUT  if the condvar has not been signaled within the
- *                      specified timeout.
- *
- * @api
+ * @return              The wakep mode.
+ * @retval RDY_OK       if the condvar was signaled using @p chCondSignal().
+ * @retval RDY_RESET    if the condvar was signaled using @p chCondBroadcast().
+ * @retval RDY_TIMEOUT  if the condvar was not signaled @p within the specified
+ *                      timeout.
  */
 msg_t chCondWaitTimeout(CondVar *cp, systime_t time) {
   msg_t msg;
@@ -233,10 +211,9 @@ msg_t chCondWaitTimeout(CondVar *cp, systime_t time) {
  * @details Releases the currently owned mutex, waits on the condition
  *          variable, and finally acquires the mutex again. All the sequence
  *          is performed atomically.
- * @pre     The invoking thread <b>must</b> have at least one owned mutex.
- * @pre     The configuration option @p CH_USE_CONDVARS_TIMEOUT must be enabled
- *          in order to use this function.
- * @post    Exiting the function because a timeout does not re-acquire the
+ * @note    The invoking thread <b>must</b> have at least one owned mutex on
+ *          entry.
+ * @note    Exiting the function because a timeout does not re-acquire the
  *          mutex, the mutex ownership is lost.
  *
  * @param[in] cp        pointer to the @p CondVar structure
@@ -245,16 +222,11 @@ msg_t chCondWaitTimeout(CondVar *cp, systime_t time) {
  *                      It is not possible to specify zero @p TIME_IMMEDIATE
  *                      as timeout specification because it would make no sense
  *                      in this function.
- * @return              A message specifying how the invoking thread has been
- *                      released from the condition variable.
- * @retval RDY_OK       if the condvar has been signaled using
- *                      @p chCondSignal().
- * @retval RDY_RESET    if the condvar has been signaled using
- *                      @p chCondBroadcast().
- * @retval RDY_TIMEOUT  if the condvar has not been signaled within the
- *                      specified timeout.
- *
- * @sclass
+ * @return              The wakep mode.
+ * @retval RDY_OK       if the condvar was signaled using @p chCondSignal().
+ * @retval RDY_RESET    if the condvar was signaled using @p chCondBroadcast().
+ * @retval RDY_TIMEOUT  if the condvar was not signaled within the specified
+ *                      timeout.
  */
 msg_t chCondWaitTimeoutS(CondVar *cp, systime_t time) {
   Mutex *mp;

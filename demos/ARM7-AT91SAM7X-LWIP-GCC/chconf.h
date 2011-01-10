@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -68,7 +75,7 @@
  *          You may use this option if you need to merge ChibiOS/RT with
  *          external libraries that require nested lock/unlock operations.
  *
- * @note    The default is @p FALSE.
+ * @note T  he default is @p FALSE.
  */
 #if !defined(CH_USE_NESTED_LOCKS) || defined(__DOXYGEN__)
 #define CH_USE_NESTED_LOCKS             TRUE
@@ -431,15 +438,15 @@
 /*===========================================================================*/
 
 /**
- * @brief   Threads descriptor structure extension.
+ * @brief   Threads descriptor structure hook.
  * @details User fields added to the end of the @p Thread structure.
  */
 #if !defined(THREAD_EXT_FIELDS) || defined(__DOXYGEN__)
-#define THREAD_EXT_FIELDS                                                   \
-struct {                                                                    \
-  /* Add threads custom fields here.*/                                      \
-  /* Space for the LWIP sys_timeouts structure.*/                           \
-  void                  *p_lwipspace[1];                                    \
+#define THREAD_EXT_FIELDS                                               \
+struct {                                                                \
+  /* Add threads custom fields here.*/                                  \
+  /* Space for the LWIP sys_timeouts structure.*/                       \
+  void                  *p_lwipspace[1];                                \
 };
 #endif
 
@@ -450,10 +457,10 @@ struct {                                                                    \
  * @note    It is invoked from within @p chThdInit() and implicitily from all
  *          the threads creation APIs.
  */
-#if !defined(THREAD_EXT_INIT_HOOK) || defined(__DOXYGEN__)
-#define THREAD_EXT_INIT_HOOK(tp) {                                          \
-  /* Add threads initialization code here.*/                                \
-  (tp)->p_lwipspace[0] = NULL;                                              \
+#if !defined(THREAD_EXT_INIT) || defined(__DOXYGEN__)
+#define THREAD_EXT_INIT(tp) {                                           \
+  /* Add threads initialization code here.*/                            \
+  (tp)->p_lwipspace[0] = NULL;                                          \
 }
 #endif
 
@@ -465,9 +472,9 @@ struct {                                                                    \
  * @note    It is also invoked when the threads simply return in order to
  *          terminate.
  */
-#if !defined(THREAD_EXT_EXIT_HOOK) || defined(__DOXYGEN__)
-#define THREAD_EXT_EXIT_HOOK(tp) {                                          \
-  /* Add threads finalization code here.*/                                  \
+#if !defined(THREAD_EXT_EXIT) || defined(__DOXYGEN__)
+#define THREAD_EXT_EXIT(tp) {                                           \
+  /* Add threads finalization code here.*/                              \
 }
 #endif
 
@@ -476,30 +483,8 @@ struct {                                                                    \
  * @details This hook is continuously invoked by the idle thread loop.
  */
 #if !defined(IDLE_LOOP_HOOK) || defined(__DOXYGEN__)
-#define IDLE_LOOP_HOOK() {                                                  \
-  /* Idle loop code here.*/                                                 \
-}
-#endif
-
-/**
- * @brief   System tick event hook.
- * @details This hook is invoked in the system tick handler immediately
- *          after processing the virtual timers queue.
- */
-#if !defined(SYSTEM_TICK_EVENT_HOOK) || defined(__DOXYGEN__)
-#define SYSTEM_TICK_EVENT_HOOK() {                                          \
-  /* System tick event code here.*/                                         \
-}
-#endif
-
-/**
- * @brief   System halt hook.
- * @details This hook is invoked in case to a system halting error before
- *          the system is halted.
- */
-#if !defined(SYSTEM_HALT_HOOK) || defined(__DOXYGEN__)
-#define SYSTEM_HALT_HOOK() {                                                \
-  /* System halt code here.*/                                               \
+#define IDLE_LOOP_HOOK() {                                              \
+  /* Idle loop code here.*/                                             \
 }
 #endif
 

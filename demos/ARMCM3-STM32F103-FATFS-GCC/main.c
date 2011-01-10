@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include <stdio.h>
@@ -46,11 +53,13 @@ MMCDriver MMCD1;
 static bool_t fs_ready = FALSE;
 
 /* Maximum speed SPI configuration (18MHz, CPHA=0, CPOL=0, MSb first).*/
-static SPIConfig hs_spicfg = {NULL, IOPORT2, GPIOB_SPI2NSS, 0};
+static SPIConfig hs_spicfg = {IOPORT2, GPIOB_SPI2NSS, 0};
 
 /* Low speed SPI configuration (281.250KHz, CPHA=0, CPOL=0, MSb first).*/
-static SPIConfig ls_spicfg = {NULL, IOPORT2, GPIOB_SPI2NSS,
-                              SPI_CR1_BR_2 | SPI_CR1_BR_1};
+static SPIConfig ls_spicfg = {IOPORT2, GPIOB_SPI2NSS, SPI_CR1_BR_2 | SPI_CR1_BR_1};
+
+/* MMC configuration (empty).*/
+static const MMCConfig mmc_cfg = {};
 
 /* Card insertion verification.*/
 static bool_t mmc_is_inserted(void) {return palReadPad(IOPORT3, GPIOC_MMCCP);}
@@ -98,7 +107,7 @@ static FRESULT scan_files(char *path)
 /* Command line related.                                                     */
 /*===========================================================================*/
 
-#define SHELL_WA_SIZE   THD_WA_SIZE(2048)
+#define SHELL_WA_SIZE   THD_WA_SIZE(1024)
 #define TEST_WA_SIZE    THD_WA_SIZE(256)
 
 static void cmd_mem(BaseChannel *chp, int argc, char *argv[]) {
@@ -261,9 +270,10 @@ static void RemoveHandler(eventid_t id) {
 }
 
 /*
- * Application entry point.
+ * Entry point, note, the main() function is already a thread in the system
+ * on entry.
  */
-int main(void) {
+int main(int argc, char **argv) {
   static const evhandler_t evhndl[] = {
     InsertHandler,
     RemoveHandler
@@ -271,15 +281,8 @@ int main(void) {
   Thread *shelltp = NULL;
   struct EventListener el0, el1;
 
-  /*
-   * System initializations.
-   * - HAL initialization, this also initializes the configured device drivers
-   *   and performs the board-specific initializations.
-   * - Kernel initialization, the main() function becomes a thread and the
-   *   RTOS is active.
-   */
-  halInit();
-  chSysInit();
+  (void)argc;
+  (void)argv;
 
   /*
    * Activates the serial driver 2 using the driver default configuration.
@@ -299,7 +302,7 @@ int main(void) {
   mmcObjectInit(&MMCD1, &SPID2,
                 &ls_spicfg, &hs_spicfg,
                 mmc_is_protected, mmc_is_inserted);
-  mmcStart(&MMCD1, NULL);
+  mmcStart(&MMCD1, &mmc_cfg);
 
   /*
    * Creates the blinker thread.

@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -42,7 +49,6 @@
  * - @subpage test_sem_001
  * - @subpage test_sem_002
  * - @subpage test_sem_003
- * - @subpage test_sem_004
  * .
  * @file testsem.c
  * @brief Semaphores test source file
@@ -71,6 +77,10 @@ static SEMAPHORE_DECL(sem1, 0);
  * priority order depending on the CH_USE_SEMAPHORES_PRIORITY configuration
  * setting.
  */
+static char *sem1_gettest(void) {
+
+  return "Semaphores, enqueuing";
+}
 
 static void sem1_setup(void) {
 
@@ -104,13 +114,6 @@ static void sem1_execute(void) {
 #endif
 }
 
-ROMCONST struct testcase testsem1 = {
-  "Semaphores, enqueuing",
-  sem1_setup,
-  NULL,
-  sem1_execute
-};
-
 /**
  * @page test_sem_002 Timeout test
  *
@@ -121,6 +124,17 @@ ROMCONST struct testcase testsem1 = {
  * in each of the above scenario and that the semaphore structure status is
  * correct after each operation.
  */
+const struct testcase testsem1 = {
+  sem1_gettest,
+  sem1_setup,
+  NULL,
+  sem1_execute
+};
+
+static char *sem2_gettest(void) {
+
+  return "Semaphores, timeout";
+}
 
 static void sem2_setup(void) {
 
@@ -178,8 +192,8 @@ static void sem2_execute(void) {
   test_assert_time_window(11, target_time, target_time + ALLOWED_DELAY);
 }
 
-ROMCONST struct testcase testsem2 = {
-  "Semaphores, timeout",
+const struct testcase testsem2 = {
+  sem2_gettest,
   sem2_setup,
   NULL,
   sem2_execute
@@ -190,13 +204,18 @@ ROMCONST struct testcase testsem2 = {
  * @page test_sem_003 Atomic signal-wait test
  *
  * <h2>Description</h2>
- * This test case explicitly addresses the @p chSemWaitSignal() function. A
+ * This test case explicitly address the @p chSemWaitSignal() function. A
  * thread is created that performs a wait and a signal operations.
  * The tester thread is awakened from an atomic wait/signal operation.<br>
  * The test expects that the semaphore wait function returns the correct value
  * in each of the above scenario and that the semaphore structure status is
  * correct after each operation.
  */
+
+static char *sem3_gettest(void) {
+
+  return "Semaphores, atomic signal-wait";
+}
 
 static void sem3_setup(void) {
 
@@ -223,77 +242,25 @@ static void sem3_execute(void) {
   test_assert(4, sem1.s_cnt == 0, "counter not zero");
 }
 
-ROMCONST struct testcase testsem3 = {
-  "Semaphores, atomic signal-wait",
+const struct testcase testsem3 = {
+  sem3_gettest,
   sem3_setup,
   NULL,
   sem3_execute
 };
 #endif /* CH_USE_SEMSW */
-
-/**
- * @page test_sem_004 Binary Wait and Signal
- *
- * <h2>Description</h2>
- * This test case tests the binary semaphores functionality. The test both
- * checks the binary semaphore status and the expected status of the underlying
- * counting semaphore.
- */
-static msg_t thread4(void *p) {
-
-  chBSemSignal((BinarySemaphore *)p);
-  return 0;
-}
-
-static void sem4_execute(void) {
-  BinarySemaphore bsem;
-  
-  /* Creates a taken binary semaphore.*/
-  chBSemInit(&bsem, TRUE);
-  chBSemReset(&bsem, TRUE);
-  test_assert(1, chBSemGetStateI(&bsem) == TRUE, "not taken");
-
-  /* Starts a signaler thread at a lower priority.*/
-  threads[0] = chThdCreateStatic(wa[0], WA_SIZE,
-                                 chThdGetPriority()-1, thread4, &bsem);
-                                 
-  /* Waits to be signaled.*/
-  chBSemWait(&bsem);
-  
-  /* The binary semaphore is expected to be taken.*/
-  test_assert(2, chBSemGetStateI(&bsem) == TRUE, "not taken");
-  
-  /* Releasing it, check both the binary semaphore state and the underlying
-     counter semaphore state..*/
-  chBSemSignal(&bsem);
-  test_assert(3, chBSemGetStateI(&bsem) == FALSE, "still taken");
-  test_assert(4, chSemGetCounterI(&bsem.bs_sem) == 1, "unexpected counter");
-  
-  /* Checking signaling overflow, the counter must not go beyond 1.*/
-  chBSemSignal(&bsem);
-  test_assert(3, chBSemGetStateI(&bsem) == FALSE, "taken");
-  test_assert(5, chSemGetCounterI(&bsem.bs_sem) == 1, "unexpected counter");
-}
-
-ROMCONST struct testcase testsem4 = {
-  "Binary Semaphores, functionality",
-  NULL,
-  NULL,
-  sem4_execute
-};
 #endif /* CH_USE_SEMAPHORES */
 
 /**
  * @brief   Test sequence for semaphores.
  */
-ROMCONST struct testcase * ROMCONST patternsem[] = {
+const struct testcase * const patternsem[] = {
 #if CH_USE_SEMAPHORES
   &testsem1,
   &testsem2,
 #if CH_USE_SEMSW
   &testsem3,
 #endif
-  &testsem4,
 #endif
   NULL
 };

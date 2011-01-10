@@ -10,18 +10,25 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    LPC11xx/hal_lld.h
  * @brief   HAL subsystem low level driver header template.
  *
- * @addtogroup HAL
+ * @addtogroup LPC11xx_HAL
  * @{
  */
 
@@ -61,7 +68,7 @@
  * @brief   System PLL clock source.
  */
 #if !defined(LPC11xx_PLLCLK_SOURCE) || defined(__DOXYGEN__)
-#define LPC11xx_PLLCLK_SOURCE               SYSPLLCLKSEL_SYSOSC
+#define LPC11xx_PLLCLK_SOURCE   SYSPLLCLKSEL_SYSOSC
 #endif
 
 /**
@@ -70,7 +77,7 @@
  *          must not exceed the CCO ratings.
  */
 #if !defined(LPC11xx_SYSPLL_MUL) || defined(__DOXYGEN__)
-#define LPC11xx_SYSPLL_MUL                  4
+#define LPC11xx_SYSPLL_MUL      4
 #endif
 
 /**
@@ -78,14 +85,14 @@
  * @note    The value must be chosen between (2, 4, 8, 16).
  */
 #if !defined(LPC11xx_SYSPLL_DIV) || defined(__DOXYGEN__)
-#define LPC11xx_SYSPLL_DIV                  4
+#define LPC11xx_SYSPLL_DIV      4
 #endif
 
 /**
  * @brief   System main clock source.
  */
 #if !defined(LPC11xx_MAINCLK_SOURCE) || defined(__DOXYGEN__)
-#define LPC11xx_MAINCLK_SOURCE              SYSMAINCLKSEL_PLLOUT
+#define LPC11xx_MAINCLK_SOURCE  SYSMAINCLKSEL_PLLOUT
 #endif
 
 /**
@@ -93,7 +100,15 @@
  * @note    The value must be chosen between (1...255).
  */
 #if !defined(LPC11xx_SYSCLK_DIV) || defined(__DOXYGEN__)
-#define LPC11xx_SYSABHCLK_DIV               1
+#define LPC11xx_SYSABHCLK_DIV   1
+#endif
+
+/**
+ * @brief   UART clock divider.
+ * @note    The value must be chosen between (1...255).
+ */
+#if !defined(LPC11xx_UART_PCLK_DIV) || defined(__DOXYGEN__)
+#define LPC11xx_UART_PCLK_DIV   1
 #endif
 
 /*===========================================================================*/
@@ -190,6 +205,11 @@
 #else
 #define LPC11xx_FLASHCFG_FLASHTIM   2
 #endif
+
+/**
+ * @brief   UART clock.
+ */
+#define  LPC11xx_UART_PCLK  (LPC11xx_MAINCLK / LPC11xx_UART_PCLK_DIV)
 
 /*===========================================================================*/
 /* Driver data structures and types.                                         */
