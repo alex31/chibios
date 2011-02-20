@@ -68,6 +68,14 @@
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 2.2.1 ***
+- FIX: Stack overflow in CM0 ports when nearing interrupts saturation (bug
+  3187105).
+- FIX: Fixed missing e200z test report (bug 3182611).
+- FIX: Fixed error in _BSEMAPHORE_DATA macro (bug 3184139).
+- FIX: Error in MAC driver (bug 3179783).
+- FIX: Fixed wrong serial driver macros (bug 3173336).
+
 *** 2.2.0 ***
 - NEW: The Cortex-Mx port now also supports the IAR and Keil compilers.
 - NEW: Improvements to the Cortex-Mx port.
