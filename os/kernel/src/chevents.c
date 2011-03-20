@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -160,12 +167,12 @@ eventmask_t chEvtAddFlags(eventmask_t mask) {
  *
  * @api
  */
-void chEvtSignalFlags(Thread *tp, eventmask_t mask) {
+void chEvtSignal(Thread *tp, eventmask_t mask) {
 
   chDbgCheck(tp != NULL, "chEvtSignal");
 
   chSysLock();
-  chEvtSignalFlagsI(tp, mask);
+  chEvtSignalI(tp, mask);
   chSchRescheduleS();
   chSysUnlock();
 }
@@ -182,7 +189,7 @@ void chEvtSignalFlags(Thread *tp, eventmask_t mask) {
  *
  * @iclass
  */
-void chEvtSignalFlagsI(Thread *tp, eventmask_t mask) {
+void chEvtSignalI(Thread *tp, eventmask_t mask) {
 
   chDbgCheck(tp != NULL, "chEvtSignalI");
 
@@ -198,20 +205,15 @@ void chEvtSignalFlagsI(Thread *tp, eventmask_t mask) {
 /**
  * @brief   Signals all the Event Listeners registered on the specified Event
  *          Source.
- * @details This function variants ORs the specified event flags to all the
- *          threads registered on the @p EventSource in addition to the event
- *          flags specified by the threads themselves in the
- *          @p EventListener objects.
  *
  * @param[in] esp       pointer to the @p EventSource structure
- * @param[in] mask      the event flags set to be ORed
  *
  * @api
  */
-void chEvtBroadcastFlags(EventSource *esp, eventmask_t mask) {
+void chEvtBroadcast(EventSource *esp) {
 
   chSysLock();
-  chEvtBroadcastFlagsI(esp, mask);
+  chEvtBroadcastI(esp);
   chSchRescheduleS();
   chSysUnlock();
 }
@@ -219,28 +221,23 @@ void chEvtBroadcastFlags(EventSource *esp, eventmask_t mask) {
 /**
  * @brief   Signals all the Event Listeners registered on the specified Event
  *          Source.
- * @details This function variants ORs the specified event flags to all the
- *          threads registered on the @p EventSource in addition to the event
- *          flags specified by the threads themselves in the
- *          @p EventListener objects.
  * @post    This function does not reschedule so a call to a rescheduling
  *          function must be performed before unlocking the kernel. Note that
  *          interrupt handlers always reschedule on exit so an explicit
  *          reschedule must not be performed in ISRs.
  *
  * @param[in] esp       pointer to the @p EventSource structure
- * @param[in] mask      the event flags set to be ORed
  *
  * @iclass
  */
-void chEvtBroadcastFlagsI(EventSource *esp, eventmask_t mask) {
+void chEvtBroadcastI(EventSource *esp) {
   EventListener *elp;
 
-  chDbgCheck(esp != NULL, "chEvtBroadcastMaskI");
+  chDbgCheck(esp != NULL, "chEvtBroadcastI");
 
   elp = esp->es_next;
   while (elp != (EventListener *)esp) {
-    chEvtSignalFlagsI(elp->el_listener, elp->el_mask | mask);
+    chEvtSignalI(elp->el_listener, elp->el_mask);
     elp = elp->el_next;
   }
 }

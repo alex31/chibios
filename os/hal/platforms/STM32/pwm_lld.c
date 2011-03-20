@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -101,8 +108,6 @@ PWMDriver PWMD5;
  * @note    It is assumed that the various sources are only activated if the
  *          associated callback pointer is not equal to @p NULL in order to not
  *          perform an extra check in a potentially critical interrupt handler.
- *
- * @param[in] pwmp      pointer to a @p PWMDriver object
  */
 static void serve_interrupt(PWMDriver *pwmp) {
   uint16_t sr;
@@ -251,6 +256,10 @@ CH_IRQ_HANDLER(TIM5_IRQHandler) {
 void pwm_lld_init(void) {
 
 #if STM32_PWM_USE_TIM1
+  /* TIM1 reset, ensures reset state in order to avoid trouble with JTAGs.*/
+  RCC->APB2RSTR = RCC_APB2RSTR_TIM1RST;
+  RCC->APB2RSTR = 0;
+
   /* Driver initialization.*/
   pwmObjectInit(&PWMD1);
   PWMD1.pd_enabled_channels = 0;
@@ -258,6 +267,10 @@ void pwm_lld_init(void) {
 #endif
 
 #if STM32_PWM_USE_TIM2
+  /* TIM2 reset, ensures reset state in order to avoid trouble with JTAGs.*/
+  RCC->APB1RSTR = RCC_APB1RSTR_TIM2RST;
+  RCC->APB1RSTR = 0;
+
   /* Driver initialization.*/
   pwmObjectInit(&PWMD2);
   PWMD2.pd_enabled_channels = 0;
@@ -265,6 +278,10 @@ void pwm_lld_init(void) {
 #endif
 
 #if STM32_PWM_USE_TIM3
+  /* TIM2 reset, ensures reset state in order to avoid trouble with JTAGs.*/
+  RCC->APB1RSTR = RCC_APB1RSTR_TIM3RST;
+  RCC->APB1RSTR = 0;
+
   /* Driver initialization.*/
   pwmObjectInit(&PWMD3);
   PWMD3.pd_enabled_channels = 0;
@@ -272,6 +289,10 @@ void pwm_lld_init(void) {
 #endif
 
 #if STM32_PWM_USE_TIM4
+  /* TIM2 reset, ensures reset state in order to avoid trouble with JTAGs.*/
+  RCC->APB1RSTR = RCC_APB1RSTR_TIM4RST;
+  RCC->APB1RSTR = 0;
+
   /* Driver initialization.*/
   pwmObjectInit(&PWMD4);
   PWMD4.pd_enabled_channels = 0;
@@ -279,6 +300,10 @@ void pwm_lld_init(void) {
 #endif
 
 #if STM32_PWM_USE_TIM5
+  /* TIM2 reset, ensures reset state in order to avoid trouble with JTAGs.*/
+  RCC->APB1RSTR = RCC_APB1RSTR_TIM5RST;
+  RCC->APB1RSTR = 0;
+
   /* Driver initialization.*/
   pwmObjectInit(&PWMD5);
   PWMD5.pd_enabled_channels = 0;
@@ -349,6 +374,7 @@ void pwm_lld_start(PWMDriver *pwmp) {
                        CORTEX_PRIORITY_MASK(STM32_PWM_TIM5_IRQ_PRIORITY));
     }
 #endif
+
 
     /* All channels configured in PWM1 mode with preload enabled and will
        stay that way until the driver is stopped.*/
@@ -429,7 +455,6 @@ void pwm_lld_start(PWMDriver *pwmp) {
  * @notapi
  */
 void pwm_lld_stop(PWMDriver *pwmp) {
-
   /* If in ready state then disables the PWM clock.*/
   if (pwmp->pd_state == PWM_READY) {
     pwmp->pd_enabled_channels = 0;          /* All channels disabled.       */

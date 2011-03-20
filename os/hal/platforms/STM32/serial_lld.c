@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -140,6 +147,8 @@ static void set_error(SerialDriver *sdp, uint16_t sr) {
     sts |= SD_FRAMING_ERROR;
   if (sr & USART_SR_NE)
     sts |= SD_NOISE_ERROR;
+  if (sr & USART_SR_LBD)
+    sts |= SD_BREAK_DETECTED;
   chSysLockFromIsr();
   chIOAddFlagsI(sdp, sts);
   chSysUnlockFromIsr();
@@ -156,42 +165,27 @@ static void serve_interrupt(SerialDriver *sdp) {
   uint16_t sr = u->SR;  /* SR reset step 1.*/
   uint16_t dr = u->DR;  /* SR reset step 2.*/
 
-  /* Error condition detection.*/
-  if (sr & (USART_SR_ORE | USART_SR_NE | USART_SR_FE  | USART_SR_PE))
+  if (sr & (USART_SR_LBD | USART_SR_ORE | USART_SR_NE |
+            USART_SR_FE  | USART_SR_PE)) {
     set_error(sdp, sr);
-  /* Special case, LIN break detection.*/
-  if (sr & USART_SR_LBD) {
-    chSysLockFromIsr();
-    chIOAddFlagsI(sdp, SD_BREAK_DETECTED);
-    chSysUnlockFromIsr();
-    u->SR &= ~USART_SR_LBD;
+    u->SR = 0;    /* Clears the LBD bit in the SR.*/
   }
-  /* Data available.*/
   if (sr & USART_SR_RXNE) {
     chSysLockFromIsr();
     sdIncomingDataI(sdp, (uint8_t)dr);
     chSysUnlockFromIsr();
   }
-  /* Transmission buffer empty.*/
   if ((cr1 & USART_CR1_TXEIE) && (sr & USART_SR_TXE)) {
     msg_t b;
     chSysLockFromIsr();
     b = chOQGetI(&sdp->oqueue);
     if (b < Q_OK) {
       chIOAddFlagsI(sdp, IO_OUTPUT_EMPTY);
-      u->CR1 = (cr1 & ~USART_CR1_TXEIE) | USART_CR1_TCIE;
+      u->CR1 = cr1 & ~USART_CR1_TXEIE;
     }
     else
       u->DR = b;
     chSysUnlockFromIsr();
-  }
-  /* Physical transmission end.*/
-  if (sr & USART_SR_TC) {
-    chSysLockFromIsr();
-    chIOAddFlagsI(sdp, IO_TRANSMISSION_END);
-    chSysUnlockFromIsr();
-    u->CR1 = cr1 & ~USART_CR1_TCIE;
-    u->SR &= ~USART_SR_TC;
   }
 }
 #endif
