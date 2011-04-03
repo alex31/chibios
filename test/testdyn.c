@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "ch.h"
@@ -59,11 +53,11 @@
  * @brief Dynamic thread APIs test header file
  */
 
-#if CH_USE_DYNAMIC
-#if CH_USE_HEAP
+#if CH_USE_DYNAMIC || defined(__DOXYGEN__)
+#if CH_USE_HEAP || defined(__DOXYGEN__)
 static MemoryHeap heap1;
 #endif
-#if CH_USE_MEMPOOLS
+#if CH_USE_MEMPOOLS || defined(__DOXYGEN__)
 static MemoryPool mp1;
 #endif
 
@@ -84,7 +78,7 @@ static msg_t thread(void *p) {
   return 0;
 }
 
-#if CH_USE_HEAP
+#if CH_USE_HEAP || defined(__DOXYGEN__)
 static void dyn1_setup(void) {
 
   chHeapInit(&heap1, test.buffer, sizeof(union test_buffers));
@@ -132,7 +126,7 @@ ROMCONST struct testcase testdyn1 = {
 };
 #endif /* CH_USE_HEAP */
 
-#if CH_USE_MEMPOOLS
+#if CH_USE_MEMPOOLS || defined(__DOXYGEN__)
 /**
  * @page test_dynamic_002 Threads creation from Memory Pool
  *
@@ -188,7 +182,7 @@ ROMCONST struct testcase testdyn2 = {
 };
 #endif /* CH_USE_MEMPOOLS */
 
-#if CH_USE_HEAP && CH_USE_REGISTRY
+#if (CH_USE_HEAP && CH_USE_REGISTRY) || defined(__DOXYGEN__)
 /**
  * @page test_dynamic_003 Registry and References test
  *
@@ -257,14 +251,14 @@ ROMCONST struct testcase testdyn3 = {
  * @brief   Test sequence for dynamic APIs.
  */
 ROMCONST struct testcase * ROMCONST patterndyn[] = {
-#if CH_USE_DYNAMIC
-#if CH_USE_HEAP
+#if CH_USE_DYNAMIC || defined(__DOXYGEN__)
+#if CH_USE_HEAP || defined(__DOXYGEN__)
   &testdyn1,
 #endif
-#if CH_USE_MEMPOOLS
+#if CH_USE_MEMPOOLS || defined(__DOXYGEN__)
   &testdyn2,
 #endif
-#if CH_USE_HEAP && CH_USE_REGISTRY
+#if (CH_USE_HEAP && CH_USE_REGISTRY) || defined(__DOXYGEN__)
   &testdyn3,
 #endif
 #endif

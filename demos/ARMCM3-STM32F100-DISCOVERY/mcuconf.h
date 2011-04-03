@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /*
@@ -66,8 +60,37 @@
 #define STM32_CAN_CAN1_IRQ_PRIORITY         11
 
 /*
+ * GPT driver system settings.
+ */
+#define STM32_GPT_USE_TIM1                  FALSE
+#define STM32_GPT_USE_TIM2                  FALSE
+#define STM32_GPT_USE_TIM3                  FALSE
+#define STM32_GPT_USE_TIM4                  FALSE
+#define STM32_GPT_USE_TIM5                  FALSE
+#define STM32_GPT_TIM1_IRQ_PRIORITY         7
+#define STM32_GPT_TIM2_IRQ_PRIORITY         7
+#define STM32_GPT_TIM3_IRQ_PRIORITY         7
+#define STM32_GPT_TIM4_IRQ_PRIORITY         7
+#define STM32_GPT_TIM5_IRQ_PRIORITY         7
+
+/*
+ * ICU driver system settings.
+ */
+#define STM32_ICU_USE_TIM1                  FALSE
+#define STM32_ICU_USE_TIM2                  FALSE
+#define STM32_ICU_USE_TIM3                  FALSE
+#define STM32_ICU_USE_TIM4                  TRUE
+#define STM32_ICU_USE_TIM5                  FALSE
+#define STM32_ICU_TIM1_IRQ_PRIORITY         7
+#define STM32_ICU_TIM2_IRQ_PRIORITY         7
+#define STM32_ICU_TIM3_IRQ_PRIORITY         7
+#define STM32_ICU_TIM4_IRQ_PRIORITY         7
+#define STM32_ICU_TIM5_IRQ_PRIORITY         7
+
+/*
  * PWM driver system settings.
  */
+#define STM32_PWM_USE_ADVANCED              FALSE
 #define STM32_PWM_USE_TIM1                  FALSE
 #define STM32_PWM_USE_TIM2                  FALSE
 #define STM32_PWM_USE_TIM3                  TRUE
@@ -124,3 +147,11 @@
 #define STM32_UART_USART1_DMA_ERROR_HOOK()  chSysHalt()
 #define STM32_UART_USART2_DMA_ERROR_HOOK()  chSysHalt()
 #define STM32_UART_USART3_DMA_ERROR_HOOK()  chSysHalt()
+
+/*
+ * USB driver system settings.
+ */
+#define STM32_USB_USE_USB1                  TRUE
+#define STM32_USB_LOW_POWER_ON_SUSPEND      FALSE
+#define STM32_USB_USB1_HP_IRQ_PRIORITY      6
+#define STM32_USB_USB1_LP_IRQ_PRIORITY      14

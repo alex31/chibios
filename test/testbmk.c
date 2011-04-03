@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "ch.h"
@@ -67,16 +61,19 @@
  */
 
 static Semaphore sem1;
-#if CH_USE_MUTEXES
+#if CH_USE_MUTEXES || defined(__DOXYGEN__)
 static Mutex mtx1;
 #endif
 
 static msg_t thread1(void *p) {
+  Thread *tp;
   msg_t msg;
 
   (void)p;
   do {
-    chMsgRelease(msg = chMsgWait());
+    tp = chMsgWait();
+    msg = chMsgGet(tp);
+    chMsgRelease(tp, msg);
   } while (msg);
   return 0;
 }
@@ -580,7 +577,7 @@ ROMCONST struct testcase testbmk11 = {
   bmk11_execute
 };
 
-#if CH_USE_MUTEXES
+#if CH_USE_MUTEXES || defined(__DOXYGEN__)
 /**
  * @page test_benchmarks_012 Mutexes lock/unlock performance
  *
@@ -651,7 +648,7 @@ static void bmk13_execute(void) {
   test_print("--- Semaph: ");
   test_printn(sizeof(Semaphore));
   test_println(" bytes");
-#if CH_USE_EVENTS
+#if CH_USE_EVENTS || defined(__DOXYGEN__)
   test_print("--- EventS: ");
   test_printn(sizeof(EventSource));
   test_println(" bytes");
@@ -659,22 +656,22 @@ static void bmk13_execute(void) {
   test_printn(sizeof(EventListener));
   test_println(" bytes");
 #endif
-#if CH_USE_MUTEXES
+#if CH_USE_MUTEXES || defined(__DOXYGEN__)
   test_print("--- Mutex : ");
   test_printn(sizeof(Mutex));
   test_println(" bytes");
 #endif
-#if CH_USE_CONDVARS
+#if CH_USE_CONDVARS || defined(__DOXYGEN__)
   test_print("--- CondV.: ");
   test_printn(sizeof(CondVar));
   test_println(" bytes");
 #endif
-#if CH_USE_QUEUES
+#if CH_USE_QUEUES || defined(__DOXYGEN__)
   test_print("--- Queue : ");
   test_printn(sizeof(GenericQueue));
   test_println(" bytes");
 #endif
-#if CH_USE_MAILBOXES
+#if CH_USE_MAILBOXES || defined(__DOXYGEN__)
   test_print("--- MailB.: ");
   test_printn(sizeof(Mailbox));
   test_println(" bytes");
@@ -704,7 +701,7 @@ ROMCONST struct testcase * ROMCONST patternbmk[] = {
   &testbmk9,
   &testbmk10,
   &testbmk11,
-#if CH_USE_MUTEXES
+#if CH_USE_MUTEXES || defined(__DOXYGEN__)
   &testbmk12,
 #endif
   &testbmk13,

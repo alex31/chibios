@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -77,12 +71,12 @@ CH_IRQ_HANDLER(10) {
      handle the case where a frame arrives immediately after reading the
      DR register.*/
   while ((SPI->SR & SPI_SR_RXNE) != 0) {
-    if (SPID1.spd_rxptr != NULL)
-       *SPID1.spd_rxptr++ = SPI->DR;
+    if (SPID1.rxptr != NULL)
+       *SPID1.rxptr++ = SPI->DR;
     else
       (void)SPI->DR;
-    if (--SPID1.spd_rxcnt == 0) {
-      chDbgAssert(SPID1.spd_txcnt == 0,
+    if (--SPID1.rxcnt == 0) {
+      chDbgAssert(SPID1.txcnt == 0,
                   "IRQ10, #1", "counter out of synch");
       /* Stops all the IRQ sources.*/
       SPI->ICR = 0;
@@ -96,8 +90,8 @@ CH_IRQ_HANDLER(10) {
   }
   /* Loading the DR register.*/
   if ((SPI->SR & SPI_SR_TXE) != 0) {
-    if (SPID1.spd_txptr != NULL)
-      SPI->DR = *SPID1.spd_txptr++;
+    if (SPID1.txptr != NULL)
+      SPI->DR = *SPID1.txptr++;
     else
       SPI->DR = 0xFF;
   }
@@ -137,7 +131,7 @@ void spi_lld_start(SPIDriver *spip) {
 
   /* Configuration.*/
   SPI->CR2 = 0;
-  SPI->CR1 = spip->spd_config->spc_cr1 | SPI_CR1_MSTR | SPI_CR1_SPE;
+  SPI->CR1 = spip->config->cr1 | SPI_CR1_MSTR | SPI_CR1_SPE;
 }
 
 /**
@@ -169,7 +163,7 @@ void spi_lld_stop(SPIDriver *spip) {
  */
 void spi_lld_select(SPIDriver *spip) {
 
-  palClearPad(spip->spd_config->spc_ssport, spip->spd_config->spc_sspad);
+  palClearPad(spip->config->ssport, spip->config->sspad);
 }
 
 /**
@@ -182,7 +176,7 @@ void spi_lld_select(SPIDriver *spip) {
  */
 void spi_lld_unselect(SPIDriver *spip) {
 
-  palSetPad(spip->spd_config->spc_ssport, spip->spd_config->spc_sspad);
+  palSetPad(spip->config->ssport, spip->config->sspad);
 }
 
 /**
@@ -198,9 +192,9 @@ void spi_lld_unselect(SPIDriver *spip) {
  */
 void spi_lld_ignore(SPIDriver *spip, size_t n) {
 
-  spip->spd_rxptr = NULL;
-  spip->spd_txptr = NULL;
-  spip->spd_rxcnt = spip->spd_txcnt = n;
+  spip->rxptr = NULL;
+  spip->txptr = NULL;
+  spip->rxcnt = spip->txcnt = n;
   SPI->ICR = SPI_ICR_TXEI | SPI_ICR_RXEI | SPI_ICR_ERRIE;
 }
 
@@ -222,9 +216,9 @@ void spi_lld_ignore(SPIDriver *spip, size_t n) {
 void spi_lld_exchange(SPIDriver *spip, size_t n,
                       const void *txbuf, void *rxbuf) {
 
-  spip->spd_rxptr = rxbuf;
-  spip->spd_txptr = txbuf;
-  spip->spd_rxcnt = spip->spd_txcnt = n;
+  spip->rxptr = rxbuf;
+  spip->txptr = txbuf;
+  spip->rxcnt = spip->txcnt = n;
   SPI->ICR = SPI_ICR_TXEI | SPI_ICR_RXEI | SPI_ICR_ERRIE;
 }
 
@@ -243,9 +237,9 @@ void spi_lld_exchange(SPIDriver *spip, size_t n,
  */
 void spi_lld_send(SPIDriver *spip, size_t n, const void *txbuf) {
 
-  spip->spd_rxptr = NULL;
-  spip->spd_txptr = txbuf;
-  spip->spd_rxcnt = spip->spd_txcnt = n;
+  spip->rxptr = NULL;
+  spip->txptr = txbuf;
+  spip->rxcnt = spip->txcnt = n;
   SPI->ICR = SPI_ICR_TXEI | SPI_ICR_RXEI | SPI_ICR_ERRIE;
 }
 
@@ -264,9 +258,9 @@ void spi_lld_send(SPIDriver *spip, size_t n, const void *txbuf) {
  */
 void spi_lld_receive(SPIDriver *spip, size_t n, void *rxbuf) {
 
-  spip->spd_rxptr = rxbuf;
-  spip->spd_txptr = NULL;
-  spip->spd_rxcnt = spip->spd_txcnt = n;
+  spip->rxptr = rxbuf;
+  spip->txptr = NULL;
+  spip->rxcnt = spip->txcnt = n;
   SPI->ICR = SPI_ICR_TXEI | SPI_ICR_RXEI | SPI_ICR_ERRIE;
 }
 

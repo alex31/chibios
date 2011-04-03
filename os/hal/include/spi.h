@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -127,7 +121,7 @@ typedef enum {
  * @iclass
  */
 #define spiStartIgnoreI(spip, n) {                                          \
-  (spip)->spd_state = SPI_ACTIVE;                                           \
+  (spip)->state = SPI_ACTIVE;                                               \
   spi_lld_ignore(spip, n);                                                  \
 }
 
@@ -149,7 +143,7 @@ typedef enum {
  * @iclass
  */
 #define spiStartExchangeI(spip, n, txbuf, rxbuf) {                          \
-  (spip)->spd_state = SPI_ACTIVE;                                           \
+  (spip)->state = SPI_ACTIVE;                                               \
   spi_lld_exchange(spip, n, txbuf, rxbuf);                                  \
 }
 
@@ -169,7 +163,7 @@ typedef enum {
  * @iclass
  */
 #define spiStartSendI(spip, n, txbuf) {                                     \
-  (spip)->spd_state = SPI_ACTIVE;                                           \
+  (spip)->state = SPI_ACTIVE;                                               \
   spi_lld_send(spip, n, txbuf);                                             \
 }
 
@@ -189,7 +183,7 @@ typedef enum {
  * @iclass
  */
 #define spiStartReceiveI(spip, n, rxbuf) {                                  \
-  (spip)->spd_state = SPI_ACTIVE;                                           \
+  (spip)->state = SPI_ACTIVE;                                               \
   spi_lld_receive(spip, n, rxbuf);                                          \
 }
 
@@ -222,9 +216,9 @@ typedef enum {
  * @notapi
  */
 #define _spi_wait_s(spip) {                                                 \
-  chDbgAssert((spip)->spd_thread == NULL,                                   \
+  chDbgAssert((spip)->thread == NULL,                                       \
               "_spi_wait(), #1", "already waiting");                        \
-  (spip)->spd_thread = chThdSelf();                                         \
+  (spip)->thread = chThdSelf();                                             \
   chSchGoSleepS(THD_STATE_SUSPENDED);                                       \
 }
 
@@ -236,9 +230,9 @@ typedef enum {
  * @notapi
  */
 #define _spi_wakeup_isr(spip) {                                             \
-  if ((spip)->spd_thread != NULL) {                                         \
-    Thread *tp = (spip)->spd_thread;                                        \
-    (spip)->spd_thread = NULL;                                              \
+  if ((spip)->thread != NULL) {                                             \
+    Thread *tp = (spip)->thread;                                            \
+    (spip)->thread = NULL;                                                  \
     chSysLockFromIsr();                                                     \
     chSchReadyI(tp);                                                        \
     chSysUnlockFromIsr();                                                   \
@@ -264,11 +258,11 @@ typedef enum {
  * @notapi
  */
 #define _spi_isr_code(spip) {                                               \
-  if ((spip)->spd_config->spc_endcb) {                                      \
-    (spip)->spd_state = SPI_COMPLETE;                                       \
-    (spip)->spd_config->spc_endcb(spip);                                    \
-    if ((spip)->spd_state == SPI_COMPLETE)                                  \
-      (spip)->spd_state = SPI_READY;                                        \
+  if ((spip)->config->end_cb) {                                             \
+    (spip)->state = SPI_COMPLETE;                                           \
+    (spip)->config->end_cb(spip);                                           \
+    if ((spip)->state == SPI_COMPLETE)                                      \
+      (spip)->state = SPI_READY;                                            \
   }                                                                         \
   _spi_wakeup_isr(spip);                                                    \
 }

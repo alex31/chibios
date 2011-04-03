@@ -1,6 +1,6 @@
 *** ChibiOS/RT test suite
 ***
-*** Kernel:       2.2.1
+*** Kernel:       2.3.0unstable
 *** GCC Version:  4.4.1
 *** Architecture: PowerPC
 *** Core Variant: e200z3

@@ -1755,6 +1755,9 @@
           <name>$PROJ_DIR$\..\..\..\os\hal\include\hal.h</name>
         </file>
         <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\include\i2c.h</name>
+        </file>
+        <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\include\mac.h</name>
         </file>
         <file>
@@ -1789,6 +1792,9 @@
         </file>
         <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\src\hal.c</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\src\i2c.c</name>
         </file>
         <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\src\mac.c</name>
