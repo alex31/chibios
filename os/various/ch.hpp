@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -198,27 +204,26 @@ namespace chibios_rt {
     msg_t SendMessage(msg_t msg);
 
     /**
-     * @brief   Waits for a message.
+     * @brief   Waits for a message and returns it.
      *
-     * @return                  The sebder thread.
+     * @return                  The incoming message.
      */
-    static Thread *WaitMessage(void);
+    static msg_t WaitMessage(void);
 
     /**
      * @brief   Returns an enqueued message or @p NULL.
      *
-     * @param[in] tp            the sender thread
      * @return                  The incoming message.
+     * @retval NULL             No incoming message.
      */
-    static msg_t GetMessage(Thread* tp);
+    static msg_t GetMessage(void);
 
     /**
      * @brief   Releases the next message in queue with a reply.
      *
-     * @param[in] tp            the sender thread
      * @param[in] msg           the answer message
      */
-    static void ReleaseMessage(Thread* tp, msg_t msg);
+    static void ReleaseMessage(msg_t msg);
 
     /**
      * @brief   Returns true if there is at least one message in queue.

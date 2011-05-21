@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -67,15 +73,6 @@ void halInit(void) {
 #if HAL_USE_CAN || defined(__DOXYGEN__)
   canInit();
 #endif
-#if HAL_USE_GPT || defined(__DOXYGEN__)
-  gptInit();
-#endif
-#if HAL_USE_I2C || defined(__DOXYGEN__)
-  i2cInit();
-#endif
-#if HAL_USE_ICU || defined(__DOXYGEN__)
-  icuInit();
-#endif
 #if HAL_USE_MAC || defined(__DOXYGEN__)
   macInit();
 #endif
@@ -85,23 +82,14 @@ void halInit(void) {
 #if HAL_USE_SERIAL || defined(__DOXYGEN__)
   sdInit();
 #endif
-#if HAL_USE_SDC || defined(__DOXYGEN__)
-  sdcInit();
-#endif
 #if HAL_USE_SPI || defined(__DOXYGEN__)
   spiInit();
-#endif
-#if HAL_USE_UART || defined(__DOXYGEN__)
-  uartInit();
-#endif
-#if HAL_USE_USB || defined(__DOXYGEN__)
-  usbInit();
 #endif
 #if HAL_USE_MMC_SPI || defined(__DOXYGEN__)
   mmcInit();
 #endif
-#if HAL_USE_SERIAL_USB || defined(__DOXYGEN__)
-  sduInit();
+#if HAL_USE_UART || defined(__DOXYGEN__)
+  uartInit();
 #endif
   /* Board specific initialization.*/
   boardInit();

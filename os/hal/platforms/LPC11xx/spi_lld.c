@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -59,27 +65,27 @@ SPIDriver SPID2;
  * @param[in] spip      pointer to the @p SPIDriver object
  */
 static void ssp_fifo_preload(SPIDriver *spip) {
-  LPC_SSP_TypeDef *ssp = spip->ssp;
-  uint32_t n = spip->txcnt > LPC11xx_SSP_FIFO_DEPTH ?
-               LPC11xx_SSP_FIFO_DEPTH : spip->txcnt;
+  LPC_SSP_TypeDef *ssp = spip->spd_ssp;
+  uint32_t n = spip->spd_txcnt > LPC11xx_SSP_FIFO_DEPTH ?
+               LPC11xx_SSP_FIFO_DEPTH : spip->spd_txcnt;
 
   while(((ssp->SR & SR_TNF) != 0) && (n > 0)) {
-    if (spip->txptr != NULL) {
+    if (spip->spd_txptr != NULL) {
       if ((ssp->CR0 & CR0_DSSMASK) > CR0_DSS8BIT) {
-        const uint16_t *p = spip->txptr;
+        const uint16_t *p = spip->spd_txptr;
         ssp->DR = *p++;
-        spip->txptr = p;
+        spip->spd_txptr = p;
       }
       else {
-        const uint8_t *p = spip->txptr;
+        const uint8_t *p = spip->spd_txptr;
         ssp->DR = *p++;
-        spip->txptr = p;
+        spip->spd_txptr = p;
       }
     }
     else
       ssp->DR = 0xFFFFFFFF;
     n--;
-    spip->txcnt--;
+    spip->spd_txcnt--;
   }
 }
 
@@ -89,7 +95,7 @@ static void ssp_fifo_preload(SPIDriver *spip) {
  * @param[in] spip      pointer to the @p SPIDriver object
  */
 static void spi_serve_interrupt(SPIDriver *spip) {
-  LPC_SSP_TypeDef *ssp = spip->ssp;
+  LPC_SSP_TypeDef *ssp = spip->spd_ssp;
 
   if ((ssp->MIS & MIS_ROR) != 0) {
     /* The overflow condition should never happen because priority is given
@@ -98,22 +104,22 @@ static void spi_serve_interrupt(SPIDriver *spip) {
   }
   ssp->ICR = ICR_RT | ICR_ROR;
   while ((ssp->SR & SR_RNE) != 0) {
-    if (spip->rxptr != NULL) {
+    if (spip->spd_rxptr != NULL) {
       if ((ssp->CR0 & CR0_DSSMASK) > CR0_DSS8BIT) {
-        uint16_t *p = spip->rxptr;
+        uint16_t *p = spip->spd_rxptr;
         *p++ = ssp->DR;
-        spip->rxptr = p;
+        spip->spd_rxptr = p;
       }
       else {
-        uint8_t *p = spip->rxptr;
+        uint8_t *p = spip->spd_rxptr;
         *p++ = ssp->DR;
-        spip->rxptr = p;
+        spip->spd_rxptr = p;
       }
     }
     else
       (void)ssp->DR;
-    if (--spip->rxcnt == 0) {
-      chDbgAssert(spip->txcnt == 0,
+    if (--spip->spd_rxcnt == 0) {
+      chDbgAssert(spip->spd_txcnt == 0,
                   "spi_serve_interrupt(), #1", "counter out of synch");
       /* Stops the IRQ sources.*/
       ssp->IMSC = 0;
@@ -124,7 +130,7 @@ static void spi_serve_interrupt(SPIDriver *spip) {
     }
   }
   ssp_fifo_preload(spip);
-  if (spip->txcnt == 0)
+  if (spip->spd_txcnt == 0)
     ssp->IMSC = IMSC_ROR | IMSC_RT | IMSC_RX;
 }
 
@@ -177,7 +183,7 @@ void spi_lld_init(void) {
 
 #if LPC11xx_SPI_USE_SSP0
   spiObjectInit(&SPID1);
-  SPID1.ssp = LPC_SSP0;
+  SPID1.spd_ssp = LPC_SSP0;
   LPC_IOCON->SCK_LOC = LPC11xx_SPI_SCK0_SELECTOR;
 #if LPC11xx_SPI_SCK0_SELECTOR == SCK0_IS_PIO0_10
   LPC_IOCON->JTAG_TCK_PIO0_10 = 0xC2;       /* SCK0 without resistors.      */
@@ -192,7 +198,7 @@ void spi_lld_init(void) {
 
 #if LPC11xx_SPI_USE_SSP1
   spiObjectInit(&SPID2);
-  SPID2.ssp = LPC_SSP1;
+  SPID2.spd_ssp = LPC_SSP1;
   LPC_IOCON->PIO2_1  = 0xC2;                /* SCK1 without resistors.      */
   LPC_IOCON->PIO2_2  = 0xC2;                /* MISO1 without resistors.     */
   LPC_IOCON->PIO2_3  = 0xC2;                /* MOSI1 without resistors.     */
@@ -208,7 +214,7 @@ void spi_lld_init(void) {
  */
 void spi_lld_start(SPIDriver *spip) {
 
-  if (spip->state == SPI_STOP) {
+  if (spip->spd_state == SPI_STOP) {
     /* Clock activation.*/
 #if LPC11xx_SPI_USE_SSP0
     if (&SPID1 == spip) {
@@ -230,11 +236,11 @@ void spi_lld_start(SPIDriver *spip) {
 #endif
   }
   /* Configuration.*/
-  spip->ssp->CR1  = 0;
-  spip->ssp->ICR  = ICR_RT | ICR_ROR;
-  spip->ssp->CR0  = spip->config->cr0;
-  spip->ssp->CPSR = spip->config->cpsr;
-  spip->ssp->CR1  = CR1_SSE;
+  spip->spd_ssp->CR1  = 0;
+  spip->spd_ssp->ICR  = ICR_RT | ICR_ROR;
+  spip->spd_ssp->CR0  = spip->spd_config->spc_cr0;
+  spip->spd_ssp->CPSR = spip->spd_config->spc_cpsr;
+  spip->spd_ssp->CR1  = CR1_SSE;
 }
 
 /**
@@ -246,10 +252,10 @@ void spi_lld_start(SPIDriver *spip) {
  */
 void spi_lld_stop(SPIDriver *spip) {
 
-  if (spip->state != SPI_STOP) {
-    spip->ssp->CR1  = 0;
-    spip->ssp->CR0  = 0;
-    spip->ssp->CPSR = 0;
+  if (spip->spd_state != SPI_STOP) {
+    spip->spd_ssp->CR1  = 0;
+    spip->spd_ssp->CR0  = 0;
+    spip->spd_ssp->CPSR = 0;
 #if LPC11xx_SPI_USE_SSP0
     if (&SPID1 == spip) {
       LPC_SYSCON->PRESETCTRL &= ~1;
@@ -278,7 +284,7 @@ void spi_lld_stop(SPIDriver *spip) {
  */
 void spi_lld_select(SPIDriver *spip) {
 
-  palClearPad(spip->config->ssport, spip->config->sspad);
+  palClearPad(spip->spd_config->spc_ssport, spip->spd_config->spc_sspad);
 }
 
 /**
@@ -291,7 +297,7 @@ void spi_lld_select(SPIDriver *spip) {
  */
 void spi_lld_unselect(SPIDriver *spip) {
 
-  palSetPad(spip->config->ssport, spip->config->sspad);
+  palSetPad(spip->spd_config->spc_ssport, spip->spd_config->spc_sspad);
 }
 
 /**
@@ -307,11 +313,11 @@ void spi_lld_unselect(SPIDriver *spip) {
  */
 void spi_lld_ignore(SPIDriver *spip, size_t n) {
 
-  spip->rxptr = NULL;
-  spip->txptr = NULL;
-  spip->rxcnt = spip->txcnt = n;
+  spip->spd_rxptr = NULL;
+  spip->spd_txptr = NULL;
+  spip->spd_rxcnt = spip->spd_txcnt = n;
   ssp_fifo_preload(spip);
-  spip->ssp->IMSC = IMSC_ROR | IMSC_RT | IMSC_TX | IMSC_RX;
+  spip->spd_ssp->IMSC = IMSC_ROR | IMSC_RT | IMSC_TX | IMSC_RX;
 }
 
 /**
@@ -332,11 +338,11 @@ void spi_lld_ignore(SPIDriver *spip, size_t n) {
 void spi_lld_exchange(SPIDriver *spip, size_t n,
                       const void *txbuf, void *rxbuf) {
 
-  spip->rxptr = rxbuf;
-  spip->txptr = txbuf;
-  spip->rxcnt = spip->txcnt = n;
+  spip->spd_rxptr = rxbuf;
+  spip->spd_txptr = txbuf;
+  spip->spd_rxcnt = spip->spd_txcnt = n;
   ssp_fifo_preload(spip);
-  spip->ssp->IMSC = IMSC_ROR | IMSC_RT | IMSC_TX | IMSC_RX;
+  spip->spd_ssp->IMSC = IMSC_ROR | IMSC_RT | IMSC_TX | IMSC_RX;
 }
 
 /**
@@ -354,11 +360,11 @@ void spi_lld_exchange(SPIDriver *spip, size_t n,
  */
 void spi_lld_send(SPIDriver *spip, size_t n, const void *txbuf) {
 
-  spip->rxptr = NULL;
-  spip->txptr = txbuf;
-  spip->rxcnt = spip->txcnt = n;
+  spip->spd_rxptr = NULL;
+  spip->spd_txptr = txbuf;
+  spip->spd_rxcnt = spip->spd_txcnt = n;
   ssp_fifo_preload(spip);
-  spip->ssp->IMSC = IMSC_ROR | IMSC_RT | IMSC_TX | IMSC_RX;
+  spip->spd_ssp->IMSC = IMSC_ROR | IMSC_RT | IMSC_TX | IMSC_RX;
 }
 
 /**
@@ -376,11 +382,11 @@ void spi_lld_send(SPIDriver *spip, size_t n, const void *txbuf) {
  */
 void spi_lld_receive(SPIDriver *spip, size_t n, void *rxbuf) {
 
-  spip->rxptr = rxbuf;
-  spip->txptr = NULL;
-  spip->rxcnt = spip->txcnt = n;
+  spip->spd_rxptr = rxbuf;
+  spip->spd_txptr = NULL;
+  spip->spd_rxcnt = spip->spd_txcnt = n;
   ssp_fifo_preload(spip);
-  spip->ssp->IMSC = IMSC_ROR | IMSC_RT | IMSC_TX | IMSC_RX;
+  spip->spd_ssp->IMSC = IMSC_ROR | IMSC_RT | IMSC_TX | IMSC_RX;
 }
 
 /**
@@ -397,10 +403,10 @@ void spi_lld_receive(SPIDriver *spip, size_t n, void *rxbuf) {
  */
 uint16_t spi_lld_polled_exchange(SPIDriver *spip, uint16_t frame) {
 
-  spip->ssp->DR = (uint32_t)frame;
-  while ((spip->ssp->SR & SR_RNE) == 0)
+  spip->spd_ssp->DR = (uint32_t)frame;
+  while ((spip->spd_ssp->SR & SR_RNE) == 0)
     ;
-  return (uint16_t)spip->ssp->DR;
+  return (uint16_t)spip->spd_ssp->DR;
 }
 
 #endif /* HAL_USE_SPI */

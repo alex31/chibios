@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -48,35 +54,39 @@ ADCDriver ADCD1;
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
-/**
- * @brief   Shared ADC DMA ISR service routine.
- *
- * @param[in] adcp      pointer to the @p ADCDriver object
- * @param[in] flags     pre-shifted content of the ISR register
- */
-static void adc_lld_serve_rx_interrupt(ADCDriver *adcp, uint32_t flags) {
-
-  /* DMA errors handling.*/
-#if defined(STM32_ADC_DMA_ERROR_HOOK)
-  if ((flags & DMA_ISR_TEIF1) != 0) {
-    STM32_ADC_DMA_ERROR_HOOK(spip);
-  }
-#else
-  (void)flags;
-#endif
-  if ((flags & DMA_ISR_HTIF1) != 0) {
-    /* Half transfer processing.*/
-    _adc_isr_half_code(adcp);
-  }
-  if ((flags & DMA_ISR_TCIF1) != 0) {
-    /* Transfer complete processing.*/
-    _adc_isr_full_code(adcp);
-  }
-}
-
 /*===========================================================================*/
 /* Driver interrupt handlers.                                                */
 /*===========================================================================*/
+
+#if STM32_ADC_USE_ADC1 || defined(__DOXYGEN__)
+/**
+ * @brief   ADC1 DMA interrupt handler (channel 1).
+ *
+ * @isr
+ */
+CH_IRQ_HANDLER(DMA1_Ch1_IRQHandler) {
+  uint32_t isr;
+
+  CH_IRQ_PROLOGUE();
+
+  isr = STM32_DMA1->ISR;
+  dmaClearChannel(STM32_DMA1, STM32_DMA_CHANNEL_1);
+  if ((isr & DMA_ISR_TEIF1) != 0) {
+    /* DMA error processing.*/
+    STM32_ADC1_DMA_ERROR_HOOK();
+  }
+  if ((isr & DMA_ISR_HTIF1) != 0) {
+    /* Half transfer processing.*/
+    _adc_isr_half_code(&ADCD1);
+  }
+  if ((isr & DMA_ISR_TCIF1) != 0) {
+    /* Transfer complete processing.*/
+    _adc_isr_full_code(&ADCD1);
+  }
+
+  CH_IRQ_EPILOGUE();
+}
+#endif
 
 /*===========================================================================*/
 /* Driver exported functions.                                                */
@@ -90,11 +100,15 @@ static void adc_lld_serve_rx_interrupt(ADCDriver *adcp, uint32_t flags) {
 void adc_lld_init(void) {
 
 #if STM32_ADC_USE_ADC1
+  /* ADC reset, ensures reset state in order to avoid trouble with JTAGs.*/
+  RCC->APB2RSTR = RCC_APB2RSTR_ADC1RST;
+  RCC->APB2RSTR = 0;
+
   /* Driver initialization.*/
   adcObjectInit(&ADCD1);
-  ADCD1.adc = ADC1;
-  ADCD1.dmachp = STM32_DMA1_CH1;
-  ADCD1.dmaccr = (STM32_ADC_ADC1_DMA_PRIORITY << 12) |
+  ADCD1.ad_adc = ADC1;
+  ADCD1.ad_dmachp = STM32_DMA1_CH1;
+  ADCD1.ad_dmaccr = (STM32_ADC_ADC1_DMA_PRIORITY << 12) |
                     DMA_CCR1_EN   | DMA_CCR1_MSIZE_0 | DMA_CCR1_PSIZE_0 |
                     DMA_CCR1_MINC | DMA_CCR1_TCIE    | DMA_CCR1_TEIE;
 
@@ -129,22 +143,21 @@ void adc_lld_init(void) {
 void adc_lld_start(ADCDriver *adcp) {
 
   /* If in stopped state then enables the ADC and DMA clocks.*/
-  if (adcp->state == ADC_STOP) {
+  if (adcp->ad_state == ADC_STOP) {
 #if STM32_ADC_USE_ADC1
     if (&ADCD1 == adcp) {
-      dmaAllocate(STM32_DMA1_ID, STM32_DMA_CHANNEL_1,
-                  (stm32_dmaisr_t)adc_lld_serve_rx_interrupt, (void *)adcp);
+      dmaEnable(DMA1_ID);   /* NOTE: Must be enabled before the IRQs.*/
       NVICEnableVector(DMA1_Channel1_IRQn,
                        CORTEX_PRIORITY_MASK(STM32_ADC_ADC1_IRQ_PRIORITY));
-      dmaChannelSetPeripheral(adcp->dmachp, &ADC1->DR);
+      dmaChannelSetPeripheral(adcp->ad_dmachp, &ADC1->DR);
       RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
     }
 #endif
 
     /* ADC setup, the calibration procedure has already been performed
        during initialization.*/
-    adcp->adc->CR1 = ADC_CR1_SCAN;
-    adcp->adc->CR2 = 0;
+    adcp->ad_adc->CR1 = ADC_CR1_SCAN;
+    adcp->ad_adc->CR2 = 0;
   }
 }
 
@@ -158,13 +171,13 @@ void adc_lld_start(ADCDriver *adcp) {
 void adc_lld_stop(ADCDriver *adcp) {
 
   /* If in ready state then disables the ADC clock.*/
-  if (adcp->state == ADC_READY) {
+  if (adcp->ad_state == ADC_READY) {
 #if STM32_ADC_USE_ADC1
     if (&ADCD1 == adcp) {
       ADC1->CR1 = 0;
       ADC1->CR2 = 0;
       NVICDisableVector(DMA1_Channel1_IRQn);
-      dmaRelease(STM32_DMA1_ID, STM32_DMA_CHANNEL_1);
+      dmaDisable(DMA1_ID);
       RCC->APB2ENR &= ~RCC_APB2ENR_ADC1EN;
     }
 #endif
@@ -180,34 +193,34 @@ void adc_lld_stop(ADCDriver *adcp) {
  */
 void adc_lld_start_conversion(ADCDriver *adcp) {
   uint32_t ccr, n;
-  const ADCConversionGroup *grpp = adcp->grpp;
+  const ADCConversionGroup *grpp = adcp->ad_grpp;
 
   /* DMA setup.*/
-  ccr = adcp->dmaccr;
-  if (grpp->circular)
+  ccr = adcp->ad_dmaccr;
+  if (grpp->acg_circular)
     ccr |= DMA_CCR1_CIRC;
-  if (adcp->depth > 1) {
+  if (adcp->ad_depth > 1) {
     /* If the buffer depth is greater than one then the half transfer interrupt
        interrupt is enabled in order to allows streaming processing.*/
     ccr |= DMA_CCR1_HTIE;
-    n = (uint32_t)grpp->num_channels * (uint32_t)adcp->depth;
+    n = (uint32_t)grpp->acg_num_channels * (uint32_t)adcp->ad_depth;
   }
   else
-    n = (uint32_t)grpp->num_channels;
-  dmaChannelSetup(adcp->dmachp, n, adcp->samples, ccr);
+    n = (uint32_t)grpp->acg_num_channels;
+  dmaChannelSetup(adcp->ad_dmachp, n, adcp->ad_samples, ccr);
 
   /* ADC setup.*/
-  adcp->adc->CR1   = grpp->cr1 | ADC_CR1_SCAN;
-  adcp->adc->CR2   = grpp->cr2 | ADC_CR2_DMA |
+  adcp->ad_adc->CR1   = grpp->acg_cr1 | ADC_CR1_SCAN;
+  adcp->ad_adc->CR2   = grpp->acg_cr2 | ADC_CR2_DMA |
                         ADC_CR2_CONT | ADC_CR2_ADON;
-  adcp->adc->SMPR1 = grpp->smpr1;
-  adcp->adc->SMPR2 = grpp->smpr2;
-  adcp->adc->SQR1  = grpp->sqr1;
-  adcp->adc->SQR2  = grpp->sqr2;
-  adcp->adc->SQR3  = grpp->sqr3;
+  adcp->ad_adc->SMPR1 = grpp->acg_smpr1;
+  adcp->ad_adc->SMPR2 = grpp->acg_smpr2;
+  adcp->ad_adc->SQR1  = grpp->acg_sqr1;
+  adcp->ad_adc->SQR2  = grpp->acg_sqr2;
+  adcp->ad_adc->SQR3  = grpp->acg_sqr3;
 
   /* ADC start by writing ADC_CR2_ADON a second time.*/
-  adcp->adc->CR2   = grpp->cr2 | ADC_CR2_DMA |
+  adcp->ad_adc->CR2   = grpp->acg_cr2 | ADC_CR2_DMA |
                         ADC_CR2_CONT | ADC_CR2_ADON;
 }
 
@@ -220,8 +233,8 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
  */
 void adc_lld_stop_conversion(ADCDriver *adcp) {
 
-  dmaChannelDisable(adcp->dmachp);
-  adcp->adc->CR2 = 0;
+  dmaChannelDisable(adcp->ad_dmachp);
+  adcp->ad_adc->CR2 = 0;
 }
 
 #endif /* HAL_USE_ADC */

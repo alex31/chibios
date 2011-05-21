@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -195,13 +201,13 @@
 /**
  * @brief   SSP0 clock.
  */
-#define LPC11xx_SERIAL_SSP0_PCLK                                            \
+#define  LPC11xx_SERIAL_SSP0_PCLK                                          \
   (LPC11xx_MAINCLK / LPC11xx_SERIAL_SSP0CLKDIV)
 
 /**
  * @brief   SSP1 clock.
  */
-#define LPC11xx_SERIAL_SSP1_PCLK                                            \
+#define  LPC11xx_SERIAL_SSP1_PCLK                                          \
   (LPC11xx_MAINCLK / LPC11xx_SERIAL_SSP1CLKDIV)
 
 /*===========================================================================*/
@@ -228,24 +234,24 @@ typedef struct {
   /**
    * @brief Operation complete callback or @p NULL.
    */
-  spicallback_t         end_cb;
+  spicallback_t         spc_endcb;
   /* End of the mandatory fields.*/
   /**
    * @brief The chip select line port.
    */
-  ioportid_t            ssport;
+  ioportid_t            spc_ssport;
   /**
    * @brief The chip select line pad number.
    */
-  uint16_t              sspad;
+  uint16_t              spc_sspad;
   /**
    * @brief SSP CR0 initialization data.
    */
-  uint16_t              cr0;
+  uint16_t              spc_cr0;
   /**
    * @brief SSP CPSR initialization data.
    */
-  uint32_t              cpsr;
+  uint32_t              spc_cpsr;
 } SPIConfig;
 
 /**
@@ -255,25 +261,25 @@ struct SPIDriver {
   /**
    * @brief Driver state.
    */
-  spistate_t            state;
+  spistate_t            spd_state;
   /**
    * @brief Current configuration data.
    */
-  const SPIConfig       *config;
+  const SPIConfig       *spd_config;
 #if SPI_USE_WAIT || defined(__DOXYGEN__)
   /**
    * @brief Waiting thread.
    */
-  Thread                *thread;
+  Thread                *spd_thread;
 #endif /* SPI_USE_WAIT */
 #if SPI_USE_MUTUAL_EXCLUSION || defined(__DOXYGEN__)
 #if CH_USE_MUTEXES || defined(__DOXYGEN__)
   /**
    * @brief Mutex protecting the bus.
    */
-  Mutex                 mutex;
+  Mutex                 spd_mutex;
 #elif CH_USE_SEMAPHORES
-  Semaphore             semaphore;
+  Semaphore             spd_semaphore;
 #endif
 #endif /* SPI_USE_MUTUAL_EXCLUSION */
 #if defined(SPI_DRIVER_EXT_FIELDS)
@@ -283,23 +289,23 @@ struct SPIDriver {
   /**
    * @brief Pointer to the SSP registers block.
    */
-  LPC_SSP_TypeDef       *ssp;
+  LPC_SSP_TypeDef       *spd_ssp;
   /**
    * @brief Number of bytes yet to be received.
    */
-  uint32_t              rxcnt;
+  uint32_t              spd_rxcnt;
   /**
    * @brief Receive pointer or @p NULL.
    */
-  void                  *rxptr;
+  void                  *spd_rxptr;
   /**
    * @brief Number of bytes yet to be transmitted.
    */
-  uint32_t              txcnt;
+  uint32_t              spd_txcnt;
   /**
    * @brief Transmit pointer or @p NULL.
    */
-  const void            *txptr;
+  const void            *spd_txptr;
 };
 
 /*===========================================================================*/

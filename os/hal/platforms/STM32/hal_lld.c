@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -58,12 +64,6 @@
  */
 void hal_lld_init(void) {
 
-  /* Reset of all peripherals.*/
-  RCC->APB1RSTR = 0xFFFFFFFF;
-  RCC->APB2RSTR = 0xFFFFFFFF;
-  RCC->APB1RSTR = 0;
-  RCC->APB2RSTR = 0;
-
   /* SysTick initialization using the system clock.*/
   SysTick->LOAD = STM32_HCLK / CH_FREQUENCY - 1;
   SysTick->VAL = 0;
@@ -71,7 +71,7 @@ void hal_lld_init(void) {
                   SysTick_CTRL_ENABLE_Msk |
                   SysTick_CTRL_TICKINT_Msk;
 
-#if defined(STM32_DMA_REQUIRED)
+#if HAL_USE_ADC || HAL_USE_SPI || HAL_USE_UART
   dmaInit();
 #endif
 }
@@ -86,7 +86,7 @@ void hal_lld_init(void) {
 #if defined(STM32F10X_LD) || defined(STM32F10X_LD_VL) ||                    \
     defined(STM32F10X_MD) || defined(STM32F10X_MD_VL) ||                    \
     defined(STM32F10X_HD) || defined(STM32F10X_XL) ||                       \
-    defined(__DOXYGEN__)
+    defined(STM32F10X_CL) || defined(__DOXYGEN__)
 /*
  * Clocks initialization for the LD, MD and HD sub-families.
  */
@@ -148,51 +148,43 @@ void stm32_clock_init(void) {
  */
 void stm32_clock_init(void) {
 
-  /* HSI setup.*/
+  /* HSI setup, it enforces the reset situation in order to handle possible
+     problems with JTAG probes and re-initializations.*/
   RCC->CR |= RCC_CR_HSION;                  /* Make sure HSI is ON.         */
   while (!(RCC->CR & RCC_CR_HSIRDY))
     ;                                       /* Wait until HSI is stable.    */
-  RCC->CFGR = 0;
   RCC->CR &= RCC_CR_HSITRIM | RCC_CR_HSION; /* CR Reset value.              */
+  RCC->CFGR = 0;                            /* CFGR reset value.            */
   while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI)
     ;                                       /* Wait until HSI is the source.*/
+  RCC->CFGR2 = 0;
 
-  /* HSE setup, it is only performed if the current configuration uses
-     it somehow.*/
-#if STM32_ACTIVATE_PLL2 ||                                                  \
-    STM32_ACTIVATE_PLL3 ||                                                  \
-    (STM32_SW == STM32_SW_HSE) ||                                           \
-    ((STM32_PREDIV1SRC == STM32_PREDIV1SRC_HSE) &&                          \
-     (STM32_PLLSRC == STM32_PLLSRC_PREDIV1))
+  /* HSE setup, it is only performed if the HSE clock is selected as source
+     of the system clock (directly or through the PLLs).*/
+#if (STM32_SW == STM32_SW_HSE) ||                                           \
+    ((STM32_SW == STM32_SW_PLL) && (STM32_PLLSRC == STM32_PLLSRC_PREDIV1))
   RCC->CR |= RCC_CR_HSEON;
   while (!(RCC->CR & RCC_CR_HSERDY))
     ;                           /* Waits until HSE is stable.               */
 #endif
 
-  /* Settings of various dividers and multipliers in CFGR2.*/
-  RCC->CFGR2 = STM32_PLL3MUL | STM32_PLL2MUL | STM32_PREDIV2 |
-               STM32_PREDIV1 | STM32_PREDIV1SRC;
-
-  /* PLL2 setup, if activated.*/
-#if STM32_ACTIVATE_PLL2
-  RCC->CR |= RCC_CR_PLL2ON;
+  /* PLL2 setup, it is only performed if the PLL2 clock is selected as source
+     for the PLL clock else it is left disabled.*/
+#if STM32_SW == STM32_SW_PLL
+#if STM32_PREDIV1SRC == STM32_PREDIV1SRC_PLL2
+  RCC->CFGR2 |= STM32_PREDIV2 | STM32_PLL2MUL;
+  RCC->CR    |= RCC_CR_PLL2ON;
   while (!(RCC->CR & RCC_CR_PLL2RDY))
-    ;                           /* Waits until PLL2 is stable.              */
+    ;                           /* Waits until PLL is stable.               */
 #endif
 
-  /* PLL3 setup, if activated.*/
-#if STM32_ACTIVATE_PLL3
-  RCC->CR |= RCC_CR_PLL3ON;
-  while (!(RCC->CR & RCC_CR_PLL3RDY))
-    ;                           /* Waits until PLL3 is stable.              */
-#endif
-
-  /* PLL1 setup, if activated.*/
-#if STM32_ACTIVATE_PLL1
-  RCC->CFGR |= STM32_PLLMUL | STM32_PLLSRC;
-  RCC->CR   |= RCC_CR_PLLON;
+  /* PLL setup, it is only performed if the PLL is the selected source of
+     the system clock else it is left disabled.*/
+  RCC->CFGR2 |= STM32_PREDIV1 | STM32_PREDIV1SRC;
+  RCC->CFGR  |= STM32_PLLMUL | STM32_PLLSRC;
+  RCC->CR    |= RCC_CR_PLLON;
   while (!(RCC->CR & RCC_CR_PLLRDY))
-    ;                           /* Waits until PLL1 is stable.              */
+    ;                           /* Waits until PLL2 is stable.              */
 #endif
 
   /* Clock settings.*/

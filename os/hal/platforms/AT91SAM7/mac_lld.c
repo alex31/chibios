@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -101,9 +107,9 @@ static void serve_interrupt(void) {
   if ((isr & AT91C_EMAC_RCOMP) || (rsr & RSR_BITS)) {
     if (rsr & AT91C_EMAC_REC) {
       chSysLockFromIsr();
-      chSemResetI(&ETH1.rdsem, 0);
+      chSemResetI(&ETH1.md_rdsem, 0);
 #if CH_USE_EVENTS
-      chEvtBroadcastI(&ETH1.rdevent);
+      chEvtBroadcastI(&ETH1.md_rdevent);
 #endif
       chSysUnlockFromIsr();
     }
@@ -113,7 +119,7 @@ static void serve_interrupt(void) {
   if ((isr & AT91C_EMAC_TCOMP) || (tsr & TSR_BITS)) {
     if (tsr & AT91C_EMAC_COMP) {
       chSysLockFromIsr();
-      chSemResetI(&ETH1.tdsem, 0);
+      chSemResetI(&ETH1.md_tdsem, 0);
       chSysUnlockFromIsr();
     }
     AT91C_BASE_EMAC->EMAC_TSR = TSR_BITS;
@@ -292,9 +298,9 @@ msg_t max_lld_get_transmit_descriptor(MACDriver *macp,
   else
     edp->w2 = W2_T_LOCKED | W2_T_USED | W2_T_LAST_BUFFER;
   chSysUnlock();
-  tdp->offset = 0;
-  tdp->size = EMAC_TRANSMIT_BUFFERS_SIZE;
-  tdp->physdesc = edp;
+  tdp->td_offset = 0;
+  tdp->td_size = EMAC_TRANSMIT_BUFFERS_SIZE;
+  tdp->td_physdesc = edp;
   return RDY_OK;
 }
 
@@ -316,13 +322,13 @@ size_t mac_lld_write_transmit_descriptor(MACTransmitDescriptor *tdp,
                                          uint8_t *buf,
                                          size_t size) {
 
-  if (size > tdp->size - tdp->offset)
-    size = tdp->size - tdp->offset;
+  if (size > tdp->td_size - tdp->td_offset)
+    size = tdp->td_size - tdp->td_offset;
   if (size > 0) {
-    memcpy((uint8_t *)(tdp->physdesc->w1 & W1_T_ADDRESS_MASK) +
-                      tdp->offset,
+    memcpy((uint8_t *)(tdp->td_physdesc->w1 & W1_T_ADDRESS_MASK) +
+                      tdp->td_offset,
            buf, size);
-    tdp->offset += size;
+    tdp->td_offset += size;
   }
   return size;
 }
@@ -338,9 +344,9 @@ size_t mac_lld_write_transmit_descriptor(MACTransmitDescriptor *tdp,
 void mac_lld_release_transmit_descriptor(MACTransmitDescriptor *tdp) {
 
   chSysLock();
-  tdp->physdesc->w2 = (tdp->physdesc->w2 &
+  tdp->td_physdesc->w2 = (tdp->td_physdesc->w2 &
                           ~(W2_T_LOCKED | W2_T_USED | W2_T_LENGTH_MASK)) |
-                         tdp->offset;
+                         tdp->td_offset;
   AT91C_BASE_EMAC->EMAC_NCR |= AT91C_EMAC_TSTART;
   chSysUnlock();
 }
@@ -401,9 +407,9 @@ restart:
      * End Of Frame found.
      */
     if (rxptr->w2 & W2_R_FRAME_END) {
-      rdp->offset = 0;
-      rdp->size = rxptr->w2 & W2_T_LENGTH_MASK;
-      rdp->physdesc = edp;
+      rdp->rd_offset = 0;
+      rdp->rd_size = rxptr->w2 & W2_T_LENGTH_MASK;
+      rdp->rd_physdesc = edp;
       return RDY_OK;
     }
 
@@ -436,11 +442,11 @@ restart:
 size_t mac_lld_read_receive_descriptor(MACReceiveDescriptor *rdp,
                                          uint8_t *buf,
                                          size_t size) {
-  if (size > rdp->size - rdp->offset)
-    size = rdp->size - rdp->offset;
+  if (size > rdp->rd_size - rdp->rd_offset)
+    size = rdp->rd_size - rdp->rd_offset;
   if (size > 0) {
-    uint8_t *src = (uint8_t *)(rdp->physdesc->w1 & W1_R_ADDRESS_MASK) +
-                   rdp->offset;
+    uint8_t *src = (uint8_t *)(rdp->rd_physdesc->w1 & W1_R_ADDRESS_MASK) +
+                   rdp->rd_offset;
     uint8_t *limit = &rb[EMAC_RECEIVE_DESCRIPTORS * EMAC_RECEIVE_BUFFERS_SIZE];
     if (src >= limit)
       src -= EMAC_RECEIVE_DESCRIPTORS * EMAC_RECEIVE_BUFFERS_SIZE;
@@ -450,7 +456,7 @@ size_t mac_lld_read_receive_descriptor(MACReceiveDescriptor *rdp,
     }
     else
       memcpy(buf, src, size);
-    rdp->offset += size;
+    rdp->rd_offset += size;
   }
   return size;
 }
@@ -466,7 +472,7 @@ size_t mac_lld_read_receive_descriptor(MACReceiveDescriptor *rdp,
  */
 void mac_lld_release_receive_descriptor(MACReceiveDescriptor *rdp) {
   bool_t done;
-  EMACDescriptor *edp = rdp->physdesc;
+  EMACDescriptor *edp = rdp->rd_physdesc;
 
   unsigned n = EMAC_RECEIVE_DESCRIPTORS;
   do {

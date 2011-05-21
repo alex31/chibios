@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -68,10 +74,10 @@ void uartInit(void) {
  */
 void uartObjectInit(UARTDriver *uartp) {
 
-  uartp->state   = UART_STOP;
-  uartp->txstate = UART_TX_IDLE;
-  uartp->rxstate = UART_RX_IDLE;
-  uartp->config  = NULL;
+  uartp->ud_state   = UART_STOP;
+  uartp->ud_txstate = UART_TX_IDLE;
+  uartp->ud_rxstate = UART_RX_IDLE;
+  uartp->ud_config  = NULL;
   /* Optional, user-defined initializer.*/
 #if defined(UART_DRIVER_EXT_INIT_HOOK)
   UART_DRIVER_EXT_INIT_HOOK(uartp);
@@ -91,12 +97,14 @@ void uartStart(UARTDriver *uartp, const UARTConfig *config) {
   chDbgCheck((uartp != NULL) && (config != NULL), "uartStart");
 
   chSysLock();
-  chDbgAssert((uartp->state == UART_STOP) || (uartp->state == UART_READY),
-              "uartStart(), #1", "invalid state");
+  chDbgAssert((uartp->ud_state == UART_STOP) ||
+              (uartp->ud_state == UART_READY),
+              "uartStart(), #1",
+              "invalid state");
 
-  uartp->config = config;
+  uartp->ud_config = config;
   uart_lld_start(uartp);
-  uartp->state = UART_READY;
+  uartp->ud_state = UART_READY;
   chSysUnlock();
 }
 
@@ -112,13 +120,15 @@ void uartStop(UARTDriver *uartp) {
   chDbgCheck(uartp != NULL, "uartStop");
 
   chSysLock();
-  chDbgAssert((uartp->state == UART_STOP) || (uartp->state == UART_READY),
-              "uartStop(), #1", "invalid state");
+  chDbgAssert((uartp->ud_state == UART_STOP) ||
+              (uartp->ud_state == UART_READY),
+              "uartStop(), #1",
+              "invalid state");
 
   uart_lld_stop(uartp);
-  uartp->state = UART_STOP;
-  uartp->txstate = UART_TX_IDLE;
-  uartp->rxstate = UART_RX_IDLE;
+  uartp->ud_state = UART_STOP;
+  uartp->ud_txstate = UART_TX_IDLE;
+  uartp->ud_rxstate = UART_RX_IDLE;
   chSysUnlock();
 }
 
@@ -139,11 +149,13 @@ void uartStartSend(UARTDriver *uartp, size_t n, const void *txbuf) {
              "uartStartSend");
              
   chSysLock();
-  chDbgAssert((uartp->state == UART_READY) && (uartp->txstate == UART_TX_IDLE),
-              "uartStartSend(), #1", "not active");
+  chDbgAssert((uartp->ud_state == UART_READY) &&
+              (uartp->ud_txstate == UART_TX_IDLE),
+              "uartStartSend(), #1",
+              "not active");
 
   uart_lld_start_send(uartp, n, txbuf);
-  uartp->txstate = UART_TX_ACTIVE;
+  uartp->ud_txstate = UART_TX_ACTIVE;
   chSysUnlock();
 }
 
@@ -164,11 +176,12 @@ void uartStartSendI(UARTDriver *uartp, size_t n, const void *txbuf) {
   chDbgCheck((uartp != NULL) && (n > 0) && (txbuf != NULL),
              "uartStartSendI");
 
-  chDbgAssert((uartp->state == UART_READY) &&
-              (uartp->txstate != UART_TX_ACTIVE),
-              "uartStartSendI(), #1", "not active");
+  chDbgAssert((uartp->ud_state == UART_READY) &&
+              (uartp->ud_txstate != UART_TX_ACTIVE),
+              "uartStartSendI(), #1",
+              "not active");
   uart_lld_start_send(uartp, n, txbuf);
-  uartp->txstate = UART_TX_ACTIVE;
+  uartp->ud_txstate = UART_TX_ACTIVE;
 }
 
 /**
@@ -189,11 +202,13 @@ size_t uartStopSend(UARTDriver *uartp) {
   chDbgCheck(uartp != NULL, "uartStopSend");
 
   chSysLock();
-  chDbgAssert(uartp->state == UART_READY, "uartStopSend(), #1", "not active");
+  chDbgAssert(uartp->ud_state == UART_READY,
+              "uartStopSend(), #1",
+              "not active");
 
-  if (uartp->txstate == UART_TX_ACTIVE) {
+  if (uartp->ud_txstate == UART_TX_ACTIVE) {
     n = uart_lld_stop_send(uartp);
-    uartp->txstate = UART_TX_IDLE;
+    uartp->ud_txstate = UART_TX_IDLE;
   }
   else
     n = 0;
@@ -218,11 +233,13 @@ size_t uartStopSendI(UARTDriver *uartp) {
 
   chDbgCheck(uartp != NULL, "uartStopSendI");
 
-  chDbgAssert(uartp->state == UART_READY, "uartStopSendI(), #1", "not active");
+  chDbgAssert(uartp->ud_state == UART_READY,
+              "uartStopSendI(), #1",
+              "not active");
 
-  if (uartp->txstate == UART_TX_ACTIVE) {
+  if (uartp->ud_txstate == UART_TX_ACTIVE) {
     size_t n = uart_lld_stop_send(uartp);
-    uartp->txstate = UART_TX_IDLE;
+    uartp->ud_txstate = UART_TX_IDLE;
     return n;
   }
   return 0;
@@ -245,11 +262,13 @@ void uartStartReceive(UARTDriver *uartp, size_t n, void *rxbuf) {
              "uartStartReceive");
 
   chSysLock();
-  chDbgAssert((uartp->state == UART_READY) && (uartp->rxstate == UART_RX_IDLE),
-              "uartStartReceive(), #1", "not active");
+  chDbgAssert((uartp->ud_state == UART_READY) &&
+              (uartp->ud_rxstate == UART_RX_IDLE),
+              "uartStartReceive(), #1",
+              "not active");
 
   uart_lld_start_receive(uartp, n, rxbuf);
-  uartp->rxstate = UART_RX_ACTIVE;
+  uartp->ud_rxstate = UART_RX_ACTIVE;
   chSysUnlock();
 }
 
@@ -270,11 +289,13 @@ void uartStartReceiveI(UARTDriver *uartp, size_t n, void *rxbuf) {
   chDbgCheck((uartp != NULL) && (n > 0) && (rxbuf != NULL),
              "uartStartReceiveI");
 
-  chDbgAssert((uartp->state == UART_READY) && (uartp->rxstate == UART_RX_IDLE),
-              "uartStartReceiveI(), #1", "not active");
+  chDbgAssert((uartp->ud_state == UART_READY) &&
+              (uartp->ud_rxstate == UART_RX_IDLE),
+              "uartStartReceiveI(), #1",
+              "not active");
 
   uart_lld_start_receive(uartp, n, rxbuf);
-  uartp->rxstate = UART_RX_ACTIVE;
+  uartp->ud_rxstate = UART_RX_ACTIVE;
 }
 
 /**
@@ -295,12 +316,13 @@ size_t uartStopReceive(UARTDriver *uartp) {
   chDbgCheck(uartp != NULL, "uartStopReceive");
 
   chSysLock();
-  chDbgAssert(uartp->state == UART_READY,
-              "uartStopReceive(), #1", "not active");
+  chDbgAssert(uartp->ud_state == UART_READY,
+              "uartStopReceive(), #1",
+              "not active");
 
-  if (uartp->rxstate == UART_RX_ACTIVE) {
+  if (uartp->ud_rxstate == UART_RX_ACTIVE) {
     n = uart_lld_stop_receive(uartp);
-    uartp->rxstate = UART_RX_IDLE;
+    uartp->ud_rxstate = UART_RX_IDLE;
   }
   else
     n = 0;
@@ -324,12 +346,13 @@ size_t uartStopReceive(UARTDriver *uartp) {
 size_t uartStopReceiveI(UARTDriver *uartp) {
   chDbgCheck(uartp != NULL, "uartStopReceiveI");
 
-  chDbgAssert(uartp->state == UART_READY,
-              "uartStopReceiveI(), #1", "not active");
+  chDbgAssert(uartp->ud_state == UART_READY,
+              "uartStopReceiveI(), #1",
+              "not active");
 
-  if (uartp->rxstate == UART_RX_ACTIVE) {
+  if (uartp->ud_rxstate == UART_RX_ACTIVE) {
     size_t n = uart_lld_stop_receive(uartp);
-    uartp->rxstate = UART_RX_IDLE;
+    uartp->ud_rxstate = UART_RX_IDLE;
     return n;
   }
   return 0;

@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -43,7 +49,7 @@
  */
 
 /**
- * @defgroup AT91SAM7_MAC AT91SAM7 MAC Support
+ * @defgroup AT91SAM7_MAC AT91SAM7 EMAC Support
  * @details The AT91SAM7 MAC driver supports the EMAC peripheral.
  *
  * @section at91sam7_mac_1 Supported HW resources
@@ -63,7 +69,7 @@
  */
 
 /**
- * @defgroup AT91SAM7_PAL AT91SAM7 PAL Support
+ * @defgroup AT91SAM7_PAL AT91SAM7 PIO Support
  * @details The AT91SAM7 PAL driver supports the PIO peripherals.
  *
  * @section at91sam7_pal_1 Supported HW resources
@@ -100,7 +106,26 @@
  */
 
 /**
- * @defgroup AT91SAM7_SERIAL AT91SAM7 Serial Support
+ * @defgroup AT91SAM7_SPI AT91SAM7 SPI Support
+ * @details The SPI driver supports the AT91SAM7 SPI peripherals using DMA
+ *          channels for maximum performance.
+ *
+ * @section at91sam7_spi_1 Supported HW resources
+ * - SPI1.
+ * - SPI2.
+ * .
+ * @section at91sam7_spi_2 AT91SAM7 SPI driver implementation features
+ * - Clock stop for reduced power usage when the driver is in stop state.
+ * - Each SPI can be independently enabled and programmed. Unused
+ *   peripherals are left in low power mode.
+ * - Programmable interrupt priority levels for each SPI.
+ * - DMA is used for receiving and transmitting.
+ * .
+ * @ingroup AT91SAM7
+ */
+
+/**
+ * @defgroup AT91SAM7_SERIAL AT91SAM7 USART Support (buffered)
  * @details The AT91SAM7 Serial driver uses the USART/UART peripherals in a
  *          buffered, interrupt driven, implementation.
  *
@@ -116,25 +141,6 @@
  *   peripherals are left in low power mode.
  * - Fully interrupt driven.
  * - Programmable priority levels for each USART.
- * .
- * @ingroup AT91SAM7
- */
-
-/**
- * @defgroup AT91SAM7_SPI AT91SAM7 SPI Support
- * @details The SPI driver supports the AT91SAM7 SPI peripherals using DMA
- *          channels for maximum performance.
- *
- * @section at91sam7_spi_1 Supported HW resources
- * - SPI1.
- * - SPI2.
- * .
- * @section at91sam7_spi_2 AT91SAM7 SPI driver implementation features
- * - Clock stop for reduced power usage when the driver is in stop state.
- * - Each SPI can be independently enabled and programmed. Unused
- *   peripherals are left in low power mode.
- * - Programmable interrupt priority levels for each SPI.
- * - DMA is used for receiving and transmitting.
  * .
  * @ingroup AT91SAM7
  */

@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,36 +10,42 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @defgroup UART UART Driver
- * @brief   Generic UART Driver.
- * @details This driver abstracts a generic UART (Universal Asynchronous
- *          Receiver Transmitter) peripheral, the API is designed to be:
- *          - Unbuffered and copy-less, transfers are always directly performed
- *            from/to the application-level buffers without extra copy
- *            operations.
- *          - Asynchronous, the API is always non blocking.
- *          - Callbacks capable, operations completion and other events are
- *            notified using callbacks.
- *          .
- *          Special hardware features like deep hardware buffers, DMA transfers
- *          are hidden to the user but fully supportable by the low level
- *          implementations.<br>
- *          This driver model is best used where communication events are
- *          meant to drive an higher level state machine, as example:
- *          - RS485 drivers.
- *          - Multipoint network drivers.
- *          - Serial protocol decoders.
- *          .
- *          If your application requires a synchronoyus buffered driver then
- *          the @ref SERIAL should be used instead.
+ * @brief Generic UART Driver.
+ * @details This driver abstracts a generic UART peripheral, the API is
+ * designed to be:
+ * - Unbuffered and copy-less, transfers are always directly performed
+ *   from/to the application-level buffers without extra copy operations.
+ * - Asynchronous, the API is always non blocking.
+ * - Callbacks capable, operations completion and other events are notified
+ *   via callbacks.
+ * .
+ * Special hardware features like deep hardware buffers, DMA transfers
+ * are hidden to the user but fully supportable by the low level
+ * implementations.<br>
+ * This driver model is best used where communication events are meant to
+ * drive an higher level state machine, as example:
+ * - RS485 drivers.
+ * - Multipoint network drivers.
+ * - Serial protocol decoders.
+ * .
+ * If your application requires a synchronoyus buffered driver then the
+ * @ref SERIAL should be used instead.
  * @pre     In order to use the UART driver the @p HAL_USE_UART option
  *          must be enabled in @p halconf.h.
  *

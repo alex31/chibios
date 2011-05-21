@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 /*
  * **** This file incorporates work covered by the following copyright and ****
@@ -91,11 +97,12 @@ void sys_sem_signal(sys_sem_t sem) {
 }
 
 u32_t sys_arch_sem_wait(sys_sem_t sem, u32_t timeout) {
-  systime_t time;
+  systime_t time, tmo;
 
   chSysLock();
+  tmo = timeout > 0 ? (systime_t)timeout : TIME_INFINITE;
   time = chTimeNow();
-  if (chSemWaitTimeoutS(sem, (systime_t)timeout) != RDY_OK)
+  if (chSemWaitTimeoutS(sem, tmo) != RDY_OK)
     time = SYS_ARCH_TIMEOUT;
   else
     time = chTimeNow() - time;
@@ -135,11 +142,12 @@ err_t sys_mbox_trypost(sys_mbox_t mbox, void *msg) {
 }
 
 u32_t sys_arch_mbox_fetch(sys_mbox_t mbox, void **msg, u32_t timeout) {
-  systime_t time;
+  systime_t time, tmo;
 
   chSysLock();
+  tmo = timeout > 0 ? (systime_t)timeout : TIME_INFINITE;
   time = chTimeNow();
-  if (chMBFetchS(mbox, (msg_t *)msg, (systime_t)timeout) != RDY_OK)
+  if (chMBFetchS(mbox, (msg_t *)msg, tmo) != RDY_OK)
     time = SYS_ARCH_TIMEOUT;
   else
     time = chTimeNow() - time;

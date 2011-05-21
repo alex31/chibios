@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -48,6 +54,30 @@
 #if CH_USE_QUEUES || defined(__DOXYGEN__)
 
 /**
+ * @brief   Puts the invoking thread into the queue's threads queue.
+ *
+ * @param[out] qp       pointer to an @p GenericQueue structure
+ * @param[in] time      the number of ticks before the operation timeouts,
+ *                      the following special values are allowed:
+ *                      - @a TIME_IMMEDIATE immediate timeout.
+ *                      - @a TIME_INFINITE no timeout.
+ *                      .
+ * @return              A message specifying how the invoking thread has been
+ *                      released from threads queue.
+ * @retval Q_OK         is the normal exit, thread signaled.
+ * @retval Q_RESET      if the queue has been reset.
+ * @retval Q_TIMEOUT    if the queue operation timed out.
+ */
+static msg_t qwait(GenericQueue *qp, systime_t time) {
+
+  if (TIME_IMMEDIATE == time)
+    return Q_TIMEOUT;
+  currp->p_u.wtobjp = qp;
+  queue_insert(currp, &qp->q_waiting);
+  return chSchGoSleepTimeoutS(THD_STATE_WTQUEUE, time);
+}
+
+/**
  * @brief   Initializes an input queue.
  * @details A Semaphore is internally initialized and works as a counter of
  *          the bytes contained in the queue.
@@ -64,28 +94,11 @@
  */
 void chIQInit(InputQueue *iqp, uint8_t *bp, size_t size, qnotify_t infy) {
 
+  queue_init(&iqp->q_waiting);
+  iqp->q_counter = 0;
   iqp->q_buffer = iqp->q_rdptr = iqp->q_wrptr = bp;
   iqp->q_top = bp + size;
   iqp->q_notify = infy;
-  chSemInit(&iqp->q_sem, 0);
-}
-
-/**
- * @brief   Returns the filled space into an input queue.
- *
- * @param[in] iqp       pointer to an @p InputQueue structure
- * @return              The number of bytes in the queue.
- * @retval 0            if the queue is empty.
- *
- * @iclass
- */
-size_t chIQGetFullI(InputQueue *iqp) {
-  cnt_t cnt;
-
-  cnt = chQSpaceI(iqp);
-  if (cnt < 0)
-    return 0;
-  return (size_t)cnt;
 }
 
 /**
@@ -102,7 +115,9 @@ size_t chIQGetFullI(InputQueue *iqp) {
 void chIQResetI(InputQueue *iqp) {
 
   iqp->q_rdptr = iqp->q_wrptr = iqp->q_buffer;
-  chSemResetI(&iqp->q_sem, 0);
+  iqp->q_counter = 0;
+  while (notempty(&iqp->q_waiting))
+    chSchReadyI(fifo_remove(&iqp->q_waiting))->p_u.rdymsg = Q_RESET;
 }
 
 /**
@@ -123,10 +138,14 @@ msg_t chIQPutI(InputQueue *iqp, uint8_t b) {
   if (chIQIsFullI(iqp))
     return Q_FULL;
 
+  iqp->q_counter++;
   *iqp->q_wrptr++ = b;
   if (iqp->q_wrptr >= iqp->q_top)
     iqp->q_wrptr = iqp->q_buffer;
-  chSemSignalI(&iqp->q_sem);
+
+  if (notempty(&iqp->q_waiting))
+    chSchReadyI(fifo_remove(&iqp->q_waiting))->p_u.rdymsg = Q_OK;
+
   return Q_OK;
 }
 
@@ -135,6 +154,9 @@ msg_t chIQPutI(InputQueue *iqp, uint8_t b) {
  * @details This function reads a byte value from an input queue. If the queue
  *          is empty then the calling thread is suspended until a byte arrives
  *          in the queue or a timeout occurs.
+ * @note    The callback is invoked if the queue is empty before entering the
+ *          @p THD_STATE_WTQUEUE state in order to solicit the low level to
+ *          start queue filling.
  *
  * @param[in] iqp       pointer to an @p InputQueue structure
  * @param[in] time      the number of ticks before the operation timeouts,
@@ -144,23 +166,27 @@ msg_t chIQPutI(InputQueue *iqp, uint8_t b) {
  *                      .
  * @return              A byte value from the queue.
  * @retval Q_TIMEOUT    if the specified time expired.
- * @retval Q_RESET      if the queue was reset.
+ * @retval Q_RESET      if the queue has been reset.
  *
  * @api
  */
 msg_t chIQGetTimeout(InputQueue *iqp, systime_t time) {
   uint8_t b;
-  msg_t msg;
 
   chSysLock();
+  while (chIQIsEmptyI(iqp)) {
+    msg_t msg;
 
-  if (iqp->q_notify)
-    iqp->q_notify(iqp);
+    if (iqp->q_notify)
+      iqp->q_notify(iqp);
 
-  if ((msg = chSemWaitTimeoutS(&iqp->q_sem, time)) < RDY_OK) {
-    chSysUnlock();
-    return msg;
+    if ((msg = qwait((GenericQueue *)iqp, time)) < Q_OK) {
+      chSysUnlock();
+      return msg;
+    }
   }
+
+  iqp->q_counter--;
   b = *iqp->q_rdptr++;
   if (iqp->q_rdptr >= iqp->q_top)
     iqp->q_rdptr = iqp->q_buffer;
@@ -177,8 +203,9 @@ msg_t chIQGetTimeout(InputQueue *iqp, systime_t time) {
  *          been reset.
  * @note    The function is not atomic, if you need atomicity it is suggested
  *          to use a semaphore or a mutex for mutual exclusion.
- * @note    The queue callback is invoked before entering a sleep state and at
- *          the end of the transfer.
+ * @note    The callback is invoked if the queue is empty before entering the
+ *          @p THD_STATE_WTQUEUE state in order to solicit the low level to
+ *          start queue filling.
  *
  * @param[in] iqp       pointer to an @p InputQueue structure
  * @param[out] bp       pointer to the data buffer
@@ -202,28 +229,26 @@ size_t chIQReadTimeout(InputQueue *iqp, uint8_t *bp,
 
   chSysLock();
   while (TRUE) {
-    if (chIQIsEmptyI(iqp)) {
+    while (chIQIsEmptyI(iqp)) {
       if (nfy)
         nfy(iqp);
-      if ((chSemWaitTimeoutS(&iqp->q_sem, time) != RDY_OK)) {
+
+      if (qwait((GenericQueue *)iqp, time) != Q_OK) {
         chSysUnlock();
         return r;
       }
     }
-    else
-      chSemFastWaitI(&iqp->q_sem);
+
+    iqp->q_counter--;
     *bp++ = *iqp->q_rdptr++;
     if (iqp->q_rdptr >= iqp->q_top)
       iqp->q_rdptr = iqp->q_buffer;
+
     chSysUnlock(); /* Gives a preemption chance in a controlled point.*/
     r++;
-    if (--n == 0) {
-      chSysLock();
-      if (nfy)
-        nfy(iqp);
-      chSysUnlock();
+    if (--n == 0)
       return r;
-    }
+
     chSysLock();
   }
 }
@@ -245,28 +270,11 @@ size_t chIQReadTimeout(InputQueue *iqp, uint8_t *bp,
  */
 void chOQInit(OutputQueue *oqp, uint8_t *bp, size_t size, qnotify_t onfy) {
 
+  queue_init(&oqp->q_waiting);
+  oqp->q_counter = size;
   oqp->q_buffer = oqp->q_rdptr = oqp->q_wrptr = bp;
   oqp->q_top = bp + size;
   oqp->q_notify = onfy;
-  chSemInit(&oqp->q_sem, (cnt_t)size);
-}
-
-/**
- * @brief   Returns the filled space into an output queue.
- *
- * @param[in] oqp       pointer to an @p OutputQueue structure
- * @return              The number of bytes in the queue.
- * @retval 0            if the queue is empty.
- *
- * @iclass
- */
-size_t chOQGetFullI(OutputQueue *oqp) {
-  cnt_t cnt;
-
-  cnt = chQSpaceI(oqp);
-  if (cnt < 0)
-    return chQSizeI(oqp);
-  return chQSizeI(oqp) - (size_t)cnt;
 }
 
 /**
@@ -283,7 +291,9 @@ size_t chOQGetFullI(OutputQueue *oqp) {
 void chOQResetI(OutputQueue *oqp) {
 
   oqp->q_rdptr = oqp->q_wrptr = oqp->q_buffer;
-  chSemResetI(&oqp->q_sem, (cnt_t)(oqp->q_top - oqp->q_buffer));
+  oqp->q_counter = chQSizeI(oqp);
+  while (notempty(&oqp->q_waiting))
+    chSchReadyI(fifo_remove(&oqp->q_waiting))->p_u.rdymsg = Q_RESET;
 }
 
 /**
@@ -291,6 +301,8 @@ void chOQResetI(OutputQueue *oqp) {
  * @details This function writes a byte value to an output queue. If the queue
  *          is full then the calling thread is suspended until there is space
  *          in the queue or a timeout occurs.
+ * @note    The callback is invoked after writing the character into the
+ *          buffer.
  *
  * @param[in] oqp       pointer to an @p OutputQueue structure
  * @param[in] b         the byte value to be written in the queue
@@ -302,18 +314,23 @@ void chOQResetI(OutputQueue *oqp) {
  * @return              The operation status.
  * @retval Q_OK         if the operation succeeded.
  * @retval Q_TIMEOUT    if the specified time expired.
- * @retval Q_RESET      if the queue was reset.
+ * @retval Q_RESET      if the queue has been reset.
  *
  * @api
  */
 msg_t chOQPutTimeout(OutputQueue *oqp, uint8_t b, systime_t time) {
-  msg_t msg;
 
   chSysLock();
-  if ((msg = chSemWaitTimeoutS(&oqp->q_sem, time)) < RDY_OK) {
-    chSysUnlock();
-    return msg;
+  while (chOQIsFullI(oqp)) {
+    msg_t msg;
+
+    if ((msg = qwait((GenericQueue *)oqp, time)) < Q_OK) {
+      chSysUnlock();
+      return msg;
+    }
   }
+
+  oqp->q_counter--;
   *oqp->q_wrptr++ = b;
   if (oqp->q_wrptr >= oqp->q_top)
     oqp->q_wrptr = oqp->q_buffer;
@@ -341,10 +358,14 @@ msg_t chOQGetI(OutputQueue *oqp) {
   if (chOQIsEmptyI(oqp))
     return Q_EMPTY;
 
+  oqp->q_counter++;
   b = *oqp->q_rdptr++;
   if (oqp->q_rdptr >= oqp->q_top)
     oqp->q_rdptr = oqp->q_buffer;
-  chSemSignalI(&oqp->q_sem);
+
+  if (notempty(&oqp->q_waiting))
+    chSchReadyI(fifo_remove(&oqp->q_waiting))->p_u.rdymsg = Q_OK;
+
   return b;
 }
 
@@ -356,8 +377,8 @@ msg_t chOQGetI(OutputQueue *oqp) {
  *          been reset.
  * @note    The function is not atomic, if you need atomicity it is suggested
  *          to use a semaphore or a mutex for mutual exclusion.
- * @note    The queue callback is invoked before entering a sleep state and at
- *          the end of the transfer.
+ * @note    The callback is invoked after writing each character into the
+ *          buffer.
  *
  * @param[in] oqp       pointer to an @p OutputQueue structure
  * @param[out] bp       pointer to the data buffer
@@ -381,28 +402,24 @@ size_t chOQWriteTimeout(OutputQueue *oqp, const uint8_t *bp,
 
   chSysLock();
   while (TRUE) {
-    if (chOQIsFullI(oqp)) {
-      if (nfy)
-        nfy(oqp);
-      if ((chSemWaitTimeoutS(&oqp->q_sem, time) != RDY_OK)) {
+    while (chOQIsFullI(oqp)) {
+      if (qwait((GenericQueue *)oqp, time) != Q_OK) {
         chSysUnlock();
         return w;
       }
     }
-    else
-      chSemFastWaitI(&oqp->q_sem);
+    oqp->q_counter--;
     *oqp->q_wrptr++ = *bp++;
     if (oqp->q_wrptr >= oqp->q_top)
       oqp->q_wrptr = oqp->q_buffer;
+
+    if (nfy)
+      nfy(oqp);
+
     chSysUnlock(); /* Gives a preemption chance in a controlled point.*/
     w++;
-    if (--n == 0) {
-      chSysLock();
-      if (nfy)
-        nfy(oqp);
-      chSysUnlock();
+    if (--n == 0)
       return w;
-    }
     chSysLock();
   }
 }

@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -122,22 +128,22 @@ typedef uint32_t canstatus_t;
  */
 typedef struct {
   struct {
-    uint8_t                 DLC:4;          /**< @brief Data length.        */
-    uint8_t                 RTR:1;          /**< @brief Frame type.         */
-    uint8_t                 IDE:1;          /**< @brief Identifier type.    */
+    uint8_t                 cf_DLC:4;       /**< @brief Data length.        */
+    uint8_t                 cf_RTR:1;       /**< @brief Frame type.         */
+    uint8_t                 cf_IDE:1;       /**< @brief Identifier type.    */
   };
   union {
     struct {
-      uint32_t              SID:11;         /**< @brief Standard identifier.*/
+      uint32_t              cf_SID:11;      /**< @brief Standard identifier.*/
     };
     struct {
-      uint32_t              EID:29;         /**< @brief Extended identifier.*/
+      uint32_t              cf_EID:29;      /**< @brief Extended identifier.*/
     };
   };
   union {
-    uint8_t                 data8[8];       /**< @brief Frame data.         */
-    uint16_t                data16[4];      /**< @brief Frame data.         */
-    uint32_t                data32[2];      /**< @brief Frame data.         */
+    uint8_t                 cf_data8[8];    /**< @brief Frame data.         */
+    uint16_t                cf_data16[4];   /**< @brief Frame data.         */
+    uint32_t                cf_data32[2];   /**< @brief Frame data.         */
   };
 } CANTxFrame;
 
@@ -148,26 +154,26 @@ typedef struct {
  */
 typedef struct {
   struct {
-    uint8_t                 FMI;            /**< @brief Filter id.          */
-    uint16_t                TIME;           /**< @brief Time stamp.         */
+    uint8_t                 cf_FMI;         /**< @brief Filter id.          */
+    uint16_t                cf_TIME;        /**< @brief Time stamp.         */
   };
   struct {
-    uint8_t                 DLC:4;          /**< @brief Data length.        */
-    uint8_t                 RTR:1;          /**< @brief Frame type.         */
-    uint8_t                 IDE:1;          /**< @brief Identifier type.    */
+    uint8_t                 cf_DLC:4;       /**< @brief Data length.        */
+    uint8_t                 cf_RTR:1;       /**< @brief Frame type.         */
+    uint8_t                 cf_IDE:1;       /**< @brief Identifier type.    */
   };
   union {
     struct {
-      uint32_t              SID:11;         /**< @brief Standard identifier.*/
+      uint32_t              cf_SID:11;      /**< @brief Standard identifier.*/
     };
     struct {
-      uint32_t              EID:29;         /**< @brief Extended identifier.*/
+      uint32_t              cf_EID:29;      /**< @brief Extended identifier.*/
     };
   };
   union {
-    uint8_t                 data8[8];       /**< @brief Frame data.         */
-    uint16_t                data16[4];      /**< @brief Frame data.         */
-    uint32_t                data32[2];      /**< @brief Frame data.         */
+    uint8_t                 cf_data8[8];    /**< @brief Frame data.         */
+    uint16_t                cf_data16[4];   /**< @brief Frame data.         */
+    uint32_t                cf_data32[2];   /**< @brief Frame data.         */
   };
 } CANRxFrame;
 
@@ -181,27 +187,27 @@ typedef struct {
    * @note  This bit represent the CAN_FM1R register bit associated to this
    *        filter (0=mask mode, 1=list mode).
    */
-  uint32_t                  mode:1;
+  uint32_t                  cf_mode:1;
   /**
    * @brief Filter sclae.
    * @note  This bit represent the CAN_FS1R register bit associated to this
    *        filter (0=16 bits mode, 1=32 bits mode).
    */
-  uint32_t                  scale:1;
+  uint32_t                  cf_scale:1;
   /**
    * @brief Filter mode.
    * @note  This bit represent the CAN_FFA1R register bit associated to this
    *        filter, must be set to zero in this version of the driver.
    */
-  uint32_t                  assignment:1;
+  uint32_t                  cf_assignment:1;
   /**
    * @brief Filter register 1 (identifier).
    */
-  uint32_t                  register1;
+  uint32_t                  cf_register1;
   /**
-   * @brief Filter register 2 (mask/identifier depending on mode=0/1).
+   * @brief Filter register 2 (mask/identifier depending on cf_mode=0/1).
    */
-  uint32_t                  register2;
+  uint32_t                  cf_register2;
 } CANFilter;
 
 /**
@@ -213,25 +219,25 @@ typedef struct {
    * @note  Some bits in this register are enforced by the driver regardless
    *        their status in this field.
    */
-  uint32_t                  mcr;
+  uint32_t                  cc_mcr;
   /**
    * @brief CAN BTR register initialization data.
    * @note  Some bits in this register are enforced by the driver regardless
    *        their status in this field.
    */
-  uint32_t                  btr;
+  uint32_t                  cc_btr;
   /**
    * @brief Number of elements into the filters array.
    * @note  By setting this field to zero a default filter is enabled that
    *        allows all frames, this should be adequate  for simple applications.
    */
-  uint32_t                  num;
+  uint32_t                  cc_num;
   /**
    * @brief Pointer to an array of @p CANFilter structures.
-   * @note  This field can be set to @p NULL if the field @p num is set to
+   * @note  This field can be set to @p NULL if the field @p cc_num is set to
    *        zero.
    */
-  const CANFilter           *filters;
+  const CANFilter           *cc_filters;
 } CANConfig;
 
 /**
@@ -241,19 +247,19 @@ typedef struct {
   /**
    * @brief Driver state.
    */
-  canstate_t                state;
+  canstate_t                cd_state;
   /**
    * @brief Current configuration data.
    */
-  const CANConfig           *config;
+  const CANConfig           *cd_config;
   /**
    * @brief Transmission queue semaphore.
    */
-  Semaphore                 txsem;
+  Semaphore                 cd_txsem;
   /**
    * @brief Receive queue semaphore.
    */
-  Semaphore                 rxsem;
+  Semaphore                 cd_rxsem;
   /**
    * @brief One or more frames become available.
    * @note  After broadcasting this event it will not be broadcasted again
@@ -263,34 +269,34 @@ typedef struct {
    *        invoking @p chReceive() when listening to this event. This behavior
    *        minimizes the interrupt served by the system because CAN traffic.
    */
-  EventSource               rxfull_event;
+  EventSource               cd_rxfull_event;
   /**
    * @brief One or more transmission slots become available.
    */
-  EventSource               txempty_event;
+  EventSource               cd_txempty_event;
   /**
    * @brief A CAN bus error happened.
    */
-  EventSource               error_event;
+  EventSource               cd_error_event;
   /**
    * @brief Error flags set when an error event is broadcasted.
    */
-  canstatus_t               status;
+  canstatus_t               cd_status;
 #if CAN_USE_SLEEP_MODE || defined (__DOXYGEN__)
   /**
    * @brief Entering sleep state event.
    */
-  EventSource               sleep_event;
+  EventSource               cd_sleep_event;
   /**
    * @brief Exiting sleep state event.
    */
-  EventSource               wakeup_event;
+  EventSource               cd_wakeup_event;
 #endif /* CAN_USE_SLEEP_MODE */
   /* End of the mandatory fields.*/
   /**
    * @brief Pointer to the CAN registers.
    */
-  CAN_TypeDef               *can;
+  CAN_TypeDef               *cd_can;
 } CANDriver;
 
 /*===========================================================================*/

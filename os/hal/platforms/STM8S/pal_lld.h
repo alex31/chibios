@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -160,7 +166,7 @@ typedef GPIO_TypeDef *ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_init(config) (*IOPORTS = *(config))
+#define pal_lld_init(config)    *IOPORTS = *(config)
 
 /**
  * @brief   Reads the physical I/O port states.
@@ -200,6 +206,7 @@ typedef GPIO_TypeDef *ioportid_t;
  */
 #define pal_lld_writeport(port, bits) ((port)->ODR = (bits))
 
+
 /**
  * @brief   Pads group mode setup.
  * @details This function programs a pads group belonging to the same port
@@ -215,7 +222,7 @@ typedef GPIO_TypeDef *ioportid_t;
  * @notapi
  */
 #define pal_lld_setgroupmode(port, mask, mode)                              \
-  _pal_lld_setgroupmode(port, mask, mode)
+    _pal_lld_setgroupmode(port, mask, mode)
 
 extern ROMCONST PALConfig pal_default_config;
 

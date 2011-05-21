@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -313,32 +319,35 @@ void chSemSignalI(Semaphore *sp) {
 }
 
 /**
- * @brief   Adds the specified value to the semaphore counter.
+ * @brief   Sets the semaphore counter to the specified value.
+ * @post    After invoking this function all the threads waiting on the
+ *          semaphore, if any, are released and the semaphore counter is set
+ *          to the specified, non negative, value.
  * @post    This function does not reschedule so a call to a rescheduling
  *          function must be performed before unlocking the kernel. Note that
  *          interrupt handlers always reschedule on exit so an explicit
  *          reschedule must not be performed in ISRs.
  *
  * @param[in] sp        pointer to a @p Semaphore structure
- * @param[in] n         value to be added to the semaphore counter. The value
- *                      must be positive.
+ * @param[in] n         the new value of the semaphore counter. The value must
+ *                      be non-negative.
  *
  * @iclass
  */
-void chSemAddCounterI(Semaphore *sp, cnt_t n) {
+void chSemSetCounterI(Semaphore *sp, cnt_t n) {
+  cnt_t cnt;
 
-  chDbgCheck((sp != NULL) && (n > 0), "chSemAddCounterI");
+  chDbgCheck((sp != NULL) && (n >= 0), "chSemSetCounterI");
 
   chDbgAssert(((sp->s_cnt >= 0) && isempty(&sp->s_queue)) ||
               ((sp->s_cnt < 0) && notempty(&sp->s_queue)),
-              "chSemAddCounterI(), #1",
+              "chSemSetCounterI(), #1",
               "inconsistent semaphore");
 
-  while (n > 0) {
-    if (++sp->s_cnt <= 0)
-      chSchReadyI(fifo_remove(&sp->s_queue))->p_u.rdymsg = RDY_OK;
-    n--;
-  }
+  cnt = sp->s_cnt;
+  sp->s_cnt = n;
+  while (++cnt <= 0)
+    chSchReadyI(lifo_remove(&sp->s_queue))->p_u.rdymsg = RDY_OK;
 }
 
 #if CH_USE_SEMSW

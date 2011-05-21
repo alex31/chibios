@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -68,8 +74,8 @@ void xxxInit(void) {
  */
 void xxxObjectInit(XXXDriver *xxxp) {
 
-  xxxp->state  = XXX_STOP;
-  xxxp->config = NULL;
+  xxxp->xxx_state    = XXX_STOP;
+  xxxp->xxx_config   = NULL;
 }
 
 /**
@@ -85,11 +91,12 @@ void xxxStart(XXXDriver *xxxp, const XXXConfig *config) {
   chDbgCheck((xxxp != NULL) && (config != NULL), "xxxStart");
 
   chSysLock();
-  chDbgAssert((xxxp->state == XXX_STOP) || (xxxp->state == XXX_READY),
-              "xxxStart(), #1", "invalid state");
-  xxxp->config = config;
+  chDbgAssert((xxxp->xxx_state == XXX_STOP) || (xxxp->xxx_state == XXX_READY),
+              "xxxStart(), #1",
+              "invalid state");
+  xxxp->xxx_config = config;
   xxx_lld_start(xxxp);
-  xxxp->state = XXX_READY;
+  xxxp->xxx_state = XXX_READY;
   chSysUnlock();
 }
 
@@ -105,10 +112,11 @@ void xxxStop(XXXDriver *xxxp) {
   chDbgCheck(xxxp != NULL, "xxxStop");
 
   chSysLock();
-  chDbgAssert((xxxp->state == XXX_STOP) || (xxxp->state == XXX_READY),
-              "xxxStop(), #1", "invalid state");
+  chDbgAssert((xxxp->xxx_state == XXX_STOP) || (xxxp->xxx_state == XXX_READY),
+              "xxxStop(), #1",
+              "invalid state");
   xxx_lld_stop(xxxp);
-  xxxp->state = XXX_STOP;
+  xxxp->xxx_state = XXX_STOP;
   chSysUnlock();
 }
 

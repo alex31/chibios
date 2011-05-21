@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -87,15 +93,15 @@ typedef struct {
   /**
    * @brief Enables the circular buffer mode for the group.
    */
-  bool_t                    circular;
+  bool_t                    acg_circular;
   /**
    * @brief Number of the analog channels belonging to the conversion group.
    */
-  adc_channels_num_t        num_channels;
+  adc_channels_num_t        acg_num_channels;
   /**
    * @brief Callback function associated to the group or @p NULL.
    */
-  adccallback_t             end_cb;
+  adccallback_t             acg_endcb;
   /* End of the mandatory fields.*/
 } ADCConversionGroup;
 
@@ -118,37 +124,37 @@ struct ADCDriver {
   /**
    * @brief Driver state.
    */
-  adcstate_t                state;
+  adcstate_t                ad_state;
   /**
    * @brief Current configuration data.
    */
-  const ADCConfig           *config;
+  const ADCConfig           *ad_config;
   /**
    * @brief Current samples buffer pointer or @p NULL.
    */
-  adcsample_t               *samples;
+  adcsample_t               *ad_samples;
   /**
    * @brief Current samples buffer depth or @p 0.
    */
-  size_t                    depth;
+  size_t                    ad_depth;
   /**
    * @brief Current conversion group pointer or @p NULL.
    */
-  const ADCConversionGroup  *grpp;
+  const ADCConversionGroup  *ad_grpp;
 #if ADC_USE_WAIT || defined(__DOXYGEN__)
   /**
    * @brief Waiting thread.
    */
-  Thread                    *thread;
+  Thread                    *ad_thread;
 #endif /* SPI_USE_WAIT */
 #if ADC_USE_MUTUAL_EXCLUSION || defined(__DOXYGEN__)
 #if CH_USE_MUTEXES || defined(__DOXYGEN__)
   /**
    * @brief Mutex protecting the peripheral.
    */
-  Mutex                     mutex;
+  Mutex                     ad_mutex;
 #elif CH_USE_SEMAPHORES
-  Semaphore                 semaphore;
+  Semaphore                 ad_semaphore;
 #endif
 #endif /* ADC_USE_MUTUAL_EXCLUSION */
 #if defined(ADC_DRIVER_EXT_FIELDS)

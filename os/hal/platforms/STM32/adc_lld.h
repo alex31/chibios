@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -94,12 +100,12 @@
 #endif
 
 /**
- * @brief   ADC DMA error hook.
- * @note    The default action for DMA errors is a system halt because DMA
- *          error can only happen because programming errors.
+ * @brief   ADC1 DMA error hook.
+ * @note    The default action for DMA errors is a system halt because DMA error
+ *          can only happen because programming errors.
  */
-#if !defined(STM32_ADC_DMA_ERROR_HOOK) || defined(__DOXYGEN__)
-#define STM32_ADC_DMA_ERROR_HOOK(adcp)      chSysHalt()
+#if !defined(STM32_ADC1_DMA_ERROR_HOOK) || defined(__DOXYGEN__)
+#define STM32_ADC1_DMA_ERROR_HOOK() chSysHalt()
 #endif
 
 /*===========================================================================*/
@@ -112,10 +118,6 @@
 
 #if !STM32_ADC_USE_ADC1
 #error "ADC driver activated but no ADC peripheral assigned"
-#endif
-
-#if !defined(STM32_DMA_REQUIRED)
-#define STM32_DMA_REQUIRED
 #endif
 
 /*===========================================================================*/
@@ -159,56 +161,56 @@ typedef struct {
   /**
    * @brief   Enables the circular buffer mode for the group.
    */
-  bool_t                    circular;
+  bool_t                    acg_circular;
   /**
    * @brief   Number of the analog channels belonging to the conversion group.
    */
-  adc_channels_num_t        num_channels;
+  adc_channels_num_t        acg_num_channels;
   /**
    * @brief   Callback function associated to the group or @p NULL.
    */
-  adccallback_t             end_cb;
+  adccallback_t             acg_endcb;
   /* End of the mandatory fields.*/
   /**
    * @brief   ADC CR1 register initialization data.
    * @note    All the required bits must be defined into this field except
    *          @p ADC_CR1_SCAN that is enforced inside the driver.
    */
-  uint32_t                  cr1;
+  uint32_t                  acg_cr1;
   /**
    * @brief   ADC CR2 register initialization data.
    * @note    All the required bits must be defined into this field except
    *          @p ADC_CR2_DMA, @p ADC_CR2_CONT and @p ADC_CR2_ADON that are
    *          enforced inside the driver.
    */
-  uint32_t                  cr2;
+  uint32_t                  acg_cr2;
   /**
    * @brief   ADC SMPR1 register initialization data.
    * @details In this field must be specified the sample times for channels
    *          10...17.
    */
-  uint32_t                  smpr1;
+  uint32_t                  acg_smpr1;
   /**
    * @brief   ADC SMPR2 register initialization data.
    * @details In this field must be specified the sample times for channels
    *          0...9.
    */
-  uint32_t                  smpr2;
+  uint32_t                  acg_smpr2;
   /**
    * @brief   ADC SQR1 register initialization data.
    * @details Conversion group sequence 13...16 + sequence length.
    */
-  uint32_t                  sqr1;
+  uint32_t                  acg_sqr1;
   /**
    * @brief   ADC SQR2 register initialization data.
    * @details Conversion group sequence 7...12.
    */
-  uint32_t                  sqr2;
+  uint32_t                  acg_sqr2;
   /**
    * @brief   ADC SQR3 register initialization data.
    * @details Conversion group sequence 0...6.
    */
-  uint32_t                  sqr3;
+  uint32_t                  acg_sqr3;
 } ADCConversionGroup;
 
 /**
@@ -226,37 +228,37 @@ struct ADCDriver {
   /**
    * @brief Driver state.
    */
-  adcstate_t                state;
+  adcstate_t                ad_state;
   /**
    * @brief Current configuration data.
    */
-  const ADCConfig           *config;
+  const ADCConfig           *ad_config;
   /**
    * @brief Current samples buffer pointer or @p NULL.
    */
-  adcsample_t               *samples;
+  adcsample_t               *ad_samples;
   /**
    * @brief Current samples buffer depth or @p 0.
    */
-  size_t                    depth;
+  size_t                    ad_depth;
   /**
    * @brief Current conversion group pointer or @p NULL.
    */
-  const ADCConversionGroup  *grpp;
+  const ADCConversionGroup  *ad_grpp;
 #if ADC_USE_WAIT || defined(__DOXYGEN__)
   /**
    * @brief Waiting thread.
    */
-  Thread                    *thread;
+  Thread                    *ad_thread;
 #endif
 #if ADC_USE_MUTUAL_EXCLUSION || defined(__DOXYGEN__)
 #if CH_USE_MUTEXES || defined(__DOXYGEN__)
   /**
    * @brief Mutex protecting the peripheral.
    */
-  Mutex                     mutex;
+  Mutex                     ad_mutex;
 #elif CH_USE_SEMAPHORES
-  Semaphore                 semaphore;
+  Semaphore                 ad_semaphore;
 #endif
 #endif /* ADC_USE_MUTUAL_EXCLUSION */
 #if defined(ADC_DRIVER_EXT_FIELDS)
@@ -266,15 +268,15 @@ struct ADCDriver {
   /**
    * @brief Pointer to the ADCx registers block.
    */
-  ADC_TypeDef               *adc;
+  ADC_TypeDef               *ad_adc;
   /**
    * @brief Pointer to the DMA registers block.
    */
-  stm32_dma_channel_t       *dmachp;
+  stm32_dma_channel_t       *ad_dmachp;
   /**
    * @brief DMA CCR register bit mask.
    */
-  uint32_t                  dmaccr;
+  uint32_t                  ad_dmaccr;
 };
 
 /*===========================================================================*/

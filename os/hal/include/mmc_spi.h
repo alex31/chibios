@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,15 +10,22 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
- * @file    spi.h
+ * @file    mmc_spi.h
  * @brief   MMC over SPI driver header.
  *
  * @addtogroup MMC_SPI
@@ -134,47 +140,47 @@ typedef struct {
   /**
    * @brief Driver state.
    */
-  mmcstate_t            state;
+  mmcstate_t            mmc_state;
   /**
    * @brief Current configuration data.
    */
-  const MMCConfig       *config;
+  const MMCConfig       *mmc_config;
   /**
    * @brief SPI driver associated to this MMC driver.
    */
-  SPIDriver             *spip;
+  SPIDriver             *mmc_spip;
   /**
    * @brief SPI low speed configuration used during initialization.
    */
-  const SPIConfig       *lscfg;
+  const SPIConfig       *mmc_lscfg;
   /**
    * @brief SPI high speed configuration used during transfers.
    */
-  const SPIConfig       *hscfg;
+  const SPIConfig       *mmc_hscfg;
   /**
    * @brief Write protect status query function.
    */
-  mmcquery_t            is_protected;
+  mmcquery_t            mmc_is_protected;
   /**
    * @brief Insertion status query function.
    */
-  mmcquery_t            is_inserted;
+  mmcquery_t            mmc_is_inserted;
   /**
    * @brief Card insertion event source.
    */
-  EventSource           inserted_event;
+  EventSource           mmc_inserted_event;
   /**
    * @brief Card removal event source.
    */
-  EventSource           removed_event;
+  EventSource           mmc_removed_event;
   /**
    * @brief MMC insertion polling timer.
    */
-  VirtualTimer          vt;
+  VirtualTimer          mmc_vt;
   /**
    * @brief Insertion counter.
    */
-  uint_fast8_t          cnt;
+  uint_fast8_t          mmc_cnt;
 } MMCDriver;
 
 /*===========================================================================*/
@@ -189,7 +195,7 @@ typedef struct {
  *
  * @api
  */
-#define mmcGetDriverState(mmcp) ((mmcp)->state)
+#define mmcGetDriverState(mmcp) ((mmcp)->mmc_state)
 
 /**
  * @brief   Returns the write protect status.
@@ -201,7 +207,7 @@ typedef struct {
  *
  * @api
  */
-#define mmcIsWriteProtected(mmcp) ((mmcp)->is_protected())
+#define mmcIsWriteProtected(mmcp) ((mmcp)->mmc_is_protected())
 
 /*===========================================================================*/
 /* External declarations.                                                    */

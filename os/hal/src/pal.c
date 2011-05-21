@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -65,9 +71,9 @@
 ioportmask_t palReadBus(IOBus *bus) {
 
   chDbgCheck((bus != NULL) &&
-             (bus->offset < PAL_IOPORTS_WIDTH), "palReadBus");
+             (bus->bus_offset < PAL_IOPORTS_WIDTH), "palReadBus");
 
-  return palReadGroup(bus->portid, bus->mask, bus->offset);
+  return palReadGroup(bus->bus_portid, bus->bus_mask, bus->bus_offset);
 }
 
 /**
@@ -90,9 +96,9 @@ ioportmask_t palReadBus(IOBus *bus) {
 void palWriteBus(IOBus *bus, ioportmask_t bits) {
 
   chDbgCheck((bus != NULL) &&
-             (bus->offset < PAL_IOPORTS_WIDTH), "palWriteBus");
+             (bus->bus_offset < PAL_IOPORTS_WIDTH), "palWriteBus");
 
-  palWriteGroup(bus->portid, bus->mask, bus->offset, bits);
+  palWriteGroup(bus->bus_portid, bus->bus_mask, bus->bus_offset, bits);
 }
 
 /**
@@ -113,9 +119,9 @@ void palWriteBus(IOBus *bus, ioportmask_t bits) {
 void palSetBusMode(IOBus *bus, uint_fast8_t mode) {
 
   chDbgCheck((bus != NULL) &&
-             (bus->offset < PAL_IOPORTS_WIDTH), "palSetBusMode");
+             (bus->bus_offset < PAL_IOPORTS_WIDTH), "palSetBusMode");
 
-  palSetGroupMode(bus->portid, bus->mask, mode);
+  palSetGroupMode(bus->bus_portid, bus->bus_mask, mode);
 }
 
 #endif /* HAL_USE_PAL */

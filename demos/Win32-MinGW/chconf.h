@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -84,7 +90,7 @@
  *
  * @note    In order to let the OS manage the whole RAM the linker script must
  *          provide the @p __heap_base__ and @p __heap_end__ symbols.
- * @note    Requires @p CH_USE_COREMEM.
+ * @note    Requires @p CH_USE_MEMCORE.
  */
 #if !defined(CH_MEMCORE_SIZE) || defined(__DOXYGEN__)
 #define CH_MEMCORE_SIZE                 0x20000
@@ -298,7 +304,6 @@
  * @details If enabled then the I/O queues APIs are included in the kernel.
  *
  * @note    The default is @p TRUE.
- * @note    Requires @p CH_USE_SEMAPHORES.
  */
 #if !defined(CH_USE_QUEUES) || defined(__DOXYGEN__)
 #define CH_USE_QUEUES                   TRUE
@@ -321,7 +326,7 @@
  *          in the kernel.
  *
  * @note    The default is @p TRUE.
- * @note    Requires @p CH_USE_COREMEM and either @p CH_USE_MUTEXES or
+ * @note    Requires @p CH_USE_MEMCORE and either @p CH_USE_MUTEXES or
  *          @p CH_USE_SEMAPHORES.
  * @note    Mutexes are recommended.
  */
@@ -336,7 +341,7 @@
  *
  * @note    The default is @p FALSE.
  * @note    Requires @p CH_USE_HEAP.
- * @note    The C-runtime may or may not require @p CH_USE_COREMEM, see the
+ * @note    The C-runtime may or may not require @p CH_USE_MEMCORE, see the
  *          appropriate documentation.
  */
 #if !defined(CH_USE_MALLOC_HEAP) || defined(__DOXYGEN__)

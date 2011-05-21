@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -118,11 +124,29 @@
 
 /**
  * @brief   USART1 DMA error hook.
- * @note    The default action for DMA errors is a system halt because DMA
- *          error can only happen because programming errors.
+ * @note    The default action for DMA errors is a system halt because DMA error
+ *          can only happen because programming errors.
  */
-#if !defined(STM32_UART_DMA_ERROR_HOOK) || defined(__DOXYGEN__)
-#define STM32_UART_DMA_ERROR_HOOK(uartp)    chSysHalt()
+#if !defined(STM32_UART_USART1_DMA_ERROR_HOOK) || defined(__DOXYGEN__)
+#define STM32_UART_USART1_DMA_ERROR_HOOK()  chSysHalt()
+#endif
+
+/**
+ * @brief   USART2 DMA error hook.
+ * @note    The default action for DMA errors is a system halt because DMA error
+ *          can only happen because programming errors.
+ */
+#if !defined(STM32_UART_USART2_DMA_ERROR_HOOK) || defined(__DOXYGEN__)
+#define STM32_UART_USART2_DMA_ERROR_HOOK()  chSysHalt()
+#endif
+
+/**
+ * @brief   USART3 DMA error hook.
+ * @note    The default action for DMA errors is a system halt because DMA error
+ *          can only happen because programming errors.
+ */
+#if !defined(STM32_UART_USART3_DMA_ERROR_HOOK) || defined(__DOXYGEN__)
+#define STM32_UART_USART3_DMA_ERROR_HOOK()  chSysHalt()
 #endif
 
 /*===========================================================================*/
@@ -141,13 +165,13 @@
 #error "USART3 not present in the selected device"
 #endif
 
-#if !STM32_UART_USE_USART1 && !STM32_UART_USE_USART2 &&                     \
-    !STM32_UART_USE_USART3
-#error "UART driver activated but no USART/UART peripheral assigned"
+#if STM32_UART_USE_UART4 && !STM32_HAS_UART4
+#error "UART4 not present in the selected device"
 #endif
 
-#if !defined(STM32_DMA_REQUIRED)
-#define STM32_DMA_REQUIRED
+#if !STM32_UART_USE_USART1 && !STM32_UART_USE_USART2 &&                     \
+    !STM32_UART_USE_USART3 && !STM32_UART_USE_UART4
+#error "UART driver activated but no USART/UART peripheral assigned"
 #endif
 
 /*===========================================================================*/
@@ -195,40 +219,40 @@ typedef struct {
   /**
    * @brief End of transmission buffer callback.
    */
-  uartcb_t                  txend1_cb;
+  uartcb_t                  uc_txend1;
   /**
    * @brief Physical end of transmission callback.
    */
-  uartcb_t                  txend2_cb;
+  uartcb_t                  uc_txend2;
   /**
    * @brief Receive buffer filled callback.
    */
-  uartcb_t                  rxend_cb;
+  uartcb_t                  uc_rxend;
   /**
    * @brief Character received while out if the @p UART_RECEIVE state.
    */
-  uartccb_t                 rxchar_cb;
+  uartccb_t                 uc_rxchar;
   /**
    * @brief Receive error callback.
    */
-  uartecb_t                 rxerr_cb;
+  uartecb_t                 uc_rxerr;
   /* End of the mandatory fields.*/
   /**
    * @brief Bit rate.
    */
-  uint32_t                  speed;
+  uint32_t                  uc_speed;
   /**
    * @brief Initialization value for the CR1 register.
    */
-  uint16_t                  cr1;
+  uint16_t                  uc_cr1;
   /**
    * @brief Initialization value for the CR2 register.
    */
-  uint16_t                  cr2;
+  uint16_t                  uc_cr2;
   /**
    * @brief Initialization value for the CR3 register.
    */
-  uint16_t                  cr3;
+  uint16_t                  uc_cr3;
 } UARTConfig;
 
 /**
@@ -238,19 +262,19 @@ struct UARTDriver {
   /**
    * @brief Driver state.
    */
-  uartstate_t               state;
+  uartstate_t               ud_state;
   /**
    * @brief Transmitter state.
    */
-  uarttxstate_t             txstate;
+  uarttxstate_t             ud_txstate;
   /**
    * @brief Receiver state.
    */
-  uartrxstate_t             rxstate;
+  uartrxstate_t             ud_rxstate;
   /**
    * @brief Current configuration data.
    */
-  const UARTConfig          *config;
+  const UARTConfig          *ud_config;
 #if defined(UART_DRIVER_EXT_FIELDS)
   UART_DRIVER_EXT_FIELDS
 #endif
@@ -258,27 +282,27 @@ struct UARTDriver {
   /**
    * @brief Pointer to the USART registers block.
    */
-  USART_TypeDef             *usart;
+  USART_TypeDef             *ud_usart;
   /**
    * @brief Pointer to the DMA registers block.
    */
-  stm32_dma_t               *dmap;
+  stm32_dma_t               *ud_dmap;
   /**
    * @brief DMA priority bit mask.
    */
-  uint32_t                  dmaccr;
+  uint32_t                  ud_dmaccr;
   /**
    * @brief Receive DMA channel.
    */
-  uint8_t                   dmarx;
+  uint8_t                   ud_dmarx;
   /**
    * @brief Transmit DMA channel.
    */
-  uint8_t                   dmatx;
+  uint8_t                   ud_dmatx;
   /**
    * @brief Default receive buffer while into @p UART_RX_IDLE state.
    */
-  volatile uint16_t         rxbuf;
+  volatile uint16_t         ud_rxbuf;
 };
 
 /*===========================================================================*/

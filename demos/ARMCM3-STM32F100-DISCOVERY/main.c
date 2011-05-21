@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -63,8 +69,6 @@ static const ADCConversionGroup adcgrpcfg = {
  * the active state is a logic one.
  */
 static PWMConfig pwmcfg = {
-  10000,                                    /* 10KHz PWM clock frequency.   */
-  10000,                                    /* PWM period 1S (in ticks).    */
   pwmpcb,
   {
     {PWM_OUTPUT_DISABLED, NULL},
@@ -73,10 +77,9 @@ static PWMConfig pwmcfg = {
     {PWM_OUTPUT_ACTIVE_HIGH, NULL}
   },
   /* HW dependent part.*/
-  0,
-#if STM32_PWM_USE_ADVANCED
+  PWM_COMPUTE_PSC(STM32_TIMCLK1, 10000),    /* 10KHz PWM clock frequency.   */
+  PWM_COMPUTE_ARR(10000, 1000000000),       /* PWM period 1S (in nS).       */
   0
-#endif
 };
 
 /*
@@ -118,7 +121,7 @@ void adccb(ADCDriver *adcp, adcsample_t *buffer, size_t n) {
   (void) buffer; (void) n;
   /* Note, only in the ADC_COMPLETE state because the ADC driver fires an
      intermediate callback when the buffer is half full.*/
-  if (adcp->state == ADC_COMPLETE) {
+  if (adcp->ad_state == ADC_COMPLETE) {
     adcsample_t avg_ch1, avg_ch2;
 
     /* Calculates the average values from the ADC samples.*/

@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -32,15 +38,25 @@
 #if HAL_USE_PAL || defined(__DOXYGEN__)
 
 #if STM32_HAS_GPIOG
+#define APB2_RST_MASK (RCC_APB2RSTR_IOPARST | RCC_APB2RSTR_IOPBRST |        \
+                       RCC_APB2RSTR_IOPCRST | RCC_APB2RSTR_IOPDRST |        \
+                       RCC_APB2RSTR_IOPERST | RCC_APB2RSTR_IOPFRST |        \
+                       RCC_APB2RSTR_IOPGRST | RCC_APB2RSTR_AFIORST);
 #define APB2_EN_MASK  (RCC_APB2ENR_IOPAEN | RCC_APB2ENR_IOPBEN |            \
                        RCC_APB2ENR_IOPCEN | RCC_APB2ENR_IOPDEN |            \
                        RCC_APB2ENR_IOPEEN | RCC_APB2ENR_IOPFEN |            \
                        RCC_APB2ENR_IOPGEN | RCC_APB2ENR_AFIOEN)
 #elif STM32_HAS_GPIOE
+#define APB2_RST_MASK (RCC_APB2RSTR_IOPARST | RCC_APB2RSTR_IOPBRST |        \
+                       RCC_APB2RSTR_IOPCRST | RCC_APB2RSTR_IOPDRST |        \
+                       RCC_APB2RSTR_IOPERST | RCC_APB2RSTR_AFIORST);
 #define APB2_EN_MASK  (RCC_APB2ENR_IOPAEN | RCC_APB2ENR_IOPBEN |            \
                        RCC_APB2ENR_IOPCEN | RCC_APB2ENR_IOPDEN |            \
                        RCC_APB2ENR_IOPEEN | RCC_APB2ENR_AFIOEN)
 #else
+#define APB2_RST_MASK (RCC_APB2RSTR_IOPARST | RCC_APB2RSTR_IOPBRST |        \
+                       RCC_APB2RSTR_IOPCRST | RCC_APB2RSTR_IOPDRST |        \
+                       RCC_APB2RSTR_AFIORST)
 #define APB2_EN_MASK  (RCC_APB2ENR_IOPAEN | RCC_APB2ENR_IOPBEN |            \
                        RCC_APB2ENR_IOPCEN | RCC_APB2ENR_IOPDEN |            \
                        RCC_APB2ENR_AFIOEN)
@@ -82,8 +98,11 @@ void _pal_lld_init(const PALConfig *config) {
   RCC->APB2ENR |= APB2_EN_MASK;
 
   /*
-   * Initial GPIO setup.
+   * Resets the GPIO ports and AFIO.
    */
+  RCC->APB2RSTR = APB2_RST_MASK;
+  RCC->APB2RSTR = 0;
+
   GPIOA->ODR = config->PAData.odr;
   GPIOA->CRH = config->PAData.crh;
   GPIOA->CRL = config->PAData.crl;

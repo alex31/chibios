@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -172,34 +178,9 @@
 /*===========================================================================*/
 
 /**
- * @brief   PLL1 main switch.
- * @note    If this constant is set to @p TRUE then the PLL1 is initialized
- *          and started.
- */
-#if !defined(STM32_ACTIVATE_PLL1) || defined(__DOXYGEN__)
-#define STM32_ACTIVATE_PLL1         TRUE
-#endif
-
-/**
- * @brief   PLL2 main switch.
- * @note    If this constant is set to @p TRUE then the PLL2 is initialized
- *          and started.
- */
-#if !defined(STM32_ACTIVATE_PLL2) || defined(__DOXYGEN__)
-#define STM32_ACTIVATE_PLL2         TRUE
-#endif
-
-/**
- * @brief   PLL3 main switch.
- * @note    If this constant is set to @p TRUE then the PLL3 is initialized
- *          and started.
- */
-#if !defined(STM32_ACTIVATE_PLL3) || defined(__DOXYGEN__)
-#define STM32_ACTIVATE_PLL3         TRUE
-#endif
-
-/**
  * @brief   Main clock source selection.
+ * @note    If the selected clock source is not the PLL then the PLL is not
+ *          initialized and started.
  * @note    The default value is calculated for a 72MHz system clock from
  *          a 25MHz crystal using both PLL and PLL2.
  */
@@ -209,6 +190,8 @@
 
 /**
  * @brief   Clock source for the PLL.
+ * @note    This setting has only effect if the PLL is selected as the
+ *          system clock source.
  * @note    The default value is calculated for a 72MHz system clock from
  *          a 25MHz crystal using both PLL and PLL2.
  */
@@ -218,6 +201,8 @@
 
 /**
  * @brief   PREDIV1 clock source.
+ * @note    This setting has only effect if the PLL is selected as the
+ *          system clock source.
  * @note    The default value is calculated for a 72MHz system clock from
  *          a 25MHz crystal using both PLL and PLL2.
  */
@@ -227,6 +212,8 @@
 
 /**
  * @brief   PREDIV1 division factor.
+ * @note    This setting has only effect if the PLL is selected as the
+ *          system clock source.
  * @note    The allowed range is 1...16.
  * @note    The default value is calculated for a 72MHz system clock from
  *          a 25MHz crystal using both PLL and PLL2.
@@ -247,6 +234,8 @@
 
 /**
  * @brief   PREDIV2 division factor.
+ * @note    This setting has only effect if the PLL2 is selected as the
+ *          clock source for the PLL.
  * @note    The allowed range is 1...16.
  * @note    The default value is calculated for a 72MHz system clock from
  *          a 25MHz crystal using both PLL and PLL2.
@@ -262,15 +251,6 @@
  */
 #if !defined(STM32_PLL2MUL_VALUE) || defined(__DOXYGEN__)
 #define STM32_PLL2MUL_VALUE         8
-#endif
-
-/**
- * @brief   PLL3 multiplier value.
- * @note    The default value is calculated for a 50MHz clock from
- *          a 25MHz crystal.
- */
-#if !defined(STM32_PLL3MUL_VALUE) || defined(__DOXYGEN__)
-#define STM32_PLL3MUL_VALUE         10
 #endif
 
 /**
@@ -321,13 +301,6 @@
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
-/* PLL2 usage check.*/
-#if STM32_ACTIVATE_PLL2 &&                                                  \
-    (STM32_PREDIV1SRC != STM32_PREDIV1SRC_PLL2) &&                          \
-    (STM32_MCO != STM32_MCO_PLL2)
-#error "PLL2 activated but not used"
-#endif
-
 /**
  * @brief   PREDIV1 field.
  */
@@ -372,22 +345,9 @@
 #error "invalid STM32_PLL2MUL_VALUE value specified"
 #endif
 
-/**
- * @brief   PLL3MUL field.
- */
-#if ((STM32_PLL3MUL_VALUE >= 8) && (STM32_PLL3MUL_VALUE <= 14)) ||          \
-    defined(__DOXYGEN__)
-#define STM32_PLL3MUL               ((STM32_PLL3MUL_VALUE - 2) << 12)
-#elif (STM32_PLL3MUL_VALUE == 16)
-#define STM32_PLL3MUL               (14 << 12)
-#elif (STM32_PLL3MUL_VALUE == 20)
-#define STM32_PLL3MUL               (15 << 12)
-#else
-#error "invalid STM32_PLL3MUL_VALUE value specified"
-#endif
-
-/* The following values are only used if PLL2 is activated */
-#if STM32_ACTIVATE_PLL2
+/* The following values are only used if PLL2 clock is selected as source
+   for the PLL clock */
+#if (STM32_PREDIV1SRC == STM32_PREDIV1SRC_PLL2) || defined(__DOXYGEN__)
 /**
  * @brief   PLL2 input frequency.
  */
@@ -403,54 +363,16 @@
  */
 #define STM32_PLL2CLKOUT            (STM32_PLL2CLKIN * STM32_PLL2MUL_VALUE)
 
-/**
- * @brief   PLL2 VCO clock frequency.
- */
-#define STM32_PLL2VCO               (STM32_PLL2CLKOUT * 2)
-
 /* PLL2 output frequency range check.*/
-#if (STM32_PLL2VCO < 80000000) || (STM32_PLL2VCO > 148000000)
-#error "STM32_PLL2VCO outside acceptable range (80...148MHz)"
+#if (STM32_PLL2CLKOUT < 40000000) || (STM32_PLL2CLKOUT > 74000000)
+#error "STM32_PLL2CLKOUT outside acceptable range (40...74MHz)"
 #endif
-#endif /* STM32_ACTIVATE_PLL2 */
+#endif /* STM32_PREDIV1SRC == STM32_PREDIV1SRC_PLL2 */
 
-/* The following values are only used if PLL3 is activated */
-#if STM32_ACTIVATE_PLL3
-/**
- * @brief   PLL3 input frequency.
- */
-#define STM32_PLL3CLKIN             (STM32_HSECLK / STM32_PREDIV2_VALUE)
-
-/* PLL3 input frequency range check.*/
-#if (STM32_PLL3CLKIN < 3000000) || (STM32_PLL3CLKIN > 5000000)
-#error "STM32_PLL3CLKIN outside acceptable range (3...5MHz)"
-#endif
-
-/**
- * @brief   PLL3 output clock frequency.
- */
-#define STM32_PLL3CLKOUT            (STM32_PLL3CLKIN * STM32_PLL3MUL_VALUE)
-
-/**
- * @brief   PLL3 VCO clock frequency.
- */
-#define STM32_PLL3VCO               (STM32_PLL3CLKOUT * 2)
-
-/* PLL3 output frequency range check.*/
-#if (STM32_PLL3VCO < 80000000) || (STM32_PLL3VCO > 148000000)
-#error "STM32_PLL3CLKOUT outside acceptable range (80...148MHz)"
-#endif
-#endif /* STM32_ACTIVATE_PLL3 */
-
-/* The following values are only used if PLL1 is activated */
-#if STM32_ACTIVATE_PLL1
 /**
  * @brief   PREDIV1 input frequency.
  */
 #if (STM32_PREDIV1SRC == STM32_PREDIV1SRC_PLL2) || defined(__DOXYGEN__)
-#if !STM32_ACTIVATE_PLL2
-#error "PLL2 selected as clock source for STM32_PREDIV1SRC but not activated"
-#endif
 #define STM32_PREDIV1CLK            STM32_PLL2CLKOUT
 #elif STM32_PREDIV1SRC == STM32_PREDIV1SRC_HSE
 #define STM32_PREDIV1CLK            STM32_HSECLK
@@ -462,9 +384,9 @@
  * @brief   PLL input clock frequency.
  */
 #if (STM32_PLLSRC == STM32_PLLSRC_PREDIV1) || defined(__DOXYGEN__)
-#define STM32_PLLCLKIN              (STM32_PREDIV1CLK / STM32_PREDIV1_VALUE)
+#define STM32_PLLCLKIN             (STM32_PREDIV1CLK / STM32_PREDIV1_VALUE)
 #elif STM32_PLLSRC == STM32_PLLSRC_HSI
-#define STM32_PLLCLKIN              (STM32_HSICLK / 2)
+#define STM32_PLLCLKIN             (STM32_HSICLK / 2)
 #else
 #error "invalid STM32_PLLSRC value specified"
 #endif
@@ -477,26 +399,17 @@
 /**
  * @brief   PLL output clock frequency.
  */
-#define STM32_PLLCLKOUT             (STM32_PLLCLKIN * STM32_PLLMUL_VALUE)
-
-/**
- * @brief   PLL VCO clock frequency.
- */
-#define STM32_PLLVCO                (STM32_PLLCLKOUT * 2)
+#define STM32_PLLCLKOUT            (STM32_PLLCLKIN * STM32_PLLMUL_VALUE)
 
 /* PLL output frequency range check.*/
-#if (STM32_PLLVCO < 36000000) || (STM32_PLLVCO > 144000000)
-#error "STM32_PLLVCO outside acceptable range (36...144MHz)"
+#if (STM32_PLLCLKOUT < 18000000) || (STM32_PLLCLKOUT > 72000000)
+#error "STM32_PLLCLKOUT outside acceptable range (18...72MHz)"
 #endif
-#endif /* STM32_ACTIVATE_PLL1 */
 
 /**
  * @brief   System clock source.
  */
 #if (STM32_SW == STM32_SW_PLL) || defined(__DOXYGEN__)
-#if !STM32_ACTIVATE_PLL1
-#error "PLL1 selected as clock source for STM32_SYSCLK but not activated"
-#endif
 #define STM32_SYSCLK                STM32_PLLCLKOUT
 #elif (STM32_SW == STM32_SW_HSI)
 #define STM32_SYSCLK                STM32_HSICLK
@@ -609,9 +522,9 @@
  * @brief   OTG frequency.
  */
 #if (STM32_OTGFSPRE == STM32_OTGFSPRE_DIV3) || defined(__DOXYGEN__)
-#define STM32_OTGFSCLK              (STM32_PLLVCO / 3)
+#define STM32_OTGFSCLK              ((STM32_PLLCLKOUT * 2) / 3)
 #elif (STM32_OTGFSPRE == STM32_OTGFSPRE_DIV2)
-#define STM32_OTGFSCLK              (STM32_PLLVCO / 2)
+#define STM32_OTGFSCLK              STM32_PLLCLKOUT
 #else
 #error "invalid STM32_OTGFSPRE value specified"
 #endif

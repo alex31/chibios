@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -49,7 +55,7 @@
  * @brief Messages header file
  */
 
-#if CH_USE_MESSAGES || defined(__DOXYGEN__)
+#if CH_USE_MESSAGES
 
 /**
  * @page test_msg_001 Messages Server loop
@@ -65,11 +71,11 @@ static msg_t thread(void *p) {
   chMsgSend(p, 'A');
   chMsgSend(p, 'B');
   chMsgSend(p, 'C');
+  chMsgSend(p, 'D');
   return 0;
 }
 
 static void msg1_execute(void) {
-  Thread *tp;
   msg_t msg;
 
   /*
@@ -77,19 +83,29 @@ static void msg1_execute(void) {
    */
   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority() + 1,
                                  thread, chThdSelf());
-  tp = chMsgWait();
-  msg = chMsgGet(tp);
-  chMsgRelease(tp, msg);
+  chMsgRelease(msg = chMsgWait());
   test_emit_token(msg);
-  tp = chMsgWait();
-  msg = chMsgGet(tp);
-  chMsgRelease(tp, msg);
+  chMsgRelease(msg = chMsgWait());
   test_emit_token(msg);
-  tp = chMsgWait();
-  msg = chMsgGet(tp);
-  chMsgRelease(tp, msg);
+  chMsgRelease(msg = chMsgWait());
   test_emit_token(msg);
   test_assert_sequence(1, "ABC");
+
+  /*
+   * Testing message fetch using chMsgGet().
+   * Note, the following is valid because the sender has higher priority than
+   * the receiver.
+   */
+  msg = chMsgGet();
+  test_assert(1, msg != 0, "no message");
+  chMsgRelease(0);
+  test_assert(2, msg == 'D', "wrong message");
+
+  /*
+   * Must not have pending messages.
+   */
+  msg = chMsgGet();
+  test_assert(3, msg == 0, "unknown message");
 }
 
 ROMCONST struct testcase testmsg1 = {
@@ -105,7 +121,7 @@ ROMCONST struct testcase testmsg1 = {
  * @brief   Test sequence for messages.
  */
 ROMCONST struct testcase * ROMCONST patternmsg[] = {
-#if CH_USE_MESSAGES || defined(__DOXYGEN__)
+#if CH_USE_MESSAGES
   &testmsg1,
 #endif
   NULL

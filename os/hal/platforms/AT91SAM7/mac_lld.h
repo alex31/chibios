@@ -1,6 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -11,11 +10,18 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -67,7 +73,7 @@
 #define W1_T_ADDRESS_MASK       0xFFFFFFFF
 
 #define W2_T_LENGTH_MASK        0x000007FF
-#define W2_T_LOCKED             0x00000800 /* Not an EMAC flag.             */
+#define W2_T_LOCKED             0x00000800 /* Not an EMAC flag, used by the driver */
 #define W2_T_RFU1               0x00003000
 #define W2_T_LAST_BUFFER        0x00008000
 #define W2_T_NO_CRC             0x00010000
@@ -131,10 +137,10 @@ typedef struct {
  * @brief   Structure representing a MAC driver.
  */
 typedef struct {
-  Semaphore             tdsem;              /**< Transmit semaphore.        */
-  Semaphore             rdsem;              /**< Receive semaphore.         */
+  Semaphore             md_tdsem;       /**< Transmit semaphore.        */
+  Semaphore             md_rdsem;       /**< Receive semaphore.         */
 #if CH_USE_EVENTS
-  EventSource           rdevent;            /**< Receive event source.      */
+  EventSource           md_rdevent;     /**< Receive event source.      */
 #endif
   /* End of the mandatory fields.*/
 } MACDriver;
@@ -143,23 +149,22 @@ typedef struct {
  * @brief   Structure representing a transmit descriptor.
  */
 typedef struct {
-  size_t                offset;             /**< Current write offset.      */
-  size_t                size;               /**< Available space size.      */
+  size_t                td_offset;      /**< Current write offset.      */
+  size_t                td_size;        /**< Available space size.      */
   /* End of the mandatory fields.*/
-  EMACDescriptor        *physdesc;          /**< Pointer to the physical
-                                                 descriptor.                */
+  EMACDescriptor        *td_physdesc;   /**< Pointer to the physical
+                                             descriptor.                */
 } MACTransmitDescriptor;
 
 /**
  * @brief   Structure representing a receive descriptor.
  */
 typedef struct {
-  size_t                offset;             /**< Current read offset.       */
-  size_t                size;               /**< Available data size.       */
+  size_t                rd_offset;      /**< Current read offset.       */
+  size_t                rd_size;        /**< Available data size.       */
   /* End of the mandatory fields.*/
-  EMACDescriptor        *physdesc;          /**< Pointer to the first
-                                                 descriptor of the buffers
-                                                 chain.                     */
+  EMACDescriptor        *rd_physdesc;   /**< Pointer to the first descriptor
+                                             of the buffers chain.      */
 } MACReceiveDescriptor;
 
 /*===========================================================================*/
