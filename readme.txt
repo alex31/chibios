@@ -68,6 +68,20 @@
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 2.2.7 ***
+- INFO: GCC test runs performed with YAGARTO 4.6.0.
+- NEW: Added debug plugin for Eclipse under ./tools/eclipse.
+- NEW: The debug macros chDbgCheck() and chDbgAssert() now can be externally
+  redefined. The macro chDbgCheck() no more includes the line number in the
+  description because incompatibility with the Cosmic compiler.
+- NEW: Added a new functionality to the registry subsystem, now it is possible
+  to associate a name to the threads using chRegSetThreadName. The main and
+  idle threads have their name assigned by default.
+- FIX: Fixed wrong check on CH_DBG_ENABLE_STACK_CHECK setting (bug 3387671).
+- FIX: Fixed wrong APB1 frequency check (bug 3361039).
+- FIX: Fixed missing state in shell demos (bug 3351556).
+- CHANGE: Removed todo.txt file, it does not belong to the stable version.
+
 *** 2.2.6 ***
 - FIX: Fixed race condition in Cortex-Mx ports (bug 3317500).
 - FIX: Fixed wrong macro check in STM32 UART driver (bug 3311999).
@@ -202,7 +216,7 @@
 
 *** 2.0.5 ***
 - FIX: Incorrect AT91SAM7X initialization, thanks Leszek (bug 3075354).
-- FIX: Fixed race condition in function chSchGoSleepTimeoutS, thanks Balázs
+- FIX: Fixed race condition in function chSchGoSleepTimeoutS, thanks Balï¿½zs
   (bug 3074984).
 - FIX: Fixed race condition in threads creation (bug 3069854).
 - FIX: Fixed broken CH_DBG_ENABLE_STACK_CHECK option in legacy CM3 port (bug

@@ -151,6 +151,7 @@ static void cmd_threads(BaseChannel *chp, int argc, char *argv[]) {
     "WTANDEVT",
     "SNDMSG",
     "WTMSG",
+    "WTQUEUE",
     "FINAL"
   };
   Thread *tp;
@@ -238,6 +239,7 @@ static WORKING_AREA(waThread1, 128);
 static msg_t Thread1(void *arg) {
 
   (void)arg;
+  chRegSetThreadName("blinker1");
   while (TRUE) {
     palTogglePad(IOPORT1, PIOA_LED1);
     if (fs_ready)
@@ -256,6 +258,7 @@ static msg_t Thread2(void *p) {
 
   (void)p;
   while (TRUE) {
+  chRegSetThreadName("blinker2");
     palSetPad(IOPORT1, PIOA_LED2);
     chThdSleepMilliseconds(100);
     palClearPad(IOPORT1, PIOA_LED2);
