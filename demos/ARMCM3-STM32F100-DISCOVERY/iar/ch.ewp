@@ -295,10 +295,15 @@
           <name>CCIncludePath2</name>
           <state>$PROJ_DIR$\..\</state>
           <state>$PROJ_DIR$\..\..\..\os\kernel\include</state>
+          <state>$PROJ_DIR$\..\..\..\os\ports\common\ARMCMx\CMSIS\include</state>
           <state>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx</state>
-          <state>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx\STM32</state>
+          <state>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx\STM32F1xx</state>
           <state>$PROJ_DIR$\..\..\..\os\hal\include</state>
           <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32</state>
+          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\DMAv1</state>
+          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\GPIOv1</state>
+          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\USBv1</state>
+          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F1xx</state>
           <state>$PROJ_DIR$\..\..\..\boards\ST_STM32VL_DISCOVERY</state>
           <state>$PROJ_DIR$\..\..\..\test</state>
         </option>
@@ -545,8 +550,8 @@
         </option>
         <option>
           <name>AUserIncludes</name>
-          <state>$PROJ_DIR$\..\</state>
-          <state>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx\STM32</state>
+          <state>$PROJ_DIR$\..</state>
+          <state>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx\STM32F1xx</state>
           <state>$PROJ_DIR$\..\..\..\boards\ST_STM32VL_DISCOVERY</state>
         </option>
         <option>
@@ -1198,10 +1203,15 @@
           <name>CCIncludePath2</name>
           <state>$PROJ_DIR$\..\</state>
           <state>$PROJ_DIR$\..\..\..\os\kernel\include</state>
+          <state>$PROJ_DIR$\..\..\..\os\ports\common\ARMCMx\CMSIS\include</state>
           <state>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx</state>
-          <state>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx\STM32</state>
+          <state>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx\STM32F1xx</state>
           <state>$PROJ_DIR$\..\..\..\os\hal\include</state>
           <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32</state>
+          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\DMAv1</state>
+          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\GPIOv1</state>
+          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\USBv1</state>
+          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F1xx</state>
           <state>$PROJ_DIR$\..\..\..\boards\ST_STM32VL_DISCOVERY</state>
           <state>$PROJ_DIR$\..\..\..\test</state>
         </option>
@@ -1448,8 +1458,8 @@
         </option>
         <option>
           <name>AUserIncludes</name>
-          <state>$PROJ_DIR$\..\</state>
-          <state>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx\STM32</state>
+          <state>$PROJ_DIR$\..</state>
+          <state>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx\STM32F1xx</state>
           <state>$PROJ_DIR$\..\..\..\boards\ST_STM32VL_DISCOVERY</state>
         </option>
         <option>
@@ -1830,7 +1840,19 @@
           <name>$PROJ_DIR$\..\..\..\os\hal\include\can.h</name>
         </file>
         <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\include\ext.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\include\gpt.h</name>
+        </file>
+        <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\include\hal.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\include\i2c.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\include\icu.h</name>
         </file>
         <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\include\mac.h</name>
@@ -1848,13 +1870,28 @@
           <name>$PROJ_DIR$\..\..\..\os\hal\include\pwm.h</name>
         </file>
         <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\include\rtc.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\include\sdc.h</name>
+        </file>
+        <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\include\serial.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\include\serial_usb.h</name>
         </file>
         <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\include\spi.h</name>
         </file>
         <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\include\uart.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\include\usb.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\include\usb_cdc.h</name>
         </file>
       </group>
       <group>
@@ -1866,7 +1903,19 @@
           <name>$PROJ_DIR$\..\..\..\os\hal\src\can.c</name>
         </file>
         <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\src\ext.c</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\src\gpt.c</name>
+        </file>
+        <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\src\hal.c</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\src\i2c.c</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\src\icu.c</name>
         </file>
         <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\src\mac.c</name>
@@ -1881,13 +1930,25 @@
           <name>$PROJ_DIR$\..\..\..\os\hal\src\pwm.c</name>
         </file>
         <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\src\rtc.c</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\src\sdc.c</name>
+        </file>
+        <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\src\serial.c</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\src\serial_usb.c</name>
         </file>
         <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\src\spi.c</name>
         </file>
         <file>
           <name>$PROJ_DIR$\..\..\..\os\hal\src\uart.c</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$\..\..\..\os\hal\src\usb.c</name>
         </file>
       </group>
     </group>
@@ -2023,40 +2084,31 @@
     <group>
       <name>platform</name>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\adc_lld.c</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F1xx\adc_lld.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\adc_lld.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F1xx\adc_lld.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\can_lld.c</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F1xx\hal_lld.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\can_lld.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F1xx\hal_lld.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\core_cm3.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F1xx\hal_lld_f100.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\hal_lld.c</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F1xx\hal_lld_f103.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\hal_lld.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F1xx\hal_lld_f105_f107.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\hal_lld_f100.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\GPIOv1\pal_lld.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\hal_lld_f103.h</name>
-      </file>
-      <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\hal_lld_f105_f107.h</name>
-      </file>
-      <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\pal_lld.c</name>
-      </file>
-      <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\pal_lld.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\GPIOv1\pal_lld.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\pwm_lld.c</name>
@@ -2077,30 +2129,27 @@
         <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\spi_lld.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\stm32_dma.c</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\DMAv1\stm32_dma.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\stm32_dma.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\DMAv1\stm32_dma.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\stm32f10x.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F1xx\stm32_rcc.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\uart_lld.c</name>
-      </file>
-      <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\uart_lld.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F1xx\stm32f10x.h</name>
       </file>
     </group>
     <group>
       <name>port</name>
       <group>
-        <name>STM32</name>
+        <name>STM32F1xx</name>
         <file>
-          <name>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx\STM32\cmparams.h</name>
+          <name>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx\STM32F1xx\cmparams.h</name>
         </file>
         <file>
-          <name>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx\STM32\vectors.s</name>
+          <name>$PROJ_DIR$\..\..\..\os\ports\IAR\ARMCMx\STM32F1xx\vectors.s</name>
         </file>
       </group>
       <file>

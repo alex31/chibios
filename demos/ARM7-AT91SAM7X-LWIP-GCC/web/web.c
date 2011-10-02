@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /*
@@ -53,12 +47,13 @@ static void http_server_serve(struct netconn *conn) {
   struct netbuf *inbuf;
   char *buf;
   u16_t buflen;
+  err_t err;
 
   /* Read the data from the port, blocking if nothing yet there.
    We assume the request (the part we care about) is in one netbuf */
-  inbuf = netconn_recv(conn);
+  err = netconn_recv(conn, &inbuf);
 
-  if (netconn_err(conn) == ERR_OK) {
+  if (err == ERR_OK) {
     netbuf_data(inbuf, (void **)&buf, &buflen);
 
     /* Is this an HTTP GET command? (only check the first 5 chars, since
@@ -98,6 +93,7 @@ WORKING_AREA(wa_http_server, WEB_THREAD_STACK_SIZE);
  */
 msg_t http_server(void *p) {
   struct netconn *conn, *newconn;
+  err_t err;
 
   (void)p;
 
@@ -115,7 +111,9 @@ msg_t http_server(void *p) {
   chThdSetPriority(WEB_THREAD_PRIORITY);
 
   while(1) {
-    newconn = netconn_accept(conn);
+    err = netconn_accept(conn, &newconn);
+    if (err != ERR_OK)
+      continue;
     http_server_serve(newconn);
     netconn_delete(newconn);
   }

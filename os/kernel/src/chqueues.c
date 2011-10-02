@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -114,6 +108,8 @@ void chIQInit(InputQueue *iqp, uint8_t *bp, size_t size, qnotify_t infy) {
  */
 void chIQResetI(InputQueue *iqp) {
 
+  chDbgCheckClassI();
+
   iqp->q_rdptr = iqp->q_wrptr = iqp->q_buffer;
   iqp->q_counter = 0;
   while (notempty(&iqp->q_waiting))
@@ -134,6 +130,8 @@ void chIQResetI(InputQueue *iqp) {
  * @iclass
  */
 msg_t chIQPutI(InputQueue *iqp, uint8_t b) {
+
+  chDbgCheckClassI();
 
   if (chIQIsFullI(iqp))
     return Q_FULL;
@@ -290,6 +288,8 @@ void chOQInit(OutputQueue *oqp, uint8_t *bp, size_t size, qnotify_t onfy) {
  */
 void chOQResetI(OutputQueue *oqp) {
 
+  chDbgCheckClassI();
+
   oqp->q_rdptr = oqp->q_wrptr = oqp->q_buffer;
   oqp->q_counter = chQSizeI(oqp);
   while (notempty(&oqp->q_waiting))
@@ -354,6 +354,8 @@ msg_t chOQPutTimeout(OutputQueue *oqp, uint8_t b, systime_t time) {
  */
 msg_t chOQGetI(OutputQueue *oqp) {
   uint8_t b;
+
+  chDbgCheckClassI();
 
   if (chOQIsEmptyI(oqp))
     return Q_EMPTY;

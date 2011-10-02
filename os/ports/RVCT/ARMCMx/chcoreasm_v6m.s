@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /*
@@ -40,8 +34,12 @@ SCB_ICSR        EQU     0xE000ED04
                 AREA    |.text|, CODE, READONLY
 
                 IMPORT  chThdExit
-                IMPORT  chSchIsRescRequiredExI
-                IMPORT  chSchDoRescheduleI
+                IMPORT  chSchIsPreemptionRequired
+                IMPORT  chSchDoReschedule
+#if CH_DBG_SYSTEM_STATE_CHECK
+                IMPORT  dbg_check_unlock
+                IMPORT  dbg_check_lock
+#endif
 
 /*
  * Performs a context switch between two threads.
@@ -72,6 +70,9 @@ _port_switch    PROC
  */
                 EXPORT  _port_thread_start
 _port_thread_start PROC
+#if CH_DBG_SYSTEM_STATE_CHECK
+                bl      dbg_check_unlock
+#endif
                 cpsie   i
                 mov     r0, r5
                 blx     r4
@@ -115,11 +116,17 @@ PendSVVector       PROC
  */
                 EXPORT  _port_switch_from_isr
 _port_switch_from_isr PROC
-                bl      chSchIsRescRequiredExI
+#if CH_DBG_SYSTEM_STATE_CHECK
+                bl      dbg_check_lock
+#endif
+                bl      chSchIsPreemptionRequired
                 cmp     r0, #0
-                beq     noresch
-                bl      chSchDoRescheduleI
-noresch
+                beq     noreschedule
+                bl      chSchDoReschedule
+noreschedule
+#if CH_DBG_SYSTEM_STATE_CHECK
+                bl      dbg_check_unlock
+#endif
                 ldr     r2, =SCB_ICSR
                 movs    r3, #128
 #if CORTEX_ALTERNATE_SWITCH

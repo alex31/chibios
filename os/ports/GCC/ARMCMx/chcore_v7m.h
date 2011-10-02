@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -157,9 +151,7 @@ struct intctx {
   regarm_t      r4;
   regarm_t      r5;
   regarm_t      r6;
-#ifndef CH_CURRP_REGISTER_CACHE
   regarm_t      r7;
-#endif
   regarm_t      r8;
   regarm_t      r9;
   regarm_t      r10;
@@ -322,11 +314,32 @@ struct intctx {
 #define port_wait_for_interrupt()
 #endif
 
+/**
+ * @brief   Performs a context switch between two threads.
+ * @details This is the most critical code in any port, this function
+ *          is responsible for the context switch between 2 threads.
+ * @note    The implementation of this code affects <b>directly</b> the context
+ *          switch performance so optimize here as much as you can.
+ *
+ * @param[in] ntp       the thread to be switched in
+ * @param[in] otp       the thread to be switched out
+ */
+#if !CH_DBG_ENABLE_STACK_CHECK || defined(__DOXYGEN__)
+#define port_switch(ntp, otp) _port_switch(ntp, otp)
+#else
+#define port_switch(ntp, otp) {                                             \
+  register struct intctx *r13 asm ("r13");                                  \
+  if ((stkalign_t *)(r13 - 1) < otp->p_stklimit)                            \
+    chDbgPanic("stack overflow");                                           \
+  _port_switch(ntp, otp);                                                   \
+}
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
   void port_halt(void);
-  void port_switch(Thread *ntp, Thread *otp);
+  void _port_switch(Thread *ntp, Thread *otp);
   void _port_irq_epilogue(void);
   void _port_switch_from_isr(void);
   void _port_thread_start(void);

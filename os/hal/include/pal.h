@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -42,12 +36,9 @@
 /*===========================================================================*/
 
 /**
- * @brief   Bits in a mode word dedicated as mode selector.
- * @details The other bits are not defined and may be used as device-specific
- *          option bits.
+ * @name    Pads mode constants
+ * @{
  */
-#define PAL_MODE_MASK                   0x1F
-
 /**
  * @brief   After reset state.
  * @details The state itself is not specified and is architecture dependent,
@@ -94,7 +85,12 @@
  * @brief   Open-drain output pad.
  */
 #define PAL_MODE_OUTPUT_OPENDRAIN       7
+/** @} */
 
+/**
+ * @name    Logic level constants
+ * @{
+ */
 /**
  * @brief   Logical low state.
  */
@@ -104,6 +100,7 @@
  * @brief   Logical high state.
  */
 #define PAL_HIGH 1
+/** @} */
 
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
@@ -130,17 +127,17 @@ typedef struct {
   /**
    * @brief Port identifier.
    */
-  ioportid_t            bus_portid;
+  ioportid_t            portid;
   /**
    * @brief Bus mask aligned to port bit 0.
    * @note  The bus mask implicitly define the bus width. A logical AND is
    *        performed on the bus data.
    */
-  ioportmask_t          bus_mask;
+  ioportmask_t          mask;
   /**
    * @brief Offset, within the port, of the least significant bit of the bus.
    */
-  uint_fast8_t          bus_offset;
+  iomode_t          offset;
 } IOBus;
 
 /*===========================================================================*/
@@ -190,6 +187,10 @@ typedef struct {
 #define IOBUS_DECL(name, port, width, offset)                           \
   IOBus name = _IOBUS_DATA(name, port, width, offset)
 
+/**
+ * @name    Macro Functions
+ * @{
+ */
 /**
  * @brief   PAL subsystem initialization.
  * @note    This function is implicitly invoked by @p halInit(), there is
@@ -269,9 +270,8 @@ typedef struct {
  * @api
  */
 #if !defined(pal_lld_setport) || defined(__DOXYGEN__)
-#define palSetPort(port, bits) {                                        \
-  palWritePort(port, palReadLatch(port) | (bits));                      \
-}
+#define palSetPort(port, bits)                                          \
+  palWritePort(port, palReadLatch(port) | (bits))
 #else
 #define palSetPort(port, bits) pal_lld_setport(port, bits)
 #endif
@@ -292,9 +292,8 @@ typedef struct {
  * @api
  */
 #if !defined(pal_lld_clearport) || defined(__DOXYGEN__)
-#define palClearPort(port, bits) {                                      \
-  palWritePort(port, palReadLatch(port) & ~(bits));                     \
-}
+#define palClearPort(port, bits)                                        \
+  palWritePort(port, palReadLatch(port) & ~(bits))
 #else
 #define palClearPort(port, bits) pal_lld_clearport(port, bits)
 #endif
@@ -315,9 +314,8 @@ typedef struct {
  * @api
  */
 #if !defined(pal_lld_toggleport) || defined(__DOXYGEN__)
-#define palTogglePort(port, bits) {                                     \
-  palWritePort(port, palReadLatch(port) ^ (bits));                      \
-}
+#define palTogglePort(port, bits)                                       \
+  palWritePort(port, palReadLatch(port) ^ (bits))
 #else
 #define palTogglePort(port, bits) pal_lld_toggleport(port, bits)
 #endif
@@ -353,10 +351,9 @@ typedef struct {
  * @api
  */
 #if !defined(pal_lld_writegroup) || defined(__DOXYGEN__)
-#define palWriteGroup(port, mask, offset, bits) {                       \
+#define palWriteGroup(port, mask, offset, bits)                         \
   palWritePort(port, (palReadLatch(port) & ~((mask) << (offset))) |     \
-                     (((bits) & (mask)) << (offset)));                  \
-}
+                     (((bits) & (mask)) << (offset)))
 #else
 #define palWriteGroup(port, mask, offset, bits)                         \
   pal_lld_writegroup(port, mask, offset, bits)
@@ -422,10 +419,9 @@ typedef struct {
  * @api
  */
 #if !defined(pal_lld_writepad) || defined(__DOXYGEN__)
-#define palWritePad(port, pad, bit) {                                   \
+#define palWritePad(port, pad, bit)                                     \
   palWritePort(port, (palReadLatch(port) & ~PAL_PORT_BIT(pad)) |        \
-                     (((bit) & 1) << pad));                             \
-}
+                     (((bit) & 1) << pad))
 #else
 #define palWritePad(port, pad, bit) pal_lld_writepad(port, pad, bit)
 #endif
@@ -517,6 +513,7 @@ typedef struct {
 #else
 #define palSetPadMode(port, pad, mode) pal_lld_setpadmode(port, pad, mode)
 #endif
+/** @} */
 
 /*===========================================================================*/
 /* External declarations.                                                    */
@@ -527,7 +524,7 @@ extern "C" {
 #endif
   ioportmask_t palReadBus(IOBus *bus);
   void palWriteBus(IOBus *bus, ioportmask_t bits);
-  void palSetBusMode(IOBus *bus, uint_fast8_t mode);
+  void palSetBusMode(IOBus *bus, iomode_t mode);
 #ifdef __cplusplus
 }
 #endif

@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -34,6 +28,22 @@
 
 #ifndef _CHDEBUG_H_
 #define _CHDEBUG_H_
+
+#if CH_DBG_ENABLE_ASSERTS     || CH_DBG_ENABLE_CHECKS      ||               \
+    CH_DBG_ENABLE_STACK_CHECK || CH_DBG_SYSTEM_STATE_CHECK
+#define CH_DBG_ENABLED              TRUE
+#else
+#define CH_DBG_ENABLED              FALSE
+#endif
+
+#define __QUOTE_THIS(p) #p
+
+/*===========================================================================*/
+/**
+ * @name    Debug related settings
+ * @{
+ */
+/*===========================================================================*/
 
 /**
  * @brief   Trace buffer entries.
@@ -60,6 +70,30 @@
 #define CH_THREAD_FILL_VALUE        0xFF
 #endif
 
+/** @} */
+
+/*===========================================================================*/
+/* System state checker related code and variables.                          */
+/*===========================================================================*/
+
+#if !CH_DBG_SYSTEM_STATE_CHECK
+#define dbg_check_disable()
+#define dbg_check_suspend()
+#define dbg_check_enable()
+#define dbg_check_lock()
+#define dbg_check_unlock()
+#define dbg_check_lock_from_isr()
+#define dbg_check_unlock_from_isr()
+#define dbg_check_enter_isr()
+#define dbg_check_leave_isr()
+#define chDbgCheckClassI();
+#define chDbgCheckClassS();
+#endif
+
+/*===========================================================================*/
+/* Trace related structures and macros.                                      */
+/*===========================================================================*/
+
 #if CH_DBG_ENABLE_TRACE || defined(__DOXYGEN__)
 /**
  * @brief   Trace buffer record.
@@ -80,11 +114,28 @@ typedef struct {
   /** @brief Ring buffer.*/
   ch_swc_event_t        tb_buffer[CH_TRACE_BUFFER_SIZE];
 } ch_trace_buffer_t;
+
+#if !defined(__DOXYGEN__)
+extern ch_trace_buffer_t dbg_trace_buffer;
+#endif
+
 #endif /* CH_DBG_ENABLE_TRACE */
 
-#define __QUOTE_THIS(p) #p
+#if !CH_DBG_ENABLE_TRACE
+/* When the trace feature is disabled this function is replaced by an empty
+   macro.*/
+#define dbg_trace(otp)
+#endif
+
+/*===========================================================================*/
+/* Parameters checking related macros.                                       */
+/*===========================================================================*/
 
 #if CH_DBG_ENABLE_CHECKS || defined(__DOXYGEN__)
+/**
+ * @name    Macro Functions
+ * @{
+ */
 /**
  * @brief   Function parameter check.
  * @details If the condition check fails then the kernel panics and halts.
@@ -109,7 +160,15 @@ typedef struct {
 }
 #endif /* !CH_DBG_ENABLE_CHECKS */
 
+/*===========================================================================*/
+/* Assertions related macros.                                                */
+/*===========================================================================*/
+
 #if CH_DBG_ENABLE_ASSERTS || defined(__DOXYGEN__)
+/**
+ * @name    Macro Functions
+ * @{
+ */
 /**
  * @brief   Condition assertion.
  * @details If the condition check fails then the kernel panics with the
@@ -133,41 +192,49 @@ typedef struct {
     chDbgPanic(m);                                                      \
 }
 #endif /* !defined(chDbgAssert) */
+/** @} */
 #else /* !CH_DBG_ENABLE_ASSERTS */
 #define chDbgAssert(c, m, r) {(void)(c);}
 #endif /* !CH_DBG_ENABLE_ASSERTS */
 
-#if !(CH_DBG_ENABLE_ASSERTS ||                                          \
-      CH_DBG_ENABLE_CHECKS ||                                           \
-      CH_DBG_ENABLE_STACK_CHECK)
+extern char *dbg_panic_msg;
+
+/*===========================================================================*/
+/* Panic related macros.                                                     */
+/*===========================================================================*/
+
+#if !CH_DBG_ENABLED
 /* When the debug features are disabled this function is replaced by an empty
    macro.*/
 #define chDbgPanic(msg) {}
 #endif
 
-#if !CH_DBG_ENABLE_TRACE
-/* When the trace feature is disabled this function is replaced by an empty
-   macro.*/
-#define dbg_trace(otp) {}
-#endif
-
-#if !defined(__DOXYGEN__)
 #ifdef __cplusplus
 extern "C" {
 #endif
+#if CH_DBG_SYSTEM_STATE_CHECK
+  void dbg_check_disable(void);
+  void dbg_check_suspend(void);
+  void dbg_check_enable(void);
+  void dbg_check_lock(void);
+  void dbg_check_unlock(void);
+  void dbg_check_lock_from_isr(void);
+  void dbg_check_unlock_from_isr(void);
+  void dbg_check_enter_isr(void);
+  void dbg_check_leave_isr(void);
+  void chDbgCheckClassI(void);
+  void chDbgCheckClassS(void);
+#endif
 #if CH_DBG_ENABLE_TRACE || defined(__DOXYGEN__)
-  extern ch_trace_buffer_t dbg_trace_buffer;
-  void trace_init(void);
+  void _trace_init(void);
   void dbg_trace(Thread *otp);
 #endif
-#if CH_DBG_ENABLE_ASSERTS || CH_DBG_ENABLE_CHECKS || CH_DBG_ENABLE_STACK_CHECK
-  extern char *dbg_panic_msg;
+#if CH_DBG_ENABLED
   void chDbgPanic(char *msg);
 #endif
 #ifdef __cplusplus
 }
 #endif
-#endif /* !defined(__DOXYGEN__) */
 
 #endif /* _CHDEBUG_H_ */
 

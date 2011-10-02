@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -34,7 +28,6 @@
 
 #include "ch.h"
 
-#if !defined(CH_CURRP_REGISTER_CACHE) || defined(__DOXXYGEN__)
 /**
  * @brief   Internal context stacking.
  */
@@ -50,17 +43,6 @@
   asm volatile ("pop     {r4, r5, r6, r7, r8, r9, r10, r11, pc}"            \
                 : : : "memory");                                            \
 }
-#else /* defined(CH_CURRP_REGISTER_CACHE) */
-#define PUSH_CONTEXT() {                                                    \
-  asm volatile ("push    {r4, r5, r6, r8, r9, r10, r11, lr}"                \
-                : : : "memory");                                            \
-}
-
-#define POP_CONTEXT() {                                                     \
-  asm volatile ("pop     {r4, r5, r6, r8, r9, r10, r11, pc}"                \
-                 : : : "memory");                                           \
-}
-#endif /* defined(CH_CURRP_REGISTER_CACHE) */
 
 #if !CH_OPTIMIZE_SPEED
 void _port_lock(void) {
@@ -159,8 +141,10 @@ __attribute__((naked))
 #endif
 void _port_switch_from_isr(void) {
 
-  if (chSchIsRescRequiredExI())
-    chSchDoRescheduleI();
+  dbg_check_lock();
+  if (chSchIsPreemptionRequired())
+    chSchDoReschedule();
+  dbg_check_unlock();
 #if !CORTEX_SIMPLIFIED_PRIORITY || defined(__DOXYGEN__)
   asm volatile ("svc     #0");
 #else /* CORTEX_SIMPLIFIED_PRIORITY */
@@ -184,15 +168,7 @@ void _port_switch_from_isr(void) {
 #if !defined(__DOXYGEN__)
 __attribute__((naked))
 #endif
-void port_switch(Thread *ntp, Thread *otp) {
-
-#if CH_DBG_ENABLE_STACK_CHECK
-  /* Stack overflow check, if enabled.*/
-  register struct intctx *r13 asm ("r13");
-  if ((void *)(r13 - 1) < (void *)(otp + 1))
-    asm volatile ("movs    r0, #0                               \n\t"
-                  "b       chDbgPanic");
-#endif /* CH_DBG_ENABLE_STACK_CHECK */
+void _port_switch(Thread *ntp, Thread *otp) {
 
   PUSH_CONTEXT();
 
@@ -209,7 +185,7 @@ void port_switch(Thread *ntp, Thread *otp) {
  */
 void _port_thread_start(void) {
 
-  port_unlock();
+  chSysUnlock();
   asm volatile ("mov     r0, r5                                 \n\t"
                 "blx     r4                                     \n\t"
                 "bl      chThdExit");

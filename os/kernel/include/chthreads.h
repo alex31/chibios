@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -34,6 +28,43 @@
 
 #ifndef _CHTHREADS_H_
 #define _CHTHREADS_H_
+
+/**
+ * @name    Thread states
+ * @{
+ */
+#define THD_STATE_READY         0   /**< @brief Waiting on the ready list.  */
+#define THD_STATE_CURRENT       1   /**< @brief Currently running.          */
+#define THD_STATE_SUSPENDED     2   /**< @brief Created in suspended state. */
+#define THD_STATE_WTSEM         3   /**< @brief Waiting on a semaphore.     */
+#define THD_STATE_WTMTX         4   /**< @brief Waiting on a mutex.         */
+#define THD_STATE_WTCOND        5   /**< @brief Waiting on a condition
+                                         variable.                          */
+#define THD_STATE_SLEEPING      6   /**< @brief Waiting in @p chThdSleep()
+                                         or @p chThdSleepUntil().           */
+#define THD_STATE_WTEXIT        7   /**< @brief Waiting in @p chThdWait().  */
+#define THD_STATE_WTOREVT       8   /**< @brief Waiting for an event.       */
+#define THD_STATE_WTANDEVT      9   /**< @brief Waiting for several events. */
+#define THD_STATE_SNDMSGQ       10  /**< @brief Sending a message, in queue.*/
+#define THD_STATE_SNDMSG        11  /**< @brief Sent a message, waiting
+                                         answer.                            */
+#define THD_STATE_WTMSG         12  /**< @brief Waiting for a message.      */
+#define THD_STATE_WTQUEUE       13  /**< @brief Waiting on an I/O queue.    */
+#define THD_STATE_FINAL         14  /**< @brief Thread terminated.          */
+/** @} */
+
+/**
+ * @name    Thread flags and attributes
+ * @{
+ */
+#define THD_MEM_MODE_MASK       3   /**< @brief Thread memory mode mask.    */
+#define THD_MEM_MODE_STATIC     0   /**< @brief Static thread.              */
+#define THD_MEM_MODE_HEAP       1   /**< @brief Thread allocated from a
+                                         Memory Heap.                       */
+#define THD_MEM_MODE_MEMPOOL    2   /**< @brief Thread allocated from a
+                                         Memory Pool.                       */
+#define THD_TERMINATE           4   /**< @brief Termination requested flag. */
+/** @} */
 
 /**
  * @extends ThreadsQueue
@@ -50,7 +81,7 @@ struct Thread {
   /* End of the fields shared with the ThreadsQueue structure. */
   tprio_t               p_prio;     /**< @brief Thread priority.            */
   struct context        p_ctx;      /**< @brief Processor context.          */
-#if CH_USE_REGISTRY
+#if CH_USE_REGISTRY || defined(__DOXYGEN__)
   Thread                *p_newer;   /**< @brief Newer registry element.     */
   Thread                *p_older;   /**< @brief Older registry element.     */
 #endif
@@ -61,6 +92,12 @@ struct Thread {
    */
   const char            *p_name;
 #endif
+#if CH_DBG_ENABLE_STACK_CHECK || defined(__DOXYGEN__)
+  /**
+   * @brief Thread stack boundary.
+   */
+  stkalign_t            *p_stklimit;
+#endif
   /**
    * @brief Current thread state.
    */
@@ -69,19 +106,13 @@ struct Thread {
    * @brief Various thread flags.
    */
   tmode_t               p_flags;
-#if CH_USE_DYNAMIC
+#if CH_USE_DYNAMIC || defined(__DOXYGEN__)
   /**
    * @brief References to this thread.
    */
   trefs_t               p_refs;
 #endif
-#if CH_USE_NESTED_LOCKS
-  /**
-   * @brief Number of nested locks.
-   */
-  cnt_t                 p_locks;
-#endif
-#if CH_DBG_THREADS_PROFILING
+#if CH_DBG_THREADS_PROFILING || defined(__DOXYGEN__)
   /**
    * @brief Thread consumed time in ticks.
    * @note This field can overflow.
@@ -115,22 +146,22 @@ struct Thread {
      *        states.
      */
     void                *wtobjp;
-#if CH_USE_EVENTS
+#if CH_USE_EVENTS || defined(__DOXYGEN__)
     /**
      * @brief Enabled events mask.
-     * @note  This field is only valied while the thread is in the
+     * @note  This field is only valid while the thread is in the
      *        @p THD_STATE_WTOREVT or @p THD_STATE_WTANDEVT states.
      */
     eventmask_t         ewmask;
 #endif
   }                     p_u;
-#if CH_USE_WAITEXIT
+#if CH_USE_WAITEXIT || defined(__DOXYGEN__)
   /**
    * @brief Termination waiting list.
    */
   ThreadsList           p_waiting;
 #endif
-#if CH_USE_MESSAGES
+#if CH_USE_MESSAGES || defined(__DOXYGEN__)
   /**
    * @brief Messages queue.
    */
@@ -140,13 +171,13 @@ struct Thread {
    */
   msg_t                 p_msg;
 #endif
-#if CH_USE_EVENTS
+#if CH_USE_EVENTS || defined(__DOXYGEN__)
   /**
    * @brief Pending events mask.
    */
   eventmask_t           p_epending;
 #endif
-#if CH_USE_MUTEXES
+#if CH_USE_MUTEXES || defined(__DOXYGEN__)
   /**
    * @brief List of the mutexes owned by this thread.
    * @note  The list is terminated by a @p NULL in this field.
@@ -157,7 +188,7 @@ struct Thread {
    */
   tprio_t               p_realprio;
 #endif
-#if CH_USE_DYNAMIC && CH_USE_MEMPOOLS
+#if (CH_USE_DYNAMIC && CH_USE_MEMPOOLS) || defined(__DOXYGEN__)
   /**
    * @brief Memory Pool where the thread workspace is returned.
    */
@@ -169,75 +200,15 @@ struct Thread {
 #endif
 };
 
-/** @brief Thread state: Ready to run, waiting on the ready list.*/
-#define THD_STATE_READY         0
-/** @brief Thread state: Currently running.*/
-#define THD_STATE_CURRENT       1
-/** @brief Thread state: Thread created in suspended state.*/
-#define THD_STATE_SUSPENDED     2
-/** @brief Thread state: Waiting on a semaphore.*/
-#define THD_STATE_WTSEM         3
-/** @brief Thread state: Waiting on a mutex.*/
-#define THD_STATE_WTMTX         4
-/** @brief Thread state: Waiting in @p chCondWait().*/
-#define THD_STATE_WTCOND        5
-/** @brief Thread state: Waiting in @p chThdSleep() or @p chThdSleepUntil().*/
-#define THD_STATE_SLEEPING      6
-/** @brief Thread state: Waiting in @p chThdWait().*/
-#define THD_STATE_WTEXIT        7
-/** @brief Thread state: Waiting in @p chEvtWaitXXX().*/
-#define THD_STATE_WTOREVT       8
-/** @brief Thread state: Waiting in @p chEvtWaitAllTimeout().*/
-#define THD_STATE_WTANDEVT      9
-/** @brief Thread state: Waiting in @p chMsgSend().*/
-#define THD_STATE_SNDMSG        10
-/** @brief Thread state: Waiting in @p chMsgWait().*/
-#define THD_STATE_WTMSG         11
-/** @brief Thread state: Waiting on an I/O queue.*/
-#define THD_STATE_WTQUEUE       12
-/** @brief Thread state: After termination.*/
-#define THD_STATE_FINAL         13
-
-/*
- * Various flags into the thread p_flags field.
+/**
+ * @brief Thread function.
  */
-#define THD_MEM_MODE_MASK       3   /**< @brief Thread memory mode mask.    */
-#define THD_MEM_MODE_STATIC     0   /**< @brief Thread memory mode: static. */
-#define THD_MEM_MODE_HEAP       1   /**< @brief Thread memory mode: heap.   */
-#define THD_MEM_MODE_MEMPOOL    2   /**< @brief Thread memory mode: pool.   */
-#define THD_TERMINATE           4   /**< @brief Termination requested.      */
-
-/** @brief Thread function.*/
 typedef msg_t (*tfunc_t)(void *);
 
-/*
- * Threads APIs.
+/**
+ * @name    Macro Functions
+ * @{
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
-  Thread *_thread_init(Thread *tp, tprio_t prio);
-#if CH_DBG_FILL_THREADS
-  void _thread_memfill(uint8_t *startp, uint8_t *endp, uint8_t v);
-#endif
-  Thread *chThdCreateI(void *wsp, size_t size,
-                       tprio_t prio, tfunc_t pf, void *arg);
-  Thread *chThdCreateStatic(void *wsp, size_t size,
-                            tprio_t prio, tfunc_t pf, void *arg);
-  tprio_t chThdSetPriority(tprio_t newprio);
-  Thread *chThdResume(Thread *tp);
-  void chThdTerminate(Thread *tp);
-  void chThdSleep(systime_t time);
-  void chThdSleepUntil(systime_t time);
-  void chThdYield(void);
-  void chThdExit(msg_t msg);
-#if CH_USE_WAITEXIT
-  msg_t chThdWait(Thread *tp);
-#endif
-#ifdef __cplusplus
-}
-#endif
-
 /**
  * @brief   Returns a pointer to the current @p Thread.
  *
@@ -292,7 +263,7 @@ extern "C" {
 #define chThdShouldTerminate() (currp->p_flags & THD_TERMINATE)
 
 /**
- * @brief   Resumes a thread created with @p chThdInit().
+ * @brief   Resumes a thread created with @p chThdCreateI().
  *
  * @param[in] tp        pointer to the thread
  *
@@ -320,7 +291,7 @@ extern "C" {
  *          system clock.
  * @note    The maximum specified value is implementation dependent.
  *
- * @param[in] sec       time in seconds
+ * @param[in] sec       time in seconds, must be different from zero
  *
  * @api
  */
@@ -333,7 +304,7 @@ extern "C" {
  *          system clock.
  * @note    The maximum specified value is implementation dependent.
  *
- * @param[in] msec      time in milliseconds
+ * @param[in] msec      time in milliseconds, must be different from zero
  *
  * @api
  */
@@ -346,11 +317,41 @@ extern "C" {
  *          system clock.
  * @note    The maximum specified value is implementation dependent.
  *
- * @param[in] usec      time in microseconds
+ * @param[in] usec      time in microseconds, must be different from zero
  *
  * @api
  */
 #define chThdSleepMicroseconds(usec) chThdSleep(US2ST(usec))
+/** @} */
+
+/*
+ * Threads APIs.
+ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+  Thread *_thread_init(Thread *tp, tprio_t prio);
+#if CH_DBG_FILL_THREADS
+  void _thread_memfill(uint8_t *startp, uint8_t *endp, uint8_t v);
+#endif
+  Thread *chThdCreateI(void *wsp, size_t size,
+                       tprio_t prio, tfunc_t pf, void *arg);
+  Thread *chThdCreateStatic(void *wsp, size_t size,
+                            tprio_t prio, tfunc_t pf, void *arg);
+  tprio_t chThdSetPriority(tprio_t newprio);
+  Thread *chThdResume(Thread *tp);
+  void chThdTerminate(Thread *tp);
+  void chThdSleep(systime_t time);
+  void chThdSleepUntil(systime_t time);
+  void chThdYield(void);
+  void chThdExit(msg_t msg);
+  void chThdExitS(msg_t msg);
+#if CH_USE_WAITEXIT
+  msg_t chThdWait(Thread *tp);
+#endif
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _CHTHREADS_H_ */
 

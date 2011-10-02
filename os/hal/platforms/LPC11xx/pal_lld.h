@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -100,6 +94,11 @@ typedef struct {
 typedef uint32_t ioportmask_t;
 
 /**
+ * @brief   Digital I/O modes.
+ */
+typedef uint32_t iomode_t;
+
+/**
  * @brief   Port Identifier.
  */
 typedef LPC_GPIO_TypeDef *ioportid_t;
@@ -148,8 +147,6 @@ typedef LPC_GPIO_TypeDef *ioportid_t;
 
 /**
  * @brief   Reads the physical I/O port states.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  *
  * @param[in] port      port identifier
  * @return              The port bits.
@@ -162,8 +159,6 @@ typedef LPC_GPIO_TypeDef *ioportid_t;
  * @brief   Reads the output latch.
  * @details The purpose of this function is to read back the latched output
  *          value.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  *
  * @param[in] port      port identifier
  * @return              The latched logical states.
@@ -174,8 +169,6 @@ typedef LPC_GPIO_TypeDef *ioportid_t;
 
 /**
  * @brief   Writes a bits mask on a I/O port.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  *
  * @param[in] port      port identifier
  * @param[in] bits      bits to be written on the specified port
@@ -186,8 +179,6 @@ typedef LPC_GPIO_TypeDef *ioportid_t;
 
 /**
  * @brief   Sets a bits mask on a I/O port.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  * @note    The @ref PAL provides a default software implementation of this
  *          functionality, implement this function if can optimize it by using
  *          special hardware functionalities or special coding.
@@ -201,8 +192,6 @@ typedef LPC_GPIO_TypeDef *ioportid_t;
 
 /**
  * @brief   Clears a bits mask on a I/O port.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  * @note    The @ref PAL provides a default software implementation of this
  *          functionality, implement this function if can optimize it by using
  *          special hardware functionalities or special coding.
@@ -216,8 +205,6 @@ typedef LPC_GPIO_TypeDef *ioportid_t;
 
 /**
  * @brief   Reads a group of bits.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  * @note    The @ref PAL provides a default software implementation of this
  *          functionality, implement this function if can optimize it by using
  *          special hardware functionalities or special coding.
@@ -234,8 +221,6 @@ typedef LPC_GPIO_TypeDef *ioportid_t;
 
 /**
  * @brief   Writes a group of bits.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  * @note    The @ref PAL provides a default software implementation of this
  *          functionality, implement this function if can optimize it by using
  *          special hardware functionalities or special coding.
@@ -255,8 +240,6 @@ typedef LPC_GPIO_TypeDef *ioportid_t;
  * @brief   Pads group mode setup.
  * @details This function programs a pads group belonging to the same port
  *          with the specified mode.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  * @note    Programming an unknown or unsupported mode is silently ignored.
  *
  * @param[in] port      port identifier
@@ -288,8 +271,6 @@ typedef LPC_GPIO_TypeDef *ioportid_t;
 
 /**
  * @brief   Sets a pad logical state to @p PAL_HIGH.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  * @note    The @ref PAL provides a default software implementation of this
  *          functionality, implement this function if can optimize it by using
  *          special hardware functionalities or special coding.
@@ -304,8 +285,6 @@ typedef LPC_GPIO_TypeDef *ioportid_t;
 
 /**
  * @brief   Clears a pad logical state to @p PAL_LOW.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  * @note    The @ref PAL provides a default software implementation of this
  *          functionality, implement this function if can optimize it by using
  *          special hardware functionalities or special coding.
@@ -328,7 +307,7 @@ extern "C" {
   void _pal_lld_init(const PALConfig *config);
   void _pal_lld_setgroupmode(ioportid_t port,
                              ioportmask_t mask,
-                             uint_fast8_t mode);
+                             iomode_t mode);
 #ifdef __cplusplus
 }
 #endif

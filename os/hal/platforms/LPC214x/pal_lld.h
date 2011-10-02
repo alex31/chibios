@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -94,6 +88,11 @@ typedef struct {
  * @brief   Digital I/O port sized unsigned type.
  */
 typedef uint32_t ioportmask_t;
+
+/**
+ * @brief   Digital I/O modes.
+ */
+typedef uint32_t iomode_t;
 
 /**
  * @brief   Port Identifier.
@@ -200,11 +199,10 @@ typedef FIO * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_writegroup(port, mask, offset, bits) {                  \
-  (port)->FIO_MASK = ~((mask) << (offset));                             \
-  (port)->FIO_PIN = (bits) << (offset);                                 \
-  (port)->FIO_MASK = 0;                                                 \
-}
+#define pal_lld_writegroup(port, mask, offset, bits)                    \
+  ((port)->FIO_MASK = ~((mask) << (offset)),                            \
+   (port)->FIO_PIN = (bits) << (offset),                                \
+   (port)->FIO_MASK = 0)
 
 /**
  * @brief   Pads group mode setup.
@@ -242,9 +240,7 @@ typedef FIO * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_lpc214x_set_direction(port, dir) {                      \
-  (port)->FIO_DIR = (dir);                                              \
-}
+#define pal_lld_lpc214x_set_direction(port, dir) ((port)->FIO_DIR = (dir))
 
 extern const PALConfig pal_default_config;
 
@@ -254,7 +250,7 @@ extern "C" {
   void _pal_lld_init(const PALConfig *config);
   void _pal_lld_setgroupmode(ioportid_t port,
                              ioportmask_t mask,
-                             uint_fast8_t mode);
+                             iomode_t mode);
 #ifdef __cplusplus
 }
 #endif

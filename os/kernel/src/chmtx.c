@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -120,6 +114,7 @@ void chMtxLock(Mutex *mp) {
 void chMtxLockS(Mutex *mp) {
   Thread *ctp = currp;
 
+  chDbgCheckClassS();
   chDbgCheck(mp != NULL, "chMtxLockS");
 
   /* Ia the mutex already locked? */
@@ -150,7 +145,7 @@ void chMtxLockS(Mutex *mp) {
       case THD_STATE_WTSEM:
 #endif
 #if CH_USE_MESSAGES && CH_USE_MESSAGES_PRIORITY
-      case THD_STATE_SNDMSG:
+      case THD_STATE_SNDMSGQ:
 #endif
         /* Re-enqueues tp with its new priority on the queue.*/
         prio_insert(dequeue(tp), (ThreadsQueue *)tp->p_u.wtobjp);
@@ -163,6 +158,7 @@ void chMtxLockS(Mutex *mp) {
 #endif
         /* Re-enqueues tp with its new priority on the ready list.*/
         chSchReadyI(dequeue(tp));
+        break;
       }
       break;
     }
@@ -230,6 +226,7 @@ bool_t chMtxTryLock(Mutex *mp) {
  */
 bool_t chMtxTryLockS(Mutex *mp) {
 
+  chDbgCheckClassS();
   chDbgCheck(mp != NULL, "chMtxTryLockS");
 
   if (mp->m_owner != NULL)
@@ -314,6 +311,7 @@ Mutex *chMtxUnlockS(void) {
   Thread *ctp = currp;
   Mutex *ump, *mp;
 
+  chDbgCheckClassS();
   chDbgAssert(ctp->p_mtxlist != NULL,
               "chMtxUnlockS(), #1",
               "owned mutexes list empty");

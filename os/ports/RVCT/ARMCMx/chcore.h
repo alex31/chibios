@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,18 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -110,8 +104,8 @@
  *          a stack frame when compiling without optimizations. You may
  *          reduce this value to zero when compiling with optimizations.
  */
-#ifndef IDLE_THREAD_STACK_SIZE
-#define IDLE_THREAD_STACK_SIZE          16
+#ifndef PORT_IDLE_THREAD_STACK_SIZE
+#define PORT_IDLE_THREAD_STACK_SIZE     16
 #endif
 
 /**
@@ -122,11 +116,11 @@
  *          separate interrupt stack and the stack space between @p intctx and
  *          @p extctx is known to be zero.
  * @note    In this port it is conservatively set to 16 because the function
- *          @p chSchDoRescheduleI() can have a stack frame, expecially with
+ *          @p chSchDoReschedule() can have a stack frame, expecially with
  *          compiler optimizations disabled.
  */
-#ifndef INT_REQUIRED_STACK
-#define INT_REQUIRED_STACK              16
+#ifndef PORT_INT_REQUIRED_STACK
+#define PORT_INT_REQUIRED_STACK         16
 #endif
 
 /**
@@ -173,6 +167,11 @@
  * @brief   Macro defining a generic ARM architecture.
  */
 #define CH_ARCHITECTURE_ARM
+
+/**
+ * @brief   Name of the compiler supported by this port.
+ */
+#define CH_COMPILER_NAME                "RVCT"
 
 /*===========================================================================*/
 /* Port implementation part (common).                                        */
@@ -228,6 +227,7 @@ struct intctx {
 
 /**
  * @brief   Platform dependent part of the @p Thread structure.
+
  * @details In this port the structure just holds a pointer to the @p intctx
  *          structure representing the stack pointer at context switch time.
  */
@@ -260,7 +260,7 @@ struct context {
 #define THD_WA_SIZE(n) STACK_ALIGN(sizeof(Thread) +                         \
                                    sizeof(struct intctx) +                  \
                                    sizeof(struct extctx) +                  \
-                                   (n) + (INT_REQUIRED_STACK))
+                                   (n) + (PORT_INT_REQUIRED_STACK))
 
 /**
  * @brief   Static working area allocation.
