@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -46,6 +47,8 @@ static const struct uip_eth_addr macaddr = {
   {0xC2, 0xAF, 0x51, 0x03, 0xCF, 0x46}
 };
 
+static const MACConfig mac_config = {macaddr.addr};
+
 #define BUF ((struct uip_eth_hdr *)&uip_buf[0])
 
 /*
@@ -76,7 +79,7 @@ static size_t network_device_read(void) {
 
   if (macWaitReceiveDescriptor(&ETH1, &rd, TIME_IMMEDIATE) != RDY_OK)
     return 0;
-  size = rd.rd_size;
+  size = rd.size;
   macReadReceiveDescriptor(&rd, uip_buf, size);
   macReleaseReceiveDescriptor(&rd);
   return size;
@@ -170,9 +173,9 @@ msg_t WebThread(void *p) {
   chEvtRegister(&evt2.et_es, &el2, ARP_TIMER_ID);
 
   /*
-   * EMAC settings.
+   * EMAC driver start.
    */
-  macSetAddress(&ETH1, &macaddr.addr[0]);
+  macStart(&ETH1, &mac_config);
   (void)macPollLinkStatus(&ETH1);
 
   /*

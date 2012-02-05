@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -32,6 +33,10 @@
 #ifndef _CHCORE_H_
 #define _CHCORE_H_
 
+#if CH_DBG_ENABLE_STACK_CHECK
+#error "option CH_DBG_ENABLE_STACK_CHECK not supported by this port"
+#endif
+
 /**
  * Macro defining the a simulated architecture into x86.
  */
@@ -40,12 +45,22 @@
 /**
  * Name of the implemented architecture.
  */
-#define CH_ARCHITECTURE_NAME "Simulator"
+#define CH_ARCHITECTURE_NAME            "Simulator"
 
 /**
  * @brief   Name of the architecture variant (optional).
  */
-#define CH_CORE_VARIANT_NAME "x86 (integer only)"
+#define CH_CORE_VARIANT_NAME            "x86 (integer only)"
+
+/**
+ * @brief   Name of the compiler supported by this port.
+ */
+#define CH_COMPILER_NAME                "GCC "__VERSION__
+
+/**
+ * @brief   Port-specific information string.
+ */
+#define CH_PORT_INFO                    "No preemption"
 
 /**
  * 16 bytes stack alignment.
@@ -97,13 +112,11 @@ struct context {
  */
 #define SETUP_CONTEXT(workspace, wsize, pf, arg) {                      \
   uint8_t *esp = (uint8_t *)workspace + wsize;                          \
-  APUSH(esp, 0);                                                        \
-  APUSH(esp, 0);                                                        \
-  APUSH(esp, 0);                                                        \
   APUSH(esp, arg);                                                      \
-  APUSH(esp, threadexit);                                               \
+  APUSH(esp, pf);                                                       \
+  APUSH(esp, 0);                                                        \
   esp -= sizeof(struct intctx);                                         \
-  ((struct intctx *)esp)->eip = pf;                                     \
+  ((struct intctx *)esp)->eip = _port_thread_start;                     \
   ((struct intctx *)esp)->ebx = 0;                                      \
   ((struct intctx *)esp)->edi = 0;                                      \
   ((struct intctx *)esp)->esi = 0;                                      \
@@ -114,8 +127,8 @@ struct context {
 /**
  * Stack size for the system idle thread.
  */
-#ifndef IDLE_THREAD_STACK_SIZE
-#define IDLE_THREAD_STACK_SIZE 256
+#ifndef PORT_IDLE_THREAD_STACK_SIZE
+#define PORT_IDLE_THREAD_STACK_SIZE     256
 #endif
 
 /**
@@ -124,8 +137,8 @@ struct context {
  * It requires stack space because the simulated "interrupt handlers" can
  * invoke host library functions inside so it better have a lot of space.
  */
-#ifndef INT_REQUIRED_STACK
-#define INT_REQUIRED_STACK 16384
+#ifndef PORT_INT_REQUIRED_STACK
+#define PORT_INT_REQUIRED_STACK         16384
 #endif
 
 /**
@@ -140,7 +153,7 @@ struct context {
                                    sizeof(void *) * 4 +                 \
                                    sizeof(struct intctx) +              \
                                    sizeof(struct extctx) +              \
-                                  (n) + (INT_REQUIRED_STACK))
+                                   (n) + (PORT_INT_REQUIRED_STACK))
 
 /**
  * Macro used to allocate a thread working area aligned as both position and
@@ -216,7 +229,8 @@ extern "C" {
 #endif
   __attribute__((fastcall)) void port_switch(Thread *ntp, Thread *otp);
   __attribute__((fastcall)) void port_halt(void);
-  void threadexit(void);
+  __attribute__((cdecl, noreturn)) void _port_thread_start(msg_t (*pf)(void *),
+                                                           void *p);
   void ChkIntSources(void);
 #ifdef __cplusplus
 }

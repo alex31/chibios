@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -84,8 +85,10 @@ void ChkIntSources(void) {
 
 #if HAL_USE_SERIAL
   if (sd_lld_interrupt_pending()) {
-    if (chSchIsRescRequiredExI())
-      chSchDoRescheduleI();
+    dbg_check_lock();
+    if (chSchIsPreemptionRequired())
+      chSchDoReschedule();
+    dbg_check_unlock();
     return;
   }
 #endif
@@ -93,9 +96,19 @@ void ChkIntSources(void) {
   gettimeofday(&tv, NULL);
   if (timercmp(&tv, &nextcnt, >=)) {
     timeradd(&nextcnt, &tick, &nextcnt);
+
+    CH_IRQ_PROLOGUE();
+
+    chSysLockFromIsr();
     chSysTimerHandlerI();
-    if (chSchIsRescRequiredExI())
-      chSchDoRescheduleI();
+    chSysUnlockFromIsr();
+
+    CH_IRQ_EPILOGUE();
+
+    dbg_check_lock();
+    if (chSchIsPreemptionRequired())
+      chSchDoReschedule();
+    dbg_check_unlock();
   }
 }
 

@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -47,6 +48,8 @@ main_stack_mem  SPACE   main_stack_size
 __initial_msp
 
                 AREA    CSTACK, NOINIT, READWRITE, ALIGN=3
+__main_thread_stack_base__
+                EXPORT  __main_thread_stack_base__
 proc_stack_mem  SPACE   proc_stack_size
                 EXPORT  __initial_sp
 __initial_sp
@@ -79,6 +82,14 @@ Reset_Handler   PROC
                 msr     CONTROL, r0
                 isb
                 bl      __early_init
+
+                IF      {CPU} = "Cortex-M4.fp"
+                LDR     R0, =0xE000ED88           ; Enable CP10,CP11
+                LDR     R1, [R0]
+                ORR     R1, R1, #(0xF << 20)
+                STR     R1, [R0]
+                ENDIF
+
                 ldr     r0, =__main
                 bx      r0
                 ENDP

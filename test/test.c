@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -334,15 +335,21 @@ msg_t TestThread(void *p) {
   test_println("***");
   test_print("*** Kernel:       ");
   test_println(CH_KERNEL_VERSION);
-#ifdef __GNUC__
-  test_print("*** GCC Version:  ");
-  test_println(__VERSION__);
+  test_print("*** Compiled:     ");
+  test_println(__DATE__ " - " __TIME__);
+#ifdef CH_COMPILER_NAME
+  test_print("*** Compiler:     ");
+  test_println(CH_COMPILER_NAME);
 #endif
   test_print("*** Architecture: ");
   test_println(CH_ARCHITECTURE_NAME);
 #ifdef CH_CORE_VARIANT_NAME
   test_print("*** Core Variant: ");
   test_println(CH_CORE_VARIANT_NAME);
+#endif
+#ifdef CH_PORT_INFO
+  test_print("*** Port Info:    ");
+  test_println(CH_PORT_INFO);
 #endif
 #ifdef PLATFORM_NAME
   test_print("*** Platform:     ");

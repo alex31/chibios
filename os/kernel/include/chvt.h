@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -36,25 +37,45 @@
 #define _CHVT_H_
 
 /**
- * @brief   Time conversion utility.
+ * @name    Time conversion utilities
+ * @{
+ */
+/**
+ * @brief   Seconds to system ticks.
  * @details Converts from seconds to system ticks number.
  * @note    The result is rounded upward to the next tick boundary.
+ *
+ * @param[in] sec       number of seconds
+ * @return              The number of ticks.
+ *
+ * @api
  */
 #define S2ST(sec)   ((systime_t)((sec) * CH_FREQUENCY))
 
 /**
- * @brief   Time conversion utility.
+ * @brief   Milliseconds t0 system ticks.
  * @details Converts from milliseconds to system ticks number.
  * @note    The result is rounded upward to the next tick boundary.
+ *
+ * @param[in] msec      number of milliseconds
+ * @return              The number of ticks.
+ *
+ * @api
  */
 #define MS2ST(msec) ((systime_t)(((((msec) - 1L) * CH_FREQUENCY) / 1000L) + 1L))
 
 /**
- * @brief   Time conversion utility.
+ * @brief   Microseconds to system ticks.
  * @details Converts from microseconds to system ticks number.
  * @note    The result is rounded upward to the next tick boundary.
+ *
+ * @param[in] usec      number of microseconds
+ * @return              The number of ticks.
+ *
+ * @api
  */
 #define US2ST(usec) ((systime_t)(((((usec) - 1L) * CH_FREQUENCY) / 1000000L) + 1L))
+/** @} */
 
 /**
  * @brief   Virtual Timer callback function.
@@ -101,6 +122,10 @@ typedef struct {
 extern VTList vtlist;
 
 /**
+ * @name    Macro Functions
+ * @{
+ */
+/**
  * @brief   Virtual timers ticker.
  *
  * @iclass
@@ -121,20 +146,6 @@ extern VTList vtlist;
   }                                                                     \
 }
 
-/*
- * Virtual Timers APIs.
- */
-#ifdef __cplusplus
-extern "C" {
-#endif
-  void vt_init(void);
-  void chVTSetI(VirtualTimer *vtp, systime_t time, vtfunc_t vtfunc, void *par);
-  void chVTResetI(VirtualTimer *vtp);
-  bool_t chTimeIsWithin(systime_t start, systime_t end);
-#ifdef __cplusplus
-}
-#endif
-
 /**
  * @brief   Returns TRUE if the speciified timer is armed.
  *
@@ -154,6 +165,21 @@ extern "C" {
  * @api
  */
 #define chTimeNow() (vtlist.vt_systime)
+/** @} */
+
+/*
+ * Virtual Timers APIs.
+ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+  void _vt_init(void);
+  void chVTSetI(VirtualTimer *vtp, systime_t time, vtfunc_t vtfunc, void *par);
+  void chVTResetI(VirtualTimer *vtp);
+  bool_t chTimeIsWithin(systime_t start, systime_t end);
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _CHVT_H_ */
 

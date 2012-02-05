@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -36,15 +37,17 @@
 #include "chconf.h"
 #include "chcore.h"
 
-EXTCTX_SIZE     SET     32
 CONTEXT_OFFSET  SET     12
 SCB_ICSR        SET     0xE000ED04
 
         SECTION .text:CODE:NOROOT(2)
 
         EXTERN  chThdExit
-        EXTERN  chSchIsRescRequiredExI
-        EXTERN  chSchDoRescheduleI
+        EXTERN  chSchDoReschedule
+#if CH_DBG_SYSTEM_STATE_CHECK
+        EXTERN  dbg_check_unlock
+        EXTERN  dbg_check_lock
+#endif
 
         THUMB
 
@@ -76,51 +79,29 @@ _port_switch:
  */
         PUBLIC  _port_thread_start
 _port_thread_start:
+#if CH_DBG_SYSTEM_STATE_CHECK
+        bl      dbg_check_unlock
+#endif
         cpsie   i
         mov     r0, r5
         blx     r4
         bl      chThdExit
 
 /*
- * NMI vector.
- * The NMI vector is used for exception mode re-entering after a context
- * switch.
- */
-#if !CORTEX_ALTERNATE_SWITCH
-        PUBLIC  NMIVector
-NMIVector:
-        mrs     r3, PSP
-        adds    r3, r3, #32
-        msr     PSP, r3
-        cpsie   i
-        bx      lr
-#endif
-
-/*
- * PendSV vector.
- * The PendSV vector is used for exception mode re-entering after a context
- * switch.
- */
-#if CORTEX_ALTERNATE_SWITCH
-        PUBLIC  PendSVVector
-PendSVVector:
-        mrs     r3, PSP
-        adds    r3, r3, #32
-        msr     PSP, r3
-        bx      lr
-#endif
-
-/*
  * Post-IRQ switch code.
  * Exception handlers return here for context switching.
  */
         PUBLIC  _port_switch_from_isr
+        PUBLIC  _port_exit_from_isr
 _port_switch_from_isr:
-        bl      chSchIsRescRequiredExI
-        cmp     r0, #0
-        beq     noresch
-        bl      chSchDoRescheduleI
-noresch:
+#if CH_DBG_SYSTEM_STATE_CHECK
+        bl      dbg_check_lock
+#endif
+        bl      chSchDoReschedule
+#if CH_DBG_SYSTEM_STATE_CHECK
+        bl      dbg_check_unlock
+#endif
+_port_exit_from_isr:
         ldr     r2, =SCB_ICSR
         movs    r3, #128
 #if CORTEX_ALTERNATE_SWITCH
@@ -133,25 +114,5 @@ noresch:
 #endif
 waithere:
         b       waithere
-
-/*
- * Reschedule verification and setup after an IRQ.
- */
-        PUBLIC  _port_irq_epilogue
-_port_irq_epilogue:
-        push    {lr}
-        adds    r0, r0, #15
-        beq     skipexit
-        cpsid   i
-        mrs     r3, PSP
-        subs    r3, r3, #32
-        msr     PSP, r3
-        ldr     r2, =_port_switch_from_isr
-        str     r2, [r3, #24]
-        movs    r2, #128
-        lsls    r2, r2, #17
-        str     r2, [r3, #28]
-skipexit:
-        pop     {pc}
 
         END

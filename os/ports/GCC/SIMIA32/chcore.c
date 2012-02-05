@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -75,17 +76,16 @@ void port_halt(void) {
 }
 
 /**
- * Threads return point, it just invokes @p chThdExit().
+ * @brief   Start a thread by invoking its work function.
+ * @details If the work function returns @p chThdExit() is automatically
+ *          invoked.
  */
-void threadexit(void) {
+__attribute__((cdecl, noreturn))
+void _port_thread_start(msg_t (*pf)(void *), void *p) {
 
-#if defined(WIN32) || defined (__APPLE__)
-  asm volatile ("push    %eax                                   \n\t" \
-                "call    _chThdExit");
-#else
-  asm volatile ("push    %eax                                   \n\t" \
-                "call    chThdExit");
-#endif
+  chSysUnlock();
+  chThdExit(pf(p));
+  while(1);
 }
 
 /** @} */

@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -30,17 +31,190 @@
  *
  * @addtogroup debug
  * @details Debug APIs and services:
+ *          - Runtime system state and call protocol check. The following
+ *            panic messages can be generated:
+ *            - SV#1, misplaced @p chSysDisable().
+ *            - SV#2, misplaced @p chSysSuspend()
+ *            - SV#3, misplaced @p chSysEnable().
+ *            - SV#4, misplaced @p chSysLock().
+ *            - SV#5, misplaced @p chSysUnlock().
+ *            - SV#6, misplaced @p chSysLockFromIsr().
+ *            - SV#7, misplaced @p chSysUnlockFromIsr().
+ *            - SV#8, misplaced @p CH_IRQ_PROLOGUE().
+ *            - SV#9, misplaced @p CH_IRQ_EPILOGUE().
+ *            - SV#10, misplaced I-class function.
+ *            - SV#11, misplaced S-class function.
+ *            .
  *          - Trace buffer.
  *          - Parameters check.
  *          - Kernel assertions.
+ *          - Kernel panics.
  *          .
- * @pre     In order to use the debug APIs the @p CH_DBG_ENABLE_TRACE,
- *          @p CH_DBG_ENABLE_ASSERTS, @p CH_DBG_ENABLE_CHECKS options must
- *          be enabled in @p chconf.h.
+ * @note    Stack checks are not implemented in this module but in the port
+ *          layer in an architecture-dependent way.
  * @{
  */
 
 #include "ch.h"
+
+/*===========================================================================*/
+/* System state checker related code and variables.                          */
+/*===========================================================================*/
+
+#if CH_DBG_SYSTEM_STATE_CHECK || defined(__DOXYGEN__)
+
+/**
+ * @brief   ISR nesting level.
+ */
+cnt_t dbg_isr_cnt;
+
+/**
+ * @brief   Lock nesting level.
+ */
+cnt_t dbg_lock_cnt;
+
+/**
+ * @brief   Guard code for @p chSysDisable().
+ *
+ * @notapi
+ */
+void dbg_check_disable(void) {
+
+  if ((dbg_isr_cnt != 0) || (dbg_lock_cnt != 0))
+    chDbgPanic("SV#1");
+}
+
+/**
+ * @brief   Guard code for @p chSysSuspend().
+ *
+ * @notapi
+ */
+void dbg_check_suspend(void) {
+
+  if ((dbg_isr_cnt != 0) || (dbg_lock_cnt != 0))
+    chDbgPanic("SV#2");
+}
+
+/**
+ * @brief   Guard code for @p chSysEnable().
+ *
+ * @notapi
+ */
+void dbg_check_enable(void) {
+
+  if ((dbg_isr_cnt != 0) || (dbg_lock_cnt != 0))
+    chDbgPanic("SV#3");
+}
+
+/**
+ * @brief   Guard code for @p chSysLock().
+ *
+ * @notapi
+ */
+void dbg_check_lock(void) {
+
+  if ((dbg_isr_cnt != 0) || (dbg_lock_cnt != 0))
+    chDbgPanic("SV#4");
+  dbg_lock_cnt = 1;
+}
+
+/**
+ * @brief   Guard code for @p chSysUnlock().
+ *
+ * @notapi
+ */
+void dbg_check_unlock(void) {
+
+  if ((dbg_isr_cnt != 0) || (dbg_lock_cnt <= 0))
+    chDbgPanic("SV#5");
+  dbg_lock_cnt = 0;
+}
+
+/**
+ * @brief   Guard code for @p chSysLockFromIsr().
+ *
+ * @notapi
+ */
+void dbg_check_lock_from_isr(void) {
+
+  if ((dbg_isr_cnt <= 0) || (dbg_lock_cnt != 0))
+    chDbgPanic("SV#6");
+  dbg_lock_cnt = 1;
+}
+
+/**
+ * @brief   Guard code for @p chSysUnlockFromIsr().
+ *
+ * @notapi
+ */
+void dbg_check_unlock_from_isr(void) {
+
+  if ((dbg_isr_cnt <= 0) || (dbg_lock_cnt <= 0))
+    chDbgPanic("SV#7");
+  dbg_lock_cnt = 0;
+}
+
+/**
+ * @brief   Guard code for @p CH_IRQ_PROLOGUE().
+ *
+ * @notapi
+ */
+void dbg_check_enter_isr(void) {
+
+  port_lock_from_isr();
+  if ((dbg_isr_cnt < 0) || (dbg_lock_cnt != 0))
+    chDbgPanic("SV#8");
+  dbg_isr_cnt++;
+  port_unlock_from_isr();
+}
+
+/**
+ * @brief   Guard code for @p CH_IRQ_EPILOGUE().
+ *
+ * @notapi
+ */
+void dbg_check_leave_isr(void) {
+
+  port_lock_from_isr();
+  if ((dbg_isr_cnt <= 0) || (dbg_lock_cnt != 0))
+    chDbgPanic("SV#9");
+  dbg_isr_cnt--;
+  port_unlock_from_isr();
+}
+
+/**
+ * @brief   I-class functions context check.
+ * @details Verifies that the system is in an appropriate state for invoking
+ *          an I-class API function. A panic is generated if the state is
+ *          not compatible.
+ *
+ * @api
+ */
+void chDbgCheckClassI(void) {
+
+  if ((dbg_isr_cnt < 0) || (dbg_lock_cnt <= 0))
+    chDbgPanic("SV#10");
+}
+
+/**
+ * @brief   S-class functions context check.
+ * @details Verifies that the system is in an appropriate state for invoking
+ *          an S-class API function. A panic is generated if the state is
+ *          not compatible.
+ *
+ * @api
+ */
+void chDbgCheckClassS(void) {
+
+  if ((dbg_isr_cnt != 0) || (dbg_lock_cnt <= 0))
+    chDbgPanic("SV#11");
+}
+
+#endif /* CH_DBG_SYSTEM_STATE_CHECK */
+
+/*===========================================================================*/
+/* Trace related code and variables.                                         */
+/*===========================================================================*/
 
 #if CH_DBG_ENABLE_TRACE || defined(__DOXYGEN__)
 /**
@@ -52,7 +226,7 @@ ch_trace_buffer_t dbg_trace_buffer;
  * @brief   Trace circular buffer subsystem initialization.
  * @note    Internal use only.
  */
-void trace_init(void) {
+void _trace_init(void) {
 
   dbg_trace_buffer.tb_size = CH_TRACE_BUFFER_SIZE;
   dbg_trace_buffer.tb_ptr = &dbg_trace_buffer.tb_buffer[0];
@@ -77,8 +251,11 @@ void dbg_trace(Thread *otp) {
 }
 #endif /* CH_DBG_ENABLE_TRACE */
 
-#if CH_DBG_ENABLE_ASSERTS || CH_DBG_ENABLE_CHECKS ||                        \
-    CH_DBG_ENABLE_STACK_CHECK || defined(__DOXYGEN__)
+/*===========================================================================*/
+/* Panic related code and variables.                                         */
+/*===========================================================================*/
+
+#if CH_DBG_ENABLED || defined(__DOXYGEN__)
 /**
  * @brief   Pointer to the panic message.
  * @details This pointer is meant to be accessed through the debugger, it is
@@ -96,6 +273,6 @@ void chDbgPanic(char *msg) {
   dbg_panic_msg = msg;
   chSysHalt();
 }
-#endif /* CH_DBG_ENABLE_ASSERTS || CH_DBG_ENABLE_CHECKS || CH_DBG_ENABLE_STACK_CHECK */
+#endif /* CH_DBG_ENABLED */
 
 /** @} */

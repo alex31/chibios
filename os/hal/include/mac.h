@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -44,17 +45,47 @@
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
 
+/**
+ * @name    MAC configuration options
+ * @{
+ */
+/**
+ * @brief   Enables an event sources for incoming packets.
+ */
+#if !defined(MAC_USE_EVENTS) || defined(__DOXYGEN__)
+#define MAC_USE_EVENTS          TRUE
+#endif
+/** @} */
+
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
 #if !CH_USE_SEMAPHORES || !CH_USE_EVENTS
-#error "the MAC driver requires CH_USE_SEMAPHORES and CH_USE_EVENTS"
+#error "the MAC driver requires CH_USE_SEMAPHORES"
+#endif
+
+#if MAC_USE_EVENTS && !CH_USE_EVENTS
+#error "the MAC driver requires CH_USE_EVENTS"
 #endif
 
 /*===========================================================================*/
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
+
+/**
+ * @brief   Driver state machine possible states.
+ */
+typedef enum {
+  MAC_UNINIT = 0,                   /**< Not initialized.                   */
+  MAC_STOP = 1,                     /**< Stopped.                           */
+  MAC_ACTIVE = 2,                   /**< Active.                            */
+} macstate_t;
+
+/**
+ * @brief   Type of a structure representing a MAC driver.
+ */
+typedef struct MACDriver MACDriver;
 
 #include "mac_lld.h"
 
@@ -63,6 +94,10 @@
 /*===========================================================================*/
 
 /**
+ * @name    Macro Functions
+ * @{
+ */
+/**
  * @brief   Returns the received frames event source.
  *
  * @param[in] macp      pointer to the @p MACDriver object
@@ -70,8 +105,8 @@
  *
  * @api
  */
-#if CH_USE_EVENTS || defined(__DOXYGEN__)
-#define macGetReceiveEventSource(macp)  (&(macp)->md_rdevent)
+#if MAC_USE_EVENTS || defined(__DOXYGEN__)
+#define macGetReceiveEventSource(macp)  (&(macp)->rdevent)
 #endif
 
 /**
@@ -104,6 +139,7 @@
  */
 #define macReadReceiveDescriptor(rdp, buf, size)                            \
     mac_lld_read_receive_descriptor(rdp, buf, size)
+/** @} */
 
 /*===========================================================================*/
 /* External declarations.                                                    */
@@ -114,6 +150,8 @@ extern "C" {
 #endif
   void macInit(void);
   void macObjectInit(MACDriver *macp);
+  void macStart(MACDriver *macp, const MACConfig *config);
+  void macStop(MACDriver *macp);
   void macSetAddress(MACDriver *macp, const uint8_t *p);
   msg_t macWaitTransmitDescriptor(MACDriver *macp,
                                   MACTransmitDescriptor *tdp,

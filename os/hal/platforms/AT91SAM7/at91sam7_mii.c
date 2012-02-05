@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -87,14 +88,14 @@ void miiReset(MACDriver *macp) {
   /*
    * PHY power control.
    */
-  AT91C_BASE_PIOB->PIO_OER = PIOB_PHY_PD_MASK;       // Becomes an output.
-  AT91C_BASE_PIOB->PIO_PPUDR = PIOB_PHY_PD_MASK;     // Default pullup disabled.
+  AT91C_BASE_PIOB->PIO_OER = PIOB_PHY_PD_MASK;  /* Becomes an output.       */
+  AT91C_BASE_PIOB->PIO_PPUDR = PIOB_PHY_PD_MASK;/* Default pullup disabled. */
 #if (PHY_HARDWARE == PHY_DAVICOM_9161)
-  AT91C_BASE_PIOB->PIO_CODR = PIOB_PHY_PD_MASK;      // Output to low level.
+  AT91C_BASE_PIOB->PIO_CODR = PIOB_PHY_PD_MASK; /* Output to low level.     */
 #else
-  AT91C_BASE_PIOB->PIO_SODR = PIOB_PHY_PD_MASK;      // Output to high level.
+  AT91C_BASE_PIOB->PIO_SODR = PIOB_PHY_PD_MASK; /* Output to high level.    */
 #endif
-#endif // PIOB_PHY_PD_MASK
+#endif
 
   /*
    * PHY reset by pulsing the NRST pin.

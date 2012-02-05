@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -45,6 +46,10 @@
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
 
+/**
+ * @name    Configuration options
+ * @{
+ */
 /**
  * @brief   UART driver on USART1 enable switch.
  * @details If set to @p TRUE the support for USART1 is included.
@@ -112,6 +117,7 @@
 #if !defined(STM32_UART_USART2_DMA_PRIORITY) || defined(__DOXYGEN__)
 #define STM32_UART_USART2_DMA_PRIORITY      0
 #endif
+
 /**
  * @brief   USART3 DMA priority (0..3|lowest..highest).
  * @note    The priority level is used for both the TX and RX DMA channels but
@@ -124,30 +130,76 @@
 
 /**
  * @brief   USART1 DMA error hook.
- * @note    The default action for DMA errors is a system halt because DMA error
- *          can only happen because programming errors.
+ * @note    The default action for DMA errors is a system halt because DMA
+ *          error can only happen because programming errors.
  */
-#if !defined(STM32_UART_USART1_DMA_ERROR_HOOK) || defined(__DOXYGEN__)
-#define STM32_UART_USART1_DMA_ERROR_HOOK()  chSysHalt()
+#if !defined(STM32_UART_DMA_ERROR_HOOK) || defined(__DOXYGEN__)
+#define STM32_UART_DMA_ERROR_HOOK(uartp)    chSysHalt()
+#endif
+
+#if STM32_ADVANCED_DMA || defined(__DOXYGEN__)
+
+/**
+ * @brief   DMA stream used for USART1 RX operations.
+ * @note    This option is only available on platforms with enhanced DMA.
+ */
+#if !defined(STM32_UART_USART1_RX_DMA_STREAM) || defined(__DOXYGEN__)
+#define STM32_UART_USART1_RX_DMA_STREAM     STM32_DMA_STREAM_ID(2, 5)
 #endif
 
 /**
- * @brief   USART2 DMA error hook.
- * @note    The default action for DMA errors is a system halt because DMA error
- *          can only happen because programming errors.
+ * @brief   DMA stream used for USART1 TX operations.
+ * @note    This option is only available on platforms with enhanced DMA.
  */
-#if !defined(STM32_UART_USART2_DMA_ERROR_HOOK) || defined(__DOXYGEN__)
-#define STM32_UART_USART2_DMA_ERROR_HOOK()  chSysHalt()
+#if !defined(STM32_UART_USART1_TX_DMA_STREAM) || defined(__DOXYGEN__)
+#define STM32_UART_USART1_TX_DMA_STREAM     STM32_DMA_STREAM_ID(2, 7)
 #endif
 
 /**
- * @brief   USART3 DMA error hook.
- * @note    The default action for DMA errors is a system halt because DMA error
- *          can only happen because programming errors.
+ * @brief   DMA stream used for USART2 RX operations.
+ * @note    This option is only available on platforms with enhanced DMA.
  */
-#if !defined(STM32_UART_USART3_DMA_ERROR_HOOK) || defined(__DOXYGEN__)
-#define STM32_UART_USART3_DMA_ERROR_HOOK()  chSysHalt()
+#if !defined(STM32_UART_USART2_RX_DMA_STREAM) || defined(__DOXYGEN__)
+#define STM32_UART_USART2_RX_DMA_STREAM     STM32_DMA_STREAM_ID(1, 5)
 #endif
+
+/**
+ * @brief   DMA stream used for USART2 TX operations.
+ * @note    This option is only available on platforms with enhanced DMA.
+ */
+#if !defined(STM32_UART_USART2_TX_DMA_STREAM) || defined(__DOXYGEN__)
+#define STM32_UART_USART2_TX_DMA_STREAM     STM32_DMA_STREAM_ID(1, 6)
+#endif
+
+/**
+ * @brief   DMA stream used for USART3 RX operations.
+ * @note    This option is only available on platforms with enhanced DMA.
+ */
+#if !defined(STM32_UART_USART3_RX_DMA_STREAM) || defined(__DOXYGEN__)
+#define STM32_UART_USART3_RX_DMA_STREAM     STM32_DMA_STREAM_ID(1, 1)
+#endif
+
+/**
+ * @brief   DMA stream used for USART3 TX operations.
+ * @note    This option is only available on platforms with enhanced DMA.
+ */
+#if !defined(STM32_UART_USART3_TX_DMA_STREAM) || defined(__DOXYGEN__)
+#define STM32_UART_USART3_TX_DMA_STREAM     STM32_DMA_STREAM_ID(1, 3)
+#endif
+
+#else /* !STM32_ADVANCED_DMA */
+
+/* Fixed streams for platforms using the old DMA peripheral, the values are
+   valid for both STM32F1xx and STM32L1xx.*/
+#define STM32_UART_USART1_RX_DMA_STREAM     STM32_DMA_STREAM_ID(1, 5)
+#define STM32_UART_USART1_TX_DMA_STREAM     STM32_DMA_STREAM_ID(1, 4)
+#define STM32_UART_USART2_RX_DMA_STREAM     STM32_DMA_STREAM_ID(1, 6)
+#define STM32_UART_USART2_TX_DMA_STREAM     STM32_DMA_STREAM_ID(1, 7)
+#define STM32_UART_USART3_RX_DMA_STREAM     STM32_DMA_STREAM_ID(1, 3)
+#define STM32_UART_USART3_TX_DMA_STREAM     STM32_DMA_STREAM_ID(1, 2)
+
+#endif /* !STM32_ADVANCED_DMA*/
+/** @} */
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
@@ -165,13 +217,49 @@
 #error "USART3 not present in the selected device"
 #endif
 
-#if STM32_UART_USE_UART4 && !STM32_HAS_UART4
-#error "UART4 not present in the selected device"
+#if !STM32_UART_USE_USART1 && !STM32_UART_USE_USART2 &&                     \
+    !STM32_UART_USE_USART3
+#error "UART driver activated but no USART/UART peripheral assigned"
 #endif
 
-#if !STM32_UART_USE_USART1 && !STM32_UART_USE_USART2 &&                     \
-    !STM32_UART_USE_USART3 && !STM32_UART_USE_UART4
-#error "UART driver activated but no USART/UART peripheral assigned"
+#if STM32_UART_USE_USART1 &&                                                \
+    !STM32_DMA_IS_VALID_ID(STM32_UART_USART1_RX_DMA_STREAM,                 \
+                           STM32_USART1_RX_DMA_MSK)
+#error "invalid DMA stream associated to USART1 RX"
+#endif
+
+#if STM32_UART_USE_USART1 &&                                                \
+    !STM32_DMA_IS_VALID_ID(STM32_UART_USART1_TX_DMA_STREAM,                 \
+                           STM32_USART1_TX_DMA_MSK)
+#error "invalid DMA stream associated to USART1 TX"
+#endif
+
+#if STM32_UART_USE_USART2 &&                                                \
+    !STM32_DMA_IS_VALID_ID(STM32_UART_USART2_RX_DMA_STREAM,                 \
+                           STM32_USART2_RX_DMA_MSK)
+#error "invalid DMA stream associated to USART2 RX"
+#endif
+
+#if STM32_UART_USE_USART2 &&                                                \
+    !STM32_DMA_IS_VALID_ID(STM32_UART_USART2_TX_DMA_STREAM,                 \
+                           STM32_USART2_TX_DMA_MSK)
+#error "invalid DMA stream associated to USART2 TX"
+#endif
+
+#if STM32_UART_USE_USART3 &&                                                \
+    !STM32_DMA_IS_VALID_ID(STM32_UART_USART3_RX_DMA_STREAM,                 \
+                           STM32_USART3_RX_DMA_MSK)
+#error "invalid DMA stream associated to USART3 RX"
+#endif
+
+#if STM32_UART_USE_USART3 &&                                                \
+    !STM32_DMA_IS_VALID_ID(STM32_UART_USART3_TX_DMA_STREAM,                 \
+                           STM32_USART3_TX_DMA_MSK)
+#error "invalid DMA stream associated to USART3 TX"
+#endif
+
+#if !defined(STM32_DMA_REQUIRED)
+#define STM32_DMA_REQUIRED
 #endif
 
 /*===========================================================================*/
@@ -219,40 +307,40 @@ typedef struct {
   /**
    * @brief End of transmission buffer callback.
    */
-  uartcb_t                  uc_txend1;
+  uartcb_t                  txend1_cb;
   /**
    * @brief Physical end of transmission callback.
    */
-  uartcb_t                  uc_txend2;
+  uartcb_t                  txend2_cb;
   /**
    * @brief Receive buffer filled callback.
    */
-  uartcb_t                  uc_rxend;
+  uartcb_t                  rxend_cb;
   /**
    * @brief Character received while out if the @p UART_RECEIVE state.
    */
-  uartccb_t                 uc_rxchar;
+  uartccb_t                 rxchar_cb;
   /**
    * @brief Receive error callback.
    */
-  uartecb_t                 uc_rxerr;
+  uartecb_t                 rxerr_cb;
   /* End of the mandatory fields.*/
   /**
    * @brief Bit rate.
    */
-  uint32_t                  uc_speed;
+  uint32_t                  speed;
   /**
    * @brief Initialization value for the CR1 register.
    */
-  uint16_t                  uc_cr1;
+  uint16_t                  cr1;
   /**
    * @brief Initialization value for the CR2 register.
    */
-  uint16_t                  uc_cr2;
+  uint16_t                  cr2;
   /**
    * @brief Initialization value for the CR3 register.
    */
-  uint16_t                  uc_cr3;
+  uint16_t                  cr3;
 } UARTConfig;
 
 /**
@@ -262,19 +350,19 @@ struct UARTDriver {
   /**
    * @brief Driver state.
    */
-  uartstate_t               ud_state;
+  uartstate_t               state;
   /**
    * @brief Transmitter state.
    */
-  uarttxstate_t             ud_txstate;
+  uarttxstate_t             txstate;
   /**
    * @brief Receiver state.
    */
-  uartrxstate_t             ud_rxstate;
+  uartrxstate_t             rxstate;
   /**
    * @brief Current configuration data.
    */
-  const UARTConfig          *ud_config;
+  const UARTConfig          *config;
 #if defined(UART_DRIVER_EXT_FIELDS)
   UART_DRIVER_EXT_FIELDS
 #endif
@@ -282,27 +370,23 @@ struct UARTDriver {
   /**
    * @brief Pointer to the USART registers block.
    */
-  USART_TypeDef             *ud_usart;
+  USART_TypeDef             *usart;
   /**
-   * @brief Pointer to the DMA registers block.
+   * @brief DMA mode bit mask.
    */
-  stm32_dma_t               *ud_dmap;
-  /**
-   * @brief DMA priority bit mask.
-   */
-  uint32_t                  ud_dmaccr;
+  uint32_t                  dmamode;
   /**
    * @brief Receive DMA channel.
    */
-  uint8_t                   ud_dmarx;
+  const stm32_dma_stream_t  *dmarx;
   /**
    * @brief Transmit DMA channel.
    */
-  uint8_t                   ud_dmatx;
+  const stm32_dma_stream_t  *dmatx;
   /**
    * @brief Default receive buffer while into @p UART_RX_IDLE state.
    */
-  volatile uint16_t         ud_rxbuf;
+  volatile uint16_t         rxbuf;
 };
 
 /*===========================================================================*/

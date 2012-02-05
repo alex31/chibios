@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -42,6 +43,10 @@
 /*===========================================================================*/
 
 /**
+ * @name    CAN status flags
+ * @{
+ */
+/**
  * @brief   Errors rate warning.
  */
 #define CAN_LIMIT_WARNING           1
@@ -61,17 +66,26 @@
  * @brief   Overflow in receive queue.
  */
 #define CAN_OVERFLOW_ERROR          16
+/** @} */
 
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
 
 /**
+ * @name    CAN configuration options
+ * @{
+ */
+/**
  * @brief   Sleep mode related APIs inclusion switch.
+ * @details This option can only be enabled if the CAN implementation supports
+ *          the sleep mode, see the macro @p CAN_SUPPORTS_SLEEP exported by
+ *          the underlying implementation.
  */
 #if !defined(CAN_USE_SLEEP_MODE) || defined(__DOXYGEN__)
 #define CAN_USE_SLEEP_MODE          TRUE
 #endif
+/** @} */
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
@@ -103,6 +117,10 @@ typedef enum {
 /*===========================================================================*/
 
 /**
+ * @name    Macro Functions
+ * @{
+ */
+/**
  * @brief   Adds some flags to the CAN status mask.
  *
  * @param[in] canp      pointer to the @p CANDriver object
@@ -110,7 +128,8 @@ typedef enum {
  *
  * @iclass
  */
-#define canAddFlagsI(canp, mask) ((canp)->cd_status |= (mask))
+#define canAddFlagsI(canp, mask) ((canp)->status |= (mask))
+/** @} */
 
 /*===========================================================================*/
 /* External declarations.                                                    */

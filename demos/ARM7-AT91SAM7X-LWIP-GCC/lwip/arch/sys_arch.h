@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -72,28 +73,7 @@ typedef int             sys_prot_t;
 #define SYS_THREAD_NULL (Thread *)0
 #define SYS_SEM_NULL    (Semaphore *)0
 
-void sys_init(void);
-sys_sem_t sys_sem_new(u8_t count);
-void sys_sem_free(sys_sem_t sem);
-void sys_sem_signal(sys_sem_t sem);
-u32_t sys_arch_sem_wait(sys_sem_t sem, u32_t timeout);
-
-sys_mbox_t sys_mbox_new(int size);
-void sys_mbox_free(sys_mbox_t mbox);
-void sys_mbox_post(sys_mbox_t mbox, void *msg);
-err_t sys_mbox_trypost(sys_mbox_t mbox, void *msg);
-u32_t sys_arch_mbox_fetch(sys_mbox_t mbox, void **msg, u32_t timeout);
-u32_t sys_arch_mbox_tryfetch(sys_mbox_t mbox, void **msg);
-
-struct sys_timeouts *sys_arch_timeouts(void);
-
-sys_thread_t sys_thread_new(char *name,
-                            void (* thread)(void *arg),
-                            void *arg,
-                            int stacksize,
-                            int prio);
-
-sys_prot_t sys_arch_protect(void);
-void sys_arch_unprotect(sys_prot_t pval);
+/* let sys.h use binary semaphores for mutexes */
+#define LWIP_COMPAT_MUTEX 1
 
 #endif /* __SYS_ARCH_H__ */

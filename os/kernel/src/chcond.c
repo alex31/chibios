@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -92,6 +93,7 @@ void chCondSignal(CondVar *cp) {
  */
 void chCondSignalI(CondVar *cp) {
 
+  chDbgCheckClassI();
   chDbgCheck(cp != NULL, "chCondSignalI");
 
   if (notempty(&cp->c_queue))
@@ -126,6 +128,7 @@ void chCondBroadcast(CondVar *cp) {
  */
 void chCondBroadcastI(CondVar *cp) {
 
+  chDbgCheckClassI();
   chDbgCheck(cp != NULL, "chCondBroadcastI");
 
   /* Empties the condition variable queue and inserts all the Threads into the
@@ -183,6 +186,7 @@ msg_t chCondWaitS(CondVar *cp) {
   Mutex *mp;
   msg_t msg;
 
+  chDbgCheckClassS();
   chDbgCheck(cp != NULL, "chCondWaitS");
   chDbgAssert(ctp->p_mtxlist != NULL,
               "chCondWaitS(), #1",
@@ -267,6 +271,7 @@ msg_t chCondWaitTimeoutS(CondVar *cp, systime_t time) {
   Mutex *mp;
   msg_t msg;
 
+  chDbgCheckClassS();
   chDbgCheck((cp != NULL) && (time != TIME_IMMEDIATE), "chCondWaitTimeoutS");
   chDbgAssert(currp->p_mtxlist != NULL,
               "chCondWaitTimeoutS(), #1",

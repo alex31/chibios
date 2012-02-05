@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -35,6 +36,10 @@
 #ifndef _CHCORE_H_
 #define _CHCORE_H_
 
+#if CH_DBG_ENABLE_STACK_CHECK
+#error "option CH_DBG_ENABLE_STACK_CHECK not supported by this port"
+#endif
+
 /*
  * Port-related configuration parameters.
  */
@@ -43,12 +48,12 @@
  * @brief   Enables the use of the @p WFI instruction.
  */
 #ifndef ENABLE_WFI_IDLE
-#define ENABLE_WFI_IDLE         0
+#define ENABLE_WFI_IDLE                 0
 #endif
 
 /* Core variants identifiers.*/
-#define PPC_VARIANT_e200z3      3       /**< e200z3 core identifier.        */
-#define PPC_VARIANT_e200z4      4       /**< e200z4 core identifier.        */
+#define PPC_VARIANT_e200z3              3   /**< e200z3 core identifier.    */
+#define PPC_VARIANT_e200z4              4   /**< e200z4 core identifier.    */
 
 /**
  * @brief   Core variant selector.
@@ -56,7 +61,7 @@
  *          possibly code paths and structures into the port layer.
  */
 #if !defined(PPC_VARIANT) || defined(__DOXYGEN__)
-#define PPC_VARIANT             PPC_VARIANT_e200z3
+#define PPC_VARIANT                     PPC_VARIANT_e200z3
 #endif
 
 /**
@@ -67,18 +72,28 @@
 /**
  * @brief   Name of the implemented architecture.
  */
-#define CH_ARCHITECTURE_NAME    "PowerPC"
+#define CH_ARCHITECTURE_NAME            "Power Architecture"
 
 /**
  * @brief   Name of the architecture variant.
  */
 #if (PPC_VARIANT == PPC_VARIANT_e200z3) || defined(__DOXYGEN__)
-#define CH_CORE_VARIANT_NAME    "e200z3"
+#define CH_CORE_VARIANT_NAME            "e200z3"
 #elif PPC_VARIANT == PPC_VARIANT_e200z4
-#define CH_CORE_VARIANT_NAME    "e200z4"
+#define CH_CORE_VARIANT_NAME            "e200z4"
 #else
 #error "unknown or unsupported PowerPC variant specified"
 #endif
+
+/**
+ * @brief   Name of the compiler supported by this port.
+ */
+#define CH_COMPILER_NAME                "GCC "__VERSION__
+
+/**
+ * @brief   Port-specific information string.
+ */
+#define CH_PORT_INFO                    "None"
 
 /**
  * @brief   Base type for stack and memory alignment.
@@ -191,10 +206,10 @@ struct context {
  * @brief   Stack size for the system idle thread.
  * @details This size depends on the idle thread implementation, usually
  *          the idle thread should take no more space than those reserved
- *          by @p INT_REQUIRED_STACK.
+ *          by @p PORT_INT_REQUIRED_STACK.
  */
-#ifndef IDLE_THREAD_STACK_SIZE
-#define IDLE_THREAD_STACK_SIZE          0
+#ifndef PORT_IDLE_THREAD_STACK_SIZE
+#define PORT_IDLE_THREAD_STACK_SIZE     0
 #endif
 
 /**
@@ -205,8 +220,8 @@ struct context {
  *          separate interrupt stack and the stack space between @p intctx and
  *          @p extctx is known to be zero.
  */
-#ifndef INT_REQUIRED_STACK
-#define INT_REQUIRED_STACK              128
+#ifndef PORT_INT_REQUIRED_STACK
+#define PORT_INT_REQUIRED_STACK         128
 #endif
 
 /**
@@ -217,10 +232,10 @@ struct context {
 /**
  * @brief   Computes the thread working area global size.
  */
-#define THD_WA_SIZE(n) STACK_ALIGN(sizeof(Thread) +                     \
-                                   sizeof(struct intctx) +              \
-                                   sizeof(struct extctx) +              \
-                                  (n) + (INT_REQUIRED_STACK))
+#define THD_WA_SIZE(n) STACK_ALIGN(sizeof(Thread) +                         \
+                                   sizeof(struct intctx) +                  \
+                                   sizeof(struct extctx) +                  \
+                                   (n) + (PORT_INT_REQUIRED_STACK))
 
 /**
  * @brief   Static working area allocation.
@@ -303,8 +318,8 @@ struct context {
  */
 #if ENABLE_WFI_IDLE != 0
 #ifndef port_wait_for_interrupt
-#define port_wait_for_interrupt() {                                     \
-  asm volatile ("wait" : : : "memory");                                                         \
+#define port_wait_for_interrupt() {                                         \
+  asm volatile ("wait" : : : "memory");                                     \
 }
 #endif
 #else

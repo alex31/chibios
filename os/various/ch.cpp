@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -137,19 +138,19 @@ namespace chibios_rt {
     return chMsgSend(thread_ref, msg);
   }
 
-  msg_t BaseThread::WaitMessage(void) {
+  Thread *BaseThread::WaitMessage(void) {
 
     return chMsgWait();
   }
 
-  msg_t BaseThread::GetMessage(void) {
+  msg_t BaseThread::GetMessage(Thread* tp) {
 
-    return chMsgGet();
+    return chMsgGet(tp);
   }
 
-  void BaseThread::ReleaseMessage(msg_t msg) {
+  void BaseThread::ReleaseMessage(Thread* tp, msg_t msg) {
 
-    chMsgRelease(msg);
+    chMsgRelease(tp, msg);
   }
 
   bool BaseThread::IsPendingMessage(void) {

@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -57,10 +58,8 @@ void port_switch(Thread *ntp, Thread *otp) {
   asm volatile ("push    r5");
   asm volatile ("push    r6");
   asm volatile ("push    r7");
-#ifndef CH_CURRP_REGISTER_CACHE
   asm volatile ("push    r8");
   asm volatile ("push    r9");
-#endif
   asm volatile ("push    r10");
   asm volatile ("push    r11");
   asm volatile ("push    r12");
@@ -94,10 +93,8 @@ void port_switch(Thread *ntp, Thread *otp) {
   asm volatile ("pop     r12");
   asm volatile ("pop     r11");
   asm volatile ("pop     r10");
-#ifndef CH_CURRP_REGISTER_CACHE
   asm volatile ("pop     r9");
   asm volatile ("pop     r8");
-#endif
   asm volatile ("pop     r7");
   asm volatile ("pop     r6");
   asm volatile ("pop     r5");
@@ -133,7 +130,7 @@ void port_halt(void) {
  */
 void _port_thread_start(void) {
 
-  asm volatile ("sei");
+  chSysUnlock();
   asm volatile ("movw    r24, r4");
   asm volatile ("movw    r30, r2");
   asm volatile ("icall");

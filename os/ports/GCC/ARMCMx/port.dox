@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -76,8 +77,7 @@
  *   not globally masked but only interrupts with higher priority can preempt
  *   the current handler. The processor is running in exception-privileged
  *   mode.
- * - <b>Serving Fast Interrupt</b>. This state is not implemented in the
- *   ARMv6-M implementation.
+ * - <b>Serving Fast Interrupt</b>. Not implemented in compact kernel mode.
  * - <b>Serving Non-Maskable Interrupt</b>. The Cortex-Mx has a specific
  *   asynchronous NMI vector and several synchronous fault vectors that can
  *   be considered belonging to this category.
@@ -115,9 +115,13 @@
  *   not globally masked but only interrupts with higher priority can preempt
  *   the current handler. The processor is running in exception-privileged
  *   mode.
- * - <b>Serving Fast Interrupt</b>. It is basically the same of the SRI state
- *   but it is not possible to switch to the I-Locked state because fast
- *   interrupts can preempt the kernel critical zone.
+ * - <b>Serving Fast Interrupt</b>. Fast interrupts are defined as interrupt
+ *   sources having higher priority level than the kernel
+ *   (@p CORTEX_BASEPRI_KERNEL). In this state is not possible to switch to
+ *   the I-Locked state because fast interrupts can preempt the kernel
+ *   critical zone.<br>
+ *   This state is not implemented in the ARMv6-M implementation because
+ *   priority masking is not present in this architecture.
  * - <b>Serving Non-Maskable Interrupt</b>. The Cortex-Mx has a specific
  *   asynchronous NMI vector and several synchronous fault vectors that can
  *   be considered belonging to this category.
@@ -132,19 +136,6 @@
  *   stack where all the interrupts and exceptions are processed.
  * - The threads are started in thread-privileged mode.
  * - Interrupt nesting and the other advanced core/NVIC features are supported.
- * - When using an STM32 one of the following macros must be defined on the
- *   compiler command line or in a file named <tt>board.h</tt>:
- *   - @p STM32F10X_LD
- *   - @p STM32F10X_LD_VL
- *   - @p STM32F10X_MD
- *   - @p STM32F10X_MD_VL
- *   - @p STM32F10X_HD
- *   - @p STM32F10X_XL
- *   - @p STM32F10X_CL
- *   .
- *   This is required in order to include a vectors table with the correct
- *   length for the STM32 model, see the file
- *   <tt>./os/ports/GCC/ARMCMx/STM32/vectors.c</tt>.
  * - The Cortex-Mx port is perfectly generic, support for more devices can be
  *   easily added by adding a subdirectory under <tt>./os/ports/GCC/ARMCMx</tt>
  *   and giving it the name of the new device, then copy the files from another
@@ -217,30 +208,44 @@
  * @section ARMCMx_STARTUP_1 Startup Process
  * The startup process, as implemented, is the following:
  * -# Interrupts are masked globally.
- * -# The two stacks are initialized by assigning them the sizes defined in the
- *    linker script (usually named @p ch.ld). Stack areas are allocated from
- *    the highest RAM location downward.
+ * -# The two stacks are initialized by assigning them the sizes defined in
+ *    the linker script (also known as scatter file).
  * -# The CPU state is switched to Privileged and the PSP stack is used.
  * -# An early initialization routine @p __early_init() is invoked, if the
  *    symbol is not defined then an empty default routine is executed
  *    (weak symbol).
  * -# DATA and BSS segments are initialized.
+ * -# Constructors are invoked.
  * -# The @p main() function is invoked with no parameters.
- * -# Should the @p main() function return a branch is performed to the weak
- *    symbol _main_exit_handler. The default code is an endless empty loop.
+ * -# Destructors are invoked.
+ * -# A branch is performed to the weak symbol @p _default_exit(). The
+ *    default code is an endless empty loop.
  * .
  * @section ARMCMx_STARTUP_2 Expected linker symbols
  * The startup code starts at the symbol @p ResetHandler and expects the
  * following symbols to be defined in the linker script:
- * - @p __ram_end__ End of RAM.
- * - @p __main_stack_size__ Exception stack size.
- * - @p __process_stack_size__ Process stack size. This is the stack area used
- *      by the @p main() function.
- * - @p _textdata Address of the data segment source read only data.
- * - @p _data Start of the data segment.
- * - @p _edata End of the data segment end location.
- * - @p _bss_start Start of the BSS.
- * - @p _bss_end End of the BSS segment.
+ * - @p __ram_end__, end of RAM.
+ * - @p __main_stack_base__, main stack lower boundary.
+ * - @p __main_stack_end__, main stack initial position.
+ * - @p __process_stack_base__, process stack lower boundary.
+ * - @p __process_stack_end__, process stack initial position.
+ * - @p _textdata, address of the data segment source read only data.
+ * - @p _data, start of the data segment.
+ * - @p _edata, end of the data segment end location.
+ * - @p _bss_start, start of the BSS.
+ * - @p _bss_end, end of the BSS segment.
+ * - @p __init_array_start, start of the constructors array.
+ * - @p __init_array_end, end of the constructors array.
+ * - @p __fini_array_start, start of the destructors array.
+ * - @p __fini_array_end, end of the destructors array.
+ * .
+ * Additionally the kernel expects the following symbols:
+ * - @p __main_thread_stack_base__, this symbol is required when the
+ *   stack checking is enabled (<tt>CH_DBG_ENABLE_STACK_CHECK==TRUE</tt>),
+ *   it is an alias of @p __process_stack_base__ in this port.
+ * - @p __heap_base__ and @p __heap_end__, those symbols are required
+ *   if the memory core manager is enabled (<tt>CH_USE_MEMCORE==TRUE</tt>)
+ *   with a default core size set to zero (<tt>CH_MEMCORE_SIZE==0</tt>).
  * .
  * @ingroup ARMCMx
  */

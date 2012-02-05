@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -34,45 +35,9 @@
 
 #include "ch.h"
 
-#if !defined(CH_CURRP_REGISTER_CACHE) || defined(__DOXXYGEN__)
-/**
- * @brief   Internal context stacking.
- */
-#define PUSH_CONTEXT() {                                                    \
-  asm volatile ("push    {r4, r5, r6, r7, r8, r9, r10, r11, lr}"            \
-                : : : "memory");                                            \
-}
-
-/**
- * @brief   Internal context unstacking.
- */
-#define POP_CONTEXT() {                                                     \
-  asm volatile ("pop     {r4, r5, r6, r7, r8, r9, r10, r11, pc}"            \
-                : : : "memory");                                            \
-}
-#else /* defined(CH_CURRP_REGISTER_CACHE) */
-#define PUSH_CONTEXT() {                                                    \
-  asm volatile ("push    {r4, r5, r6, r8, r9, r10, r11, lr}"                \
-                : : : "memory");                                            \
-}
-
-#define POP_CONTEXT() {                                                     \
-  asm volatile ("pop     {r4, r5, r6, r8, r9, r10, r11, pc}"                \
-                 : : : "memory");                                           \
-}
-#endif /* defined(CH_CURRP_REGISTER_CACHE) */
-
-#if !CH_OPTIMIZE_SPEED
-void _port_lock(void) {
-  register uint32_t tmp asm ("r3") = CORTEX_BASEPRI_KERNEL;
-  asm volatile ("msr     BASEPRI, %0" : : "r" (tmp) : "memory");
-}
-
-void _port_unlock(void) {
-  register uint32_t tmp asm ("r3") = CORTEX_BASEPRI_DISABLED;
-  asm volatile ("msr     BASEPRI, %0" : : "r" (tmp) : "memory");
-}
-#endif
+/*===========================================================================*/
+/* Port interrupt handlers.                                                  */
+/*===========================================================================*/
 
 /**
  * @brief   System Timer vector.
@@ -98,12 +63,20 @@ CH_IRQ_HANDLER(SysTickVector) {
  * @note    The PendSV vector is only used in advanced kernel mode.
  */
 void SVCallVector(void) {
-  register struct extctx *ctxp;
+  struct extctx *ctxp;
+
+  /* Current PSP value.*/
+  asm volatile ("mrs     %0, PSP" : "=r" (ctxp) : : "memory");
 
   /* Discarding the current exception context and positioning the stack to
      point to the real one.*/
-  asm volatile ("mrs     %0, PSP" : "=r" (ctxp) : : "memory");
   ctxp++;
+
+#if CORTEX_USE_FPU
+  /* Restoring the special register SCB_FPCCR.*/
+  SCB_FPCCR = (uint32_t)ctxp->fpccr;
+  SCB_FPCAR = SCB_FPCAR + sizeof (struct extctx);
+#endif
   asm volatile ("msr     PSP, %0" : : "r" (ctxp) : "memory");
   port_unlock_from_isr();
 }
@@ -117,15 +90,79 @@ void SVCallVector(void) {
  * @note    The PendSV vector is only used in compact kernel mode.
  */
 void PendSVVector(void) {
-  register struct extctx *ctxp;
+  struct extctx *ctxp;
+
+  /* Current PSP value.*/
+  asm volatile ("mrs     %0, PSP" : "=r" (ctxp) : : "memory");
 
   /* Discarding the current exception context and positioning the stack to
      point to the real one.*/
-  asm volatile ("mrs     %0, PSP" : "=r" (ctxp) : : "memory");
   ctxp++;
+
+#if CORTEX_USE_FPU
+  /* Restoring the special register SCB_FPCCR.*/
+  SCB_FPCCR = (uint32_t)ctxp->fpccr;
+  SCB_FPCAR = SCB_FPCAR + sizeof (struct extctx);
+#endif
   asm volatile ("msr     PSP, %0" : : "r" (ctxp) : "memory");
 }
 #endif /* CORTEX_SIMPLIFIED_PRIORITY */
+
+/*===========================================================================*/
+/* Port exported functions.                                                  */
+/*===========================================================================*/
+
+/**
+ * @brief   Port-related initialization code.
+ */
+void _port_init(void) {
+
+  /* Initialization of the vector table and priority related settings.*/
+  SCB_VTOR = CORTEX_VTOR_INIT;
+  SCB_AIRCR = AIRCR_VECTKEY | AIRCR_PRIGROUP(0);
+
+#if CORTEX_USE_FPU
+  {
+    uint32_t reg;
+
+    /* Initializing the FPU context save in lazy mode.*/
+    SCB_FPCCR = FPCCR_ASPEN | FPCCR_LSPEN;
+
+    /* CP10 and CP11 set to full access.*/
+    SCB_CPACR |= 0x00F00000;
+
+    /* Enables FPU context save/restore on exception entry/exit (FPCA bit).*/
+    asm volatile ("mrs     %0, CONTROL" : "=r" (reg) : : "memory");
+    reg |= 4;
+    asm volatile ("msr     CONTROL, %0" : : "r" (reg) : "memory");
+
+    /* FPSCR and FPDSCR initially zero.*/
+    reg = 0;
+    asm volatile ("vmsr    FPSCR, %0" : : "r" (reg) : "memory");
+    SCB_FPDSCR = reg;
+  }
+#endif
+
+  /* Initialization of the system vectors used by the port.*/
+  nvicSetSystemHandlerPriority(HANDLER_SVCALL,
+    CORTEX_PRIORITY_MASK(CORTEX_PRIORITY_SVCALL));
+  nvicSetSystemHandlerPriority(HANDLER_PENDSV,
+    CORTEX_PRIORITY_MASK(CORTEX_PRIORITY_PENDSV));
+  nvicSetSystemHandlerPriority(HANDLER_SYSTICK,
+    CORTEX_PRIORITY_MASK(CORTEX_PRIORITY_SYSTICK));
+}
+
+#if !CH_OPTIMIZE_SPEED
+void _port_lock(void) {
+  register uint32_t tmp asm ("r3") = CORTEX_BASEPRI_KERNEL;
+  asm volatile ("msr     BASEPRI, %0" : : "r" (tmp) : "memory");
+}
+
+void _port_unlock(void) {
+  register uint32_t tmp asm ("r3") = CORTEX_BASEPRI_DISABLED;
+  asm volatile ("msr     BASEPRI, %0" : : "r" (tmp) : "memory");
+}
+#endif
 
 /**
  * @brief   Exception exit redirection to _port_switch_from_isr().
@@ -133,16 +170,48 @@ void PendSVVector(void) {
 void _port_irq_epilogue(void) {
 
   port_lock_from_isr();
-  if ((SCB_ICSR & ICSR_RETTOBASE)) {
-    register struct extctx *ctxp;
+  if ((SCB_ICSR & ICSR_RETTOBASE) != 0) {
+    struct extctx *ctxp;
+
+    /* Current PSP value.*/
+    asm volatile ("mrs     %0, PSP" : "=r" (ctxp) : : "memory");
 
     /* Adding an artificial exception return context, there is no need to
        populate it fully.*/
-    asm volatile ("mrs     %0, PSP" : "=r" (ctxp) : : "memory");
     ctxp--;
     asm volatile ("msr     PSP, %0" : : "r" (ctxp) : "memory");
-    ctxp->pc = _port_switch_from_isr;
     ctxp->xpsr = (regarm_t)0x01000000;
+
+    /* The exit sequence is different depending on if a preemption is
+       required or not.*/
+    if (chSchIsPreemptionRequired()) {
+      /* Preemption is required we need to enforce a context switch.*/
+      ctxp->pc = _port_switch_from_isr;
+#if CORTEX_USE_FPU
+      /* Triggering a lazy FPU state save.*/
+      asm volatile ("vmrs    APSR_nzcv, FPSCR" : : : "memory");
+#endif
+    }
+    else {
+      /* Preemption not required, we just need to exit the exception
+         atomically.*/
+      ctxp->pc = _port_exit_from_isr;
+    }
+
+#if CORTEX_USE_FPU
+    {
+      uint32_t fpccr;
+
+      /* Saving the special register SCB_FPCCR into the reserved offset of
+         the Cortex-M4 exception frame.*/
+      (ctxp + 1)->fpccr = (regarm_t)(fpccr = SCB_FPCCR);
+
+      /* Now the FPCCR is modified in order to not restore the FPU status
+         from the artificial return context.*/
+      SCB_FPCCR = fpccr | FPCCR_LSPACT;
+    }
+#endif
+
     /* Note, returning without unlocking is intentional, this is done in
        order to keep the rest of the context switching atomic.*/
     return;
@@ -159,8 +228,10 @@ __attribute__((naked))
 #endif
 void _port_switch_from_isr(void) {
 
-  if (chSchIsRescRequiredExI())
-    chSchDoRescheduleI();
+  dbg_check_lock();
+  chSchDoReschedule();
+  dbg_check_unlock();
+  asm volatile ("_port_exit_from_isr:" : : : "memory");
 #if !CORTEX_SIMPLIFIED_PRIORITY || defined(__DOXYGEN__)
   asm volatile ("svc     #0");
 #else /* CORTEX_SIMPLIFIED_PRIORITY */
@@ -184,22 +255,22 @@ void _port_switch_from_isr(void) {
 #if !defined(__DOXYGEN__)
 __attribute__((naked))
 #endif
-void port_switch(Thread *ntp, Thread *otp) {
+void _port_switch(Thread *ntp, Thread *otp) {
 
-#if CH_DBG_ENABLE_STACK_CHECK
-  /* Stack overflow check, if enabled.*/
-  register struct intctx *r13 asm ("r13");
-  if ((void *)(r13 - 1) < (void *)(otp + 1))
-    asm volatile ("movs    r0, #0                               \n\t"
-                  "b       chDbgPanic");
-#endif /* CH_DBG_ENABLE_STACK_CHECK */
-
-  PUSH_CONTEXT();
+  asm volatile ("push    {r4, r5, r6, r7, r8, r9, r10, r11, lr}"
+                : : : "memory");
+#if CORTEX_USE_FPU
+  asm volatile ("vpush   {s16-s31}" : : : "memory");
+#endif
 
   asm volatile ("str     sp, [%1, #12]                          \n\t"
                 "ldr     sp, [%0, #12]" : : "r" (ntp), "r" (otp));
 
-  POP_CONTEXT();
+#if CORTEX_USE_FPU
+  asm volatile ("vpop    {s16-s31}" : : : "memory");
+#endif
+  asm volatile ("pop     {r4, r5, r6, r7, r8, r9, r10, r11, pc}"
+                : : : "memory");
 }
 
 /**
@@ -209,7 +280,7 @@ void port_switch(Thread *ntp, Thread *otp) {
  */
 void _port_thread_start(void) {
 
-  port_unlock();
+  chSysUnlock();
   asm volatile ("mov     r0, r5                                 \n\t"
                 "blx     r4                                     \n\t"
                 "bl      chThdExit");

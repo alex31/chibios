@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -43,6 +44,9 @@
 typedef void *(*memgetfunc_t)(size_t size);
 
 /**
+ * @name    Alignment support macros
+ */
+/**
  * @brief   Alignment size constant.
  */
 #define MEM_ALIGN_SIZE      sizeof(stkalign_t)
@@ -67,13 +71,14 @@ typedef void *(*memgetfunc_t)(size_t size);
  *          the type @p align_t.
  */
 #define MEM_IS_ALIGNED(p)   (((size_t)(p) & MEM_ALIGN_MASK) == 0)
+/** @} */
 
 #if CH_USE_MEMCORE || defined(__DOXYGEN__)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void core_init(void);
+  void _core_init(void);
   void *chCoreAlloc(size_t size);
   void *chCoreAllocI(size_t size);
   size_t chCoreStatus(void);

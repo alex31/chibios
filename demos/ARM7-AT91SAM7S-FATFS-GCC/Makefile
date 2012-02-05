@@ -8,6 +8,11 @@ ifeq ($(USE_OPT),)
   USE_OPT = -O2 -ggdb -fomit-frame-pointer -mabi=apcs-gnu
 endif
 
+# C specific options here (added to USE_OPT).
+ifeq ($(USE_COPT),)
+  USE_COPT = 
+endif
+
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
   USE_CPPOPT = -fno-rtti
@@ -23,9 +28,9 @@ ifeq ($(USE_THUMB),)
   USE_THUMB = no
 endif
 
-# Enable register caching optimization (read documentation).
-ifeq ($(USE_CURRP_CACHING),)
-  USE_CURRP_CACHING = no
+# Enable this if you want to see the full log while compiling.
+ifeq ($(USE_VERBOSE_COMPILE),)
+  USE_VERBOSE_COMPILE = no
 endif
 
 #
@@ -39,18 +44,18 @@ endif
 # Define project name here
 PROJECT = ch
 
-# Define linker script file here
-LDSCRIPT= ch.ld
-
-# Imported source files
+# Imported source files and paths
 CHIBIOS = ../..
 include $(CHIBIOS)/boards/OLIMEX_SAM7_P256/board.mk
 include $(CHIBIOS)/os/hal/platforms/AT91SAM7/platform.mk
 include $(CHIBIOS)/os/hal/hal.mk
-include $(CHIBIOS)/os/ports/GCC/ARM/port.mk
+include $(CHIBIOS)/os/ports/GCC/ARM/AT91SAM7/port.mk
 include $(CHIBIOS)/os/kernel/kernel.mk
 include $(CHIBIOS)/test/test.mk
 include $(CHIBIOS)/ext/fatfs/fatfs.mk
+
+# Define linker script file here
+LDSCRIPT= $(PORTLD)/AT91SAM7S256.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -62,7 +67,7 @@ CSRC = $(PORTSRC) \
        $(FATFSSRC) \
        $(BOARDSRC) \
        $(CHIBIOS)/os/various/shell.c \
-       $(CHIBIOS)/os/various/syscalls.c \
+       $(CHIBIOS)/os/various/chprintf.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -90,14 +95,12 @@ TCSRC =
 TCPPSRC =
 
 # List ASM source files here
-ASMSRC = $(PORTASM) \
-         $(CHIBIOS)/os/ports/GCC/ARM/AT91SAM7/vectors.s
+ASMSRC = $(PORTASM)
 
 INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) \
          $(FATFSINC) \
-         $(CHIBIOS)/os/various \
-         $(CHIBIOS)/os/ports/GCC/ARM/AT91SAM7
+         $(CHIBIOS)/os/various
 
 #
 # Project, sources and paths

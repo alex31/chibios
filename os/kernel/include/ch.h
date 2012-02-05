@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -46,8 +47,12 @@
 /**
  * @brief   Kernel version string.
  */
-#define CH_KERNEL_VERSION       "2.2.8"
+#define CH_KERNEL_VERSION       "2.4.0"
 
+/**
+ * @name    Kernel version
+ * @{
+ */
 /**
  * @brief   Kernel version major number.
  */
@@ -56,12 +61,13 @@
 /**
  * @brief   Kernel version minor number.
  */
-#define CH_KERNEL_MINOR         2
+#define CH_KERNEL_MINOR         4
 
 /**
  * @brief   Kernel version patch number.
  */
-#define CH_KERNEL_PATCH         8
+#define CH_KERNEL_PATCH         0
+/** @} */
 
 /*
  * Common values.
@@ -101,7 +107,7 @@
 #include "chdebug.h"
 
 #if !defined(__DOXYGEN__)
-extern WORKING_AREA(_idle_thread_wa, IDLE_THREAD_STACK_SIZE);
+extern WORKING_AREA(_idle_thread_wa, PORT_IDLE_THREAD_STACK_SIZE);
 #endif
 
 #ifdef __cplusplus

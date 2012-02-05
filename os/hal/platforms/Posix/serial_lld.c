@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -126,7 +127,9 @@ static bool_t connint(SerialDriver *sdp) {
       printf("%s: Unable to setup non blocking mode on data socket\n", sdp->com_name);
       goto abort;
     }
+    chSysLockFromIsr();
     chIOAddFlagsI(sdp, IO_CONNECTED);
+    chSysUnlockFromIsr();
     return TRUE;
   }
   return FALSE;
@@ -152,7 +155,9 @@ static bool_t inint(SerialDriver *sdp) {
     case 0:
       close(sdp->com_data);
       sdp->com_data = INVALID_SOCKET;
+      chSysLockFromIsr();
       chIOAddFlagsI(sdp, IO_DISCONNECTED);
+      chSysUnlockFromIsr();
       return FALSE;
     case INVALID_SOCKET:
       if (errno == EWOULDBLOCK)
@@ -161,8 +166,11 @@ static bool_t inint(SerialDriver *sdp) {
       sdp->com_data = INVALID_SOCKET;
       return FALSE;
     }
-    for (i = 0; i < n; i++)
+    for (i = 0; i < n; i++) {
+      chSysLockFromIsr();
       sdIncomingDataI(sdp, data[i]);
+      chSysUnlockFromIsr();
+    }
     return TRUE;
   }
   return FALSE;
@@ -177,7 +185,9 @@ static bool_t outint(SerialDriver *sdp) {
     /*
      * Input.
      */
+    chSysLockFromIsr();
     n = sdRequestDataI(sdp);
+    chSysUnlockFromIsr();
     if (n < 0)
       return FALSE;
     data[0] = (uint8_t)n;
@@ -186,7 +196,9 @@ static bool_t outint(SerialDriver *sdp) {
     case 0:
       close(sdp->com_data);
       sdp->com_data = INVALID_SOCKET;
+      chSysLockFromIsr();
       chIOAddFlagsI(sdp, IO_DISCONNECTED);
+      chSysUnlockFromIsr();
       return FALSE;
     case INVALID_SOCKET:
       if (errno == EWOULDBLOCK)
@@ -262,10 +274,17 @@ void sd_lld_stop(SerialDriver *sdp) {
 }
 
 bool_t sd_lld_interrupt_pending(void) {
+  bool_t b;
 
-  return connint(&SD1) || connint(&SD2) ||
-         inint(&SD1)   || inint(&SD2)   ||
-         outint(&SD1)  || outint(&SD2);
+  CH_IRQ_PROLOGUE();
+
+  b =  connint(&SD1) || connint(&SD2) ||
+       inint(&SD1)   || inint(&SD2)   ||
+       outint(&SD1)  || outint(&SD2);
+
+  CH_IRQ_EPILOGUE();
+
+  return b;
 }
 
 #endif /* HAL_USE_SERIAL */

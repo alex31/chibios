@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -46,6 +47,10 @@
 /*===========================================================================*/
 
 /**
+ * @name    SPI configuration options
+ * @{
+ */
+/**
  * @brief   Enables synchronous APIs.
  * @note    Disabling this option saves both code and data space.
  */
@@ -60,6 +65,7 @@
 #if !defined(SPI_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
 #define SPI_USE_MUTUAL_EXCLUSION    TRUE
 #endif
+/** @} */
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
@@ -90,6 +96,10 @@ typedef enum {
 /* Driver macros.                                                            */
 /*===========================================================================*/
 
+/**
+ * @name    Macro Functions
+ * @{
+ */
 /**
  * @brief   Asserts the slave select signal and prepares for transfers.
  *
@@ -127,7 +137,7 @@ typedef enum {
  * @iclass
  */
 #define spiStartIgnoreI(spip, n) {                                          \
-  (spip)->spd_state = SPI_ACTIVE;                                           \
+  (spip)->state = SPI_ACTIVE;                                               \
   spi_lld_ignore(spip, n);                                                  \
 }
 
@@ -149,7 +159,7 @@ typedef enum {
  * @iclass
  */
 #define spiStartExchangeI(spip, n, txbuf, rxbuf) {                          \
-  (spip)->spd_state = SPI_ACTIVE;                                           \
+  (spip)->state = SPI_ACTIVE;                                               \
   spi_lld_exchange(spip, n, txbuf, rxbuf);                                  \
 }
 
@@ -169,7 +179,7 @@ typedef enum {
  * @iclass
  */
 #define spiStartSendI(spip, n, txbuf) {                                     \
-  (spip)->spd_state = SPI_ACTIVE;                                           \
+  (spip)->state = SPI_ACTIVE;                                               \
   spi_lld_send(spip, n, txbuf);                                             \
 }
 
@@ -189,7 +199,7 @@ typedef enum {
  * @iclass
  */
 #define spiStartReceiveI(spip, n, rxbuf) {                                  \
-  (spip)->spd_state = SPI_ACTIVE;                                           \
+  (spip)->state = SPI_ACTIVE;                                               \
   spi_lld_receive(spip, n, rxbuf);                                          \
 }
 
@@ -207,7 +217,12 @@ typedef enum {
  * @return              The received data frame from the SPI bus.
  */
 #define spiPolledExchange(spip, frame) spi_lld_polled_exchange(spip, frame)
+/** @} */
 
+/**
+ * @name    Low Level driver helper macros
+ * @{
+ */
 #if SPI_USE_WAIT || defined(__DOXYGEN__)
 /**
  * @brief   Waits for operation completion.
@@ -222,9 +237,9 @@ typedef enum {
  * @notapi
  */
 #define _spi_wait_s(spip) {                                                 \
-  chDbgAssert((spip)->spd_thread == NULL,                                   \
+  chDbgAssert((spip)->thread == NULL,                                       \
               "_spi_wait(), #1", "already waiting");                        \
-  (spip)->spd_thread = chThdSelf();                                         \
+  (spip)->thread = chThdSelf();                                             \
   chSchGoSleepS(THD_STATE_SUSPENDED);                                       \
 }
 
@@ -236,9 +251,9 @@ typedef enum {
  * @notapi
  */
 #define _spi_wakeup_isr(spip) {                                             \
-  if ((spip)->spd_thread != NULL) {                                         \
-    Thread *tp = (spip)->spd_thread;                                        \
-    (spip)->spd_thread = NULL;                                              \
+  if ((spip)->thread != NULL) {                                             \
+    Thread *tp = (spip)->thread;                                            \
+    (spip)->thread = NULL;                                                  \
     chSysLockFromIsr();                                                     \
     chSchReadyI(tp);                                                        \
     chSysUnlockFromIsr();                                                   \
@@ -264,16 +279,17 @@ typedef enum {
  * @notapi
  */
 #define _spi_isr_code(spip) {                                               \
-  if ((spip)->spd_config->spc_endcb) {                                      \
-    (spip)->spd_state = SPI_COMPLETE;                                       \
-    (spip)->spd_config->spc_endcb(spip);                                    \
-    if ((spip)->spd_state == SPI_COMPLETE)                                  \
-      (spip)->spd_state = SPI_READY;                                        \
+  if ((spip)->config->end_cb) {                                             \
+    (spip)->state = SPI_COMPLETE;                                           \
+    (spip)->config->end_cb(spip);                                           \
+    if ((spip)->state == SPI_COMPLETE)                                      \
+      (spip)->state = SPI_READY;                                            \
   }                                                                         \
   else                                                                      \
-    (spip)->spd_state = SPI_READY;                                          \
+    (spip)->state = SPI_READY;                                              \
   _spi_wakeup_isr(spip);                                                    \
 }
+/** @} */
 
 /*===========================================================================*/
 /* External declarations.                                                    */

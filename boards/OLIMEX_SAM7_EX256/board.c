@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -100,14 +101,16 @@ void boardInit(void) {
   palSetGroupMode(IOPORT1,
                   PIOA_B1_MASK | PIOA_B2_MASK | PIOA_B3_MASK |
                   PIOA_B4_MASK | PIOA_B5_MASK,
+                  0,
                   PAL_MODE_INPUT);
-  palSetGroupMode(IOPORT2, PIOB_SW1_MASK | PIOB_SW2_MASK, PAL_MODE_INPUT);
+  palSetGroupMode(IOPORT2, PIOB_SW1_MASK | PIOB_SW2_MASK, 0, PAL_MODE_INPUT);
 
   /*
    * MMC/SD slot setup.
    */
   palSetGroupMode(IOPORT2,
                   PIOB_MMC_WP_MASK | PIOB_MMC_CP_MASK,
+                  0,
                   PAL_MODE_INPUT);
 
   /*

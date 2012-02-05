@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -51,19 +52,6 @@
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
 
-/**
- * @brief   Sleep mode related APIs inclusion switch.
- * @note    This switch is enforced to @p FALSE if the driver implementation
- *          does not support the sleep mode.
- */
-#if CAN_SUPPORTS_SLEEP || defined(__DOXYGEN__)
-#if !defined(CAN_USE_SLEEP_MODE) || defined(__DOXYGEN__)
-#define CAN_USE_SLEEP_MODE  TRUE
-#endif
-#else /* !CAN_SUPPORTS_SLEEP */
-#define CAN_USE_SLEEP_MODE  FALSE
-#endif /* !CAN_SUPPORTS_SLEEP */
-
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
@@ -89,22 +77,22 @@ typedef uint32_t canstatus_t;
  */
 typedef struct {
   struct {
-    uint8_t                 cf_DLC:4;       /**< @brief Data length.        */
-    uint8_t                 cf_RTR:1;       /**< @brief Frame type.         */
-    uint8_t                 cf_IDE:1;       /**< @brief Identifier type.    */
+    uint8_t                 DLC:4;          /**< @brief Data length.        */
+    uint8_t                 RTR:1;          /**< @brief Frame type.         */
+    uint8_t                 IDE:1;          /**< @brief Identifier type.    */
   };
   union {
     struct {
-      uint32_t              cf_SID:11;      /**< @brief Standard identifier.*/
+      uint32_t              SID:11;         /**< @brief Standard identifier.*/
     };
     struct {
-      uint32_t              cf_EID:29;      /**< @brief Extended identifier.*/
+      uint32_t              EID:29;         /**< @brief Extended identifier.*/
     };
   };
   union {
-    uint8_t                 cf_data8[8];    /**< @brief Frame data.         */
-    uint16_t                cf_data16[4];   /**< @brief Frame data.         */
-    uint32_t                cf_data32[2];   /**< @brief Frame data.         */
+    uint8_t                 data8[8];       /**< @brief Frame data.         */
+    uint16_t                data16[4];      /**< @brief Frame data.         */
+    uint32_t                data32[2];      /**< @brief Frame data.         */
   };
 } CANTxFrame;
 
@@ -116,22 +104,22 @@ typedef struct {
  */
 typedef struct {
   struct {
-    uint8_t                 cf_DLC:4;       /**< @brief Data length.        */
-    uint8_t                 cf_RTR:1;       /**< @brief Frame type.         */
-    uint8_t                 cf_IDE:1;       /**< @brief Identifier type.    */
+    uint8_t                 DLC:4;          /**< @brief Data length.        */
+    uint8_t                 RTR:1;          /**< @brief Frame type.         */
+    uint8_t                 IDE:1;          /**< @brief Identifier type.    */
   };
   union {
     struct {
-      uint32_t              cf_SID:11;      /**< @brief Standard identifier.*/
+      uint32_t              SID:11;         /**< @brief Standard identifier.*/
     };
     struct {
-      uint32_t              cf_EID:29;      /**< @brief Extended identifier.*/
+      uint32_t              EID:29;         /**< @brief Extended identifier.*/
     };
   };
   union {
-    uint8_t                 cf_data8[8];    /**< @brief Frame data.         */
-    uint16_t                cf_data16[4];   /**< @brief Frame data.         */
-    uint32_t                cf_data32[2];   /**< @brief Frame data.         */
+    uint8_t                 data8[8];       /**< @brief Frame data.         */
+    uint16_t                data16[4];      /**< @brief Frame data.         */
+    uint32_t                data32[2];      /**< @brief Frame data.         */
   };
 } CANRxFrame;
 
@@ -162,19 +150,19 @@ typedef struct {
   /**
    * @brief Driver state.
    */
-  canstate_t                cd_state;
+  canstate_t                state;
   /**
    * @brief Current configuration data.
    */
-  const CANConfig           *cd_config;
+  const CANConfig           *config;
   /**
    * @brief Transmission queue semaphore.
    */
-  Semaphore                 cd_txsem;
+  Semaphore                 txsem;
   /**
    * @brief Receive queue semaphore.
    */
-  Semaphore                 cd_rxsem;
+  Semaphore                 rxsem;
   /**
    * @brief One or more frames become available.
    * @note  After broadcasting this event it will not be broadcasted again
@@ -184,28 +172,28 @@ typedef struct {
    *        invoking @p chReceive() when listening to this event. This behavior
    *        minimizes the interrupt served by the system because CAN traffic.
    */
-  EventSource               cd_rxfull_event;
+  EventSource               rxfull_event;
   /**
    * @brief One or more transmission slots become available.
    */
-  EventSource               cd_txempty_event;
+  EventSource               txempty_event;
   /**
    * @brief A CAN bus error happened.
    */
-  EventSource               cd_error_event;
+  EventSource               error_event;
   /**
    * @brief Error flags set when an error event is broadcasted.
    */
-  canstatus_t               cd_status;
+  canstatus_t               status;
 #if CAN_USE_SLEEP_MODE || defined (__DOXYGEN__)
   /**
    * @brief Entering sleep state event.
    */
-  EventSource               cd_sleep_event;
+  EventSource               sleep_event;
   /**
    * @brief Exiting sleep state event.
    */
-  EventSource               cd_wakeup_event;
+  EventSource               wakeup_event;
 #endif /* CAN_USE_SLEEP_MODE */
   /* End of the mandatory fields.*/
 } CANDriver;

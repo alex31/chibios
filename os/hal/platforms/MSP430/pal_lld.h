@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -141,6 +142,11 @@ typedef struct {
 typedef uint8_t ioportmask_t;
 
 /**
+ * @brief   Digital I/O modes.
+ */
+typedef uint16_t iomode_t;
+
+/**
  * @brief   Port Identifier.
  * @details This type can be a scalar or some kind of pointer, do not make
  *          any assumption about it, use the provided macros when populating
@@ -232,7 +238,7 @@ typedef msp430_ioport_t *ioportid_t;
  * @details This function is implemented by reading the PxIN register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
+ * @param[in] port      port identifier
  * @return              The port bits.
  *
  * @notapi
@@ -244,7 +250,7 @@ typedef msp430_ioport_t *ioportid_t;
  * @details This function is implemented by reading the PxOUT register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
+ * @param[in] port      port identifier
  * @return              The latched logical states.
  *
  * @notapi
@@ -256,14 +262,12 @@ typedef msp430_ioport_t *ioportid_t;
  * @details This function is implemented by writing the PxOUT register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
- * @param[in] bits      the bits to be written on the specified port
+ * @param[in] port      port identifier
+ * @param[in] bits      bits to be written on the specified port
  *
  * @notapi
  */
-#define pal_lld_writeport(port, bits) {                                 \
-  (port)->iop_common.out.reg_p = (bits);                                \
-}
+#define pal_lld_writeport(port, bits) ((port)->iop_common.out.reg_p = (bits))
 
 /**
  * @brief   Pads group mode setup.
@@ -274,14 +278,15 @@ typedef msp430_ioport_t *ioportid_t;
  * @note    This function does not alter the @p PxSEL registers. Alternate
  *          functions setup must be handled by device-specific code.
  *
- * @param[in] port      the port identifier
- * @param[in] mask      the group mask
- * @param[in] mode      the mode
+ * @param[in] port      port identifier
+ * @param[in] mask      group mask
+ * @param[in] offset    group bit offset within the port
+ * @param[in] mode      group mode
  *
  * @notapi
  */
-#define pal_lld_setgroupmode(port, mask, mode) \
-  _pal_lld_setgroupmode(port, mask, mode)
+#define pal_lld_setgroupmode(port, mask, offset, mode)                      \
+  _pal_lld_setgroupmode(port, mask << offset, mode)
 
 extern const PALConfig pal_default_config;
 
@@ -291,7 +296,7 @@ extern "C" {
   void _pal_lld_init(const PALConfig *config);
   void _pal_lld_setgroupmode(ioportid_t port,
                              ioportmask_t mask,
-                             uint_fast8_t mode);
+                             iomode_t mode);
 #ifdef __cplusplus
 }
 #endif

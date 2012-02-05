@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -41,18 +42,17 @@
 /* Driver constants.                                                         */
 /*===========================================================================*/
 
-/** @brief No pending conditions.*/
-#define UART_NO_ERROR           0
-/** @brief Parity error happened.*/
-#define UART_PARITY_ERROR       4
-/** @brief Framing error happened.*/
-#define UART_FRAMING_ERROR      8
-/** @brief Overflow happened.*/
-#define UART_OVERRUN_ERROR      16
-/** @brief Noise on the line.*/
-#define UART_NOISE_ERROR        32
-/** @brief Break detected.*/
-#define UART_BREAK_DETECTED     64
+/**
+ * @name    UART status flags
+ * @{
+ */
+#define UART_NO_ERROR           0   /**< @brief No pending conditions.      */
+#define UART_PARITY_ERROR       4   /**< @brief Parity error happened.      */
+#define UART_FRAMING_ERROR      8   /**< @brief Framing error happened.     */
+#define UART_OVERRUN_ERROR      16  /**< @brief Overflow happened.          */
+#define UART_NOISE_ERROR        32  /**< @brief Noise on the line.          */
+#define UART_BREAK_DETECTED     64  /**< @brief Break detected.             */
+/** @} */
 
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */

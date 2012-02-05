@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -45,14 +46,77 @@
 #define CORTEX_BASEPRI_DISABLED         0
 
 /*===========================================================================*/
+/* Port macros.                                                              */
+/*===========================================================================*/
+
+/*===========================================================================*/
 /* Port configurable parameters.                                             */
 /*===========================================================================*/
 
 /**
- * @brief   Simplified priority handling flag.
- * @details Activating this option will make the Kernel work in compact mode.
+ * @brief   Stack size for the system idle thread.
+ * @details This size depends on the idle thread implementation, usually
+ *          the idle thread should take no more space than those reserved
+ *          by @p PORT_INT_REQUIRED_STACK.
+ * @note    In this port it is set to 16 because the idle thread does have
+ *          a stack frame when compiling without optimizations. You may
+ *          reduce this value to zero when compiling with optimizations.
  */
-#ifndef CORTEX_SIMPLIFIED_PRIORITY
+#if !defined(PORT_IDLE_THREAD_STACK_SIZE)
+#define PORT_IDLE_THREAD_STACK_SIZE     16
+#endif
+
+/**
+ * @brief   Per-thread stack overhead for interrupts servicing.
+ * @details This constant is used in the calculation of the correct working
+ *          area size.
+ *          This value can be zero on those architecture where there is a
+ *          separate interrupt stack and the stack space between @p intctx and
+ *          @p extctx is known to be zero.
+ * @note    In this port it is conservatively set to 16 because the function
+ *          @p chSchDoReschedule() can have a stack frame, especially with
+ *          compiler optimizations disabled.
+ */
+#if !defined(PORT_INT_REQUIRED_STACK)
+#define PORT_INT_REQUIRED_STACK         16
+#endif
+
+/**
+ * @brief   Enables the use of the WFI instruction in the idle thread loop.
+ */
+#if !defined(CORTEX_ENABLE_WFI_IDLE)
+#define CORTEX_ENABLE_WFI_IDLE          FALSE
+#endif
+
+/**
+ * @brief   SYSTICK handler priority.
+ * @note    The default SYSTICK handler priority is calculated as the priority
+ *          level in the middle of the numeric priorities range.
+ */
+#if !defined(CORTEX_PRIORITY_SYSTICK)
+#define CORTEX_PRIORITY_SYSTICK         (CORTEX_PRIORITY_LEVELS >> 1)
+#elif !CORTEX_IS_VALID_PRIORITY(CORTEX_PRIORITY_SYSTICK)
+/* If it is externally redefined then better perform a validity check on it.*/
+#error "invalid priority level specified for CORTEX_PRIORITY_SYSTICK"
+#endif
+
+/**
+ * @brief   FPU support in context switch.
+ * @details Activating this option activates the FPU support in the kernel.
+ */
+#if !defined(CORTEX_USE_FPU)
+#define CORTEX_USE_FPU                  CORTEX_HAS_FPU
+#elif CORTEX_USE_FPU && !CORTEX_HAS_FPU
+/* This setting requires an FPU presence check in case it is externally
+   redefined.*/
+#error "the selected core does not have an FPU"
+#endif
+
+/**
+ * @brief   Simplified priority handling flag.
+ * @details Activating this option makes the Kernel work in compact mode.
+ */
+#if !defined(CORTEX_SIMPLIFIED_PRIORITY)
 #define CORTEX_SIMPLIFIED_PRIORITY      FALSE
 #endif
 
@@ -63,13 +127,18 @@
  *          @p CORTEX_MAXIMUM_PRIORITY priority level as fast interrupts
  *          priority level.
  */
-#ifndef CORTEX_PRIORITY_SVCALL
+#if !defined(CORTEX_PRIORITY_SVCALL)
 #define CORTEX_PRIORITY_SVCALL          (CORTEX_MAXIMUM_PRIORITY + 1)
-#else
+#elif !CORTEX_IS_VALID_PRIORITY(CORTEX_PRIORITY_SVCALL)
 /* If it is externally redefined then better perform a validity check on it.*/
-#if !CORTEX_IS_VALID_PRIORITY(CORTEX_PRIORITY_SVCALL)
 #error "invalid priority level specified for CORTEX_PRIORITY_SVCALL"
 #endif
+
+/**
+ * @brief   NVIC VTOR initialization expression.
+ */
+#if !defined(CORTEX_VTOR_INIT) || defined(__DOXYGEN__)
+#define CORTEX_VTOR_INIT              0x00000000
 #endif
 
 /*===========================================================================*/
@@ -118,7 +187,11 @@
 #elif (CORTEX_MODEL == CORTEX_M4)
 #define CH_ARCHITECTURE_ARM_v7ME
 #define CH_ARCHITECTURE_NAME            "ARMv7-ME"
+#if CORTEX_USE_FPU
+#define CH_CORE_VARIANT_NAME            "Cortex-M4F"
+#else
 #define CH_CORE_VARIANT_NAME            "Cortex-M4"
+#endif
 #endif
 
 /**
@@ -141,7 +214,12 @@
  */
 typedef void *regarm_t;
 
+/* The documentation of the following declarations is in chconf.h in order
+   to not have duplicated structure names into the documentation.*/
 #if !defined(__DOXYGEN__)
+
+typedef uint64_t stkalign_t __attribute__ ((aligned (8)));
+
 struct extctx {
   regarm_t      r0;
   regarm_t      r1;
@@ -151,22 +229,102 @@ struct extctx {
   regarm_t      lr_thd;
   regarm_t      pc;
   regarm_t      xpsr;
+#if CORTEX_USE_FPU
+  regarm_t      s0;
+  regarm_t      s1;
+  regarm_t      s2;
+  regarm_t      s3;
+  regarm_t      s4;
+  regarm_t      s5;
+  regarm_t      s6;
+  regarm_t      s7;
+  regarm_t      s8;
+  regarm_t      s9;
+  regarm_t      s10;
+  regarm_t      s11;
+  regarm_t      s12;
+  regarm_t      s13;
+  regarm_t      s14;
+  regarm_t      s15;
+  regarm_t      fpscr;
+  regarm_t      fpccr;
+#endif /* CORTEX_USE_FPU */
 };
 
 struct intctx {
+#if CORTEX_USE_FPU
+  regarm_t      s16;
+  regarm_t      s17;
+  regarm_t      s18;
+  regarm_t      s19;
+  regarm_t      s20;
+  regarm_t      s21;
+  regarm_t      s22;
+  regarm_t      s23;
+  regarm_t      s24;
+  regarm_t      s25;
+  regarm_t      s26;
+  regarm_t      s27;
+  regarm_t      s28;
+  regarm_t      s29;
+  regarm_t      s30;
+  regarm_t      s31;
+#endif /* CORTEX_USE_FPU */
   regarm_t      r4;
   regarm_t      r5;
   regarm_t      r6;
-#ifndef CH_CURRP_REGISTER_CACHE
   regarm_t      r7;
-#endif
   regarm_t      r8;
   regarm_t      r9;
   regarm_t      r10;
   regarm_t      r11;
   regarm_t      lr;
 };
-#endif
+
+#endif /* !defined(__DOXYGEN__) */
+
+/**
+ * @brief   Platform dependent part of the @p Thread structure.
+ * @details In this port the structure just holds a pointer to the @p intctx
+ *          structure representing the stack pointer at context switch time.
+ */
+struct context {
+  struct intctx *r13;
+};
+
+/**
+ * @brief   Platform dependent part of the @p chThdCreateI() API.
+ * @details This code usually setup the context switching frame represented
+ *          by an @p intctx structure.
+ */
+#define SETUP_CONTEXT(workspace, wsize, pf, arg) {                          \
+  tp->p_ctx.r13 = (struct intctx *)((uint8_t *)workspace +                  \
+                                     wsize -                                \
+                                     sizeof(struct intctx));                \
+  tp->p_ctx.r13->r4 = pf;                                                   \
+  tp->p_ctx.r13->r5 = arg;                                                  \
+  tp->p_ctx.r13->lr = _port_thread_start;                                   \
+}
+
+/**
+ * @brief   Enforces a correct alignment for a stack area size value.
+ */
+#define STACK_ALIGN(n) ((((n) - 1) | (sizeof(stkalign_t) - 1)) + 1)
+
+/**
+ * @brief   Computes the thread working area global size.
+ */
+#define THD_WA_SIZE(n) STACK_ALIGN(sizeof(Thread) +                         \
+                                   sizeof(struct intctx) +                  \
+                                   sizeof(struct extctx) +                  \
+                                   (n) + (PORT_INT_REQUIRED_STACK))
+
+/**
+ * @brief   Static working area allocation.
+ * @details This macro is used to allocate a static thread working area
+ *          aligned as both position and size.
+ */
+#define WORKING_AREA(s, n) stkalign_t s[THD_WA_SIZE(n) / sizeof(stkalign_t)]
 
 /**
  * @brief   IRQ prologue code.
@@ -199,15 +357,7 @@ struct intctx {
 /**
  * @brief   Port-related initialization code.
  */
-#define port_init() {                                                       \
-  SCB_AIRCR = AIRCR_VECTKEY | AIRCR_PRIGROUP(0);                            \
-  NVICSetSystemHandlerPriority(HANDLER_SVCALL,                              \
-    CORTEX_PRIORITY_MASK(CORTEX_PRIORITY_SVCALL));                          \
-  NVICSetSystemHandlerPriority(HANDLER_PENDSV,                              \
-    CORTEX_PRIORITY_MASK(CORTEX_PRIORITY_PENDSV));                          \
-  NVICSetSystemHandlerPriority(HANDLER_SYSTICK,                             \
-    CORTEX_PRIORITY_MASK(CORTEX_PRIORITY_SYSTICK));                         \
-}
+#define port_init() _port_init()
 
 /**
  * @brief   Kernel-lock action.
@@ -232,7 +382,7 @@ struct intctx {
 
 /**
  * @brief   Kernel-unlock action.
- * @details Usually this function just disables interrupts but may perform
+ * @details Usually this function just enables interrupts but may perform
  *          more actions.
  * @note    In this port this it lowers the base priority to user level.
  */
@@ -322,13 +472,36 @@ struct intctx {
 #define port_wait_for_interrupt()
 #endif
 
+/**
+ * @brief   Performs a context switch between two threads.
+ * @details This is the most critical code in any port, this function
+ *          is responsible for the context switch between 2 threads.
+ * @note    The implementation of this code affects <b>directly</b> the context
+ *          switch performance so optimize here as much as you can.
+ *
+ * @param[in] ntp       the thread to be switched in
+ * @param[in] otp       the thread to be switched out
+ */
+#if !CH_DBG_ENABLE_STACK_CHECK || defined(__DOXYGEN__)
+#define port_switch(ntp, otp) _port_switch(ntp, otp)
+#else
+#define port_switch(ntp, otp) {                                             \
+  register struct intctx *r13 asm ("r13");                                  \
+  if ((stkalign_t *)(r13 - 1) < otp->p_stklimit)                            \
+    chDbgPanic("stack overflow");                                           \
+  _port_switch(ntp, otp);                                                   \
+}
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
   void port_halt(void);
-  void port_switch(Thread *ntp, Thread *otp);
+  void _port_init(void);
   void _port_irq_epilogue(void);
   void _port_switch_from_isr(void);
+  void _port_exit_from_isr(void);
+  void _port_switch(Thread *ntp, Thread *otp);
   void _port_thread_start(void);
 #if !CH_OPTIMIZE_SPEED
   void _port_lock(void);

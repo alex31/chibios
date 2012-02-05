@@ -1,5 +1,6 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,2011 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -10,11 +11,11 @@
 
     ChibiOS/RT is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
                                       ---
 
@@ -68,7 +69,7 @@
  * @brief   If enabled allows the idle thread to enter a low power mode.
  */
 #ifndef ARM_ENABLE_WFI_IDLE
-#define ARM_ENABLE_WFI_IDLE         FALSE
+#define ARM_ENABLE_WFI_IDLE             FALSE
 #endif
 
 /*===========================================================================*/
@@ -99,7 +100,7 @@
  *          - "ARM9".
  *          .
  */
-#define CH_ARCHITECTURE_NAME "ARMx"
+#define CH_ARCHITECTURE_NAME            "ARMx"
 
 /**
  * @brief   Name of the architecture variant (optional).
@@ -109,18 +110,44 @@
  *          - "ARM9"
  *          .
  */
-#define CH_CORE_VARIANT_NAME "ARMxy"
+#define CH_CORE_VARIANT_NAME            "ARMxy"
+
+/**
+ * @brief   Port-specific information string.
+ * @note    The value is for documentation only, the real value changes
+ *          depending on the selected options, the possible values are:
+ *          - "Pure ARM"
+ *          - "Pure THUMB"
+ *          - "Interworking"
+ *          .
+ */
+#define CH_PORT_INFO                    "ARM|THUMB|Interworking"
 
 #elif ARM_CORE == ARM_CORE_ARM7TDMI
 #define CH_ARCHITECTURE_ARM7TDMI
-#define CH_ARCHITECTURE_NAME        "ARM7"
-#define CH_CORE_VARIANT_NAME        "ARM7TDMI"
+#define CH_ARCHITECTURE_NAME            "ARM7"
+#define CH_CORE_VARIANT_NAME            "ARM7TDMI"
 
 #elif ARM_MODEL == ARM_VARIANT_ARM9
 #define CH_ARCHITECTURE_ARM9
-#define CH_ARCHITECTURE_NAME        "ARM9"
-#define CH_CORE_VARIANT_NAME        "ARM9"
+#define CH_ARCHITECTURE_NAME            "ARM9"
+#define CH_CORE_VARIANT_NAME            "ARM9"
 #endif
+
+#if THUMB_PRESENT
+#if THUMB_NO_INTERWORKING
+#define CH_PORT_INFO                    "Pure THUMB mode"
+#else /* !THUMB_NO_INTERWORKING */
+#define CH_PORT_INFO                    "Interworking mode"
+#endif /* !THUMB_NO_INTERWORKING */
+#else /* !THUMB_PRESENT */
+#define CH_PORT_INFO                    "Pure ARM mode"
+#endif /* !THUMB_PRESENT */
+
+/**
+ * @brief   Name of the compiler supported by this port.
+ */
+#define CH_COMPILER_NAME                "GCC "__VERSION__
 
 /*===========================================================================*/
 /* Port implementation part (common).                                        */
@@ -161,9 +188,7 @@ struct intctx {
   regarm_t      r4;
   regarm_t      r5;
   regarm_t      r6;
-#ifndef CH_CURRP_REGISTER_CACHE
   regarm_t      r7;
-#endif
   regarm_t      r8;
   regarm_t      r9;
   regarm_t      r10;
@@ -198,12 +223,12 @@ struct context {
  * @brief   Stack size for the system idle thread.
  * @details This size depends on the idle thread implementation, usually
  *          the idle thread should take no more space than those reserved
- *          by @p INT_REQUIRED_STACK.
+ *          by @p PORT_INT_REQUIRED_STACK.
  * @note    In this port it is set to 4 because the idle thread does have
  *          a stack frame when compiling without optimizations.
  */
-#ifndef IDLE_THREAD_STACK_SIZE
-#define IDLE_THREAD_STACK_SIZE      4
+#ifndef PORT_IDLE_THREAD_STACK_SIZE
+#define PORT_IDLE_THREAD_STACK_SIZE     4
 #endif
 
 /**
@@ -216,8 +241,8 @@ struct context {
  * @note    In this port 0x10 is a safe value, it can be reduced after careful
  *          analysis of the generated code.
  */
-#ifndef INT_REQUIRED_STACK
-#define INT_REQUIRED_STACK          0x10
+#ifndef PORT_INT_REQUIRED_STACK
+#define PORT_INT_REQUIRED_STACK         0x10
 #endif
 
 /**
@@ -231,7 +256,7 @@ struct context {
 #define THD_WA_SIZE(n) STACK_ALIGN(sizeof(Thread) +                         \
                                    sizeof(struct intctx) +                  \
                                    sizeof(struct extctx) +                  \
-                                  (n) + (INT_REQUIRED_STACK))
+                                   (n) + (PORT_INT_REQUIRED_STACK))
 
 /**
  * @brief   Static working area allocation.
@@ -329,7 +354,7 @@ struct context {
 
 /**
  * @brief   Kernel-unlock action.
- * @details Usually this function just disables interrupts but may perform
+ * @details Usually this function just enables interrupts but may perform
  *          more actions.
  * @note    In this port it enables both the IRQ and FIQ sources.
  */
@@ -420,14 +445,10 @@ struct context {
 #ifdef THUMB
 #if CH_DBG_ENABLE_STACK_CHECK
 #define port_switch(ntp, otp) {                                             \
-  register Thread *_ntp asm ("r0") = (ntp);                                 \
-  register Thread *_otp asm ("r1") = (otp);                                 \
-  register char *sp asm ("sp");                                             \
-  if (sp - sizeof(struct intctx) - sizeof(Thread) < (char *)_otp)           \
-    asm volatile ("mov     r0, #0                               \n\t"       \
-                  "ldr     r1, =chDbgPanic                      \n\t"       \
-                  "bx      r1");                                            \
-    _port_switch_thumb(_ntp, _otp);                                         \
+  register struct intctx *r13 asm ("r13");                                  \
+  if ((stkalign_t *)(r13 - 1) < otp->p_stklimit)                            \
+    chDbgPanic("stack overflow");                                           \
+  _port_switch_thumb(ntp, otp);                                             \
 }
 #else /* !CH_DBG_ENABLE_STACK_CHECK */
 #define port_switch(ntp, otp) _port_switch_thumb(ntp, otp)
@@ -435,13 +456,10 @@ struct context {
 #else /* !THUMB */
 #if CH_DBG_ENABLE_STACK_CHECK
 #define port_switch(ntp, otp) {                                             \
-  register Thread *_ntp asm ("r0") = (ntp);                                 \
-  register Thread *_otp asm ("r1") = (otp);                                 \
-  register char *sp asm ("sp");                                             \
-  if (sp - sizeof(struct intctx) - sizeof(Thread) < (char *)_otp)           \
-    asm volatile ("mov     r0, #0                               \n\t"       \
-                  "b       chDbgPanic");                                    \
-  _port_switch_arm(_ntp, _otp);                                             \
+  register struct intctx *r13 asm ("r13");                                  \
+  if ((stkalign_t *)(r13 - 1) < otp->p_stklimit)                            \
+    chDbgPanic("stack overflow");                                           \
+  _port_switch_arm(ntp, otp);                                               \
 }
 #else /* !CH_DBG_ENABLE_STACK_CHECK */
 #define port_switch(ntp, otp) _port_switch_arm(ntp, otp)
