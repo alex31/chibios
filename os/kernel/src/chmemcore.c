@@ -63,7 +63,7 @@ static uint8_t *endmem;
  *
  * @notapi
  */
-void core_init(void) {
+void _core_init(void) {
 #if CH_MEMCORE_SIZE == 0
   extern uint8_t __heap_base__[];
   extern uint8_t __heap_end__[];
@@ -111,6 +111,8 @@ void *chCoreAlloc(size_t size) {
  */
 void *chCoreAllocI(size_t size) {
   void *p;
+
+  chDbgCheckClassI();
 
   size = MEM_ALIGN_NEXT(size);
   if ((size_t)(endmem - nextmem) < size)

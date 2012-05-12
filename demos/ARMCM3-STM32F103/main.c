@@ -38,9 +38,9 @@ static msg_t Thread1(void *arg) {
   (void)arg;
   chRegSetThreadName("blinker");
   while (TRUE) {
-    palClearPad(IOPORT3, GPIOC_LED);
+    palClearPad(GPIOC, GPIOC_LED);
     chThdSleepMilliseconds(500);
-    palSetPad(IOPORT3, GPIOC_LED);
+    palSetPad(GPIOC, GPIOC_LED);
     chThdSleepMilliseconds(500);
   }
 }
@@ -75,7 +75,7 @@ int main(void) {
    * sleeping in a loop and check the button state.
    */
   while (TRUE) {
-    if (palReadPad(IOPORT1, GPIOA_BUTTON))
+    if (palReadPad(GPIOA, GPIOA_BUTTON))
       TestThread(&SD2);
     chThdSleepMilliseconds(500);
   }

@@ -168,12 +168,12 @@ eventmask_t chEvtAddFlags(eventmask_t mask) {
  *
  * @api
  */
-void chEvtSignal(Thread *tp, eventmask_t mask) {
+void chEvtSignalFlags(Thread *tp, eventmask_t mask) {
 
   chDbgCheck(tp != NULL, "chEvtSignal");
 
   chSysLock();
-  chEvtSignalI(tp, mask);
+  chEvtSignalFlagsI(tp, mask);
   chSchRescheduleS();
   chSysUnlock();
 }
@@ -190,8 +190,9 @@ void chEvtSignal(Thread *tp, eventmask_t mask) {
  *
  * @iclass
  */
-void chEvtSignalI(Thread *tp, eventmask_t mask) {
+void chEvtSignalFlagsI(Thread *tp, eventmask_t mask) {
 
+  chDbgCheckClassI();
   chDbgCheck(tp != NULL, "chEvtSignalI");
 
   tp->p_epending |= mask;
@@ -206,15 +207,20 @@ void chEvtSignalI(Thread *tp, eventmask_t mask) {
 /**
  * @brief   Signals all the Event Listeners registered on the specified Event
  *          Source.
+ * @details This function variants ORs the specified event flags to all the
+ *          threads registered on the @p EventSource in addition to the event
+ *          flags specified by the threads themselves in the
+ *          @p EventListener objects.
  *
  * @param[in] esp       pointer to the @p EventSource structure
+ * @param[in] mask      the event flags set to be ORed
  *
  * @api
  */
-void chEvtBroadcast(EventSource *esp) {
+void chEvtBroadcastFlags(EventSource *esp, eventmask_t mask) {
 
   chSysLock();
-  chEvtBroadcastI(esp);
+  chEvtBroadcastFlagsI(esp, mask);
   chSchRescheduleS();
   chSysUnlock();
 }
@@ -222,23 +228,29 @@ void chEvtBroadcast(EventSource *esp) {
 /**
  * @brief   Signals all the Event Listeners registered on the specified Event
  *          Source.
+ * @details This function variants ORs the specified event flags to all the
+ *          threads registered on the @p EventSource in addition to the event
+ *          flags specified by the threads themselves in the
+ *          @p EventListener objects.
  * @post    This function does not reschedule so a call to a rescheduling
  *          function must be performed before unlocking the kernel. Note that
  *          interrupt handlers always reschedule on exit so an explicit
  *          reschedule must not be performed in ISRs.
  *
  * @param[in] esp       pointer to the @p EventSource structure
+ * @param[in] mask      the event flags set to be ORed
  *
  * @iclass
  */
-void chEvtBroadcastI(EventSource *esp) {
+void chEvtBroadcastFlagsI(EventSource *esp, eventmask_t mask) {
   EventListener *elp;
 
-  chDbgCheck(esp != NULL, "chEvtBroadcastI");
+  chDbgCheckClassI();
+  chDbgCheck(esp != NULL, "chEvtBroadcastMaskI");
 
   elp = esp->es_next;
   while (elp != (EventListener *)esp) {
-    chEvtSignalI(elp->el_listener, elp->el_mask);
+    chEvtSignalFlagsI(elp->el_listener, elp->el_mask | mask);
     elp = elp->el_next;
   }
 }
@@ -371,7 +383,7 @@ eventmask_t chEvtWaitAll(eventmask_t mask) {
  *          This means that Event Listeners with a lower event identifier have
  *          an higher priority.
  *
- * @param[in] mask      mask of the event flagss that the function should wait
+ * @param[in] mask      mask of the event flags that the function should wait
  *                      for, @p ALL_EVENTS enables all the events
  * @param[in] time      the number of ticks before the operation timeouts,
  *                      the following special values are allowed:

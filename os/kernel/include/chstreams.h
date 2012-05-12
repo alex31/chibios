@@ -81,6 +81,10 @@ typedef struct {
 } BaseSequentialStream;
 
 /**
+ * @name    Macro Functions (BaseSequentialStream)
+ * @{
+ */
+/**
  * @brief   Sequential Stream write.
  * @details The function writes data from a buffer to a stream.
  *
@@ -110,6 +114,7 @@ typedef struct {
  * @api
  */
 #define chSequentialStreamRead(ip, bp, n) ((ip)->vmt->read(ip, bp, n))
+/** @} */
 
 #endif /* _CHSTREAMS_H_ */
 

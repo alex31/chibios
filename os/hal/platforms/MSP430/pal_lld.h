@@ -52,14 +52,40 @@
 /*===========================================================================*/
 
 /**
+ * @brief   Simple MSP430 I/O port.
+ */
+struct msp430_port_simple_t {
+  volatile uint8_t              in;
+  volatile uint8_t              out;
+  volatile uint8_t              dir;
+  volatile uint8_t              sel;
+};
+
+/**
+ * @brief   Full MSP430 I/O port.
+ */
+struct msp430_port_full_t {
+  volatile uint8_t              in;
+  volatile uint8_t              out;
+  volatile uint8_t              dir;
+  volatile uint8_t              ifg;
+  volatile uint8_t              ies;
+  volatile uint8_t              ie;
+  volatile uint8_t              sel;
+#if defined(__MSP430_HAS_PORT1_R__) || defined(__MSP430_HAS_PORT2_R__)
+  volatile uint8_t             ren;
+#endif
+};
+
+/**
  * @brief   Simplified MSP430 I/O port representation.
  * @details This structure represents the common part of all the MSP430 I/O
  *          ports.
  */
 struct msp430_port_common {
-  ioregister_t  in;
-  ioregister_t  out;
-  ioregister_t  dir;
+  volatile uint8_t              in;
+  volatile uint8_t              out;
+  volatile uint8_t              dir;
 };
 
 /**
@@ -67,16 +93,16 @@ struct msp430_port_common {
  */
 typedef union {
   struct msp430_port_common     iop_common;
-  struct port_simple_t          iop_simple;
-  struct port_full_t            iop_full;
+  struct msp430_port_simple_t   iop_simple;
+  struct msp430_port_full_t     iop_full;
 } msp430_ioport_t;
 
 /**
  * @brief   Setup registers common to all the MSP430 ports.
  */
 typedef struct  {
-  ioregister_t  out;
-  ioregister_t  dir;
+  volatile uint8_t              out;
+  volatile uint8_t              dir;
 } msp430_dio_setup_t;
 
 /**
@@ -142,6 +168,11 @@ typedef struct {
 typedef uint8_t ioportmask_t;
 
 /**
+ * @brief   Digital I/O modes.
+ */
+typedef uint16_t iomode_t;
+
+/**
  * @brief   Port Identifier.
  * @details This type can be a scalar or some kind of pointer, do not make
  *          any assumption about it, use the provided macros when populating
@@ -160,7 +191,7 @@ typedef msp430_ioport_t *ioportid_t;
 #if defined(__MSP430_HAS_PORT1__) ||                                    \
     defined(__MSP430_HAS_PORT1_R__) ||                                  \
     defined(__DOXYGEN__)
-#define IOPORT1         ((ioportid_t)0x0020)
+#define IOPORT1         ((ioportid_t)P1IN_)
 #endif
 
 /**
@@ -170,7 +201,7 @@ typedef msp430_ioport_t *ioportid_t;
 #if defined(__MSP430_HAS_PORT2__) ||                                    \
     defined(__MSP430_HAS_PORT2_R__) ||                                  \
     defined(__DOXYGEN__)
-#define IOPORT2         ((ioportid_t)0x0028)
+#define IOPORT2         ((ioportid_t)P2IN_)
 #endif
 
 /**
@@ -180,7 +211,7 @@ typedef msp430_ioport_t *ioportid_t;
 #if defined(__MSP430_HAS_PORT3__) ||                                    \
     defined(__MSP430_HAS_PORT3_R__) ||                                  \
     defined(__DOXYGEN__)
-#define IOPORT3         ((ioportid_t)0x0018)
+#define IOPORT3         ((ioportid_t)P3IN_)
 #endif
 
 /**
@@ -190,7 +221,7 @@ typedef msp430_ioport_t *ioportid_t;
 #if defined(__MSP430_HAS_PORT4__) ||                                    \
     defined(__MSP430_HAS_PORT4_R__) ||                                  \
     defined(__DOXYGEN__)
-#define IOPORT4         ((ioportid_t)0x001c)
+#define IOPORT4         ((ioportid_t)P4IN_)
 #endif
 
 /**
@@ -200,7 +231,7 @@ typedef msp430_ioport_t *ioportid_t;
 #if defined(__MSP430_HAS_PORT5__) ||                                    \
     defined(__MSP430_HAS_PORT5_R__) ||                                  \
     defined(__DOXYGEN__)
-#define IOPORT5         ((ioportid_t)0x0030)
+#define IOPORT5         ((ioportid_t)P5IN_)
 #endif
 
 /**
@@ -210,7 +241,7 @@ typedef msp430_ioport_t *ioportid_t;
 #if defined(__MSP430_HAS_PORT6__) ||                                    \
     defined(__MSP430_HAS_PORT6_R__) ||                                  \
     defined(__DOXYGEN__)
-#define IOPORT6         ((ioportid_t)0x0034)
+#define IOPORT6         ((ioportid_t)P6IN_)
 #endif
 
 /*===========================================================================*/
@@ -233,38 +264,36 @@ typedef msp430_ioport_t *ioportid_t;
  * @details This function is implemented by reading the PxIN register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
+ * @param[in] port      port identifier
  * @return              The port bits.
  *
  * @notapi
  */
-#define pal_lld_readport(port) ((port)->iop_common.in.reg_p)
+#define pal_lld_readport(port) ((port)->iop_common.in)
 
 /**
  * @brief   Reads the output latch.
  * @details This function is implemented by reading the PxOUT register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
+ * @param[in] port      port identifier
  * @return              The latched logical states.
  *
  * @notapi
  */
-#define pal_lld_readlatch(port) ((port)->iop_common.out.reg_p)
+#define pal_lld_readlatch(port) ((port)->iop_common.out)
 
 /**
  * @brief   Writes a bits mask on a I/O port.
  * @details This function is implemented by writing the PxOUT register, the
  *          implementation has no side effects.
  *
- * @param[in] port      the port identifier
- * @param[in] bits      the bits to be written on the specified port
+ * @param[in] port      port identifier
+ * @param[in] bits      bits to be written on the specified port
  *
  * @notapi
  */
-#define pal_lld_writeport(port, bits) {                                 \
-  (port)->iop_common.out.reg_p = (bits);                                \
-}
+#define pal_lld_writeport(port, bits) ((port)->iop_common.out = (bits))
 
 /**
  * @brief   Pads group mode setup.
@@ -275,14 +304,15 @@ typedef msp430_ioport_t *ioportid_t;
  * @note    This function does not alter the @p PxSEL registers. Alternate
  *          functions setup must be handled by device-specific code.
  *
- * @param[in] port      the port identifier
- * @param[in] mask      the group mask
- * @param[in] mode      the mode
+ * @param[in] port      port identifier
+ * @param[in] mask      group mask
+ * @param[in] offset    group bit offset within the port
+ * @param[in] mode      group mode
  *
  * @notapi
  */
-#define pal_lld_setgroupmode(port, mask, mode) \
-  _pal_lld_setgroupmode(port, mask, mode)
+#define pal_lld_setgroupmode(port, mask, offset, mode)                      \
+  _pal_lld_setgroupmode(port, mask << offset, mode)
 
 extern const PALConfig pal_default_config;
 
@@ -292,7 +322,7 @@ extern "C" {
   void _pal_lld_init(const PALConfig *config);
   void _pal_lld_setgroupmode(ioportid_t port,
                              ioportmask_t mask,
-                             uint_fast8_t mode);
+                             iomode_t mode);
 #ifdef __cplusplus
 }
 #endif

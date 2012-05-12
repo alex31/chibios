@@ -54,6 +54,7 @@ static const ADCConversionGroup adcgrpcfg = {
   FALSE,
   ADC_GRP1_NUM_CHANNELS,
   adccb,
+  NULL,
   /* HW dependent part.*/
   0,
   ADC_CR2_TSVREFE,
@@ -70,6 +71,8 @@ static const ADCConversionGroup adcgrpcfg = {
  * the active state is a logic one.
  */
 static PWMConfig pwmcfg = {
+  10000,                                    /* 10kHz PWM clock frequency.   */
+  10000,                                    /* PWM period 1S (in ticks).    */
   pwmpcb,
   {
     {PWM_OUTPUT_DISABLED, NULL},
@@ -78,9 +81,10 @@ static PWMConfig pwmcfg = {
     {PWM_OUTPUT_ACTIVE_HIGH, NULL}
   },
   /* HW dependent part.*/
-  PWM_COMPUTE_PSC(STM32_TIMCLK1, 10000),    /* 10KHz PWM clock frequency.   */
-  PWM_COMPUTE_ARR(10000, 1000000000),       /* PWM period 1S (in nS).       */
+  0,
+#if STM32_PWM_USE_ADVANCED
   0
+#endif
 };
 
 /*
@@ -122,7 +126,7 @@ void adccb(ADCDriver *adcp, adcsample_t *buffer, size_t n) {
   (void) buffer; (void) n;
   /* Note, only in the ADC_COMPLETE state because the ADC driver fires an
      intermediate callback when the buffer is half full.*/
-  if (adcp->ad_state == ADC_COMPLETE) {
+  if (adcp->state == ADC_COMPLETE) {
     adcsample_t avg_ch1, avg_ch2;
 
     /* Calculates the average values from the ADC samples.*/
@@ -209,7 +213,7 @@ int main(void) {
    * The pin PC0 on the port GPIOC is programmed as analog input.
    */
   adcStart(&ADCD1, NULL);
-  palSetGroupMode(GPIOC, PAL_PORT_BIT(0), PAL_MODE_INPUT_ANALOG);
+  palSetGroupMode(GPIOC, PAL_PORT_BIT(0), 0, PAL_MODE_INPUT_ANALOG);
 
   /*
    * Initializes the PWM driver 1, re-routes the TIM3 outputs, programs the
@@ -220,6 +224,7 @@ int main(void) {
   pwmStart(&PWMD3, &pwmcfg);
   AFIO->MAPR |= AFIO_MAPR_TIM3_REMAP_0 | AFIO_MAPR_TIM3_REMAP_1;
   palSetGroupMode(GPIOC, PAL_PORT_BIT(GPIOC_LED3) | PAL_PORT_BIT(GPIOC_LED4),
+                  0,
                   PAL_MODE_STM32_ALTERNATE_PUSHPULL);
 
   /*

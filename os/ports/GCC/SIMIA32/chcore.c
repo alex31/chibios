@@ -43,26 +43,28 @@
 __attribute__((used))
 static void __dummy(Thread *ntp, Thread *otp) {
   (void)ntp; (void)otp;
+
+  asm volatile (
 #if defined(WIN32)
-  asm volatile (".globl @port_switch@8                          \n\t" \
-                "@port_switch@8:");
+                ".globl @port_switch@8                          \n\t"
+                "@port_switch@8:"
 #elif defined(__APPLE__)
-  asm volatile (".globl _port_switch                            \n\t" \
-                "_port_switch:");
+                ".globl _port_switch                            \n\t"
+                "_port_switch:"
 #else
-  asm volatile (".globl port_switch                             \n\t" \
-                "port_switch:");
+                ".globl port_switch                             \n\t"
+                "port_switch:"
 #endif
-  asm volatile ("push    %ebp                                   \n\t" \
-                "push    %esi                                   \n\t" \
-                "push    %edi                                   \n\t" \
-                "push    %ebx                                   \n\t" \
-                "movl    %esp, 12(%edx)                         \n\t" \
-                "movl    12(%ecx), %esp                         \n\t" \
-                "pop     %ebx                                   \n\t" \
-                "pop     %edi                                   \n\t" \
-                "pop     %esi                                   \n\t" \
-                "pop     %ebp                                   \n\t" \
+                "push    %ebp                                   \n\t"
+                "push    %esi                                   \n\t"
+                "push    %edi                                   \n\t"
+                "push    %ebx                                   \n\t"
+                "movl    %esp, 12(%edx)                         \n\t"
+                "movl    12(%ecx), %esp                         \n\t"
+                "pop     %ebx                                   \n\t"
+                "pop     %edi                                   \n\t"
+                "pop     %esi                                   \n\t"
+                "pop     %ebp                                   \n\t"
                 "ret");
 }
 
@@ -76,17 +78,16 @@ void port_halt(void) {
 }
 
 /**
- * Threads return point, it just invokes @p chThdExit().
+ * @brief   Start a thread by invoking its work function.
+ * @details If the work function returns @p chThdExit() is automatically
+ *          invoked.
  */
-void threadexit(void) {
+__attribute__((cdecl, noreturn))
+void _port_thread_start(msg_t (*pf)(void *), void *p) {
 
-#if defined(WIN32) || defined (__APPLE__)
-  asm volatile ("push    %eax                                   \n\t" \
-                "call    _chThdExit");
-#else
-  asm volatile ("push    %eax                                   \n\t" \
-                "call    chThdExit");
-#endif
+  chSysUnlock();
+  chThdExit(pf(p));
+  while(1);
 }
 
 /** @} */

@@ -52,7 +52,7 @@ ReadyList rlist;
  *
  * @notapi
  */
-void scheduler_init(void) {
+void _scheduler_init(void) {
 
   queue_init(&rlist.r_queue);
   rlist.r_prio = NOPRIO;
@@ -82,7 +82,7 @@ void scheduler_init(void) {
 Thread *chSchReadyI(Thread *tp) {
   Thread *cp;
 
-  /* Integrity check.*/
+  /* Integrity checks.*/
   chDbgAssert((tp->p_state != THD_STATE_READY) &&
               (tp->p_state != THD_STATE_FINAL),
               "chSchReadyI(), #1",
@@ -114,14 +114,15 @@ Thread *chSchReadyI(Thread *tp) {
 void chSchGoSleepS(tstate_t newstate) {
   Thread *otp;
 
+  chDbgCheckClassS();
+
   (otp = currp)->p_state = newstate;
 #if CH_TIME_QUANTUM > 0
   rlist.r_preempt = CH_TIME_QUANTUM;
 #endif
   setcurrp(fifo_remove(&rlist.r_queue));
   currp->p_state = THD_STATE_CURRENT;
-  dbg_trace(otp);
-  chSysSwitchI(currp, otp);
+  chSysSwitch(currp, otp);
 }
 #endif /* !defined(PORT_OPTIMIZED_GOSLEEPS) */
 
@@ -181,6 +182,8 @@ static void wakeup(void *p) {
  */
 msg_t chSchGoSleepTimeoutS(tstate_t newstate, systime_t time) {
 
+  chDbgCheckClassS();
+
   if (TIME_INFINITE != time) {
     VirtualTimer vt;
 
@@ -215,6 +218,8 @@ msg_t chSchGoSleepTimeoutS(tstate_t newstate, systime_t time) {
 #if !defined(PORT_OPTIMIZED_WAKEUPS) || defined(__DOXYGEN__)
 void chSchWakeupS(Thread *ntp, msg_t msg) {
 
+  chDbgCheckClassS();
+
   ntp->p_u.rdymsg = msg;
   /* If the waken thread has a not-greater priority than the current
      one then it is just inserted in the ready list else it made
@@ -229,65 +234,43 @@ void chSchWakeupS(Thread *ntp, msg_t msg) {
 #endif
     setcurrp(ntp);
     ntp->p_state = THD_STATE_CURRENT;
-    dbg_trace(otp);
-    chSysSwitchI(ntp, otp);
+    chSysSwitch(ntp, otp);
   }
 }
 #endif /* !defined(PORT_OPTIMIZED_WAKEUPS) */
-
-/**
- * @brief   Switches to the first thread on the runnable queue.
- * @note    It is intended to be called if @p chSchRescRequiredI() evaluates
- *          to @p TRUE.
- *
- * @iclass
- */
-#if !defined(PORT_OPTIMIZED_DORESCHEDULEI) || defined(__DOXYGEN__)
-void chSchDoRescheduleI(void) {
-  Thread *otp;
-
-#if CH_TIME_QUANTUM > 0
-  rlist.r_preempt = CH_TIME_QUANTUM;
-#endif
-  otp = currp;
-  /* Picks the first thread from the ready queue and makes it current.*/
-  setcurrp(fifo_remove(&rlist.r_queue));
-  currp->p_state = THD_STATE_CURRENT;
-  chSchReadyI(otp);
-  dbg_trace(otp);
-  chSysSwitchI(currp, otp);
-}
-#endif /* !defined(PORT_OPTIMIZED_DORESCHEDULEI) */
 
 /**
  * @brief   Performs a reschedule if a higher priority thread is runnable.
  * @details If a thread with a higher priority than the current thread is in
  *          the ready list then make the higher priority thread running.
  *
- * @iclass
+ * @sclass
  */
 #if !defined(PORT_OPTIMIZED_RESCHEDULES) || defined(__DOXYGEN__)
 void chSchRescheduleS(void) {
 
+  chDbgCheckClassS();
+
   if (chSchIsRescRequiredI())
-    chSchDoRescheduleI();
+    chSchDoReschedule();
 }
 #endif /* !defined(PORT_OPTIMIZED_RESCHEDULES) */
 
 /**
- * @brief   Evaluates if a reschedule is required.
+ * @brief   Evaluates if preemption is required.
  * @details The decision is taken by comparing the relative priorities and
  *          depending on the state of the round robin timeout counter.
- * @note    This function is meant to be used in the timer interrupt handler
- *          where @p chVTDoTickI() is invoked.
+ * @note    Not a user function, it is meant to be invoked by the scheduler
+ *          itself or from within the port layer.
  *
- * @retval TRUE         if there is a thread that should go in running state.
- * @retval FALSE        if a reschedule is not required.
+ * @retval TRUE         if there is a thread that must go in running state
+ *                      immediately.
+ * @retval FALSE        if preemption is not required.
  *
- * @iclass
+ * @special
  */
-#if !defined(PORT_OPTIMIZED_ISRESCHREQUIREDEXI) || defined(__DOXYGEN__)
-bool_t chSchIsRescRequiredExI(void) {
+#if !defined(PORT_OPTIMIZED_ISPREEMPTIONREQUIRED) || defined(__DOXYGEN__)
+bool_t chSchIsPreemptionRequired(void) {
   tprio_t p1 = firstprio(&rlist.r_queue);
   tprio_t p2 = currp->p_prio;
 #if CH_TIME_QUANTUM > 0
@@ -302,6 +285,29 @@ bool_t chSchIsRescRequiredExI(void) {
   return p1 > p2;
 #endif
 }
-#endif /* !defined(PORT_OPTIMIZED_ISRESCHREQUIREDEXI) */
+#endif /* !defined(PORT_OPTIMIZED_ISPREEMPTIONREQUIRED) */
+
+/**
+ * @brief   Switches to the first thread on the runnable queue.
+ * @note    Not a user function, it is meant to be invoked by the scheduler
+ *          itself or from within the port layer.
+ *
+ * @special
+ */
+#if !defined(PORT_OPTIMIZED_DORESCHEDULE) || defined(__DOXYGEN__)
+void chSchDoReschedule(void) {
+  Thread *otp;
+
+#if CH_TIME_QUANTUM > 0
+  rlist.r_preempt = CH_TIME_QUANTUM;
+#endif
+  otp = currp;
+  /* Picks the first thread from the ready queue and makes it current.*/
+  setcurrp(fifo_remove(&rlist.r_queue));
+  currp->p_state = THD_STATE_CURRENT;
+  chSchReadyI(otp);
+  chSysSwitch(currp, otp);
+}
+#endif /* !defined(PORT_OPTIMIZED_DORESCHEDULE) */
 
 /** @} */

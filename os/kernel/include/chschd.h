@@ -36,22 +36,35 @@
 #ifndef _CHSCHD_H_
 #define _CHSCHD_H_
 
-/** @brief Default thread wakeup low level message.*/
-#define RDY_OK          0
-/** @brief Low level message sent to a thread awakened by a timeout.*/
-#define RDY_TIMEOUT     -1
-/** @brief Low level message sent to a thread awakened by a reset operation.*/
-#define RDY_RESET       -2
+/**
+ * @name    Wakeup status codes
+ * @{
+ */
+#define RDY_OK          0           /**< @brief Normal wakeup message.      */
+#define RDY_TIMEOUT     -1          /**< @brief Wakeup caused by a timeout
+                                         condition.                         */
+#define RDY_RESET       -2          /**< @brief Wakeup caused by a reset
+                                         condition.                         */
+/** @} */
 
+/**
+ * @name    Priority constants
+ * @{
+ */
 #define NOPRIO          0           /**< @brief Ready list header priority. */
 #define IDLEPRIO        1           /**< @brief Idle thread priority.       */
 #define LOWPRIO         2           /**< @brief Lowest user priority.       */
 #define NORMALPRIO      64          /**< @brief Normal user priority.       */
 #define HIGHPRIO        127         /**< @brief Highest user priority.      */
 #define ABSPRIO         255         /**< @brief Greatest possible priority. */
+/** @} */
 
 /**
- * @brief   Zero time specification for some syscalls with a timeout
+ * @name    Special time constants
+ * @{
+ */
+/**
+ * @brief   Zero time specification for some functions with a timeout
  *          specification.
  * @note    Not all functions accept @p TIME_IMMEDIATE as timeout parameter,
  *          see the specific function documentation.
@@ -59,10 +72,11 @@
 #define TIME_IMMEDIATE  ((systime_t)0)
 
 /**
- * @brief   Infinite time specification for all the syscalls with a timeout
+ * @brief   Infinite time specification for all functions with a timeout
  *          specification.
  */
 #define TIME_INFINITE   ((systime_t)-1)
+/** @} */
 
 /**
  * @brief   Returns the priority of the first thread on the given ready list.
@@ -83,18 +97,16 @@ typedef struct {
                                                 initialized to zero.        */
   struct context        r_ctx;      /**< @brief Not used, present because
                                                 offsets.                    */
-#if CH_USE_REGISTRY
+#if CH_USE_REGISTRY || defined(__DOXYGEN__)
   Thread                *r_newer;   /**< @brief Newer registry element.     */
   Thread                *r_older;   /**< @brief Older registry element.     */
 #endif
   /* End of the fields shared with the Thread structure.*/
-#if CH_TIME_QUANTUM > 0
+#if (CH_TIME_QUANTUM > 0) || defined(__DOXYGEN__)
   cnt_t                 r_preempt;  /**< @brief Round robin counter.        */
 #endif
-#ifndef CH_CURRP_REGISTER_CACHE
   Thread                *r_current; /**< @brief The currently running
                                                 thread.                     */
-#endif
 } ReadyList;
 #endif /* !defined(PORT_OPTIMIZED_READYLIST_STRUCT) */
 
@@ -110,11 +122,7 @@ extern ReadyList rlist;
  *          (currp = something), use @p setcurrp() instead.
  */
 #if !defined(PORT_OPTIMIZED_CURRP) || defined(__DOXYGEN__)
-#if !defined(CH_CURRP_REGISTER_CACHE) || defined(__DOXYGEN__)
 #define currp rlist.r_current
-#else /* defined(CH_CURRP_REGISTER_CACHE) */
-register Thread *currp asm(CH_CURRP_REGISTER_CACHE);
-#endif /* defined(CH_CURRP_REGISTER_CACHE) */
 #endif /* !defined(PORT_OPTIMIZED_CURRP) */
 
 /**
@@ -134,7 +142,7 @@ register Thread *currp asm(CH_CURRP_REGISTER_CACHE);
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void scheduler_init(void);
+  void _scheduler_init(void);
 #if !defined(PORT_OPTIMIZED_READYI)
   Thread *chSchReadyI(Thread *tp);
 #endif
@@ -147,19 +155,23 @@ extern "C" {
 #if !defined(PORT_OPTIMIZED_WAKEUPS)
   void chSchWakeupS(Thread *tp, msg_t msg);
 #endif
-#if !defined(PORT_OPTIMIZED_DORESCHEDULEI)
-  void chSchDoRescheduleI(void);
-#endif
 #if !defined(PORT_OPTIMIZED_RESCHEDULES)
   void chSchRescheduleS(void);
 #endif
-#if !defined(PORT_OPTIMIZED_ISRESCHREQUIREDEXI)
-  bool_t chSchIsRescRequiredExI(void);
+#if !defined(PORT_OPTIMIZED_ISPREEMPTIONREQUIRED)
+  bool_t chSchIsPreemptionRequired(void);
+#endif
+#if !defined(PORT_OPTIMIZED_DORESCHEDULE)
+  void chSchDoReschedule(void);
 #endif
 #ifdef __cplusplus
 }
 #endif
 
+/**
+ * @name    Macro Functions
+ * @{
+ */
 /**
  * @brief   Determines if the current thread must reschedule.
  * @details This function returns @p TRUE if there is a ready thread with
@@ -192,9 +204,37 @@ extern "C" {
 #if !defined(PORT_OPTIMIZED_DOYIELDS) || defined(__DOXYGEN__)
 #define chSchDoYieldS() {                                                   \
   if (chSchCanYieldS())                                                     \
-    chSchDoRescheduleI();                                                   \
+    chSchDoReschedule();                                                    \
 }
 #endif /* !defined(PORT_OPTIMIZED_DOYIELDS) */
+
+/**
+ * @brief   Inline-able preemption code.
+ * @details This is the common preemption code, this function must be invoked
+ *          exclusively from the port layer.
+ *
+ * @special
+ */
+#if (CH_TIME_QUANTUM > 0) || defined(__DOXYGEN__)
+#define chSchPreemption() {                                                 \
+  tprio_t p1 = firstprio(&rlist.r_queue);                                   \
+  tprio_t p2 = currp->p_prio;                                               \
+  if (rlist.r_preempt) {                                                    \
+    if (p1 > p2)                                                            \
+      chSchDoReschedule();                                                  \
+  }                                                                         \
+  else {                                                                    \
+    if (p1 >= p2)                                                           \
+      chSchDoReschedule();                                                  \
+  }                                                                         \
+}
+#else /* CH_TIME_QUANTUM == 0 */
+#define chSchPreemption() {                                                 \
+  if (p1 >= p2)                                                             \
+    chSchDoReschedule();                                                    \
+}
+#endif /* CH_TIME_QUANTUM == 0 */
+/** @} */
 
 #endif /* _CHSCHD_H_ */
 

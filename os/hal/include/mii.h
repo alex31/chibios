@@ -25,11 +25,6 @@
     for full details of how and when the exception can be applied.
 */
 
-/*
- * Parts of this file are borrowed by the Linux include file linux/mii.h:
- * Copyright (C) 1996, 1999, 2001 David S. Miller (davem@redhat.com)
- */
-
 /*-*
  * @file    mii.h
  * @brief   MII Driver macros and structures.
@@ -190,7 +185,8 @@
 #define MII_DM9161_ID     0x0181b8a0
 #define MII_AM79C875_ID   0x00225540
 #define MII_KS8721_ID     0x00221610
+#define MII_STE101P_ID    0x00061C50
 
 #endif /* _MII_H_ */
 
-/*-* @} */
+/** @} */

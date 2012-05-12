@@ -74,6 +74,8 @@
   _base_sequential_stream_data
 
 /**
+ * @extends BaseSequentialStreamVMT
+ *
  * @brief   @p BaseChannel virtual methods table.
  */
 struct BaseChannelVMT {                                                     \
@@ -93,6 +95,10 @@ typedef struct {
   _base_channel_data
 } BaseChannel;
 
+/**
+ * @name    Macro Functions (BaseChannel)
+ * @{
+ */
 /**
  * @brief   Channel output check.
  * @details This function verifies if a subsequent put/write operation would
@@ -234,9 +240,13 @@ typedef struct {
  */
 #define chIOReadTimeout(ip, bp, n, time)                                    \
   ((ip)->vmt->readt(ip, bp, n, time))
+/** @} */
 
-#if CH_USE_EVENTS
-
+#if CH_USE_EVENTS || defined(__DOXYGEN__)
+/**
+ * @name    I/O status flags
+ * @{
+ */
 /** @brief No pending conditions.*/
 #define IO_NO_ERROR             0
 /** @brief Connection happened.*/
@@ -247,6 +257,9 @@ typedef struct {
 #define IO_INPUT_AVAILABLE      4
 /** @brief Output queue empty.*/
 #define IO_OUTPUT_EMPTY         8
+/** @brief Transmission end.*/
+#define IO_TRANSMISSION_END     16
+/** @} */
 
 /**
  * @brief   Type of an I/O condition flags mask.
@@ -272,6 +285,8 @@ typedef uint_fast16_t ioflags_t;
   ioflags_t             flags;
 
 /**
+ * @extends BaseChannelVMT
+ *
  * @brief   @p BaseAsynchronousChannel virtual methods table.
  */
 struct BaseAsynchronousChannelVMT {
@@ -292,6 +307,10 @@ typedef struct {
 } BaseAsynchronousChannel;
 
 /**
+ * @name    Macro Functions (BaseAsynchronousChannel)
+ * @{
+ */
+/**
  * @brief   Returns the I/O condition event source.
  * @details The event source is broadcasted when an I/O condition happens.
  *
@@ -304,8 +323,8 @@ typedef struct {
 #define chIOGetEventSource(ip) (&((ip)->event))
 
 /**
- * @brief   Adds condition flags to the channel's mask.
- * @details This function is usually called from the I/O ISTs in order to
+ * @brief   Adds status flags to the channel's mask.
+ * @details This function is usually called from the I/O ISRs in order to
  *          notify I/O conditions such as data events, errors, signal
  *          changes etc.
  *
@@ -321,7 +340,7 @@ typedef struct {
 }
 
 /**
- * @brief   Returns and clears the errors mask associated to the channel.
+ * @brief   Returns and clears the status flags associated to the channel.
  *
  * @param[in] ip        pointer to a @p BaseAsynchronousChannel or derived
  *                      class
@@ -331,6 +350,7 @@ typedef struct {
  * @api
  */
 #define chIOGetAndClearFlags(ip) ((ip)->vmt->getflags(ip))
+/** @} */
 
 /**
  * @brief   Default implementation of the @p getflags virtual method.

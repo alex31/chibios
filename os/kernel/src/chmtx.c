@@ -121,16 +121,17 @@ void chMtxLock(Mutex *mp) {
 void chMtxLockS(Mutex *mp) {
   Thread *ctp = currp;
 
+  chDbgCheckClassS();
   chDbgCheck(mp != NULL, "chMtxLockS");
 
-  /* Ia the mutex already locked? */
+  /* Is the mutex already locked? */
   if (mp->m_owner != NULL) {
     /* Priority inheritance protocol; explores the thread-mutex dependencies
        boosting the priority of all the affected threads to equal the priority
        of the running thread requesting the mutex.*/
     Thread *tp = mp->m_owner;
     /* Does the running thread have higher priority than the mutex
-       ownning thread? */
+       owning thread? */
     while (tp->p_prio < ctp->p_prio) {
       /* Make priority of thread tp match the running thread's priority.*/
       tp->p_prio = ctp->p_prio;
@@ -151,7 +152,7 @@ void chMtxLockS(Mutex *mp) {
       case THD_STATE_WTSEM:
 #endif
 #if CH_USE_MESSAGES && CH_USE_MESSAGES_PRIORITY
-      case THD_STATE_SNDMSG:
+      case THD_STATE_SNDMSGQ:
 #endif
         /* Re-enqueues tp with its new priority on the queue.*/
         prio_insert(dequeue(tp), (ThreadsQueue *)tp->p_u.wtobjp);
@@ -164,6 +165,7 @@ void chMtxLockS(Mutex *mp) {
 #endif
         /* Re-enqueues tp with its new priority on the ready list.*/
         chSchReadyI(dequeue(tp));
+        break;
       }
       break;
     }
@@ -231,6 +233,7 @@ bool_t chMtxTryLock(Mutex *mp) {
  */
 bool_t chMtxTryLockS(Mutex *mp) {
 
+  chDbgCheckClassS();
   chDbgCheck(mp != NULL, "chMtxTryLockS");
 
   if (mp->m_owner != NULL)
@@ -262,7 +265,7 @@ Mutex *chMtxUnlock(void) {
   chDbgAssert(ctp->p_mtxlist->m_owner == ctp,
               "chMtxUnlock(), #2",
               "ownership failure");
-  /* Removes the top Mutex from the Threads's owned mutexes list and matk it
+  /* Removes the top Mutex from the Thread's owned mutexes list and mark it
      as not owned.*/
   ump = ctp->p_mtxlist;
   ctp->p_mtxlist = ump->m_next;
@@ -315,6 +318,7 @@ Mutex *chMtxUnlockS(void) {
   Thread *ctp = currp;
   Mutex *ump, *mp;
 
+  chDbgCheckClassS();
   chDbgAssert(ctp->p_mtxlist != NULL,
               "chMtxUnlockS(), #1",
               "owned mutexes list empty");

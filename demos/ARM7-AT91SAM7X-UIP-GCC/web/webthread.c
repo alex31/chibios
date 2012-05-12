@@ -47,6 +47,8 @@ static const struct uip_eth_addr macaddr = {
   {0xC2, 0xAF, 0x51, 0x03, 0xCF, 0x46}
 };
 
+static const MACConfig mac_config = {macaddr.addr};
+
 #define BUF ((struct uip_eth_hdr *)&uip_buf[0])
 
 /*
@@ -77,7 +79,7 @@ static size_t network_device_read(void) {
 
   if (macWaitReceiveDescriptor(&ETH1, &rd, TIME_IMMEDIATE) != RDY_OK)
     return 0;
-  size = rd.rd_size;
+  size = rd.size;
   macReadReceiveDescriptor(&rd, uip_buf, size);
   macReleaseReceiveDescriptor(&rd);
   return size;
@@ -171,9 +173,9 @@ msg_t WebThread(void *p) {
   chEvtRegister(&evt2.et_es, &el2, ARP_TIMER_ID);
 
   /*
-   * EMAC settings.
+   * EMAC driver start.
    */
-  macSetAddress(&ETH1, &macaddr.addr[0]);
+  macStart(&ETH1, &mac_config);
   (void)macPollLinkStatus(&ETH1);
 
   /*

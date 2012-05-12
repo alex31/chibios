@@ -30,7 +30,11 @@
   |  |  |  +--LPC214x/  - Drivers for LPC214x platform.
   |  |  |  +--MSP430/   - Drivers for MSP430 platform.
   |  |  |  +--SPC56x/   - Drivers for SPC56x/MPC563xx platforms.
-  |  |  |  +--STM32/    - Drivers for STM32 platform.
+  |  |  |  +--STM32/    - Drivers for STM32 platform (common).
+  |  |  |  +--STM32F1xx/- Drivers for STM32F1xx platform.
+  |  |  |  +--STM32F2xx/- Drivers for STM32F2xx platform.
+  |  |  |  +--STM32F4xx/- Drivers for STM32F4xx platform.
+  |  |  |  +--STM32L1xx/- Drivers for STM32L1xx platform.
   |  |  |  +--STM8L/    - Drivers for STM8L platform.
   |  |  |  +--STM8S/    - Drivers for STM8S platform.
   |  |  |  +--Posix/    - Drivers for x86 Linux/OSX simulator platform.
@@ -61,8 +65,12 @@
   +--test/              - Kernel test suite source code.
   |  +--coverage/       - Code coverage project.
   +--testhal/           - HAL integration test demos.
-     +--STM32/          - STM32 HAL demos.
-     +--STM8S/          - STM8S HAL demos.
+  |  +--LPC11xx/        - LPC11xx HAL demos.
+  |  +--LPC13xx/        - LPC11xx HAL demos.
+  |  +--STM32F1xx/      - STM32F1xx HAL demos.
+  |  +--STM32F4xx/      - STM32F4xx HAL demos (valid for STM32F2xx too).
+  |  +--STM32L1xx/      - STM32L1xx HAL demos.
+  |  +--STM8S/          - STM8S HAL demos.
   +--tools              - Various tools.
      +--eclipse         - Eclipse enhancements.
 
@@ -70,12 +78,155 @@
 *** Releases                                                              ***
 *****************************************************************************
 
-*** 2.2.9 ***
+*** 2.4.1 ***
+- FIX: Fixed inconsistent LPCxxx Internal RC oscillator names (bug 3524138).
+- FIX: Fixed wrong frequency limit checks vs VDD in STM32F2xx HAL (bug
+  3524094).
+- FIX: Fixed STM32 I2C1 wrong alternate TX DMA setting (bug 3524088).
+- FIX: Fixed three testhal builds fail (bug 3523322).
+- FIX: Fixed MAC driver functions with invalid name (bug 3522808).
+- FIX: Fixed code coverage crashes with Linux/gcc-4.4.5 (bug 3522301).
+- FIX: Fixed macro dmaWaitCompletion() fails to compile in STM32 HAL (bug
+  3519202).
+- FIX: Fixed ARM addresses generated in vectors table (bug 3519037).
+- FIX: Fixed missing serial driver functionality for SAM7S64, SAM7S128 and
+  SAM7S512 (bug 3517648).
+- FIX: Fixed a few more spelling fixes (bug 3515531).
+- FIX: Fixed spurious ) char in STM32 serial_lld.h (bug 3514138).
+- FIX: Fixed problem with FPU initialization in GCC Cortex-M4 port (bug
+  3513897).
+- FIX: Spelling fixes (bug 3510812).
+- FIX: Fixed STM32 ICUD8 not functional because wrong initialization (bug
+  3508758).
 - FIX: Fixed chMBFetchI does not decrement mb_fullsem (bug 3504450).
+- FIX: Fixed STM32 PLLI2S initialization error (bug 3503490).
+- FIX: Fixed USART3 not working on STM32F2/F4 UART driver (bug 3496981).
+- FIX: Fixed stack misalignment on Posix-MacOSX (bug 3495487).
 - FIX: Fixed STM8S HSI clock initialization error (bug 3489727).
 - FIX: Fixed MMC over SPI driver performs an unnecessary SPI read (bug
   3486930).
-- FIX: Fixed Error in the BaseFileStream interface (bug 3482776).
+- FIX: Fixed Realtime counter initialization in STM32 HALs (bug 3485500).
+- FIX: Fixed PPC port broken when CH_DBG_SYSTEM_STATE_CHECK is activated
+  (bug 3485667).
+- FIX: Fixed missing PLL3 check in STM32F107 HAL (bug 3485278).
+- FIX: Fixed ADC maximum frequency limit in STM32F2/F4 ADC drivers (bug
+  3484947).
+- FIX: Fixed various minor documentation errors (bug 3484942).
+- NEW: STM32 Ethernet driver completed. Added STM32F107 and STM32F407
+  lwIP demos.
+- NEW: lwIP related code is not centralized into a single place, no need to
+  duplicate the code in each application or demo.
+- NEW: Updated the MSP port to work with the latest MSPGCC compiler (4.6.3
+  LTS 20120406 unpatched), now the old MSPGCC 3.2.3 is no more supported.
+- CHANGE: The PORT_INT_REQUIRED_STACK parameter for the Cortex-Mx ports has
+  been increased to 32 from 16 because the stack frame sizes are increased
+  when compiling with optimizations disabled, which is common during
+  debugging. In order to save RAM trim back this value when compiling with
+  optimizations enabled.
+- CHANGE: Renamed Ethernet driver in AT91 HAL ETHD1.
+
+*** 2.4.0 ***
+- NEW: Implemented new makefile system for ARM GCC ports, now objects,
+  listings and output files are generated into a "build" directory and not
+  together with sources, also implemented a simplified output log mode.
+  Now makefiles and load script files are requirements and trigger a
+  rebuild if touched.
+- NEW: Improved Cortex-Mx port, now the Cortex-M4 are Cortex-M4F are also
+  supported. Improved startup files.
+- NEW: Added a new hook THREAD_CONTEXT_SWITCH_HOOK() that allows to insert
+  code just before a context switch. For example this hook could be used
+  in oder to implement advanced power management schemes.
+- NEW: Improved Event Flags subsystems in the kernel.
+- NEW: Added a macro THD_STATE_NAMES to chthreads.h. This macro is an
+  initializer for string arrays containing thread state names.
+- NEW: Added a new debug option CH_DBG_SYSTEM_STATE_CHECK that ensures the
+  correct API call protocol. If an API is invoked out of the correct context
+  then the kernel panics with a debug message.
+- NEW: Added the new CMSIS 2.1 headers, now CMSIS resides into a shared
+  location: ./os/ports/common/ARMCMx/CMSIS. Old CMSIS files have been
+  removed from the various platforms.
+- NEW: Removed all the ch.ld files from the ARMCMx demos, now the makefiles
+  point to common ld files under the various ports. Less duplication and
+  easier maintenance.
+- NEW: Improved stack checking and reorganized memory map for the Cortex-Mx
+  demos. Now stacks are allocated at the start of the RAM, an overflow of the
+  exception stack now triggers an exception (it could go unnoticed before).
+  The process stack is organized to be checked on context switch like other
+  threads. Now all threads have an explicit stack boundary pointer.
+- NEW: Now the port layer exports info regarding the compiler and the port
+  options. The info are printed into the test reports. Date and time also
+  added.
+- NEW: Added initialization of the NVIC VTOR register to all Cortex-Mx (v7M)
+  ports. Also added a port option CORTEX_VTOR_INIT to enforce a different
+  default value into the register.
+- NEW: Added "IRQ_STORM" test applications to those platforms supporting
+  ISR preemption.
+- NEW: Added a chprintf() function to ./os/various, it can print on any
+  BaseChannel interface.
+- NEW: Improved the mini shell, enhanced info command, optimizations and
+  removed the shellPrint() and shellPrintLine() functions, now it uses
+  chprintf() for output.
+- NEW: USB driver model and USB implementation for STM32F1xx and STM32L1xx.
+- NEW: USB CDC abstract driver.
+- NEW: New driver models EXT, GPT, I2C, ICU, RTC, SDC, TM.
+- NEW: Improved PWM and MAC driver models.
+- NEW: Added support for STM32L1xx, STM32F2xx and STM32F4xx.
+- NEW: Updated the STM32F1xx header file to the latest version 3.5.0 and fixed
+  it in order to correct several bugs related to the XL family.
+- NEW: Added an unified registers file for STM32: stm32.h. This file includes
+  the appropriate vendor files then adds its own additional definitions.
+- NEW: Added TIM8 support to the STM32 GPT, ICU and PWM drivers.
+- NEW: DMA sharing in the STM32 HAL.
+- NEW: ADC specific drivers for STM32L1xx, STM32F2xx and STM32F4xx.
+- NEW: EXT driver AT91SAM7x and STM32(all).
+- NEW: PAL driver for AVR.
+- NEW: GPT driver for LPC11xx, LPC13xx and STM32(all).
+- NEW: I2C driver for STM32(all).
+- NEW: ICU driver for STM32(all).
+- NEW: RTC driver for STM32F1xx.
+- NEW: SDC driver for STM32F1xx.
+- NEW: Added handling of USART6 to the STM32 serial driver.
+- NEW: Added demos for the ST STM32F4-Discovery and STM32L1-Discovery kits.
+- NEW: Updated AVR demos to use the new PAL driver.
+- NEW: Now an error is generated at compile time when trying to enable the
+  options CH_DBG_ENABLE_STACK_CHECK on ports that do not support it.
+- NEW: Added a kernel-only Cortex-Mx demo as reference project for users not
+  interested in the HAL but just want to use the ChibiOS/RT kernel.
+  The demo is named ARMCM3-GENERIC-KERNEL and is defaulted to the STM32, in
+  order to use it on other families or on the ARM Cortex-M0 just change the
+  inclusion paths in the makefile.
+- NEW: Integrated new FatFs version 0.8b.
+- NEW: lwIP 1.4.0 has been integrated, this new version does not require
+  custom hooks into the Thread structure and is thus much lighter.
+- CHANGE: Now the callback associated to input queues is invoked before
+  reading each character. Previously it was invoked only before going
+  to sleep into the THD_STATE_WTQUEUE state.
+- CHANGE: Removed the option CH_USE_NESTED_LOCK, lwIP no more requires it and
+  it would have conflicted with CH_DBG_SYSTEM_STATE_CHECK which is far more
+  useful.
+- CHANGE: Renamed the scheduler functions chSchIsRescRequiredExI() to
+  chSchIsPreemptionRequired(), chSchDoRescheduleI() to chSchDoReschedule(),
+  chSysSwitchI() to chSysSwitch(). All those functions were special cases
+  and not regular I-class APIs.
+- CHANGE: Renamed the macros IDLE_THREAD_STACK_SIZE and INT_REQUIRED_STACK
+  to PORT_IDLE_THREAD_STACK_SIZE and PORT_INT_REQUIRED_STACK for consistency.
+- CHANGE: Removed the "old" Cortex-M3 port from the code, the current port
+  has no drawbacks and the old port is now just a maintenance cost.
+- CHANGE: Removed the CH_CURRP_REGISTER_CACHE option, it is GCC-specific so
+  it does not belong to the kernel options. The feature will be eventually
+  reimplemented as a port-specific option.
+- CHANGE: Renamed the demo ARMCM3-STM32F107-GCC in ARMCM3-STM32F107 and added
+  IAR and Keil projects.
+- CHANGE: Now the ARMCM3-STM32F107 demo targets the board Olimex STM32-P107
+  as default.
+- CHANGE: Removed all the prefixes from the structure/union field names
+  in the HAL subsystem.
+- CHANGE: Updated the documentation to use Doxygen 1.7.4 which produces a much
+  more readable output. Also modified the documentation layout to put functions
+  and variables ahead of everything else in the group pages.
+  Doxygen version below 1.7.4 cannot be used anymore because differences in
+  templates. Note that now there are two Doxygen projects, one for generating
+  the CHM file the other for plain HTML.
 
 *** 2.2.8 ***
 - NEW: Added new API chThdExitS() in order to allow atomic operations on

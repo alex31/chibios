@@ -58,7 +58,7 @@
  * @brief Events test header file
  */
 
-#if CH_USE_EVENTS
+#if CH_USE_EVENTS || defined(__DOXYGEN__)
 
 #define ALLOWED_DELAY MS2ST(5)
 
@@ -144,7 +144,7 @@ static void evt2_setup(void) {
 static msg_t thread1(void *p) {
 
   chThdSleepMilliseconds(50);
-  chEvtSignal((Thread *)p, 1);
+  chEvtSignalFlags((Thread *)p, 1);
   return 0;
 }
 
@@ -239,7 +239,7 @@ ROMCONST struct testcase testevt2 = {
   evt2_execute
 };
 
-#if CH_USE_EVENTS_TIMEOUT
+#if CH_USE_EVENTS_TIMEOUT || defined(__DOXYGEN__)
 /**
  * @page test_events_003 Events timeout
  *
@@ -292,10 +292,10 @@ ROMCONST struct testcase testevt3 = {
  * @brief   Test sequence for events.
  */
 ROMCONST struct testcase * ROMCONST patternevt[] = {
-#if CH_USE_EVENTS
+#if CH_USE_EVENTS || defined(__DOXYGEN__)
   &testevt1,
   &testevt2,
-#if CH_USE_EVENTS_TIMEOUT
+#if CH_USE_EVENTS_TIMEOUT || defined(__DOXYGEN__)
   &testevt3,
 #endif
 #endif

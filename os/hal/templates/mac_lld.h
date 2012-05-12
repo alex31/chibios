@@ -46,27 +46,6 @@
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
 
-/**
- * @brief   Number of available transmit buffers.
- */
-#if !defined(MAC_TRANSMIT_BUFFERS) || defined(__DOXYGEN__)
-#define MAC_TRANSMIT_BUFFERS            2
-#endif
-
-/**
- * @brief   Number of available receive buffers.
- */
-#if !defined(MAC_RECEIVE_BUFFERS) || defined(__DOXYGEN__)
-#define MAC_RECEIVE_BUFFERS             2
-#endif
-
-/**
- * @brief   Maximum supported frame size.
- */
-#if !defined(MAC_BUFFERS_SIZE) || defined(__DOXYGEN__)
-#define MAC_BUFFERS_SIZE                1518
-#endif
-
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
@@ -76,38 +55,72 @@
 /*===========================================================================*/
 
 /**
- * @brief   Structure representing a MAC driver.
- * @note    Implementations may extend this structure to contain more,
- *          architecture dependent, fields.
+ * @brief   Driver configuration structure.
  */
 typedef struct {
-  Semaphore             md_tdsem;       /**< Transmit semaphore.        */
-  Semaphore             md_rdsem;       /**< Receive semaphore.         */
-#if CH_USE_EVENTS
-  EventSource           md_rdevent;     /**< Receive event source.      */
+  /**
+   * @brief MAC address.
+   */
+  uint8_t               *mac_address;
+  /* End of the mandatory fields.*/
+} MACConfig;
+
+/**
+ * @brief   Structure representing a MAC driver.
+ */
+struct MACDriver {
+  /**
+   * @brief Driver state.
+   */
+  macstate_t            state;
+  /**
+   * @brief Current configuration data.
+   */
+  const MACConfig       *config;
+  /**
+   * @brief Transmit semaphore.
+   */
+  Semaphore             tdsem;
+  /**
+   * @brief Receive semaphore.
+   */
+  Semaphore             rdsem;
+#if MAC_USE_EVENTS || defined(__DOXYGEN__)
+  /**
+   * @brief Receive event.
+   */
+  EventSource           rdevent;
 #endif
   /* End of the mandatory fields.*/
-} MACDriver;
+};
 
 /**
  * @brief   Structure representing a transmit descriptor.
- * @note    Implementations may extend this structure to contain more,
- *          architecture dependent, fields.
  */
 typedef struct {
-  size_t                td_offset;      /**< Current write offset.      */
-  size_t                td_size;        /**< Available space size.      */
+  /**
+   * @brief Current write offset.
+   */
+  size_t                offset;
+  /**
+   * @brief Available space size.
+   */
+  size_t                size;
   /* End of the mandatory fields.*/
 } MACTransmitDescriptor;
 
 /**
  * @brief   Structure representing a receive descriptor.
- * @note    Implementations may extend this structure to contain more,
- *          architecture dependent, fields.
  */
 typedef struct {
-  size_t                rd_offset;      /**< Current read offset.       */
-  size_t                rd_size;        /**< Available data size.       */
+  /**
+   * @brief Current read offset.
+   */
+  size_t                offset;
+  /**
+   * @brief Available data size.
+   */
+  size_t                size;
   /* End of the mandatory fields.*/
 } MACReceiveDescriptor;
 
@@ -119,18 +132,23 @@ typedef struct {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
+#if !defined(__DOXYGEN__)
+extern MACDriver ETH1;
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
   void mac_lld_init(void);
-  void mac_lld_set_address(MACDriver *macp, const uint8_t *p);
-  msg_t max_lld_get_transmit_descriptor(MACDriver *macp,
+  void mac_lld_start(MACDriver *macp);
+  void mac_lld_stop(MACDriver *macp);
+  msg_t mac_lld_get_transmit_descriptor(MACDriver *macp,
                                         MACTransmitDescriptor *tdp);
   size_t mac_lld_write_transmit_descriptor(MACTransmitDescriptor *tdp,
                                            uint8_t *buf,
                                            size_t size);
   void mac_lld_release_transmit_descriptor(MACTransmitDescriptor *tdp);
-  msg_t max_lld_get_receive_descriptor(MACDriver *macp,
+  msg_t mac_lld_get_receive_descriptor(MACDriver *macp,
                                        MACReceiveDescriptor *rdp);
   size_t mac_lld_read_receive_descriptor(MACReceiveDescriptor *rdp,
                                          uint8_t *buf,

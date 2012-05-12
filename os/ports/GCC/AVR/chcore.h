@@ -39,11 +39,15 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+#if CH_DBG_ENABLE_STACK_CHECK
+#error "option CH_DBG_ENABLE_STACK_CHECK not supported by this port"
+#endif
+
 /**
  * @brief   If enabled allows the idle thread to enter a low power mode.
  */
 #ifndef ENABLE_WFI_IDLE
-#define ENABLE_WFI_IDLE 0
+#define ENABLE_WFI_IDLE                 0
 #endif
 
 /**
@@ -54,12 +58,22 @@
 /**
  * @brief   Name of the implemented architecture.
  */
-#define CH_ARCHITECTURE_NAME "AVR"
+#define CH_ARCHITECTURE_NAME            "AVR"
 
 /**
  * @brief   Name of the architecture variant (optional).
  */
-#define CH_CORE_VARIANT_NAME "MegaAVR"
+#define CH_CORE_VARIANT_NAME            "MegaAVR"
+
+/**
+ * @brief   Name of the compiler supported by this port.
+ */
+#define CH_COMPILER_NAME                "GCC "__VERSION__
+
+/**
+ * @brief   Port-specific information string.
+ */
+#define CH_PORT_INFO                    "None"
 
 /**
  * @brief   8 bits stack and memory alignment enforcement.
@@ -112,10 +126,8 @@ struct intctx {
   uint8_t       r12;
   uint8_t       r11;
   uint8_t       r10;
-#ifndef CH_CURRP_REGISTER_CACHE
   uint8_t       r9;
   uint8_t       r8;
-#endif
   uint8_t       r7;
   uint8_t       r6;
   uint8_t       r5;
@@ -141,26 +153,26 @@ struct context {
  * @details This code usually setup the context switching frame represented
  *          by an @p intctx structure.
  */
-#define SETUP_CONTEXT(workspace, wsize, pf, arg) {                      \
-  tp->p_ctx.sp = (struct intctx*)((uint8_t *)workspace + wsize  -       \
-                                  sizeof(struct intctx));               \
-  tp->p_ctx.sp->r2  = (int)pf;                                          \
-  tp->p_ctx.sp->r3  = (int)pf >> 8;                                     \
-  tp->p_ctx.sp->r4  = (int)arg;                                         \
-  tp->p_ctx.sp->r5  = (int)arg >> 8;                                    \
-  tp->p_ctx.sp->pcl = (int)_port_thread_start >> 8;                     \
-  tp->p_ctx.sp->pch = (int)_port_thread_start;                          \
+#define SETUP_CONTEXT(workspace, wsize, pf, arg) {                          \
+  tp->p_ctx.sp = (struct intctx*)((uint8_t *)workspace + wsize  -           \
+                                  sizeof(struct intctx));                   \
+  tp->p_ctx.sp->r2  = (int)pf;                                              \
+  tp->p_ctx.sp->r3  = (int)pf >> 8;                                         \
+  tp->p_ctx.sp->r4  = (int)arg;                                             \
+  tp->p_ctx.sp->r5  = (int)arg >> 8;                                        \
+  tp->p_ctx.sp->pcl = (int)_port_thread_start >> 8;                         \
+  tp->p_ctx.sp->pch = (int)_port_thread_start;                              \
 }
 
 /**
  * @brief   Stack size for the system idle thread.
  * @details This size depends on the idle thread implementation, usually
  *          the idle thread should take no more space than those reserved
- *          by @p INT_REQUIRED_STACK.
+ *          by @p PORT_INT_REQUIRED_STACK.
  * @note    In this port it is set to 8.
  */
-#ifndef IDLE_THREAD_STACK_SIZE
-#define IDLE_THREAD_STACK_SIZE 8
+#ifndef PORT_IDLE_THREAD_STACK_SIZE
+#define PORT_IDLE_THREAD_STACK_SIZE     8
 #endif
 
 /**
@@ -172,8 +184,8 @@ struct context {
  *          @p extctx is known to be zero.
  * @note    In this port the default is 32 bytes per thread.
  */
-#ifndef INT_REQUIRED_STACK
-#define INT_REQUIRED_STACK 32
+#ifndef PORT_INT_REQUIRED_STACK
+#define PORT_INT_REQUIRED_STACK     32
 #endif
 
 /**
@@ -184,10 +196,10 @@ struct context {
 /**
  * @brief   Computes the thread working area global size.
  */
-#define THD_WA_SIZE(n) STACK_ALIGN(sizeof(Thread) +                     \
-                                   (sizeof(struct intctx) - 1) +        \
-                                   (sizeof(struct extctx) - 1) +        \
-                                   (n) + (INT_REQUIRED_STACK))
+#define THD_WA_SIZE(n) STACK_ALIGN(sizeof(Thread) +                         \
+                                   (sizeof(struct intctx) - 1) +            \
+                                   (sizeof(struct extctx) - 1) +            \
+                                   (n) + (PORT_INT_REQUIRED_STACK))
 
 /**
  * @brief   Static working area allocation.
@@ -203,9 +215,9 @@ struct context {
  * @note    This code tricks the compiler to save all the specified registers
  *          by "touching" them.
  */
-#define PORT_IRQ_PROLOGUE() {                                           \
-  asm ("" : : : "r18", "r19", "r20", "r21", "r22", "r23", "r24",        \
-                "r25", "r26", "r27", "r30", "r31");                     \
+#define PORT_IRQ_PROLOGUE() {                                               \
+  asm ("" : : : "r18", "r19", "r20", "r21", "r22", "r23", "r24",            \
+                "r25", "r26", "r27", "r30", "r31");                         \
 }
 
 /**
@@ -213,9 +225,11 @@ struct context {
  * @details This macro must be inserted at the end of all IRQ handlers
  *          enabled to invoke system APIs.
  */
-#define PORT_IRQ_EPILOGUE() {                                           \
-  if (chSchIsRescRequiredExI())                                         \
-    chSchDoRescheduleI();                                               \
+#define PORT_IRQ_EPILOGUE() {                                               \
+  dbg_check_lock();                                                         \
+  if (chSchIsPreemptionRequired())                                          \
+    chSchDoReschedule();                                                    \
+  dbg_check_unlock();                                                       \
 }
 
 /**
@@ -241,7 +255,7 @@ struct context {
 
 /**
  * @brief   Kernel-unlock action.
- * @details Usually this function just disables interrupts but may perform more
+ * @details Usually this function just enables interrupts but may perform more
  *          actions.
  * @note    Implemented as global interrupt enable.
  */
@@ -267,7 +281,7 @@ struct context {
 
 /**
  * @brief   Disables all the interrupt sources.
- * @note    Of course non maskable interrupt sources are not included.
+ * @note    Of course non-maskable interrupt sources are not included.
  * @note    Implemented as global interrupt disable.
  */
 #define port_disable() asm volatile ("cli" : : : "memory")

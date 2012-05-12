@@ -32,8 +32,13 @@
  * @addtogroup PPC_CORE
  * @{
  */
-/** @cond never */
 
+#include "chconf.h"
+
+#define FALSE 0
+#define TRUE 1
+
+#if !defined(__DOXYGEN__)
         /*
          * INTC registers address.
          */
@@ -78,12 +83,24 @@ IVOR10:
         lis         %r3, 0x0800             /* DIS bit mask.                */
         mtspr       336, %r3                /* TSR register.                */
 
-        /* System tick handler invokation.*/
+#if CH_DBG_SYSTEM_STATE_CHECK
+        bl          dbg_check_enter_isr
+        bl          dbg_check_lock_from_isr
+#endif
         bl          chSysTimerHandlerI
-        bl          chSchIsRescRequiredExI
+#if CH_DBG_SYSTEM_STATE_CHECK
+        bl          dbg_check_unlock_from_isr
+        bl          dbg_check_leave_isr
+#endif
+
+        /* System tick handler invocation.*/
+#if CH_DBG_SYSTEM_STATE_CHECK
+        bl          dbg_check_lock
+#endif
+        bl          chSchIsPreemptionRequired
         cmpli       cr0, %r3, 0
         beq         cr0, .ctxrestore
-        bl          chSchDoRescheduleI
+        bl          chSchDoReschedule
         b           .ctxrestore
 
         /*
@@ -123,7 +140,7 @@ IVOR4:
         ori         %r3, %r3, INTC_IACKR@l  /* IACKR register address.      */
         lwz         %r3, 0(%r3)             /* IACKR register value.        */
         lwz         %r3, 0(%r3)
-        mtCTR        %r3                    /* Software handler address.    */
+        mtCTR       %r3                     /* Software handler address.    */
 
 #if PPC_USE_IRQ_PREEMPTION
         /* Allows preemption while executing the software handler.*/
@@ -145,13 +162,19 @@ IVOR4:
         stw         %r3, 0(%r3)             /* Writing any value should do. */
 
         /* Verifies if a reschedule is required.*/
-        bl          chSchIsRescRequiredExI
+#if CH_DBG_SYSTEM_STATE_CHECK
+        bl          dbg_check_lock
+#endif
+        bl          chSchIsPreemptionRequired
         cmpli       cr0, %r3, 0
         beq         cr0, .ctxrestore
-        bl          chSchDoRescheduleI
+        bl          chSchDoReschedule
 
         /* Context restore.*/
 .ctxrestore:
+#if CH_DBG_SYSTEM_STATE_CHECK
+        bl          dbg_check_unlock
+#endif
         lwz         %r3, 36(%sp)            /* Restores GPR3...GPR12.       */
         lwz         %r4, 40(%sp)
         lwz         %r5, 44(%sp)
@@ -178,5 +201,6 @@ IVOR4:
         addi        %sp, %sp, 80            /* Back to the previous frame.  */
         rfi
 
-/** @endcond */
+#endif /* !defined(__DOXYGEN__) */
+
 /** @} */

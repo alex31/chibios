@@ -38,7 +38,7 @@
  *          are guaranteed to be thread safe.<br>
  *          By enabling the @p CH_USE_MALLOC_HEAP option the heap manager
  *          will use the runtime-provided @p malloc() and @p free() as
- *          backend for the heap APIs instead of the system provided
+ *          back end for the heap APIs instead of the system provided
  *          allocator.
  * @pre     In order to use the heap APIs the @p CH_USE_HEAP option must
  *          be enabled in @p chconf.h.
@@ -72,7 +72,7 @@ static MemoryHeap default_heap;
  *
  * @notapi
  */
-void heap_init(void) {
+void _heap_init(void) {
   default_heap.h_provider = chCoreAlloc;
   default_heap.h_free.h.u.next = (union heap_header *)NULL;
   default_heap.h_free.h.size = 0;
@@ -280,7 +280,7 @@ static Mutex            hmtx;
 static Semaphore        hsem;
 #endif
 
-void heap_init(void) {
+void _heap_init(void) {
 
 #if CH_USE_MUTEXES
   chMtxInit(&hmtx);

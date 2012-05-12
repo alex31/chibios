@@ -57,7 +57,7 @@ void port_lock(void) {
 
 /**
  * @brief   Kernel-unlock action.
- * @details Usually this function just disables interrupts but may perform more
+ * @details Usually this function just enables interrupts but may perform more
  *          actions.
  */
 void port_unlock(void) {
@@ -83,7 +83,7 @@ void port_unlock_from_isr(void) {
 
 /**
  * @brief   Disables all the interrupt sources.
- * @note    Of course non maskable interrupt sources are not included.
+ * @note    Of course non-maskable interrupt sources are not included.
  */
 void port_disable(void) {
 }

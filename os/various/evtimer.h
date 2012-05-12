@@ -26,8 +26,9 @@
 */
 
 /**
- * @file evtimer.h
- * @brief Events Generator Timer structures and macros.
+ * @file    evtimer.h
+ * @brief   Events Generator Timer structures and macros.
+ *
  * @addtogroup event_timer
  * @{
  */

@@ -59,7 +59,7 @@ extern "C" {
   msg_t chSemWaitTimeoutS(Semaphore *sp, systime_t time);
   void chSemSignal(Semaphore *sp);
   void chSemSignalI(Semaphore *sp);
-  void chSemSetCounterI(Semaphore *sp, cnt_t n);
+  void chSemAddCounterI(Semaphore *sp, cnt_t n);
 #if CH_USE_SEMSW
   msg_t chSemSignalWait(Semaphore *sps, Semaphore *spw);
 #endif
@@ -90,6 +90,10 @@ extern "C" {
 #define SEMAPHORE_DECL(name, n) Semaphore name = _SEMAPHORE_DATA(name, n)
 
 /**
+ * @name    Macro Functions
+ * @{
+ */
+/**
  * @brief   Decreases the semaphore counter.
  * @details This macro can be used when the counter is known to be positive.
  *
@@ -112,6 +116,7 @@ extern "C" {
  * @iclass
  */
 #define chSemGetCounterI(sp)    ((sp)->s_cnt)
+/** @} */
 
 #endif /* CH_USE_SEMAPHORES */
 

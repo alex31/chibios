@@ -8,6 +8,11 @@ ifeq ($(USE_OPT),)
   USE_OPT = -O2 -ggdb -fomit-frame-pointer
 endif
 
+# C specific options here (added to USE_OPT).
+ifeq ($(USE_COPT),)
+  USE_COPT = 
+endif
+
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
   USE_CPPOPT = -fno-rtti
@@ -36,7 +41,7 @@ endif
 PROJECT = ch
 
 # Define linker script file here
-LDSCRIPT = mspgcc/msp430x1611.x
+LDSCRIPT = msp430.x
 
 # Imported source files
 CHIBIOS = ../..
@@ -106,7 +111,7 @@ CPPWARN = -Wall -Wextra
 #
 
 # List all default C defines here, like -D_DEBUG=1
-DDEFS =
+DDEFS = -D__MSP430F1611__
 
 # List all default ASM defines here, like -D_DEBUG=1
 DADEFS =

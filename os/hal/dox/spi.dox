@@ -27,8 +27,10 @@
 
 /**
  * @defgroup SPI SPI Driver
- * @brief Generic SPI Driver.
- * @details This module implements a generic SPI driver.
+ * @brief   Generic SPI Driver.
+ * @details This module implements a generic SPI (Serial Peripheral Interface)
+ *          driver allowing bidirectional and monodirectional transfers,
+ *          complex atomic transactions are supported as well.
  * @pre     In order to use the SPI driver the @p HAL_USE_SPI option
  *          must be enabled in @p halconf.h.
  *
@@ -42,7 +44,8 @@
   digraph example {
     size="5, 7";
     rankdir="LR";
-    node [shape=circle, fontname=Helvetica, fontsize=8, fixedsize="true", width="0.9", height="0.9"];
+    node [shape=circle, fontname=Helvetica, fontsize=8, fixedsize="true",
+          width="0.9", height="0.9"];
     edge [fontname=Helvetica, fontsize=8];
 
     stop  [label="SPI_STOP\nLow Power"];
@@ -62,6 +65,7 @@
     complete -> active [label="\nspiStartXXXI() (async)\nthen\ncallback return"];
     complete -> ready [label="\ncallback return"];
   }
+ * @enddot
  * @else
  * @dot
   digraph example {

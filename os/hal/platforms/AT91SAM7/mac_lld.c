@@ -64,14 +64,13 @@
 /**
  * @brief   Ethernet driver 1.
  */
-MACDriver ETH1;
+MACDriver ETHD1;
 
 /*===========================================================================*/
 /* Driver local variables.                                                   */
 /*===========================================================================*/
 
 #ifndef __DOXYGEN__
-static bool_t link_up;
 
 static uint8_t default_mac[] = {0xAA, 0x55, 0x13, 0x37, 0x01, 0x10};
 
@@ -108,9 +107,9 @@ static void serve_interrupt(void) {
   if ((isr & AT91C_EMAC_RCOMP) || (rsr & RSR_BITS)) {
     if (rsr & AT91C_EMAC_REC) {
       chSysLockFromIsr();
-      chSemResetI(&ETH1.md_rdsem, 0);
-#if CH_USE_EVENTS
-      chEvtBroadcastI(&ETH1.md_rdevent);
+      chSemResetI(&ETHD1.rdsem, 0);
+#if MAC_USE_EVENTS
+      chEvtBroadcastI(&ETHD1.rdevent);
 #endif
       chSysUnlockFromIsr();
     }
@@ -120,7 +119,7 @@ static void serve_interrupt(void) {
   if ((isr & AT91C_EMAC_TCOMP) || (tsr & TSR_BITS)) {
     if (tsr & AT91C_EMAC_COMP) {
       chSysLockFromIsr();
-      chSemResetI(&ETH1.md_tdsem, 0);
+      chSemResetI(&ETHD1.tdsem, 0);
       chSysUnlockFromIsr();
     }
     AT91C_BASE_EMAC->EMAC_TSR = TSR_BITS;
@@ -140,6 +139,19 @@ static void cleanup(EMACDescriptor *from) {
     if (++from >= &rd[EMAC_RECEIVE_DESCRIPTORS])
       from = rd;
   }
+}
+
+/**
+ * @brief   MAC address setup.
+ *
+ * @param[in] p         pointer to a six bytes buffer containing the MAC
+ *                      address
+ */
+static void set_address(const uint8_t *p) {
+
+  AT91C_BASE_EMAC->EMAC_SA1L = (AT91_REG)((p[3] << 24) | (p[2] << 16) |
+                                          (p[1] << 8) | p[0]);
+  AT91C_BASE_EMAC->EMAC_SA1H = (AT91_REG)((p[5] << 8) | p[4]);
 }
 
 /*===========================================================================*/
@@ -170,10 +182,33 @@ CH_IRQ_HANDLER(irq_handler) {
  * @notapi
  */
 void mac_lld_init(void) {
-  unsigned i;
 
   miiInit();
-  macObjectInit(&ETH1);
+  macObjectInit(&ETHD1);
+
+  /*
+   * Associated PHY initialization.
+   */
+  miiReset(&ETHD1);
+
+  /*
+   * EMAC pins setup. Note, PB18 is not included because it is
+   * used as #PD control and not as EF100.
+   */
+  AT91C_BASE_PIOB->PIO_ASR = EMAC_PIN_MASK;
+  AT91C_BASE_PIOB->PIO_PDR = EMAC_PIN_MASK;
+  AT91C_BASE_PIOB->PIO_PPUDR = EMAC_PIN_MASK;
+}
+
+/**
+ * @brief   Configures and activates the MAC peripheral.
+ *
+ * @param[in] macp      pointer to the @p MACDriver object
+ *
+ * @notapi
+ */
+void mac_lld_start(MACDriver *macp) {
+  unsigned i;
 
   /*
    * Buffers initialization.
@@ -192,18 +227,9 @@ void mac_lld_init(void) {
   txptr = td;
 
   /*
-   * Associated PHY initialization.
-   */
-  miiReset(&ETH1);
-
-  /*
-   * EMAC pins setup and clock enable. Note, PB18 is not included because it is
-   * used as #PD control and not as EF100.
+   * EMAC clock enable.
    */
   AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_EMAC;
-  AT91C_BASE_PIOB->PIO_ASR = EMAC_PIN_MASK;
-  AT91C_BASE_PIOB->PIO_PDR = EMAC_PIN_MASK;
-  AT91C_BASE_PIOB->PIO_PPUDR = EMAC_PIN_MASK;
 
   /*
    * EMAC Initial setup.
@@ -220,14 +246,17 @@ void mac_lld_init(void) {
   AT91C_BASE_EMAC->EMAC_NCR |= AT91C_EMAC_TE |
                                AT91C_EMAC_RE |
                                AT91C_EMAC_CLRSTAT;/* Initial NCR settings.*/
-  mac_lld_set_address(&ETH1, default_mac);
+  if (macp->config->mac_address == NULL)
+    set_address(default_mac);
+  else
+    set_address(macp->config->mac_address);
 
   /*
    * PHY device identification.
    */
   AT91C_BASE_EMAC->EMAC_NCR |= AT91C_EMAC_MPE;
-  if ((miiGet(&ETH1, MII_PHYSID1) != (PHY_ID >> 16)) ||
-      ((miiGet(&ETH1, MII_PHYSID2) & 0xFFF0) != (PHY_ID & 0xFFF0)))
+  if ((miiGet(&ETHD1, MII_PHYSID1) != (PHY_ID >> 16)) ||
+      ((miiGet(&ETHD1, MII_PHYSID2) & 0xFFF0) != (PHY_ID & 0xFFF0)))
     chSysHalt();
   AT91C_BASE_EMAC->EMAC_NCR &= ~AT91C_EMAC_MPE;
 
@@ -242,22 +271,15 @@ void mac_lld_init(void) {
 }
 
 /**
- * @brief   Low level MAC address setup.
+ * @brief   Deactivates the MAC peripheral.
  *
  * @param[in] macp      pointer to the @p MACDriver object
- * @param[in] p         pointer to a six bytes buffer containing the MAC
- *                      address. If this parameter is set to @p NULL then
- *                      a system default MAC is used. The MAC address must
- *                      be aligned with the most significant byte first.
  *
  * @notapi
  */
-void mac_lld_set_address(MACDriver *macp, const uint8_t *p) {
+void mac_lld_stop(MACDriver *macp) {
 
   (void)macp;
-  AT91C_BASE_EMAC->EMAC_SA1L = (AT91_REG)((p[3] << 24) | (p[2] << 16) |
-                                          (p[1] << 8) | p[0]);
-  AT91C_BASE_EMAC->EMAC_SA1H = (AT91_REG)((p[5] << 8) | p[4]);
 }
 
 /**
@@ -273,13 +295,13 @@ void mac_lld_set_address(MACDriver *macp, const uint8_t *p) {
  *
  * @notapi
  */
-msg_t max_lld_get_transmit_descriptor(MACDriver *macp,
+msg_t mac_lld_get_transmit_descriptor(MACDriver *macp,
                                       MACTransmitDescriptor *tdp) {
   EMACDescriptor *edp;
 
   (void)macp;
 
-  if (!link_up)
+  if (!macp->link_up)
     return RDY_TIMEOUT;
 
   chSysLock();
@@ -299,9 +321,9 @@ msg_t max_lld_get_transmit_descriptor(MACDriver *macp,
   else
     edp->w2 = W2_T_LOCKED | W2_T_USED | W2_T_LAST_BUFFER;
   chSysUnlock();
-  tdp->td_offset = 0;
-  tdp->td_size = EMAC_TRANSMIT_BUFFERS_SIZE;
-  tdp->td_physdesc = edp;
+  tdp->offset = 0;
+  tdp->size = EMAC_TRANSMIT_BUFFERS_SIZE;
+  tdp->physdesc = edp;
   return RDY_OK;
 }
 
@@ -309,7 +331,7 @@ msg_t max_lld_get_transmit_descriptor(MACDriver *macp,
  * @brief   Writes to a transmit descriptor's stream.
  *
  * @param[in] tdp       pointer to a @p MACTransmitDescriptor structure
- * @param[in] buf       pointer to the buffer cointaining the data to be
+ * @param[in] buf       pointer to the buffer containing the data to be
  *                      written
  * @param[in] size      number of bytes to be written
  * @return              The number of bytes written into the descriptor's
@@ -323,13 +345,13 @@ size_t mac_lld_write_transmit_descriptor(MACTransmitDescriptor *tdp,
                                          uint8_t *buf,
                                          size_t size) {
 
-  if (size > tdp->td_size - tdp->td_offset)
-    size = tdp->td_size - tdp->td_offset;
+  if (size > tdp->size - tdp->offset)
+    size = tdp->size - tdp->offset;
   if (size > 0) {
-    memcpy((uint8_t *)(tdp->td_physdesc->w1 & W1_T_ADDRESS_MASK) +
-                      tdp->td_offset,
+    memcpy((uint8_t *)(tdp->physdesc->w1 & W1_T_ADDRESS_MASK) +
+                      tdp->offset,
            buf, size);
-    tdp->td_offset += size;
+    tdp->offset += size;
   }
   return size;
 }
@@ -345,9 +367,9 @@ size_t mac_lld_write_transmit_descriptor(MACTransmitDescriptor *tdp,
 void mac_lld_release_transmit_descriptor(MACTransmitDescriptor *tdp) {
 
   chSysLock();
-  tdp->td_physdesc->w2 = (tdp->td_physdesc->w2 &
+  tdp->physdesc->w2 = (tdp->physdesc->w2 &
                           ~(W2_T_LOCKED | W2_T_USED | W2_T_LENGTH_MASK)) |
-                         tdp->td_offset;
+                         tdp->offset;
   AT91C_BASE_EMAC->EMAC_NCR |= AT91C_EMAC_TSTART;
   chSysUnlock();
 }
@@ -363,7 +385,7 @@ void mac_lld_release_transmit_descriptor(MACTransmitDescriptor *tdp) {
  *
  * @notapi
  */
-msg_t max_lld_get_receive_descriptor(MACDriver *macp,
+msg_t mac_lld_get_receive_descriptor(MACDriver *macp,
                                      MACReceiveDescriptor *rdp) {
   unsigned n;
   EMACDescriptor *edp;
@@ -408,9 +430,9 @@ restart:
      * End Of Frame found.
      */
     if (rxptr->w2 & W2_R_FRAME_END) {
-      rdp->rd_offset = 0;
-      rdp->rd_size = rxptr->w2 & W2_T_LENGTH_MASK;
-      rdp->rd_physdesc = edp;
+      rdp->offset = 0;
+      rdp->size = rxptr->w2 & W2_T_LENGTH_MASK;
+      rdp->physdesc = edp;
       return RDY_OK;
     }
 
@@ -443,11 +465,11 @@ restart:
 size_t mac_lld_read_receive_descriptor(MACReceiveDescriptor *rdp,
                                          uint8_t *buf,
                                          size_t size) {
-  if (size > rdp->rd_size - rdp->rd_offset)
-    size = rdp->rd_size - rdp->rd_offset;
+  if (size > rdp->size - rdp->offset)
+    size = rdp->size - rdp->offset;
   if (size > 0) {
-    uint8_t *src = (uint8_t *)(rdp->rd_physdesc->w1 & W1_R_ADDRESS_MASK) +
-                   rdp->rd_offset;
+    uint8_t *src = (uint8_t *)(rdp->physdesc->w1 & W1_R_ADDRESS_MASK) +
+                   rdp->offset;
     uint8_t *limit = &rb[EMAC_RECEIVE_DESCRIPTORS * EMAC_RECEIVE_BUFFERS_SIZE];
     if (src >= limit)
       src -= EMAC_RECEIVE_DESCRIPTORS * EMAC_RECEIVE_BUFFERS_SIZE;
@@ -457,7 +479,7 @@ size_t mac_lld_read_receive_descriptor(MACReceiveDescriptor *rdp,
     }
     else
       memcpy(buf, src, size);
-    rdp->rd_offset += size;
+    rdp->offset += size;
   }
   return size;
 }
@@ -473,7 +495,7 @@ size_t mac_lld_read_receive_descriptor(MACReceiveDescriptor *rdp,
  */
 void mac_lld_release_receive_descriptor(MACReceiveDescriptor *rdp) {
   bool_t done;
-  EMACDescriptor *edp = rdp->rd_physdesc;
+  EMACDescriptor *edp = rdp->physdesc;
 
   unsigned n = EMAC_RECEIVE_DESCRIPTORS;
   do {
@@ -512,7 +534,7 @@ bool_t mac_lld_poll_link_status(MACDriver *macp) {
   bmsr = miiGet(macp, MII_BMSR);
   if (!(bmsr & BMSR_LSTATUS)) {
     AT91C_BASE_EMAC->EMAC_NCR &= ~AT91C_EMAC_MPE;
-    return link_up = FALSE;
+    return macp->link_up = FALSE;
   }
 
   ncfgr = AT91C_BASE_EMAC->EMAC_NCFGR & ~(AT91C_EMAC_SPD | AT91C_EMAC_FD);
@@ -532,7 +554,7 @@ bool_t mac_lld_poll_link_status(MACDriver *macp) {
   }
   AT91C_BASE_EMAC->EMAC_NCFGR = ncfgr;
   AT91C_BASE_EMAC->EMAC_NCR &= ~AT91C_EMAC_MPE;
-  return link_up = TRUE;
+  return macp->link_up = TRUE;
 }
 
 #endif /* HAL_USE_MAC */

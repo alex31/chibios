@@ -39,6 +39,10 @@
 #if HAL_USE_PWM || defined(__DOXYGEN__)
 
 /*===========================================================================*/
+/* Driver local definitions.                                                 */
+/*===========================================================================*/
+
+/*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
 
@@ -76,7 +80,7 @@ void pwm_lld_init(void) {
  */
 void pwm_lld_start(PWMDriver *pwmp) {
 
-  if (pwmp->pd_state == PWM_STOP) {
+  if (pwmp->state == PWM_STOP) {
     /* Clock activation.*/
   }
   /* Configuration.*/
@@ -94,7 +98,32 @@ void pwm_lld_stop(PWMDriver *pwmp) {
 }
 
 /**
+ * @brief   Changes the period the PWM peripheral.
+ * @details This function changes the period of a PWM unit that has already
+ *          been activated using @p pwmStart().
+ * @pre     The PWM unit must have been activated using @p pwmStart().
+ * @post    The PWM unit period is changed to the new value.
+ * @note    The function has effect at the next cycle start.
+ * @note    If a period is specified that is shorter than the pulse width
+ *          programmed in one of the channels then the behavior is not
+ *          guaranteed.
+ *
+ * @param[in] pwmp      pointer to a @p PWMDriver object
+ * @param[in] period    new cycle time in ticks
+ *
+ * @notapi
+ */
+void pwm_lld_change_period(PWMDriver *pwmp, pwmcnt_t period) {
+
+}
+
+/**
  * @brief   Enables a PWM channel.
+ * @pre     The PWM unit must have been activated using @p pwmStart().
+ * @post    The channel is active using the specified configuration.
+ * @note    Depending on the hardware implementation this function has
+ *          effect starting on the next cycle (recommended implementation)
+ *          or immediately (fallback implementation).
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
  * @param[in] channel   PWM channel identifier (0...PWM_CHANNELS-1)
@@ -110,11 +139,17 @@ void pwm_lld_enable_channel(PWMDriver *pwmp,
 
 /**
  * @brief   Disables a PWM channel.
- * @details The channel is disabled and its output line returned to the
+ * @pre     The PWM unit must have been activated using @p pwmStart().
+ * @post    The channel is disabled and its output line returned to the
  *          idle state.
+ * @note    Depending on the hardware implementation this function has
+ *          effect starting on the next cycle (recommended implementation)
+ *          or immediately (fallback implementation).
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
  * @param[in] channel   PWM channel identifier (0...PWM_CHANNELS-1)
+ *
+ * @notapi
  */
 void pwm_lld_disable_channel(PWMDriver *pwmp, pwmchannel_t channel) {
 

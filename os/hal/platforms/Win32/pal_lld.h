@@ -108,6 +108,11 @@ typedef struct {
 typedef uint32_t ioportmask_t;
 
 /**
+ * @brief   Digital I/O modes.
+ */
+typedef uint32_t iomode_t;
+
+/**
  * @brief   Port Identifier.
  */
 typedef sim_vio_port_t *ioportid_t;
@@ -135,19 +140,20 @@ typedef sim_vio_port_t *ioportid_t;
  * @brief   Low level PAL subsystem initialization.
  *
  * @param[in] config    architecture-dependent ports configuration
+ *
+ * @notapi
  */
-#define pal_lld_init(config) {                                              \
-  vio_port_1 = (config)->VP1Data;                                           \
-  vio_port_2 = (config)->VP2Data;                                           \
-}
+#define pal_lld_init(config)                                                \
+  (vio_port_1 = (config)->VP1Data,                                          \
+   vio_port_2 = (config)->VP2Data)
 
 /**
  * @brief   Reads the physical I/O port states.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  *
  * @param[in] port      port identifier
  * @return              The port bits.
+ *
+ * @notapi
  */
 #define pal_lld_readport(port) ((port)->pin)
 
@@ -155,21 +161,21 @@ typedef sim_vio_port_t *ioportid_t;
  * @brief   Reads the output latch.
  * @details The purpose of this function is to read back the latched output
  *          value.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  *
  * @param[in] port      port identifier
  * @return              The latched logical states.
+ *
+ * @notapi
  */
 #define pal_lld_readlatch(port) ((port)->latch)
 
 /**
  * @brief   Writes a bits mask on a I/O port.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  *
  * @param[in] port      port identifier
  * @param[in] bits      bits to be written on the specified port
+ *
+ * @notapi
  */
 #define pal_lld_writeport(port, bits) ((port)->latch = (bits))
 
@@ -177,16 +183,16 @@ typedef sim_vio_port_t *ioportid_t;
  * @brief   Pads group mode setup.
  * @details This function programs a pads group belonging to the same port
  *          with the specified mode.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
- * @note    Programming an unknown or unsupported mode is silently ignored.
  *
  * @param[in] port      port identifier
  * @param[in] mask      group mask
+ * @param[in] offset    group bit offset within the port
  * @param[in] mode      group mode
+ *
+ * @notapi
  */
-#define pal_lld_setgroupmode(port, mask, mode) \
-  _pal_lld_setgroupmode(port, mask, mode)
+#define pal_lld_setgroupmode(port, mask, offset, mode)                      \
+  _pal_lld_setgroupmode(port, mask << offset, mode)
 
 #if !defined(__DOXYGEN__)
 extern sim_vio_port_t vio_port_1;
@@ -199,7 +205,7 @@ extern "C" {
 #endif
   void _pal_lld_setgroupmode(ioportid_t port,
                              ioportmask_t mask,
-                             uint_fast8_t mode);
+                             iomode_t mode);
 #ifdef __cplusplus
 }
 #endif

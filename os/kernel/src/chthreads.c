@@ -39,8 +39,6 @@
  *          area. In this scenario static variables are shared among all
  *          threads while automatic variables are local to the thread.<br>
  *          Operations defined for threads:
- *          - <b>Init</b>, a thread is prepared and put in the suspended
- *            state.
  *          - <b>Create</b>, a thread is started on the specified thread
  *            function. This operation is available in multiple variants,
  *            both static and dynamic.
@@ -87,9 +85,6 @@ Thread *_thread_init(Thread *tp, tprio_t prio) {
 #if CH_USE_EVENTS
   tp->p_epending = 0;
 #endif
-#if CH_USE_NESTED_LOCKS
-  tp->p_locks = 0;
-#endif
 #if CH_DBG_THREADS_PROFILING
   tp->p_time = 0;
 #endif
@@ -105,6 +100,9 @@ Thread *_thread_init(Thread *tp, tprio_t prio) {
 #endif
 #if CH_USE_MESSAGES
   queue_init(&tp->p_msgqueue);
+#endif
+#if CH_DBG_ENABLE_STACK_CHECK
+  tp->p_stklimit = (stkalign_t *)(tp + 1);
 #endif
 #if defined(THREAD_EXT_INIT_HOOK)
   THREAD_EXT_INIT_HOOK(tp);
@@ -155,8 +153,10 @@ void _thread_memfill(uint8_t *startp, uint8_t *endp, uint8_t v) {
  */
 Thread *chThdCreateI(void *wsp, size_t size,
                      tprio_t prio, tfunc_t pf, void *arg) {
-  /* Thread structure is layed out in the lower part of the thread workspace */
+  /* Thread structure is laid out in the lower part of the thread workspace.*/
   Thread *tp = wsp;
+
+  chDbgCheckClassI();
 
   chDbgCheck((wsp != NULL) && (size >= THD_WA_SIZE(0)) &&
              (prio <= HIGHPRIO) && (pf != NULL),

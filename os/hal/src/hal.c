@@ -37,6 +37,10 @@
 #include "hal.h"
 
 /*===========================================================================*/
+/* Driver local definitions.                                                 */
+/*===========================================================================*/
+
+/*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
 
@@ -65,6 +69,9 @@ void halInit(void) {
 
   hal_lld_init();
 
+#if HAL_USE_TM || defined(__DOXYGEN__)
+  tmInit();
+#endif
 #if HAL_USE_PAL || defined(__DOXYGEN__)
   palInit(&pal_default_config);
 #endif
@@ -73,6 +80,18 @@ void halInit(void) {
 #endif
 #if HAL_USE_CAN || defined(__DOXYGEN__)
   canInit();
+#endif
+#if HAL_USE_EXT || defined(__DOXYGEN__)
+  extInit();
+#endif
+#if HAL_USE_GPT || defined(__DOXYGEN__)
+  gptInit();
+#endif
+#if HAL_USE_I2C || defined(__DOXYGEN__)
+  i2cInit();
+#endif
+#if HAL_USE_ICU || defined(__DOXYGEN__)
+  icuInit();
 #endif
 #if HAL_USE_MAC || defined(__DOXYGEN__)
   macInit();
@@ -83,17 +102,100 @@ void halInit(void) {
 #if HAL_USE_SERIAL || defined(__DOXYGEN__)
   sdInit();
 #endif
+#if HAL_USE_SDC || defined(__DOXYGEN__)
+  sdcInit();
+#endif
 #if HAL_USE_SPI || defined(__DOXYGEN__)
   spiInit();
-#endif
-#if HAL_USE_MMC_SPI || defined(__DOXYGEN__)
-  mmcInit();
 #endif
 #if HAL_USE_UART || defined(__DOXYGEN__)
   uartInit();
 #endif
+#if HAL_USE_USB || defined(__DOXYGEN__)
+  usbInit();
+#endif
+#if HAL_USE_MMC_SPI || defined(__DOXYGEN__)
+  mmcInit();
+#endif
+#if HAL_USE_SERIAL_USB || defined(__DOXYGEN__)
+  sduInit();
+#endif
+#if HAL_USE_RTC || defined(__DOXYGEN__)
+  rtcInit();
+#endif
   /* Board specific initialization.*/
   boardInit();
 }
+
+#if HAL_IMPLEMENTS_COUNTERS || defined(__DOXYGEN__)
+/**
+ * @brief   Realtime window test.
+ * @details This function verifies if the current realtime counter value
+ *          lies within the specified range or not. The test takes care
+ *          of the realtime counter wrapping to zero on overflow.
+ * @note    When start==end then the function returns always true because the
+ *          whole time range is specified.
+ * @note    This is an optional service that could not be implemented in
+ *          all HAL implementations.
+ * @note    This function can be called from any context.
+ *
+ * @par Example 1
+ * Example of a guarded loop using the realtime counter. The loop implements
+ * a timeout after one second.
+ * @code
+ *   halrtcnt_t start = halGetCounterValue();
+ *   halrtcnt_t timeout  = start + S2RTT(1);
+ *   while (my_condition) {
+ *     if (!halIsCounterWithin(start, timeout)
+ *       return TIMEOUT;
+ *     // Do something.
+ *   }
+ *   // Continue.
+ * @endcode
+ *
+ * @par Example 2
+ * Example of a loop that lasts exactly 50 microseconds.
+ * @code
+ *   halrtcnt_t start = halGetCounterValue();
+ *   halrtcnt_t timeout  = start + US2RTT(50);
+ *   while (halIsCounterWithin(start, timeout)) {
+ *     // Do something.
+ *   }
+ *   // Continue.
+ * @endcode
+ *
+ * @param[in] start     the start of the time window (inclusive)
+ * @param[in] end       the end of the time window (non inclusive)
+ * @retval TRUE         current time within the specified time window.
+ * @retval FALSE        current time not within the specified time window.
+ *
+ * @special
+ */
+bool_t halIsCounterWithin(halrtcnt_t start, halrtcnt_t end) {
+  halrtcnt_t now = halGetCounterValue();
+
+  return end > start ? (now >= start) && (now < end) :
+                       (now >= start) || (now < end);
+}
+
+/**
+ * @brief   Polled delay.
+ * @note    The real delays is always few cycles in excess of the specified
+ *          value.
+ * @note    This is an optional service that could not be implemented in
+ *          all HAL implementations.
+ * @note    This function can be called from any context.
+ *
+ * @param[in] ticks     number of ticks
+ *
+ * @special
+ */
+void halPolledDelay(halrtcnt_t ticks) {
+  halrtcnt_t start = halGetCounterValue();
+  halrtcnt_t timeout  = start + (ticks);
+  while (halIsCounterWithin(start, timeout))
+    ;
+}
+#endif /* HAL_IMPLEMENTS_COUNTERS */
 
 /** @} */

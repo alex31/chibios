@@ -62,8 +62,6 @@
  * @brief   Pads mode setup.
  * @details This function programs a pads group belonging to the same port
  *          with the specified mode.
- * @note    This function is not meant to be invoked directly by the
- *          application code.
  * @note    @p PAL_MODE_UNCONNECTED is implemented as push pull output at 2MHz.
  *
  * @param[in] port      the port identifier
@@ -74,9 +72,9 @@
  */
 void _pal_lld_setgroupmode(ioportid_t port,
                            ioportmask_t mask,
-                           uint_fast8_t mode) {
+                           iomode_t mode) {
 
-  switch (mode & PAL_MODE_MASK) {
+  switch (mode) {
   case PAL_MODE_RESET:
   case PAL_MODE_INPUT_PULLUP:
     port->DDR &= ~mask;

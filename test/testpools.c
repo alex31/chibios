@@ -55,7 +55,7 @@
  * @brief Memory Pools test header file
  */
 
-#if CH_USE_MEMPOOLS
+#if CH_USE_MEMPOOLS || defined(__DOXYGEN__)
 
 static MEMORYPOOL_DECL(mp1, THD_WA_SIZE(THREADS_STACK_SIZE), NULL);
 
@@ -111,7 +111,7 @@ ROMCONST struct testcase testpools1 = {
  * @brief   Test sequence for pools.
  */
 ROMCONST struct testcase * ROMCONST patternpools[] = {
-#if CH_USE_MEMPOOLS
+#if CH_USE_MEMPOOLS || defined(__DOXYGEN__)
   &testpools1,
 #endif
   NULL

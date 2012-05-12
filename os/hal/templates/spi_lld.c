@@ -39,6 +39,10 @@
 #if HAL_USE_SPI || defined(__DOXYGEN__)
 
 /*===========================================================================*/
+/* Driver local definitions.                                                 */
+/*===========================================================================*/
+
+/*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
 
@@ -76,7 +80,7 @@ void spi_lld_init(void) {
  */
 void spi_lld_start(SPIDriver *spip) {
 
-  if (spip->spd_state == SPI_STOP) {
+  if (spip->state == SPI_STOP) {
     /* Clock activation.*/
   }
   /* Configuration.*/

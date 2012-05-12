@@ -54,7 +54,6 @@
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
 
-
 /**
  * @brief   Type of a structure representing an XXX driver.
  */
@@ -75,11 +74,11 @@ struct XXXDriver {
   /**
    * @brief Driver state.
    */
-  xxxstate_t                xxx_state;
+  xxxstate_t                state;
   /**
    * @brief Current configuration data.
    */
-  const XXXConfig           *xxx_config;
+  const XXXConfig           *config;
   /* End of the mandatory fields.*/
 };
 

@@ -72,6 +72,7 @@ SRC  = ${PORTSRC} \
        ${PLATFORMSRC} \
        $(BOARDSRC) \
        ${CHIBIOS}/os/various/shell.c \
+       ${CHIBIOS}/os/various/chprintf.c \
        main.c
 
 # List ASM source files here
@@ -106,16 +107,20 @@ ASFLAGS = -Wa,-amhls=$(<:.s=.lst) $(ADEFS)
 CPFLAGS = $(OPT) -Wall -Wextra -Wstrict-prototypes -fverbose-asm $(DEFS)
 
 ifeq ($(HOST_OSX),yes)
-	OSX_SDK = /Developer/SDKs/MacOSX10.5.sdk
-	OSX_ARCH = -mmacosx-version-min=10.3 -arch i386
-	
-	CPFLAGS += -isysroot $(OSX_SDK) $(OSX_ARCH)
-	LDFLAGS = -Wl -Map=$(PROJECT).map,-syslibroot,$(OSX_SDK),$(LIBDIR)
-	LIBS += $(OSX_ARCH)
+  ifeq ($(OSX_SDK),)
+    OSX_SDK = /Developer/SDKs/MacOSX10.7.sdk
+  endif
+  ifeq ($(OSX_ARCH),)
+    OSX_ARCH = -mmacosx-version-min=10.3 -arch i386
+  endif
+
+  CPFLAGS += -isysroot $(OSX_SDK) $(OSX_ARCH)
+  LDFLAGS = -Wl -Map=$(PROJECT).map,-syslibroot,$(OSX_SDK),$(LIBDIR)
+  LIBS += $(OSX_ARCH)
 else
-	# Linux, or other
-	CPFLAGS += -Wa,-alms=$(<:.c=.lst)
-	LDFLAGS += -Wl,-Map=$(PROJECT).map,--cref,--no-warn-mismatch $(LIBDIR)
+  # Linux, or other
+  CPFLAGS += -Wa,-alms=$(<:.c=.lst)
+  LDFLAGS += -Wl,-Map=$(PROJECT).map,--cref,--no-warn-mismatch $(LIBDIR)
 endif
 
 # Generate dependency information

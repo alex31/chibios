@@ -39,6 +39,10 @@
 #if HAL_USE_XXX || defined(__DOXYGEN__)
 
 /*===========================================================================*/
+/* Driver local definitions.                                                 */
+/*===========================================================================*/
+
+/*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
 
@@ -76,7 +80,7 @@ void xxx_lld_init(void) {
  */
 void xxx_lld_start(XXXDriver *xxxp) {
 
-  if (xxxp->xxx_state == XXX_STOP) {
+  if (xxxp->state == XXX_STOP) {
     /* Clock activation.*/
   }
   /* Configuration.*/
@@ -91,6 +95,10 @@ void xxx_lld_start(XXXDriver *xxxp) {
  */
 void xxx_lld_stop(XXXDriver *xxxp) {
 
+  if (xxxp->state == XXX_READY) {
+    /* Clock deactivation.*/
+
+  }
 }
 
 #endif /* HAL_USE_XXX */

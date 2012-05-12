@@ -44,6 +44,11 @@
 /*===========================================================================*/
 
 /**
+ * @brief   Defines the support for realtime counters in the HAL.
+ */
+#define HAL_IMPLEMENTS_COUNTERS FALSE
+
+/**
  * @brief   Platform name.
  */
 #define PLATFORM_NAME           "LPC11xx"
@@ -122,7 +127,7 @@
  */
 #if (LPC11xx_PLLCLK_SOURCE == SYSPLLCLKSEL_SYSOSC) || defined(__DOXYGEN__)
 #define LPC11xx_SYSPLLCLKIN     SYSOSCCLK
-#elif LPC11xx_PLLCLK_SOURCE == SYSPLLCLKSEL_IRCOCS
+#elif LPC11xx_PLLCLK_SOURCE == SYSPLLCLKSEL_IRCOSC
 #define LPC11xx_SYSPLLCLKIN     IRCOSCCLK
 #else
 #error "invalid LPC11xx_PLLCLK_SOURCE clock source specified"
@@ -168,7 +173,7 @@
  */
 #define  LPC11xx_SYSPLLCLKOUT   (LPC11xx_SYSPLLCCO / LPC11xx_SYSPLL_DIV)
 
-#if (LPC11xx_MAINCLK_SOURCE == SYSMAINCLKSEL_IRCOCS) || defined(__DOXYGEN__)
+#if (LPC11xx_MAINCLK_SOURCE == SYSMAINCLKSEL_IRCOSC) || defined(__DOXYGEN__)
 #define LPC11xx_MAINCLK     IRCOSCCLK
 #elif LPC11xx_MAINCLK_SOURCE == SYSMAINCLKSEL_PLLIN
 #define LPC11xx_MAINCLK     LPC11xx_SYSPLLCLKIN

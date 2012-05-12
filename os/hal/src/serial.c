@@ -39,6 +39,10 @@
 #if HAL_USE_SERIAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
+/* Driver local definitions.                                                 */
+/*===========================================================================*/
+
+/*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
 
@@ -214,6 +218,7 @@ void sdStop(SerialDriver *sdp) {
  */
 void sdIncomingDataI(SerialDriver *sdp, uint8_t b) {
 
+  chDbgCheckClassI();
   chDbgCheck(sdp != NULL, "sdIncomingDataI");
 
   if (chIQIsEmptyI(&sdp->iqueue))
@@ -240,6 +245,7 @@ void sdIncomingDataI(SerialDriver *sdp, uint8_t b) {
 msg_t sdRequestDataI(SerialDriver *sdp) {
   msg_t  b;
 
+  chDbgCheckClassI();
   chDbgCheck(sdp != NULL, "sdRequestDataI");
 
   b = chOQGetI(&sdp->oqueue);

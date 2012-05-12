@@ -23,6 +23,7 @@ in this paragraph.
    1. The files of Non-GPL Code may include the unmodified ChibiOS/RT
       distribution header files contained under:
         ./os/kernel/include
+        ./os/ports
         ./os/hal/include
         ./os/hal/platforms
         ./os/various
@@ -31,6 +32,7 @@ in this paragraph.
    2. The files of Non-GPL Code may link to the unmodified ChibiOS/RT
       distribution files contained under:
         ./os/kernel/src
+        ./os/ports
         ./os/hal/src
         ./os/hal/platforms
         ./os/various
@@ -40,9 +42,10 @@ in this paragraph.
       unmodified ChibiOS/RT distribution files contained under:
         ./os/kernel/templates
         ./os/hal/templates
-        ./os/ports
         ./boards
         ./demos
+        ./test
+        ./testhal
       without causing the resulting work to be covered by the GNU General
       Public License.
 

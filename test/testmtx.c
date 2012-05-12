@@ -67,7 +67,7 @@
  * @brief Mutexes and CondVars test header file
  */
 
-#if CH_USE_MUTEXES
+#if CH_USE_MUTEXES || defined(__DOXYGEN__)
 
 #define ALLOWED_DELAY 5
 
@@ -78,7 +78,7 @@
  */
 static MUTEX_DECL(m1);
 static MUTEX_DECL(m2);
-#if CH_USE_CONDVARS
+#if CH_USE_CONDVARS || defined(__DOXYGEN__)
 static CONDVAR_DECL(c1);
 #endif
 
@@ -107,7 +107,7 @@ static msg_t thread1(void *p) {
 
 static void mtx1_execute(void) {
 
-  tprio_t prio = chThdGetPriority(); // Because priority inheritance.
+  tprio_t prio = chThdGetPriority(); /* Because priority inheritance.*/
   chMtxLock(&m1);
   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, prio+1, thread1, "E");
   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, prio+2, thread1, "D");
@@ -127,7 +127,7 @@ ROMCONST struct testcase testmtx1 = {
   mtx1_execute
 };
 
-#if CH_DBG_THREADS_PROFILING
+#if CH_DBG_THREADS_PROFILING || defined(__DOXYGEN__)
 /**
  * @page test_mtx_002 Priority inheritance, simple case
  *
@@ -251,8 +251,8 @@ ROMCONST struct testcase testmtx2 = {
 
 static void mtx3_setup(void) {
 
-  chMtxInit(&m1); // Mutex B
-  chMtxInit(&m2); // Mutex A
+  chMtxInit(&m1); /* Mutex B.*/
+  chMtxInit(&m2); /* Mutex A.*/
 }
 
 /* Lowest priority thread */
@@ -474,7 +474,7 @@ ROMCONST struct testcase testmtx5 = {
   mtx5_execute
 };
 
-#if CH_USE_CONDVARS
+#if CH_USE_CONDVARS || defined(__DOXYGEN__)
 /**
  * @page test_mtx_006 Condition Variable signal test
  *
@@ -546,7 +546,6 @@ static void mtx7_setup(void) {
 
 static void mtx7_execute(void) {
 
-  // Bacause priority inheritance.
   tprio_t prio = chThdGetPriority();
   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, prio+1, thread10, "E");
   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, prio+2, thread10, "D");
@@ -585,7 +584,7 @@ static msg_t thread11(void *p) {
 
   chMtxLock(&m2);
   chMtxLock(&m1);
-#if CH_USE_CONDVARS_TIMEOUT
+#if CH_USE_CONDVARS_TIMEOUT || defined(__DOXYGEN__)
   chCondWaitTimeout(&c1, TIME_INFINITE);
 #else
   chCondWait(&c1);
@@ -629,15 +628,15 @@ ROMCONST struct testcase testmtx8 = {
  * @brief   Test sequence for mutexes.
  */
 ROMCONST struct testcase * ROMCONST patternmtx[] = {
-#if CH_USE_MUTEXES
+#if CH_USE_MUTEXES || defined(__DOXYGEN__)
   &testmtx1,
-#if CH_DBG_THREADS_PROFILING
+#if CH_DBG_THREADS_PROFILING || defined(__DOXYGEN__)
   &testmtx2,
   &testmtx3,
 #endif
   &testmtx4,
   &testmtx5,
-#if CH_USE_CONDVARS
+#if CH_USE_CONDVARS || defined(__DOXYGEN__)
   &testmtx6,
   &testmtx7,
   &testmtx8,

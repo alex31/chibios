@@ -163,7 +163,7 @@
             <DriverSelection>4100</DriverSelection>
           </Flash1>
           <Flash2>STLink\ST-LINKIII-KEIL.dll</Flash2>
-          <Flash3>"" ()</Flash3>
+          <Flash3></Flash3>
           <Flash4></Flash4>
         </Utilities>
         <TargetArmAds>
@@ -346,7 +346,7 @@
               <MiscControls></MiscControls>
               <Define>__heap_base__=Image$$RW_IRAM1$$ZI$$Limit __heap_end__=Image$$RW_IRAM2$$Base</Define>
               <Undefine></Undefine>
-              <IncludePath>..\;..\..\..\os\kernel\include;..\..\..\os\ports\RVCT\ARMCMx;..\..\..\os\ports\RVCT\ARMCMx\STM32;..\..\..\os\hal\include;..\..\..\os\hal\platforms\STM32;..\..\..\boards\ST_STM32VL_DISCOVERY;..\..\..\test</IncludePath>
+              <IncludePath>..\;..\..\..\os\kernel\include;..\..\..\os\ports\common\ARMCMx;..\..\..\os\ports\common\ARMCMx\CMSIS\include;..\..\..\os\ports\RVCT\ARMCMx;..\..\..\os\ports\RVCT\ARMCMx\STM32F1xx;..\..\..\os\hal\include;..\..\..\os\hal\platforms\STM32;..\..\..\os\hal\platforms\STM32\GPIOv1;..\..\..\os\hal\platforms\STM32\DMAv1;..\..\..\os\hal\platforms\STM32\USBv1;..\..\..\os\hal\platforms\STM32F1xx;..\..\..\boards\ST_STM32VL_DISCOVERY;..\..\..\test</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -361,7 +361,7 @@
               <MiscControls>--cpreproc</MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>..\;..\..\..\boards\ST_STM32VL_DISCOVERY;..\..\..\os\ports\RVCT\ARMCMx\STM32</IncludePath>
+              <IncludePath>..\;..\..\..\boards\ST_STM32VL_DISCOVERY;..\..\..\os\ports\RVCT\ARMCMx\STM32F1xx</IncludePath>
             </VariousControls>
           </Aads>
           <LDads>
@@ -409,7 +409,7 @@
             <File>
               <FileName>vectors.s</FileName>
               <FileType>2</FileType>
-              <FilePath>..\..\..\os\ports\RVCT\ARMCMx\STM32\vectors.s</FilePath>
+              <FilePath>D:\Progetti\ChibiOS-RT\os\ports\RVCT\ARMCMx\STM32F1xx\vectors.s</FilePath>
             </File>
             <File>
               <FileName>chcoreasm_v7m.s</FileName>
@@ -425,11 +425,6 @@
               <FileName>chcore_v7m.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\os\ports\RVCT\ARMCMx\chcore_v7m.c</FilePath>
-            </File>
-            <File>
-              <FileName>nvic.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\os\ports\RVCT\ARMCMx\nvic.c</FilePath>
             </File>
             <File>
               <FileName>chcore.h</FileName>
@@ -449,7 +444,12 @@
             <File>
               <FileName>nvic.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\..\os\ports\RVCT\ARMCMx\nvic.h</FilePath>
+              <FilePath>..\..\..\os\ports\common\ARMCMx\nvic.h</FilePath>
+            </File>
+            <File>
+              <FileName>nvic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\ports\common\ARMCMx\nvic.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -687,6 +687,11 @@
               <FilePath>..\..\..\os\hal\src\hal.c</FilePath>
             </File>
             <File>
+              <FileName>i2c.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\src\i2c.c</FilePath>
+            </File>
+            <File>
               <FileName>mac.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\os\hal\src\mac.c</FilePath>
@@ -737,6 +742,11 @@
               <FilePath>..\..\..\os\hal\include\hal.h</FilePath>
             </File>
             <File>
+              <FileName>i2c.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\os\hal\include\i2c.h</FilePath>
+            </File>
+            <File>
               <FileName>mac.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\..\os\hal\include\mac.h</FilePath>
@@ -776,6 +786,91 @@
               <FileType>5</FileType>
               <FilePath>..\..\..\os\hal\include\uart.h</FilePath>
             </File>
+            <File>
+              <FileName>usb.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\src\usb.c</FilePath>
+            </File>
+            <File>
+              <FileName>ext.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\src\ext.c</FilePath>
+            </File>
+            <File>
+              <FileName>gpt.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\src\gpt.c</FilePath>
+            </File>
+            <File>
+              <FileName>icu.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\src\icu.c</FilePath>
+            </File>
+            <File>
+              <FileName>rtc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\src\rtc.c</FilePath>
+            </File>
+            <File>
+              <FileName>sdc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\src\sdc.c</FilePath>
+            </File>
+            <File>
+              <FileName>serial_usb.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\src\serial_usb.c</FilePath>
+            </File>
+            <File>
+              <FileName>tm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\src\tm.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_cdc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\os\hal\include\usb_cdc.h</FilePath>
+            </File>
+            <File>
+              <FileName>ext.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\os\hal\include\ext.h</FilePath>
+            </File>
+            <File>
+              <FileName>gpt.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\os\hal\include\gpt.h</FilePath>
+            </File>
+            <File>
+              <FileName>icu.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\os\hal\include\icu.h</FilePath>
+            </File>
+            <File>
+              <FileName>rtc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\os\hal\include\rtc.h</FilePath>
+            </File>
+            <File>
+              <FileName>sdc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\os\hal\include\sdc.h</FilePath>
+            </File>
+            <File>
+              <FileName>serial_usb.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\os\hal\include\serial_usb.h</FilePath>
+            </File>
+            <File>
+              <FileName>tm.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\os\hal\include\tm.h</FilePath>
+            </File>
+            <File>
+              <FileName>usb.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\os\hal\include\usb.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -784,7 +879,7 @@
             <File>
               <FileName>adc_lld.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\adc_lld.c</FilePath>
+              <FilePath>D:\Progetti\ChibiOS-RT\os\hal\platforms\STM32F1xx\adc_lld.c</FilePath>
             </File>
             <File>
               <FileName>can_lld.c</FileName>
@@ -794,12 +889,12 @@
             <File>
               <FileName>hal_lld.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\hal_lld.c</FilePath>
+              <FilePath>D:\Progetti\ChibiOS-RT\os\hal\platforms\STM32F1xx\hal_lld.c</FilePath>
             </File>
             <File>
               <FileName>pal_lld.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\pal_lld.c</FilePath>
+              <FilePath>D:\Progetti\ChibiOS-RT\os\hal\platforms\STM32\GPIOv1\pal_lld.c</FilePath>
             </File>
             <File>
               <FileName>pwm_lld.c</FileName>
@@ -817,11 +912,6 @@
               <FilePath>..\..\..\os\hal\platforms\STM32\spi_lld.c</FilePath>
             </File>
             <File>
-              <FileName>stm32_dma.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\stm32_dma.c</FilePath>
-            </File>
-            <File>
               <FileName>uart_lld.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\os\hal\platforms\STM32\uart_lld.c</FilePath>
@@ -829,7 +919,7 @@
             <File>
               <FileName>adc_lld.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\adc_lld.h</FilePath>
+              <FilePath>D:\Progetti\ChibiOS-RT\os\hal\platforms\STM32F1xx\adc_lld.h</FilePath>
             </File>
             <File>
               <FileName>can_lld.h</FileName>
@@ -837,24 +927,19 @@
               <FilePath>..\..\..\os\hal\platforms\STM32\can_lld.h</FilePath>
             </File>
             <File>
-              <FileName>core_cm3.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\core_cm3.h</FilePath>
-            </File>
-            <File>
               <FileName>hal_lld.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\hal_lld.h</FilePath>
+              <FilePath>D:\Progetti\ChibiOS-RT\os\hal\platforms\STM32F1xx\hal_lld.h</FilePath>
             </File>
             <File>
               <FileName>hal_lld_f103.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\hal_lld_f103.h</FilePath>
+              <FilePath>D:\Progetti\ChibiOS-RT\os\hal\platforms\STM32F1xx\hal_lld_f103.h</FilePath>
             </File>
             <File>
               <FileName>pal_lld.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\pal_lld.h</FilePath>
+              <FilePath>D:\Progetti\ChibiOS-RT\os\hal\platforms\STM32\GPIOv1\pal_lld.h</FilePath>
             </File>
             <File>
               <FileName>pwm_lld.h</FileName>
@@ -872,19 +957,24 @@
               <FilePath>..\..\..\os\hal\platforms\STM32\spi_lld.h</FilePath>
             </File>
             <File>
-              <FileName>stm32_dma.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\stm32_dma.h</FilePath>
-            </File>
-            <File>
               <FileName>stm32f10x.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\stm32f10x.h</FilePath>
+              <FilePath>D:\Progetti\ChibiOS-RT\os\hal\platforms\STM32F1xx\stm32f10x.h</FilePath>
             </File>
             <File>
               <FileName>uart_lld.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\..\os\hal\platforms\STM32\uart_lld.h</FilePath>
+            </File>
+            <File>
+              <FileName>stm32_dma.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\platforms\STM32F1xx\stm32_dma.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32_dma.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\os\hal\platforms\STM32F1xx\stm32_dma.h</FilePath>
             </File>
           </Files>
         </Group>
