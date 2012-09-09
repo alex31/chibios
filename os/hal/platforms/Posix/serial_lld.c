@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -128,7 +121,7 @@ static bool_t connint(SerialDriver *sdp) {
       goto abort;
     }
     chSysLockFromIsr();
-    chIOAddFlagsI(sdp, IO_CONNECTED);
+    chnAddFlagsI(sdp, CHN_CONNECTED);
     chSysUnlockFromIsr();
     return TRUE;
   }
@@ -156,7 +149,7 @@ static bool_t inint(SerialDriver *sdp) {
       close(sdp->com_data);
       sdp->com_data = INVALID_SOCKET;
       chSysLockFromIsr();
-      chIOAddFlagsI(sdp, IO_DISCONNECTED);
+      chnAddFlagsI(sdp, CHN_DISCONNECTED);
       chSysUnlockFromIsr();
       return FALSE;
     case INVALID_SOCKET:
@@ -197,7 +190,7 @@ static bool_t outint(SerialDriver *sdp) {
       close(sdp->com_data);
       sdp->com_data = INVALID_SOCKET;
       chSysLockFromIsr();
-      chIOAddFlagsI(sdp, IO_DISCONNECTED);
+      chnAddFlagsI(sdp, CHN_DISCONNECTED);
       chSysUnlockFromIsr();
       return FALSE;
     case INVALID_SOCKET:

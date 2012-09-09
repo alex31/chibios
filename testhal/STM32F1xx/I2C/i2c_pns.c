@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -35,8 +28,8 @@
 /* I2C1 */
 static const I2CConfig i2cfg1 = {
     OPMODE_I2C,
-    360000,
-    FAST_DUTY_CYCLE_16_9,
+    400000,
+    FAST_DUTY_CYCLE_2,
 };
 
 
@@ -50,9 +43,9 @@ void I2CInit_pns(void){
   palSetPadMode(IOPORT2, 6, PAL_MODE_STM32_ALTERNATE_OPENDRAIN);
   palSetPadMode(IOPORT2, 7, PAL_MODE_STM32_ALTERNATE_OPENDRAIN);
 
-  /* startups. Pauses added just to be safe */
-  chThdSleepMilliseconds(100);
-  init_lis3();
+  chThdSleepMilliseconds(100);  /* Just to be safe. */
+
+  init_lis3();                  /* accelerometer init */
 }
 
 

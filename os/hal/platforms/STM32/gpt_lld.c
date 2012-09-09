@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -118,12 +111,15 @@ static void gpt_lld_serve_interrupt(GPTDriver *gptp) {
 /*===========================================================================*/
 
 #if STM32_GPT_USE_TIM1
+#if !defined(STM32_TIM1_UP_HANDLER)
+#error "STM32_TIM1_UP_HANDLER not defined"
+#endif
 /**
  * @brief   TIM2 interrupt handler.
  *
  * @isr
  */
-CH_IRQ_HANDLER(TIM1_UP_IRQHandler) {
+CH_IRQ_HANDLER(STM32_TIM1_UP_HANDLER) {
 
   CH_IRQ_PROLOGUE();
 
@@ -134,12 +130,15 @@ CH_IRQ_HANDLER(TIM1_UP_IRQHandler) {
 #endif /* STM32_GPT_USE_TIM1 */
 
 #if STM32_GPT_USE_TIM2
+#if !defined(STM32_TIM2_HANDLER)
+#error "STM32_TIM2_HANDLER not defined"
+#endif
 /**
  * @brief   TIM2 interrupt handler.
  *
  * @isr
  */
-CH_IRQ_HANDLER(TIM2_IRQHandler) {
+CH_IRQ_HANDLER(STM32_TIM2_HANDLER) {
 
   CH_IRQ_PROLOGUE();
 
@@ -150,12 +149,15 @@ CH_IRQ_HANDLER(TIM2_IRQHandler) {
 #endif /* STM32_GPT_USE_TIM2 */
 
 #if STM32_GPT_USE_TIM3
+#if !defined(STM32_TIM3_HANDLER)
+#error "STM32_TIM3_HANDLER not defined"
+#endif
 /**
  * @brief   TIM3 interrupt handler.
  *
  * @isr
  */
-CH_IRQ_HANDLER(TIM3_IRQHandler) {
+CH_IRQ_HANDLER(STM32_TIM3_HANDLER) {
 
   CH_IRQ_PROLOGUE();
 
@@ -166,12 +168,15 @@ CH_IRQ_HANDLER(TIM3_IRQHandler) {
 #endif /* STM32_GPT_USE_TIM3 */
 
 #if STM32_GPT_USE_TIM4
+#if !defined(STM32_TIM4_HANDLER)
+#error "STM32_TIM4_HANDLER not defined"
+#endif
 /**
  * @brief   TIM4 interrupt handler.
  *
  * @isr
  */
-CH_IRQ_HANDLER(TIM4_IRQHandler) {
+CH_IRQ_HANDLER(STM32_TIM4_HANDLER) {
 
   CH_IRQ_PROLOGUE();
 
@@ -182,12 +187,15 @@ CH_IRQ_HANDLER(TIM4_IRQHandler) {
 #endif /* STM32_GPT_USE_TIM4 */
 
 #if STM32_GPT_USE_TIM5
+#if !defined(STM32_TIM5_HANDLER)
+#error "STM32_TIM5_HANDLER not defined"
+#endif
 /**
  * @brief   TIM5 interrupt handler.
  *
  * @isr
  */
-CH_IRQ_HANDLER(TIM5_IRQHandler) {
+CH_IRQ_HANDLER(STM32_TIM5_HANDLER) {
 
   CH_IRQ_PROLOGUE();
 
@@ -198,12 +206,15 @@ CH_IRQ_HANDLER(TIM5_IRQHandler) {
 #endif /* STM32_GPT_USE_TIM5 */
 
 #if STM32_GPT_USE_TIM8
+#if !defined(STM32_TIM8_UP_HANDLER)
+#error "STM32_TIM8_UP_HANDLER not defined"
+#endif
 /**
  * @brief   TIM8 interrupt handler.
  *
  * @isr
  */
-CH_IRQ_HANDLER(TIM8_UP_IRQHandler) {
+CH_IRQ_HANDLER(STM32_TIM8_UP_HANDLER) {
 
   CH_IRQ_PROLOGUE();
 
@@ -277,7 +288,7 @@ void gpt_lld_start(GPTDriver *gptp) {
     if (&GPTD1 == gptp) {
       rccEnableTIM1(FALSE);
       rccResetTIM1();
-      nvicEnableVector(TIM1_UP_IRQn,
+      nvicEnableVector(STM32_TIM1_UP_NUMBER,
                        CORTEX_PRIORITY_MASK(STM32_GPT_TIM1_IRQ_PRIORITY));
       gptp->clock = STM32_TIMCLK2;
     }
@@ -286,7 +297,7 @@ void gpt_lld_start(GPTDriver *gptp) {
     if (&GPTD2 == gptp) {
       rccEnableTIM2(FALSE);
       rccResetTIM2();
-      nvicEnableVector(TIM2_IRQn,
+      nvicEnableVector(STM32_TIM2_NUMBER,
                        CORTEX_PRIORITY_MASK(STM32_GPT_TIM2_IRQ_PRIORITY));
       gptp->clock = STM32_TIMCLK1;
     }
@@ -295,7 +306,7 @@ void gpt_lld_start(GPTDriver *gptp) {
     if (&GPTD3 == gptp) {
       rccEnableTIM3(FALSE);
       rccResetTIM3();
-      nvicEnableVector(TIM3_IRQn,
+      nvicEnableVector(STM32_TIM3_NUMBER,
                        CORTEX_PRIORITY_MASK(STM32_GPT_TIM3_IRQ_PRIORITY));
       gptp->clock = STM32_TIMCLK1;
     }
@@ -304,7 +315,7 @@ void gpt_lld_start(GPTDriver *gptp) {
     if (&GPTD4 == gptp) {
       rccEnableTIM4(FALSE);
       rccResetTIM4();
-      nvicEnableVector(TIM4_IRQn,
+      nvicEnableVector(STM32_TIM4_NUMBER,
                        CORTEX_PRIORITY_MASK(STM32_GPT_TIM4_IRQ_PRIORITY));
       gptp->clock = STM32_TIMCLK1;
     }
@@ -314,7 +325,7 @@ void gpt_lld_start(GPTDriver *gptp) {
     if (&GPTD5 == gptp) {
       rccEnableTIM5(FALSE);
       rccResetTIM5();
-      nvicEnableVector(TIM5_IRQn,
+      nvicEnableVector(STM32_TIM5_NUMBER,
                        CORTEX_PRIORITY_MASK(STM32_GPT_TIM5_IRQ_PRIORITY));
       gptp->clock = STM32_TIMCLK1;
     }
@@ -324,7 +335,7 @@ void gpt_lld_start(GPTDriver *gptp) {
     if (&GPTD8 == gptp) {
       rccEnableTIM8(FALSE);
       rccResetTIM8();
-      nvicEnableVector(TIM8_UP_IRQn,
+      nvicEnableVector(STM32_TIM8_UP_NUMBER,
                        CORTEX_PRIORITY_MASK(STM32_GPT_TIM8_IRQ_PRIORITY));
       gptp->clock = STM32_TIMCLK2;
     }
@@ -359,37 +370,37 @@ void gpt_lld_stop(GPTDriver *gptp) {
 
 #if STM32_GPT_USE_TIM1
     if (&GPTD1 == gptp) {
-      nvicDisableVector(TIM1_UP_IRQn);
+      nvicDisableVector(STM32_TIM1_UP_NUMBER);
       rccDisableTIM1(FALSE);
     }
 #endif
 #if STM32_GPT_USE_TIM2
     if (&GPTD2 == gptp) {
-      nvicDisableVector(TIM2_IRQn);
+      nvicDisableVector(STM32_TIM2_NUMBER);
       rccDisableTIM2(FALSE);
     }
 #endif
 #if STM32_GPT_USE_TIM3
     if (&GPTD3 == gptp) {
-      nvicDisableVector(TIM3_IRQn);
+      nvicDisableVector(STM32_TIM3_NUMBER);
       rccDisableTIM3(FALSE);
     }
 #endif
 #if STM32_GPT_USE_TIM4
     if (&GPTD4 == gptp) {
-      nvicDisableVector(TIM4_IRQn);
+      nvicDisableVector(STM32_TIM4_NUMBER);
       rccDisableTIM4(FALSE);
     }
 #endif
 #if STM32_GPT_USE_TIM5
     if (&GPTD5 == gptp) {
-      nvicDisableVector(TIM5_IRQn);
+      nvicDisableVector(STM32_TIM5_NUMBER);
       rccDisableTIM5(FALSE);
     }
 #endif
 #if STM32_GPT_USE_TIM8
     if (&GPTD8 == gptp) {
-      nvicDisableVector(TIM8_UP_IRQn);
+      nvicDisableVector(STM32_TIM8_UP_NUMBER);
       rccDisableTIM8(FALSE);
     }
 #endif

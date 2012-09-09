@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -53,7 +46,7 @@
 /**
  * @brief   Command handler function type.
  */
-typedef void (*shellcmd_t)(BaseChannel *chp, int argc, char *argv[]);
+typedef void (*shellcmd_t)(BaseSequentialStream *chp, int argc, char *argv[]);
 
 /**
  * @brief   Custom command entry type.
@@ -67,7 +60,7 @@ typedef struct {
  * @brief   Shell descriptor type.
  */
 typedef struct {
-  BaseChannel           *sc_channel;        /**< @brief I/O channel associated
+  BaseSequentialStream  *sc_channel;        /**< @brief I/O channel associated
                                                  to the shell.              */
   const ShellCommand    *sc_commands;       /**< @brief Shell extra commands
                                                  table.                     */
@@ -84,7 +77,7 @@ extern "C" {
   Thread *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio);
   Thread *shellCreateStatic(const ShellConfig *scp, void *wsp,
                             size_t size, tprio_t prio);
-  bool_t shellGetLine(BaseChannel *chp, char *line, unsigned size);
+  bool_t shellGetLine(BaseSequentialStream *chp, char *line, unsigned size);
 #ifdef __cplusplus
 }
 #endif

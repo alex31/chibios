@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -58,20 +51,22 @@ icucnt_t last_width, last_period;
 static void icuwidthcb(ICUDriver *icup) {
 
   palSetPad(GPIOD, GPIOD_LED4);
-  last_width = icuGetWidthI(icup);
+  last_width = icuGetWidth(icup);
 }
 
 static void icuperiodcb(ICUDriver *icup) {
 
   palClearPad(GPIOD, GPIOD_LED4);
-  last_period = icuGetPeriodI(icup);
+  last_period = icuGetPeriod(icup);
 }
 
 static ICUConfig icucfg = {
   ICU_INPUT_ACTIVE_HIGH,
   10000,                                    /* 10kHz ICU clock frequency.   */
   icuwidthcb,
-  icuperiodcb
+  icuperiodcb,
+  NULL,
+  ICU_CHANNEL_1
 };
 
 /*

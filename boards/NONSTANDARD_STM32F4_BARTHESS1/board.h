@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #ifndef _BOARD_H_
@@ -77,6 +70,7 @@
 #define GPIOA_JTDI              15
 
 #define GPIOB_RECEIVER_PPM      0
+#define GPIOB_TACHOMETER        1
 #define GPIOB_BOOT1             2
 #define GPIOB_JTDO              3
 #define GPIOB_NJTRST            4
@@ -120,7 +114,6 @@
 #define GPIOE_PWM5              9
 #define GPIOE_ITG3200_INT       10
 #define GPIOE_PWM6              11
-#define GPIOE_TACHOMETER        12
 #define GPIOE_PWM7              13
 #define GPIOE_PWM8              14
 #define GPIOE_MMA8451_INT2      15
@@ -188,7 +181,7 @@
 /* default 0x00000000 */
 #define VAL_GPIOA_OTYPER        0x00000000
 /* default 0x00000000 */
-#define VAL_GPIOA_OSPEEDR       0xAAAAAAAA
+#define VAL_GPIOA_OSPEEDR       0x00000000
 /* 0x64000000 */
 #define VAL_GPIOA_PUPDR        (PIN_PUDR_FLOATING(GPIOA_USART2_CTS) |         \
                                 PIN_PUDR_FLOATING(GPIOA_USART2_RTS) |         \
@@ -229,6 +222,7 @@
 /*
  * Port B setup.
 #define GPIOB_RECEIVER_PPM      0
+#define GPIOB_TACHOMETER        1
 #define GPIOB_BOOT1             2
 #define GPIOB_JTDO              3
 #define GPIOB_NJTRST            4
@@ -240,7 +234,7 @@
  */
 /* 0x00000280 */
 #define VAL_GPIOB_MODER        (PIN_MODE_INPUT(GPIOB_RECEIVER_PPM) |          \
-                                PIN_MODE_INPUT(1) |                           \
+                                PIN_MODE_INPUT(GPIOB_TACHOMETER) |            \
                                 PIN_MODE_INPUT(GPIOB_BOOT1) |                 \
                                 PIN_MODE_ALTERNATE(GPIOB_JTDO) |              \
                                 PIN_MODE_ALTERNATE(GPIOB_NJTRST) |            \
@@ -265,7 +259,7 @@
 #define VAL_GPIOB_OSPEEDR       0x000000C0//0xAAAAAAEA
 /* 0x00000100 */
 #define VAL_GPIOB_PUPDR        (PIN_PUDR_PULLDOWN(GPIOB_RECEIVER_PPM) |       \
-                                PIN_PUDR_PULLUP(1) |                          \
+                                PIN_PUDR_PULLDOWN(GPIOB_TACHOMETER) |         \
                                 PIN_PUDR_FLOATING(GPIOB_BOOT1) |              \
                                 PIN_PUDR_FLOATING(GPIOB_JTDO) |               \
                                 PIN_PUDR_PULLUP(GPIOB_NJTRST) |               \
@@ -431,13 +425,13 @@
                                 PIN_MODE_ALTERNATE(GPIOE_PWM5) |              \
                                 PIN_MODE_INPUT(GPIOE_ITG3200_INT) |           \
                                 PIN_MODE_ALTERNATE(GPIOE_PWM6) |              \
-                                PIN_MODE_INPUT(GPIOE_TACHOMETER) |            \
+                                PIN_MODE_INPUT(12) |                          \
                                 PIN_MODE_ALTERNATE(GPIOE_PWM7) |              \
                                 PIN_MODE_ALTERNATE(GPIOE_PWM8) |              \
                                 PIN_MODE_INPUT(GPIOE_MMA8451_INT2))
 /* 0x00000000 */
 #define VAL_GPIOE_OTYPER       (PIN_OTYPE_PUSHPULL(GPIOE_XBEE_SLEEP) |        \
-                                PIN_OTYPE_OPENDRAIN(GPIOE_XBEE_RESET) |       \
+                                PIN_OTYPE_PUSHPULL(GPIOE_XBEE_RESET) |        \
                                 PIN_OTYPE_PUSHPULL(GPIOE_USB_DISCOVERY) |     \
                                 PIN_OTYPE_OPENDRAIN(GPIOE_GPS_PWR_EN) |       \
                                 PIN_OTYPE_PUSHPULL(GPIOE_PWM5) |              \
@@ -449,8 +443,8 @@
 /* 0x00000000 */
 #define VAL_GPIOE_PUPDR        (PIN_PUDR_PULLDOWN(GPIOE_GPS_PPS) |            \
                                 PIN_PUDR_PULLUP(GPIOE_XBEE_SLEEP) |           \
-                                PIN_PUDR_PULLUP(GPIOE_XBEE_RESET) |           \
-                                PIN_PUDR_PULLUP(GPIOE_SDIO_DETECT) |        \
+                                PIN_PUDR_FLOATING(GPIOE_XBEE_RESET) |         \
+                                PIN_PUDR_PULLUP(GPIOE_SDIO_DETECT) |          \
                                 PIN_PUDR_FLOATING(GPIOE_USB_DISCOVERY) |      \
                                 PIN_PUDR_FLOATING(GPIOE_GPS_PWR_EN) |         \
                                 PIN_PUDR_PULLDOWN(GPIOE_BMP085_EOC) |         \
@@ -459,7 +453,7 @@
                                 PIN_PUDR_PULLDOWN(GPIOE_PWM5) |               \
                                 PIN_PUDR_PULLDOWN(GPIOE_ITG3200_INT) |        \
                                 PIN_PUDR_PULLDOWN(GPIOE_PWM6) |               \
-                                PIN_PUDR_PULLUP(GPIOE_TACHOMETER) |           \
+                                PIN_PUDR_PULLUP(12) |                         \
                                 PIN_PUDR_PULLDOWN(GPIOE_PWM7) |               \
                                 PIN_PUDR_PULLDOWN(GPIOE_PWM8) |               \
                                 PIN_PUDR_PULLDOWN(GPIOE_MMA8451_INT2))

@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 /*
    Concepts and parts of this file have been contributed by Uladzimir Pylinsky
@@ -45,6 +38,18 @@
 /*===========================================================================*/
 /* Driver constants.                                                         */
 /*===========================================================================*/
+
+/**
+ * @name    Date/Time bit masks
+ * @{
+ */
+#define RTC_TIME_SECONDS_MASK   0x0000001F  /* @brief Seconds mask.         */
+#define RTC_TIME_MINUTES_MASK   0x000007E0  /* @brief Minutes mask.         */
+#define RTC_TIME_HOURS_MASK     0x0000F800  /* @brief Hours mask.           */
+#define RTC_DATE_DAYS_MASK      0x001F0000  /* @brief Days mask.            */
+#define RTC_DATE_MONTHS_MASK    0x01E00000  /* @brief Months mask.          */
+#define RTC_DATE_YEARS_MASK     0xFE000000  /* @brief Years mask.           */
+/** @} */
 
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */

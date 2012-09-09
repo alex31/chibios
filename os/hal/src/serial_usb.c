@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -68,26 +61,26 @@ static cdc_linecoding_t linecoding = {
  * Interface implementation.
  */
 
-static size_t writes(void *ip, const uint8_t *bp, size_t n) {
+static size_t write(void *ip, const uint8_t *bp, size_t n) {
 
   return chOQWriteTimeout(&((SerialUSBDriver *)ip)->oqueue, bp,
                           n, TIME_INFINITE);
 }
 
-static size_t reads(void *ip, uint8_t *bp, size_t n) {
+static size_t read(void *ip, uint8_t *bp, size_t n) {
 
   return chIQReadTimeout(&((SerialUSBDriver *)ip)->iqueue, bp,
                          n, TIME_INFINITE);
 }
 
-static bool_t putwouldblock(void *ip) {
+static msg_t put(void *ip, uint8_t b) {
 
-  return chOQIsFullI(&((SerialUSBDriver *)ip)->oqueue);
+  return chOQPutTimeout(&((SerialUSBDriver *)ip)->oqueue, b, TIME_INFINITE);
 }
 
-static bool_t getwouldblock(void *ip) {
+static msg_t get(void *ip) {
 
-  return chIQIsEmptyI(&((SerialUSBDriver *)ip)->iqueue);
+  return chIQGetTimeout(&((SerialUSBDriver *)ip)->iqueue, TIME_INFINITE);
 }
 
 static msg_t putt(void *ip, uint8_t b, systime_t timeout) {
@@ -110,12 +103,12 @@ static size_t readt(void *ip, uint8_t *bp, size_t n, systime_t time) {
   return chIQReadTimeout(&((SerialUSBDriver *)ip)->iqueue, bp, n, time);
 }
 
-static ioflags_t getflags(void *ip) {
-  _ch_get_and_clear_flags_impl(ip);
+static chnflags_t getflags(void *ip) {
+  _chn_get_and_clear_flags_impl(ip);
 }
 
 static const struct SerialUSBDriverVMT vmt = {
-  writes, reads, putwouldblock, getwouldblock,
+  write, read, put, get,
   putt, gett, writet, readt,
   getflags
 };
@@ -124,27 +117,29 @@ static const struct SerialUSBDriverVMT vmt = {
  * @brief   Notification of data removed from the input queue.
  */
 static void inotify(GenericQueue *qp) {
-  SerialUSBDriver *sdup = (SerialUSBDriver *)qp->q_wrptr;
+  size_t n, maxsize;
+  SerialUSBDriver *sdup = chQGetLink(qp);
 
-  /* Writes to the input queue can only happen when the queue has been
-     emptied, then a whole packet is loaded in the queue.*/
+  /* If the USB driver is not in the appropriate state then transactions
+     must not be started.*/
+  if (usbGetDriverStateI(sdup->config->usbp) != USB_ACTIVE)
+    return;
+
+  /* If there is in the queue enough space to hold at least one packet and
+     a transaction is not yet started then a new transaction is started for
+     the available space.*/
+  maxsize = sdup->config->usbp->epc[USB_CDC_DATA_AVAILABLE_EP]->out_maxsize;
   if (!usbGetReceiveStatusI(sdup->config->usbp, USB_CDC_DATA_AVAILABLE_EP) &&
-      chIQIsEmptyI(&sdup->iqueue)) {
+      ((n = chIQGetEmptyI(&sdup->iqueue)) >= maxsize)) {
     chSysUnlock();
 
-    /* Unlocked to make the potentially long read operation preemptable.*/
-    size_t n = usbReadPacketBuffer(sdup->config->usbp,
-                                   USB_CDC_DATA_AVAILABLE_EP,
-                                   sdup->iqueue.q_buffer,
-                                   SERIAL_USB_BUFFERS_SIZE);
+    n = (n / maxsize) * maxsize;
+    usbPrepareQueuedReceive(sdup->config->usbp,
+                            USB_CDC_DATA_AVAILABLE_EP,
+                            &sdup->iqueue, n);
 
     chSysLock();
     usbStartReceiveI(sdup->config->usbp, USB_CDC_DATA_AVAILABLE_EP);
-    chIOAddFlagsI(sdup, IO_INPUT_AVAILABLE);
-    sdup->iqueue.q_rdptr = sdup->iqueue.q_buffer;
-    sdup->iqueue.q_counter = n;
-    while (notempty(&sdup->iqueue.q_waiting))
-      chSchReadyI(fifo_remove(&sdup->iqueue.q_waiting))->p_u.rdymsg = Q_OK;
   }
 }
 
@@ -152,26 +147,26 @@ static void inotify(GenericQueue *qp) {
  * @brief   Notification of data inserted into the output queue.
  */
 static void onotify(GenericQueue *qp) {
-  SerialUSBDriver *sdup = (SerialUSBDriver *)qp->q_rdptr;
   size_t n;
+  SerialUSBDriver *sdup = chQGetLink(qp);
 
-  /* If there is any data in the output queue then it is sent within a
-     single packet and the queue is emptied.*/
-  n = chOQGetFullI(&sdup->oqueue);
-  if (!usbGetTransmitStatusI(sdup->config->usbp, USB_CDC_DATA_REQUEST_EP)) {
+  /* If the USB driver is not in the appropriate state then transactions
+     must not be started.*/
+  if (usbGetDriverStateI(sdup->config->usbp) != USB_ACTIVE)
+    return;
+
+  /* If there is not an ongoing transaction and the output queue contains
+     data then a new transaction is started.*/
+  if (!usbGetTransmitStatusI(sdup->config->usbp, USB_CDC_DATA_REQUEST_EP) &&
+      ((n = chOQGetFullI(&sdup->oqueue)) > 0)) {
     chSysUnlock();
 
-    /* Unlocked to make the potentially long write operation preemptable.*/
-    usbWritePacketBuffer(sdup->config->usbp, USB_CDC_DATA_REQUEST_EP,
-                         sdup->oqueue.q_buffer, n);
+    usbPrepareQueuedTransmit(sdup->config->usbp,
+                             USB_CDC_DATA_REQUEST_EP,
+                             &sdup->oqueue, n);
 
     chSysLock();
     usbStartTransmitI(sdup->config->usbp, USB_CDC_DATA_REQUEST_EP);
-    chIOAddFlagsI(sdup, IO_OUTPUT_EMPTY);
-    sdup->oqueue.q_wrptr = sdup->oqueue.q_buffer;
-    sdup->oqueue.q_counter = chQSizeI(&sdup->oqueue);
-    while (notempty(&sdup->oqueue.q_waiting))
-      chSchReadyI(fifo_remove(&sdup->oqueue.q_waiting))->p_u.rdymsg = Q_OK;
   }
 }
 
@@ -202,14 +197,10 @@ void sduObjectInit(SerialUSBDriver *sdup) {
 
   sdup->vmt = &vmt;
   chEvtInit(&sdup->event);
-  sdup->flags = IO_NO_ERROR;
+  sdup->flags = CHN_NO_ERROR;
   sdup->state = SDU_STOP;
-  chIQInit(&sdup->iqueue, sdup->ib, SERIAL_USB_BUFFERS_SIZE, inotify);
-  chOQInit(&sdup->oqueue, sdup->ob, SERIAL_USB_BUFFERS_SIZE, onotify);
-  /* This is a dirty trick but those pointers are never used because queues
-     are accessed in block mode from the low level.*/
-  sdup->iqueue.q_wrptr = (uint8_t *)sdup;
-  sdup->oqueue.q_rdptr = (uint8_t *)sdup;
+  chIQInit(&sdup->iqueue, sdup->ib, SERIAL_USB_BUFFERS_SIZE, inotify, sdup);
+  chOQInit(&sdup->oqueue, sdup->ob, SERIAL_USB_BUFFERS_SIZE, onotify, sdup);
 }
 
 /**
@@ -232,7 +223,6 @@ void sduStart(SerialUSBDriver *sdup, const SerialUSBConfig *config) {
   config->usbp->param = sdup;
   sdup->state = SDU_READY;
   chSysUnlock();
-  usbStart(config->usbp, &config->usb_config);
 }
 
 /**
@@ -254,7 +244,22 @@ void sduStop(SerialUSBDriver *sdup) {
               "invalid state");
   sdup->state = SDU_STOP;
   chSysUnlock();
-  usbStop(sdup->config->usbp);
+}
+
+/**
+ * @brief   USB device configured handler.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ *
+ * @iclass
+ */
+void sduConfigureHookI(USBDriver *usbp) {
+  SerialUSBDriver *sdup = usbp->param;
+
+  sdup->flags = CHN_NO_ERROR;
+  chIQResetI(&sdup->iqueue);
+  chOQResetI(&sdup->oqueue);
+  chnAddFlagsI(sdup, CHN_CONNECTED);
 }
 
 /**
@@ -302,29 +307,38 @@ bool_t sduRequestsHook(USBDriver *usbp) {
  * @param[in] ep        endpoint number
  */
 void sduDataTransmitted(USBDriver *usbp, usbep_t ep) {
-  SerialUSBDriver *sdup = usbp->param;
   size_t n;
+  SerialUSBDriver *sdup = usbp->param;
+
+  (void)ep;
 
   chSysLockFromIsr();
-  /* If there is any data in the output queue then it is sent within a
-     single packet and the queue is emptied.*/
-  n = chOQGetFullI(&sdup->oqueue);
-  if (n > 0) {
+  chnAddFlagsI(sdup, CHN_OUTPUT_EMPTY);
+
+  if ((n = chOQGetFullI(&sdup->oqueue)) > 0) {
     /* The endpoint cannot be busy, we are in the context of the callback,
        so it is safe to transmit without a check.*/
     chSysUnlockFromIsr();
 
-    /* Unlocked to make the potentially long write operation preemptable.*/
-    usbWritePacketBuffer(usbp, ep, sdup->oqueue.q_buffer, n);
+    usbPrepareQueuedTransmit(usbp, ep, &sdup->oqueue, n);
 
     chSysLockFromIsr();
     usbStartTransmitI(usbp, ep);
-    chIOAddFlagsI(sdup, IO_OUTPUT_EMPTY);
-    sdup->oqueue.q_wrptr = sdup->oqueue.q_buffer;
-    sdup->oqueue.q_counter = chQSizeI(&sdup->oqueue);
-    while (notempty(&sdup->oqueue.q_waiting))
-      chSchReadyI(fifo_remove(&sdup->oqueue.q_waiting))->p_u.rdymsg = Q_OK;
   }
+  else if (!(usbp->epc[ep]->in_state->txsize &
+            (usbp->epc[ep]->in_maxsize - 1))) {
+    /* Transmit zero sized packet in case the last one has maximum allowed
+       size. Otherwise the recipient may expect more data coming soon and
+       not return buffered data to app. See section 5.8.3 Bulk Transfer
+       Packet Size Constraints of the USB Specification document.*/
+    chSysUnlockFromIsr();
+
+    usbPrepareQueuedTransmit(usbp, ep, &sdup->oqueue, 0);
+
+    chSysLockFromIsr();
+    usbStartTransmitI(usbp, ep);
+  }
+
   chSysUnlockFromIsr();
 }
 
@@ -337,30 +351,29 @@ void sduDataTransmitted(USBDriver *usbp, usbep_t ep) {
  * @param[in] ep        endpoint number
  */
 void sduDataReceived(USBDriver *usbp, usbep_t ep) {
+  size_t n, maxsize;
   SerialUSBDriver *sdup = usbp->param;
 
+  (void)ep;
+
   chSysLockFromIsr();
-  /* Writes to the input queue can only happen when the queue has been
-     emptied, then a whole packet is loaded in the queue.*/
-  if (chIQIsEmptyI(&sdup->iqueue)) {
+  chnAddFlagsI(sdup, CHN_INPUT_AVAILABLE);
+
+  /* Writes to the input queue can only happen when there is enough space
+     to hold at least one packet.*/
+  maxsize = usbp->epc[USB_CDC_DATA_AVAILABLE_EP]->out_maxsize;
+  if ((n = chIQGetEmptyI(&sdup->iqueue)) >= maxsize) {
     /* The endpoint cannot be busy, we are in the context of the callback,
        so a packet is in the buffer for sure.*/
-    size_t n;
-
     chSysUnlockFromIsr();
 
-    /* Unlocked to make the potentially long write operation preemptable.*/
-    n = usbReadPacketBuffer(usbp, ep, sdup->iqueue.q_buffer,
-                            SERIAL_USB_BUFFERS_SIZE);
+    n = (n / maxsize) * maxsize;
+    usbPrepareQueuedReceive(usbp, ep, &sdup->iqueue, n);
 
     chSysLockFromIsr();
     usbStartReceiveI(usbp, ep);
-    chIOAddFlagsI(sdup, IO_INPUT_AVAILABLE);
-    sdup->iqueue.q_rdptr = sdup->iqueue.q_buffer;
-    sdup->iqueue.q_counter = n;
-    while (notempty(&sdup->iqueue.q_waiting))
-      chSchReadyI(fifo_remove(&sdup->iqueue.q_waiting))->p_u.rdymsg = Q_OK;
   }
+
   chSysUnlockFromIsr();
 }
 

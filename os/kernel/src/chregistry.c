@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -56,6 +49,47 @@
 #include "ch.h"
 
 #if CH_USE_REGISTRY || defined(__DOXYGEN__)
+
+#define _offsetof(st, m)                                                     \
+  ((size_t)((char *)&((st *)0)->m - (char *)0))
+
+/*
+ * OS signature in ROM plus debug-related information.
+ */
+ROMCONST chroot_t ch_root = {
+  "CHRT",
+  (uint8_t)sizeof (chroot_t),
+  (uint8_t)0,
+  (uint16_t)((CH_KERNEL_MAJOR << 11) |
+             (CH_KERNEL_MINOR << 6) |
+             (CH_KERNEL_PATCH) << 0),
+  (uint8_t)sizeof (void *),
+  (uint8_t)sizeof (systime_t),
+  (uint8_t)sizeof (Thread),
+  (uint8_t)_offsetof(Thread, p_prio),
+  (uint8_t)_offsetof(Thread, p_ctx),
+  (uint8_t)_offsetof(Thread, p_newer),
+  (uint8_t)_offsetof(Thread, p_older),
+  (uint8_t)_offsetof(Thread, p_name),
+#if CH_DBG_ENABLE_STACK_CHECK
+  (uint8_t)_offsetof(Thread, p_stklimit),
+#else
+  (uint8_t)0,
+#endif
+  (uint8_t)_offsetof(Thread, p_state),
+  (uint8_t)_offsetof(Thread, p_flags),
+#if CH_USE_DYNAMIC
+  (uint8_t)_offsetof(Thread, p_refs),
+#else
+  (uint8_t)0,
+#endif
+#if CH_TIME_QUANTUM > 0
+  (uint8_t)_offsetof(Thread, p_preempt),
+#else
+  (uint8_t)0,
+#endif
+  (uint8_t)_offsetof(Thread, p_time)
+};
 
 /**
  * @brief   Returns the first thread in the system.

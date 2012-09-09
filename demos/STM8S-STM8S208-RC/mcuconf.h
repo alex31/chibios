@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /*
@@ -43,7 +36,6 @@
 #define STM8S_SYSCLK_SOURCE             CLK_SYSSEL_HSI
 #define STM8S_HSI_DIVIDER               CLK_HSI_DIV1
 #define STM8S_CPU_DIVIDER               CLK_CPU_DIV1
-#define STM8S_CAN_DIVIDER_VALUE         1
 
 /*
  * SERIAL driver system settings.

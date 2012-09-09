@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -53,33 +46,30 @@ static void extcb1(EXTDriver *extp, expchannel_t channel) {
 
 static const EXTConfig extcfg = {
   {
-   {EXT_CH_MODE_BOTH_EDGES | EXT_CH_MODE_AUTOSTART, extcb1},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL},
-   {EXT_CH_MODE_DISABLED, NULL}
-  },
-  EXT_MODE_EXTI(EXT_MODE_GPIOA, /* Button.*/
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0)
+    {EXT_CH_MODE_BOTH_EDGES | EXT_CH_MODE_AUTOSTART | EXT_MODE_GPIOA, extcb1},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL},
+    {EXT_CH_MODE_DISABLED, NULL}
+  }
 };
 
 /*

@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -109,6 +102,18 @@ typedef struct {
 #if defined(PORTG) || defined(__DOXYGEN__)
   avr_gpio_setup_t portg;
 #endif
+#if defined(PORTH) || defined(__DOXYGEN__)
+  avr_gpio_setup_t porth;
+#endif
+#if defined(PORTJ) || defined(__DOXYGEN__)
+  avr_gpio_setup_t portj;
+#endif
+#if defined(PORTK) || defined(__DOXYGEN__)
+  avr_gpio_setup_t portk;
+#endif
+#if defined(PORTL) || defined(__DOXYGEN__)
+  avr_gpio_setup_t portl;
+#endif
 } PALConfig;
 
 /**
@@ -180,6 +185,34 @@ typedef avr_gpio_registers_t *ioportid_t;
  * @brief   GPIO port G identifier.
  */
 #define IOPORT7			((volatile avr_gpio_registers_t *)&PING)
+#endif
+
+#if defined(PORTH) || defined(__DOXYGEN__)
+/**
+ * @brief   GPIO port H identifier.
+ */
+#define IOPORT8         ((volatile avr_gpio_registers_t *)&PINH)
+#endif
+
+#if defined(PORTJ) || defined(__DOXYGEN__)
+/**
+ * @brief   GPIO port J identifier.
+ */
+#define IOPORT9         ((volatile avr_gpio_registers_t *)&PINJ)
+#endif
+
+#if defined(PORTK) || defined(__DOXYGEN__)
+/**
+ * @brief   GPIO port K identifier.
+ */
+#define IOPORT10        ((volatile avr_gpio_registers_t *)&PINK)
+#endif
+
+#if defined(PORTL) || defined(__DOXYGEN__)
+/**
+ * @brief   GPIO port L identifier.
+ */
+#define IOPORT11        ((volatile avr_gpio_registers_t *)&PINL)
 #endif
 
 /*===========================================================================*/

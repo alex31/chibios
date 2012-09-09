@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -187,7 +180,7 @@ void spi_lld_init(void) {
   SPID1.ssp = LPC_SSP0;
   LPC_IOCON->SCK_LOC = LPC11xx_SPI_SCK0_SELECTOR;
 #if LPC11xx_SPI_SCK0_SELECTOR == SCK0_IS_PIO0_10
-  LPC_IOCON->JTAG_TCK_PIO0_10 = 0xC2;       /* SCK0 without resistors.      */
+  LPC_IOCON->SWCLK_PIO0_10 = 0xC2;          /* SCK0 without resistors.      */
 #elif LPC11xx_SPI_SCK0_SELECTOR == SCK0_IS_PIO2_11
   LPC_IOCON->PIO2_11 = 0xC1;                /* SCK0 without resistors.      */
 #else /* LPC11xx_SPI_SCK0_SELECTOR == SCK0_IS_PIO0_6 */

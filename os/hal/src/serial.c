@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -59,26 +52,26 @@
  * queue-level function or macro.
  */
 
-static size_t writes(void *ip, const uint8_t *bp, size_t n) {
+static size_t write(void *ip, const uint8_t *bp, size_t n) {
 
   return chOQWriteTimeout(&((SerialDriver *)ip)->oqueue, bp,
                           n, TIME_INFINITE);
 }
 
-static size_t reads(void *ip, uint8_t *bp, size_t n) {
+static size_t read(void *ip, uint8_t *bp, size_t n) {
 
   return chIQReadTimeout(&((SerialDriver *)ip)->iqueue, bp,
                          n, TIME_INFINITE);
 }
 
-static bool_t putwouldblock(void *ip) {
+static msg_t put(void *ip, uint8_t b) {
 
-  return chOQIsFullI(&((SerialDriver *)ip)->oqueue);
+  return chOQPutTimeout(&((SerialDriver *)ip)->oqueue, b, TIME_INFINITE);
 }
 
-static bool_t getwouldblock(void *ip) {
+static msg_t get(void *ip) {
 
-  return chIQIsEmptyI(&((SerialDriver *)ip)->iqueue);
+  return chIQGetTimeout(&((SerialDriver *)ip)->iqueue, TIME_INFINITE);
 }
 
 static msg_t putt(void *ip, uint8_t b, systime_t timeout) {
@@ -101,12 +94,12 @@ static size_t readt(void *ip, uint8_t *bp, size_t n, systime_t time) {
   return chIQReadTimeout(&((SerialDriver *)ip)->iqueue, bp, n, time);
 }
 
-static ioflags_t getflags(void *ip) {
-  _ch_get_and_clear_flags_impl(ip);
+static chnflags_t getflags(void *ip) {
+  _chn_get_and_clear_flags_impl(ip);
 }
 
 static const struct SerialDriverVMT vmt = {
-  writes, reads, putwouldblock, getwouldblock,
+  write, read, put, get,
   putt, gett, writet, readt,
   getflags
 };
@@ -146,10 +139,10 @@ void sdObjectInit(SerialDriver *sdp, qnotify_t inotify, qnotify_t onotify) {
 
   sdp->vmt = &vmt;
   chEvtInit(&sdp->event);
-  sdp->flags = IO_NO_ERROR;
+  sdp->flags = CHN_NO_ERROR;
   sdp->state = SD_STOP;
-  chIQInit(&sdp->iqueue, sdp->ib, SERIAL_BUFFERS_SIZE, inotify);
-  chOQInit(&sdp->oqueue, sdp->ob, SERIAL_BUFFERS_SIZE, onotify);
+  chIQInit(&sdp->iqueue, sdp->ib, SERIAL_BUFFERS_SIZE, inotify, sdp);
+  chOQInit(&sdp->oqueue, sdp->ob, SERIAL_BUFFERS_SIZE, onotify, sdp);
 }
 
 /**
@@ -222,9 +215,9 @@ void sdIncomingDataI(SerialDriver *sdp, uint8_t b) {
   chDbgCheck(sdp != NULL, "sdIncomingDataI");
 
   if (chIQIsEmptyI(&sdp->iqueue))
-    chIOAddFlagsI(sdp, IO_INPUT_AVAILABLE);
+    chnAddFlagsI(sdp, CHN_INPUT_AVAILABLE);
   if (chIQPutI(&sdp->iqueue, b) < Q_OK)
-    chIOAddFlagsI(sdp, SD_OVERRUN_ERROR);
+    chnAddFlagsI(sdp, SD_OVERRUN_ERROR);
 }
 
 /**
@@ -250,7 +243,7 @@ msg_t sdRequestDataI(SerialDriver *sdp) {
 
   b = chOQGetI(&sdp->oqueue);
   if (b < Q_OK)
-    chIOAddFlagsI(sdp, IO_OUTPUT_EMPTY);
+    chnAddFlagsI(sdp, CHN_OUTPUT_EMPTY);
   return b;
 }
 

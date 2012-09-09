@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <stdlib.h>
@@ -177,29 +170,29 @@ static const GPTConfig gpt3cfg = {
 static void print(char *p) {
 
   while (*p) {
-    chIOPut(&SD1, *p++);
+    chSequentialStreamPut(&SD1, *p++);
   }
 }
 
 static void println(char *p) {
 
   while (*p) {
-    chIOPut(&SD1, *p++);
+    chSequentialStreamPut(&SD1, *p++);
   }
-  chIOWriteTimeout(&SD1, (uint8_t *)"\r\n", 2, TIME_INFINITE);
+  chSequentialStreamWrite(&SD1, (uint8_t *)"\r\n", 2);
 }
 
 static void printn(uint32_t n) {
   char buf[16], *p;
 
   if (!n)
-    chIOPut(&SD1, '0');
+    chSequentialStreamPut(&SD1, '0');
   else {
     p = buf;
     while (n)
       *p++ = (n % 10) + '0', n /= 10;
     while (p > buf)
-      chIOPut(&SD1, *--p);
+      chSequentialStreamPut(&SD1, *--p);
   }
 }
 

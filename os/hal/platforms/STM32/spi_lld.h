@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -56,7 +49,7 @@
  * @note    The default is @p TRUE.
  */
 #if !defined(STM32_SPI_USE_SPI1) || defined(__DOXYGEN__)
-#define STM32_SPI_USE_SPI1                  TRUE
+#define STM32_SPI_USE_SPI1                  FALSE
 #endif
 
 /**
@@ -65,7 +58,7 @@
  * @note    The default is @p TRUE.
  */
 #if !defined(STM32_SPI_USE_SPI2) || defined(__DOXYGEN__)
-#define STM32_SPI_USE_SPI2                  TRUE
+#define STM32_SPI_USE_SPI2                  FALSE
 #endif
 
 /**
@@ -187,6 +180,14 @@
 
 #else /* !STM32_ADVANCED_DMA */
 
+#if defined(STM32F0XX)
+/* Fixed values for STM32F0xx devices.*/
+#define STM32_SPI_SPI1_RX_DMA_STREAM        STM32_DMA_STREAM_ID(1, 2)
+#define STM32_SPI_SPI1_TX_DMA_STREAM        STM32_DMA_STREAM_ID(1, 3)
+#define STM32_SPI_SPI2_RX_DMA_STREAM        STM32_DMA_STREAM_ID(1, 4)
+#define STM32_SPI_SPI2_TX_DMA_STREAM        STM32_DMA_STREAM_ID(1, 5)
+
+#else /* !defined(STM32F0XX) */
 /* Fixed streams for platforms using the old DMA peripheral, the values are
    valid for both STM32F1xx and STM32L1xx.*/
 #define STM32_SPI_SPI1_RX_DMA_STREAM        STM32_DMA_STREAM_ID(1, 2)
@@ -195,6 +196,7 @@
 #define STM32_SPI_SPI2_TX_DMA_STREAM        STM32_DMA_STREAM_ID(1, 5)
 #define STM32_SPI_SPI3_RX_DMA_STREAM        STM32_DMA_STREAM_ID(2, 1)
 #define STM32_SPI_SPI3_TX_DMA_STREAM        STM32_DMA_STREAM_ID(2, 2)
+#endif /* !defined(STM32F0XX) */
 
 #endif /* !STM32_ADVANCED_DMA*/
 /** @} */
@@ -217,6 +219,36 @@
 
 #if !STM32_SPI_USE_SPI1 && !STM32_SPI_USE_SPI2 && !STM32_SPI_USE_SPI3
 #error "SPI driver activated but no SPI peripheral assigned"
+#endif
+
+#if STM32_SPI_USE_SPI1 &&                                                   \
+    !CORTEX_IS_VALID_KERNEL_PRIORITY(STM32_SPI_SPI1_IRQ_PRIORITY)
+#error "Invalid IRQ priority assigned to SPI1"
+#endif
+
+#if STM32_SPI_USE_SPI2 &&                                                   \
+    !CORTEX_IS_VALID_KERNEL_PRIORITY(STM32_SPI_SPI2_IRQ_PRIORITY)
+#error "Invalid IRQ priority assigned to SPI2"
+#endif
+
+#if STM32_SPI_USE_SPI3 &&                                                   \
+    !CORTEX_IS_VALID_KERNEL_PRIORITY(STM32_SPI_SPI3_IRQ_PRIORITY)
+#error "Invalid IRQ priority assigned to SPI3"
+#endif
+
+#if STM32_SPI_USE_SPI1 &&                                                   \
+    !STM32_DMA_IS_VALID_PRIORITY(STM32_SPI_SPI1_DMA_PRIORITY)
+#error "Invalid DMA priority assigned to SPI1"
+#endif
+
+#if STM32_SPI_USE_SPI2 &&                                                   \
+    !STM32_DMA_IS_VALID_PRIORITY(STM32_SPI_SPI2_DMA_PRIORITY)
+#error "Invalid DMA priority assigned to SPI2"
+#endif
+
+#if STM32_SPI_USE_SPI3 &&                                                   \
+    !STM32_DMA_IS_VALID_PRIORITY(STM32_SPI_SPI3_DMA_PRIORITY)
+#error "Invalid DMA priority assigned to SPI3"
 #endif
 
 #if STM32_SPI_USE_SPI1 &&                                                   \

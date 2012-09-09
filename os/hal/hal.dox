@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -86,5 +79,22 @@
  * settings are contained in the @p mcuconf.h file instead and are describe
  * in the various platforms reference manuals.
  *
+ * @ingroup IO
+ */
+
+/**
+ * @defgroup IO_CHANNEL Abstract I/O Channels
+ * @ingroup IO
+ */
+
+/**
+ * @defgroup IO_BLOCK Abstract I/O Block Device
+ * @ingroup IO
+ */
+
+/**
+ * @defgroup MMCSD MMC/SD Block Devices common ancestor
+ * @details This module implements a common ancestor for all device drivers
+ *          accessing MMC or SD cards.
  * @ingroup IO
  */

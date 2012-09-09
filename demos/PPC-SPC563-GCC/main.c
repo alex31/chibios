@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include <stdio.h>
@@ -36,7 +29,7 @@
 #define SHELL_WA_SIZE   THD_WA_SIZE(1024)
 #define TEST_WA_SIZE    THD_WA_SIZE(256)
 
-static void cmd_mem(BaseChannel *chp, int argc, char *argv[]) {
+static void cmd_mem(BaseSequentialStream *chp, int argc, char *argv[]) {
   size_t n, size;
 
   (void)argv;
@@ -50,7 +43,7 @@ static void cmd_mem(BaseChannel *chp, int argc, char *argv[]) {
   chprintf(chp, "heap free total  : %u bytes\r\n", size);
 }
 
-static void cmd_threads(BaseChannel *chp, int argc, char *argv[]) {
+static void cmd_threads(BaseSequentialStream *chp, int argc, char *argv[]) {
   static const char *states[] = {THD_STATE_NAMES};
   Thread *tp;
 
@@ -70,7 +63,7 @@ static void cmd_threads(BaseChannel *chp, int argc, char *argv[]) {
   } while (tp != NULL);
 }
 
-static void cmd_test(BaseChannel *chp, int argc, char *argv[]) {
+static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[]) {
   Thread *tp;
 
   (void)argv;
@@ -95,7 +88,7 @@ static const ShellCommand commands[] = {
 };
 
 static const ShellConfig shell_cfg1 = {
-  (BaseChannel *)&SD1,
+  (BaseSequentialStream *)&SD1,
   commands
 };
 

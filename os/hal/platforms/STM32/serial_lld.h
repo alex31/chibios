@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -56,7 +49,7 @@
  * @note    The default is @p TRUE.
  */
 #if !defined(STM32_SERIAL_USE_USART1) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USE_USART1             TRUE
+#define STM32_SERIAL_USE_USART1             FALSE
 #endif
 
 /**
@@ -65,7 +58,7 @@
  * @note    The default is @p TRUE.
  */
 #if !defined(STM32_SERIAL_USE_USART2) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USE_USART2             TRUE
+#define STM32_SERIAL_USE_USART2             FALSE
 #endif
 
 /**
@@ -74,7 +67,7 @@
  * @note    The default is @p TRUE.
  */
 #if !defined(STM32_SERIAL_USE_USART3) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USE_USART3             TRUE
+#define STM32_SERIAL_USE_USART3             FALSE
 #endif
 
 /**
@@ -83,7 +76,7 @@
  * @note    The default is @p TRUE.
  */
 #if !defined(STM32_SERIAL_USE_UART4) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USE_UART4              TRUE
+#define STM32_SERIAL_USE_UART4              FALSE
 #endif
 
 /**
@@ -92,7 +85,7 @@
  * @note    The default is @p TRUE.
  */
 #if !defined(STM32_SERIAL_USE_UART5) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USE_UART5              TRUE
+#define STM32_SERIAL_USE_UART5              FALSE
 #endif
 
 /**
@@ -101,7 +94,7 @@
  * @note    The default is @p TRUE.
  */
 #if !defined(STM32_SERIAL_USE_USART6) || defined(__DOXYGEN__)
-#define STM32_SERIAL_USE_USART6             TRUE
+#define STM32_SERIAL_USE_USART6             FALSE
 #endif
 
 /**
@@ -179,6 +172,36 @@
     !STM32_SERIAL_USE_USART3 && !STM32_SERIAL_USE_UART4  &&                 \
     !STM32_SERIAL_USE_UART5  && !STM32_SERIAL_USE_USART6
 #error "SERIAL driver activated but no USART/UART peripheral assigned"
+#endif
+
+#if STM32_SERIAL_USE_USART1 &&                                              \
+    !CORTEX_IS_VALID_KERNEL_PRIORITY(STM32_SERIAL_USART1_PRIORITY)
+#error "Invalid IRQ priority assigned to USART1"
+#endif
+
+#if STM32_SERIAL_USE_USART2 &&                                              \
+    !CORTEX_IS_VALID_KERNEL_PRIORITY(STM32_SERIAL_USART2_PRIORITY)
+#error "Invalid IRQ priority assigned to USART2"
+#endif
+
+#if STM32_SERIAL_USE_USART3 &&                                              \
+    !CORTEX_IS_VALID_KERNEL_PRIORITY(STM32_SERIAL_USART3_PRIORITY)
+#error "Invalid IRQ priority assigned to USART3"
+#endif
+
+#if STM32_SERIAL_USE_UART4 &&                                               \
+    !CORTEX_IS_VALID_KERNEL_PRIORITY(STM32_SERIAL_UART4_PRIORITY)
+#error "Invalid IRQ priority assigned to UART4"
+#endif
+
+#if STM32_SERIAL_USE_UART5 &&                                               \
+    !CORTEX_IS_VALID_KERNEL_PRIORITY(STM32_SERIAL_UART5_PRIORITY)
+#error "Invalid IRQ priority assigned to UART5"
+#endif
+
+#if STM32_SERIAL_USE_USART6 &&                                              \
+    !CORTEX_IS_VALID_KERNEL_PRIORITY(STM32_SERIAL_USART6_PRIORITY)
+#error "Invalid IRQ priority assigned to USART6"
 #endif
 
 /*===========================================================================*/

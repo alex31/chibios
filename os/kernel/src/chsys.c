@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -43,7 +36,9 @@
 #include "ch.h"
 
 #if !CH_NO_IDLE_THREAD || defined(__DOXYGEN__)
-/* Idle thread working area.*/
+/**
+ * @brief   Idle thread working area.
+ */
 WORKING_AREA(_idle_thread_wa, PORT_IDLE_THREAD_STACK_SIZE);
 
 /**
@@ -136,9 +131,9 @@ void chSysTimerHandlerI(void) {
 
 #if CH_TIME_QUANTUM > 0
   /* Running thread has not used up quantum yet? */
-  if (rlist.r_preempt > 0)
+  if (currp->p_preempt > 0)
     /* Decrement remaining quantum.*/
-    rlist.r_preempt--;
+    currp->p_preempt--;
 #endif
 #if CH_DBG_THREADS_PROFILING
   currp->p_time++;

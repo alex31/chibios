@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -61,6 +54,7 @@ typedef int32_t             bool_t;         /**< Fast boolean type.         */
 typedef uint8_t             tmode_t;        /**< Thread flags.              */
 typedef uint8_t             tstate_t;       /**< Thread state.              */
 typedef uint8_t             trefs_t;        /**< Thread references counter. */
+typedef uint8_t             tslices_t;      /**< Thread time slices counter.    */
 typedef uint32_t            tprio_t;        /**< Thread priority.           */
 typedef int32_t             msg_t;          /**< Inter-thread message.      */
 typedef int32_t             eventid_t;      /**< Event Id.                  */

@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -66,9 +59,15 @@
 #define STM32_DMA_GETCHANNEL(n, c)  0
 
 /**
- * @name    DMA streams identifiers
- * @{
+ * @brief   Checks if a DMA priority is within the valid range.
+ * @param[in] prio      DMA priority
+ *
+ * @retval              The check result.
+ * @retval FALSE        invalid DMA priority.
+ * @retval TRUE         correct DMA priority.
  */
+#define STM32_DMA_IS_VALID_PRIORITY(prio) (((prio) >= 0) && ((prio) <= 3))
+
 /**
  * @brief   Returns an unique numeric identifier for a DMA stream.
  *
@@ -100,6 +99,10 @@
  */
 #define STM32_DMA_IS_VALID_ID(id, mask) (((1 << (id)) & (mask)))
 
+/**
+ * @name    DMA streams identifiers
+ * @{
+ */
 /**
  * @brief   Returns a pointer to a stm32_dma_stream_t structure.
  *

@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -42,6 +35,11 @@
 #define AHB_EN_MASK     (RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOBEN |          \
                          RCC_AHBENR_GPIOCEN | RCC_AHBENR_GPIODEN |          \
                          RCC_AHBENR_GPIOEEN | RCC_AHBENR_GPIOHEN)
+#define AHB_LPEN_MASK   AHB_EN_MASK
+#elif defined(STM32F0XX)
+#define AHB_EN_MASK     (RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOBEN |          \
+                         RCC_AHBENR_GPIOCEN | RCC_AHBENR_GPIODEN |          \
+                         RCC_AHBENR_GPIOFEN)
 #elif defined(STM32F2XX)
 #define AHB1_EN_MASK    (RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN |        \
                          RCC_AHB1ENR_GPIOCEN | RCC_AHB1ENR_GPIODEN |        \
@@ -105,6 +103,9 @@ void _pal_lld_init(const PALConfig *config) {
    * Enables the GPIO related clocks.
    */
 #if defined(STM32L1XX_MD)
+  rccEnableAHB(AHB_EN_MASK, TRUE);
+  RCC->AHBLPENR |= AHB_LPEN_MASK;
+#elif defined(STM32F0XX)
   rccEnableAHB(AHB_EN_MASK, TRUE);
 #elif defined(STM32F2XX) || defined(STM32F4XX)
   RCC->AHB1ENR   |= AHB1_EN_MASK;

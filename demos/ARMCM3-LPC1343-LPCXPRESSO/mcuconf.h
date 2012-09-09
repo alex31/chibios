@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /*
@@ -81,7 +74,10 @@
  * SPI driver system settings.
  */
 #define LPC13xx_SPI_USE_SSP0                TRUE
+#define LPC13xx_SPI_USE_SSP1                FALSE
 #define LPC13xx_SPI_SSP0CLKDIV              1
+#define LPC13xx_SPI_SSP1CLKDIV              1
 #define LPC13xx_SPI_SSP0_IRQ_PRIORITY       5
+#define LPC13xx_SPI_SSP1_IRQ_PRIORITY       5
 #define LPC13xx_SPI_SSP_ERROR_HOOK(spip)    chSysHalt()
 #define LPC13xx_SPI_SCK0_SELECTOR           SCK0_IS_PIO2_11

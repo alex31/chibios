@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -280,13 +273,20 @@ void spi_lld_start(SPIDriver *spip) {
   }
 
   /* Configuration-specific DMA setup.*/
-  if ((spip->config->cr1 & SPI_CR1_DFF) == 0) {     /* 8 bits transfers.    */
+#if defined(STM32F0XX)
+  if ((spip->config->cr1 & SPI_CR2_DS) <
+      (SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0)) {
+#else /* !defined(STM32F0XX) */
+  if ((spip->config->cr1 & SPI_CR1_DFF) == 0) {
+#endif /* !defined(STM32F0XX) */
+    /* Frame width is 8 bits or smaller.*/
     spip->rxdmamode = (spip->rxdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
     spip->txdmamode = (spip->txdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
   }
-  else {                                            /* 16 bits transfers.   */
+  else {
+    /* Frame width is larger than 8 bits.*/
     spip->rxdmamode = (spip->rxdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD;
     spip->txdmamode = (spip->txdmamode & ~STM32_DMA_CR_SIZE_MASK) |

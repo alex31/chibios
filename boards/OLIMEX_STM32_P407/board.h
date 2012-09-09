@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #ifndef _BOARD_H_
@@ -249,7 +242,7 @@
 #define VAL_GPIOA_OSPEEDR   0xFFFFFFFF
 #define VAL_GPIOA_PUPDR     (PIN_PUDR_PULLUP(GPIOA_DCMI_HSYNC) |            \
                              PIN_PUDR_PULLUP(GPIOA_DCMI_PIXCLK) |           \
-                             PIN_PUDR_PULLUP(GPIOA_OTG_FS_VBUS) |           \
+                             PIN_PUDR_PULLDOWN(GPIOA_OTG_FS_VBUS) |         \
                              PIN_PUDR_PULLUP(GPIOA_DCMI_D1) |               \
                              PIN_PUDR_PULLDOWN(GPIOA_SWCLK))
 #define VAL_GPIOA_ODR       0xFFFFFFDF
@@ -303,7 +296,7 @@
 #define VAL_GPIOB_OSPEEDR   0xFFFFFFFF
 #define VAL_GPIOB_PUPDR     (PIN_PUDR_PULLUP(GPIOB_DCMI_D5) |               \
                              PIN_PUDR_PULLUP(GPIOB_DCMI_VSYNC) |            \
-                             PIN_PUDR_PULLUP(GPIOB_OTG_HS_VBUS))
+                             PIN_PUDR_PULLDOWN(GPIOB_OTG_HS_VBUS))
 #define VAL_GPIOB_ODR       0xFFFFFFFC
 #define VAL_GPIOB_AFRL      (PIN_AFIO_AF(GPIOB_I2S3_CK, 6) |                \
                              PIN_AFIO_AF(GPIOB_I2S3_SD, 6))

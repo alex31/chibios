@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -63,7 +56,7 @@ void boardInit(void) {
    *       you must comment that line first.
    */
   LPC_IOCON->PIO0_7 = 0xC0;             /* Disables pull-up on LED2 output. */
-  LPC_IOCON->JTAG_nTRST_PIO1_2 = 0xC1;  /* Disables pull-up on LED3B output
+  LPC_IOCON->R_PIO1_2 = 0xC1;           /* Disables pull-up on LED3B output
                                            and makes it GPIO1_2.            */
   LPC_IOCON->PIO1_9 = 0xC0;             /* Disables pull-up on LED3R output.*/
   LPC_IOCON->PIO1_10 = 0xC0;            /* Disables pull-up on LED3G output.*/

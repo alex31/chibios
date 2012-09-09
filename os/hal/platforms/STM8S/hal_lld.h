@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -148,13 +141,6 @@
 #define STM8S_CPU_DIVIDER           CLK_CPU_DIV1
 #endif
 
-/**
- * @brief   bxCAN divider value.
- */
-#if !defined(STM8S_CAN_DIVIDER_VALUE) || defined(__DOXYGEN__)
-#define STM8S_CAN_DIVIDER_VALUE     1
-#endif
-
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
@@ -175,10 +161,6 @@
     (STM8S_CPU_DIVIDER != CLK_CPU_DIV64) &&                                 \
     (STM8S_CPU_DIVIDER != CLK_CPU_DIV128)
 #error "specified invalid CPU divider"
-#endif
-
-#if (STM8S_CAN_DIVIDER_VALUE < 1) || (STM8S_CAN_DIVIDER_VALUE > 8)
-#error "specified invalid CAN divider value"
 #endif
 
 #if STM8S_HSE_ENABLED && (HSECLK == 0)

@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -53,139 +46,25 @@
 #define EXT_CHANNELS_MASK   ((1 << EXT_MAX_CHANNELS) - 1)
 
 /**
- * @name    EXTI configuration helpers
+ * @name    STM32-specific EXT channel modes
  * @{
  */
-/**
- * @brief   EXTI-GPIO association macro.
- * @details Helper macro to associate a GPIO to each of the Mx EXTI inputs.
- */
-#define EXT_MODE_EXTI(m0, m1, m2, m3, m4, m5, m6, m7,                       \
-                      m8, m9, m10, m11, m12, m13, m14, m15)                 \
-  {                                                                         \
-    ((m0) << 0)  | ((m1) << 4)  | ((m2) << 8)  | ((m3) << 12),              \
-    ((m4) << 0)  | ((m5) << 4)  | ((m6) << 8)  | ((m7) << 12),              \
-    ((m8) << 0)  | ((m9) << 4)  | ((m10) << 8) | ((m11) << 12),             \
-    ((m12) << 0) | ((m13) << 4) | ((m14) << 8) | ((m15) << 12)              \
-  }
-
-#define EXT_MODE_GPIOA      0           /**< @brief GPIOA identifier.       */
-#define EXT_MODE_GPIOB      1           /**< @brief GPIOB identifier.       */
-#define EXT_MODE_GPIOC      2           /**< @brief GPIOC identifier.       */
-#define EXT_MODE_GPIOD      3           /**< @brief GPIOD identifier.       */
-#define EXT_MODE_GPIOE      4           /**< @brief GPIOE identifier.       */
-#define EXT_MODE_GPIOF      5           /**< @brief GPIOF identifier.       */
-#define EXT_MODE_GPIOG      6           /**< @brief GPIOG identifier.       */
-#define EXT_MODE_GPIOH      7           /**< @brief GPIOH identifier.       */
-#define EXT_MODE_GPIOI      8           /**< @brief GPIOI identifier.       */
+#define EXT_MODE_GPIO_MASK  0xF0        /**< @brief Port field mask.        */
+#define EXT_MODE_GPIO_OFF   4           /**< @brief Port field offset.      */
+#define EXT_MODE_GPIOA      0x00        /**< @brief GPIOA identifier.       */
+#define EXT_MODE_GPIOB      0x10        /**< @brief GPIOB identifier.       */
+#define EXT_MODE_GPIOC      0x20        /**< @brief GPIOC identifier.       */
+#define EXT_MODE_GPIOD      0x30        /**< @brief GPIOD identifier.       */
+#define EXT_MODE_GPIOE      0x40        /**< @brief GPIOE identifier.       */
+#define EXT_MODE_GPIOF      0x50        /**< @brief GPIOF identifier.       */
+#define EXT_MODE_GPIOG      0x60        /**< @brief GPIOG identifier.       */
+#define EXT_MODE_GPIOH      0x70        /**< @brief GPIOH identifier.       */
+#define EXT_MODE_GPIOI      0x80        /**< @brief GPIOI identifier.       */
 /** @} */
 
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
-
-/**
- * @name    Configuration options
- * @{
- */
-/**
- * @brief   EXTI0 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI0_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI0_IRQ_PRIORITY        6
-#endif
-
-/**
- * @brief   EXTI1 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI1_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI1_IRQ_PRIORITY        6
-#endif
-
-/**
- * @brief   EXTI2 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI2_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI2_IRQ_PRIORITY        6
-#endif
-
-/**
- * @brief   EXTI3 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI3_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI3_IRQ_PRIORITY        6
-#endif
-
-/**
- * @brief   EXTI4 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI4_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI4_IRQ_PRIORITY        6
-#endif
-
-/**
- * @brief   EXTI9..5 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI5_9_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI5_9_IRQ_PRIORITY      6
-#endif
-
-/**
- * @brief   EXTI15..10 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI10_15_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI10_15_IRQ_PRIORITY    6
-#endif
-
-/**
- * @brief   EXTI16 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI16_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI16_IRQ_PRIORITY       6
-#endif
-
-/**
- * @brief   EXTI17 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI17_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI17_IRQ_PRIORITY       6
-#endif
-
-/**
- * @brief   EXTI18 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI18_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI18_IRQ_PRIORITY       6
-#endif
-
-/**
- * @brief   EXTI19 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI19_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI19_IRQ_PRIORITY       6
-#endif
-
-/**
- * @brief   EXTI20 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI20_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI20_IRQ_PRIORITY       6
-#endif
-
-/**
- * @brief   EXTI21 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI21_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI21_IRQ_PRIORITY       6
-#endif
-
-/**
- * @brief   EXTI22 interrupt priority level setting.
- */
-#if !defined(STM32_EXT_EXTI22_IRQ_PRIORITY) || defined(__DOXYGEN__)
-#define STM32_EXT_EXTI22_IRQ_PRIORITY       6
-#endif
-/** @} */
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
@@ -235,10 +114,6 @@ typedef struct {
    */
   EXTChannelConfig      channels[EXT_MAX_CHANNELS];
   /* End of the mandatory fields.*/
-  /**
-   * @brief Initialization values for EXTICRx registers.
-   */
-  uint16_t              exti[4];
 } EXTConfig;
 
 /**

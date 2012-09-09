@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -466,6 +459,36 @@
  * @api
  */
 #define rccResetI2C2() rccResetAPB1(RCC_APB1RSTR_I2C2RST)
+/** @} */
+
+/**
+ * @name    OTG peripherals specific RCC operations
+ * @{
+ */
+/**
+ * @brief   Enables the OTG_FS peripheral clock.
+ *
+ * @param[in] lp        low power enable flag
+ *
+ * @api
+ */
+#define rccEnableOTG_FS(lp) rccEnableAHB(RCC_AHBENR_OTGFSEN, lp)
+
+/**
+ * @brief   Disables the OTG_FS peripheral clock.
+ *
+ * @param[in] lp        low power enable flag
+ *
+ * @api
+ */
+#define rccDisableOTG_FS(lp) rccDisableAHB(RCC_AHBENR_OTGFSEN, lp)
+
+/**
+ * @brief   Resets the OTG_FS peripheral.
+ *
+ * @api
+ */
+#define rccResetOTG_FS() rccResetAHB(RCC_AHBRSTR_OTGFSRST)
 /** @} */
 
 /**

@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -53,6 +46,21 @@ void __early_init(void) {
 
   stm32_clock_init();
 }
+
+#if HAL_USE_MMC_SPI
+/* Board-related functions related to the MMC_SPI driver.*/
+bool_t mmc_lld_is_card_inserted(MMCDriver *mmcp) {
+
+  (void)mmcp;
+  return palReadPad(GPIOC, GPIOC_MMCCP);
+}
+
+bool_t mmc_lld_is_write_protected(MMCDriver *mmcp) {
+
+  (void)mmcp;
+  return !palReadPad(GPIOC, GPIOC_MMCWP);
+}
+#endif
 
 /*
  * Board-specific initialization code.

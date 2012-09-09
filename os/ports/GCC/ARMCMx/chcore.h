@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -94,6 +87,12 @@
   (((n) >= 0) && ((n) < CORTEX_PRIORITY_LEVELS))
 
 /**
+ * @brief   Priority level verification macro.
+ */
+#define CORTEX_IS_VALID_KERNEL_PRIORITY(n)                                  \
+  (((n) >= CORTEX_MAX_KERNEL_PRIORITY) && ((n) < CORTEX_PRIORITY_LEVELS))
+
+/**
  * @brief   Priority level to priority mask conversion macro.
  */
 #define CORTEX_PRIORITY_MASK(n)                                             \
@@ -119,7 +118,7 @@
 /**
  * @brief   Name of the compiler supported by this port.
  */
-#define CH_COMPILER_NAME                "GCC "__VERSION__
+#define CH_COMPILER_NAME                "GCC " __VERSION__
 
 /*===========================================================================*/
 /* Port implementation part (common).                                        */
@@ -175,8 +174,8 @@ struct intctx {};
  * @brief   Inline-able version of this kernel function.
  */
 #define chSchIsPreemptionRequired()                                         \
-  (rlist.r_preempt ? firstprio(&rlist.r_queue) > currp->p_prio :            \
-                     firstprio(&rlist.r_queue) >= currp->p_prio)
+  (currp->p_preempt ? firstprio(&rlist.r_queue) > currp->p_prio :           \
+                      firstprio(&rlist.r_queue) >= currp->p_prio)
 #else /* CH_TIME_QUANTUM == 0 */
 #define chSchIsPreemptionRequired()                                         \
   (firstprio(&rlist.r_queue) > currp->p_prio)

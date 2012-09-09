@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 /*
  * **** This file incorporates work covered by the following copyright and ****
@@ -84,7 +77,7 @@ err_t sys_sem_new(sys_sem_t *sem, u8_t count) {
   }
   else {
     chSemInit(*sem, (cnt_t)count);
-    SYS_STATS_INC(sem.used);
+    SYS_STATS_INC_USED(sem);
     return ERR_OK;
   }
 }
@@ -201,7 +194,7 @@ void sys_mbox_set_invalid(sys_mbox_t *mbox) {
 sys_thread_t sys_thread_new(const char *name, lwip_thread_fn thread,
                             void *arg, int stacksize, int prio) {
 
-  chRegSetThreadName(name);
+  (void)name;
   size_t wsz = THD_WA_SIZE(stacksize);
   void *wsp = chCoreAlloc(wsz);
   if (wsp == NULL)

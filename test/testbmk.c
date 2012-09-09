@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -467,7 +460,7 @@ static void bmk9_execute(void) {
   static uint8_t ib[16];
   static InputQueue iq;
 
-  chIQInit(&iq, ib, sizeof(ib), NULL);
+  chIQInit(&iq, ib, sizeof(ib), NULL, NULL);
   n = 0;
   test_wait_tick();
   test_start_timer(1000);

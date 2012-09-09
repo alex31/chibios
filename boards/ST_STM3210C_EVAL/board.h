@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 #ifndef _BOARD_H_
@@ -31,6 +24,11 @@
 /*
  * Setup for the STMicroelectronics STM3210C-EVAL evaluation board.
  */
+
+#define GPIOD_LED1              7
+#define GPIOD_LED2              13
+#define GPIOD_LED3              3
+#define GPIOD_LED4              4
 
 /*
  * Board identifier.
@@ -109,16 +107,16 @@
  * PD6 - USART2RX (remapped) Digital Input
  * PD7 - LED (LD1) PP Output
  */
-#define VAL_GPIODCRL            0x34B44444      /*  PD7...PD0 */
-#define VAL_GPIODCRH            0x44444444      /* PD15...PD8 */
-#define VAL_GPIODODR            0x0F0FFFFF
+#define VAL_GPIODCRL            0x34B33444      /*  PD7...PD0 */
+#define VAL_GPIODCRH            0x44344444      /* PD15...PD8 */
+#define VAL_GPIODODR            0x0000DF67
 
 /*
  * Port E setup.
  * Everything input except:
  */
 #define VAL_GPIOECRL            0x44444444      /*  PE7...PE0 */
-#define VAL_GPIOECRH            0x44444444      /* PE15...PE8 */
+#define VAL_GPIOECRH            0x44344444      /* PE15...PE8 */
 #define VAL_GPIOEODR            0xFFFFFFFF
 
 #if !defined(_FROM_ASM_)

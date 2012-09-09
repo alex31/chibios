@@ -16,13 +16,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -80,7 +73,7 @@ static ROMCONST SerialConfig default_config = {
 /*===========================================================================*/
 
 static void set_error(SerialDriver *sdp, uint8_t sr) {
-  ioflags_t sts = 0;
+  chnflags_t sts = 0;
 
   /* Note, SR register bit definitions are equal for all UARTs so using
      the UART1 definitions is fine.*/
@@ -93,7 +86,7 @@ static void set_error(SerialDriver *sdp, uint8_t sr) {
   if (sr & UART1_SR_PE)
     sts |= SD_PARITY_ERROR;
   chSysLockFromIsr();
-  chIOAddFlagsI(sdp, sts);
+  chnAddFlagsI(sdp, sts);
   chSysUnlockFromIsr();
 }
 
