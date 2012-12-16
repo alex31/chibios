@@ -18,8 +18,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
-
 #include "ch.h"
 #include "hal.h"
 #include "test.h"
@@ -107,7 +105,7 @@ static const ShellConfig shell_cfg2 = {
 /*
  * Console print server done using synchronous messages. This makes the access
  * to the C printf() thread safe and the print operation atomic among threads.
- * In this example the message is the zero termitated string itself.
+ * In this example the message is the zero terminated string itself.
  */
 static msg_t console_thread(void *arg) {
 
@@ -149,16 +147,18 @@ static void termination_handler(eventid_t id) {
   }
 }
 
+static EventListener sd1fel, sd2fel;
+
 /**
  * @brief SD1 status change handler.
  *
  * @param[in] id event id.
  */
 static void sd1_handler(eventid_t id) {
-  chnflags_t flags;
+  flagsmask_t flags;
 
   (void)id;
-  flags = chnGetAndClearFlags(&SD1);
+  flags = chEvtGetAndClearFlags(&sd1fel);
   if ((flags & CHN_CONNECTED) && (shelltp1 == NULL)) {
     cputs("Init: connection on SD1");
     shelltp1 = shellCreate(&shell_cfg1, SHELL_WA_SIZE, NORMALPRIO + 1);
@@ -177,10 +177,10 @@ static void sd1_handler(eventid_t id) {
  * @param[in] id event id.
  */
 static void sd2_handler(eventid_t id) {
-  chnflags_t flags;
+  flagsmask_t flags;
 
   (void)id;
-  flags = chnGetAndClearFlags(&SD2);
+  flags = chEvtGetAndClearFlags(&sd2fel);
   if ((flags & CHN_CONNECTED) && (shelltp2 == NULL)) {
     cputs("Init: connection on SD2");
     shelltp2 = shellCreate(&shell_cfg2, SHELL_WA_SIZE, NORMALPRIO + 10);
@@ -203,7 +203,7 @@ static evhandler_t fhandlers[] = {
  * Simulator main.                                                        *
  *------------------------------------------------------------------------*/
 int main(void) {
-  EventListener sd1fel, sd2fel, tel;
+  EventListener tel;
 
   /*
    * System initializations.
@@ -238,10 +238,8 @@ int main(void) {
    */
   cputs("Shell service started on SD1, SD2");
   cputs("  - Listening for connections on SD1");
-  (void) chnGetAndClearFlags(&SD1);
   chEvtRegister(chnGetEventSource(&SD1), &sd1fel, 1);
   cputs("  - Listening for connections on SD2");
-  (void) chnGetAndClearFlags(&SD2);
   chEvtRegister(chnGetEventSource(&SD2), &sd2fel, 2);
 
   /*

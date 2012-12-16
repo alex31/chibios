@@ -705,6 +705,8 @@ static msg_t usb_lld_pump(void *p) {
 
       epmask = (1 << ep);
       if (usbp->txpending & epmask) {
+        bool_t done;
+
         chSysLock();
         /* USB interrupts are globally *suspended* because the peripheral
            does not allow any interference during the TX FIFO filling
@@ -717,7 +719,7 @@ static msg_t usb_lld_pump(void *p) {
         usbp->txpending &= ~epmask;
         chSysUnlock();
 
-        bool_t done = otg_txfifo_handler(usbp, ep);
+        done = otg_txfifo_handler(usbp, ep);
 
         chSysLock();
         otgp->GAHBCFG |= GAHBCFG_GINTMSK;
@@ -820,7 +822,7 @@ void usb_lld_init(void) {
                     (uint8_t *)wsp + sizeof(Thread),
                     CH_THREAD_FILL_VALUE);
     _thread_memfill((uint8_t *)wsp + sizeof(Thread),
-                    (uint8_t *)wsp + sizeof(USBD1.wa_pump) - sizeof(Thread),
+                    (uint8_t *)wsp + sizeof(USBD2.wa_pump) - sizeof(Thread),
                     CH_STACK_FILL_VALUE);
   }
 #endif

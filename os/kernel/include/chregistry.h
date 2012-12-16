@@ -35,9 +35,9 @@
  * @brief   ChibiOS/RT memory signature record.
  */
 typedef struct {
-  char      ch_identifier[4];       /**< @brief Always set to "CHRT".       */
+  char      ch_identifier[4];       /**< @brief Always set to "main".       */
+  uint8_t   ch_zero;                /**< @brief Must be zero.               */
   uint8_t   ch_size;                /**< @brief Size of this structure.     */
-  uint8_t   ch_reserved5;           /**< @brief Reserved field.             */
   uint16_t  ch_version;             /**< @brief Encoded ChibiOS/RT version. */
   uint8_t   ch_ptrsize;             /**< @brief Size of a pointer.          */
   uint8_t   ch_timesize;            /**< @brief Size of a @p systime_t.     */
@@ -55,7 +55,7 @@ typedef struct {
   uint8_t   cf_off_preempt;         /**< @brief Offset of @p p_preempt
                                                 field.                      */
   uint8_t   cf_off_time;            /**< @brief Offset of @p p_time field.  */
-} chroot_t;
+} chdebug_t;
 
 /**
  * @name    Macro Functions
@@ -116,6 +116,7 @@ typedef struct {
 #ifdef __cplusplus
 extern "C" {
 #endif
+  extern ROMCONST chdebug_t ch_debug;
   Thread *chRegFirstThread(void);
   Thread *chRegNextThread(Thread *tp);
 #ifdef __cplusplus

@@ -24,6 +24,8 @@
  * @pre     This module requires the following macros to be defined in the
  *          @p board.h file:
  *          - STM32_LSECLK.
+ *          - STM32_LSEDRV.
+ *          - STM32_LSE_BYPASS (optionally).
  *          - STM32_HSECLK.
  *          - STM32_HSE_BYPASS (optionally).
  *          .
@@ -53,7 +55,7 @@
  * @name    Platform identification
  * @{
  */
-#define PLATFORM_NAME           "STM32F0 Entry Level"
+#define PLATFORM_NAME           "STM32F05x Entry Level"
 /** @} */
 
 /**
@@ -91,7 +93,7 @@
 #define STM32_PLLIN_MAX         25000000
 
 /**
- * @brief   Maximum PLLs input clock frequency.
+ * @brief   Minimum PLLs input clock frequency.
  */
 #define STM32_PLLIN_MIN         1000000
 
@@ -101,7 +103,7 @@
 #define STM32_PLLOUT_MAX        48000000
 
 /**
- * @brief   Maximum PLL output clock frequency.
+ * @brief   Minimum PLL output clock frequency.
  */
 #define STM32_PLLOUT_MIN        16000000
 
@@ -170,9 +172,6 @@
 #define STM32_PLLSRC_HSI        (0 << 16)   /**< PLL clock source is HSI.   */
 #define STM32_PLLSRC_HSE        (1 << 16)   /**< PLL clock source is HSE.   */
 
-#define STM32_PLLXTPRE_DIV1     (0 << 17)   /**< HSE divided by 1.          */
-#define STM32_PLLXTPRE_DIV2     (1 << 17)   /**< HSE divided by 2.          */
-
 #define STM32_MCOSEL_NOCLOCK    (0 << 24)   /**< No clock on MCO pin.       */
 #define STM32_MCOSEL_HSI14      (3 << 24)   /**< HSI14 clock on MCO pin.    */
 #define STM32_MCOSEL_SYSCLK     (4 << 24)   /**< SYSCLK on MCO pin.         */
@@ -197,7 +196,7 @@
  * @name    RCC_CFGR3 register bits definitions
  * @{
  */
-#define STM32_USART1SW_MASK     (3 << 0)    /**< RTC clock source mask.     */
+#define STM32_USART1SW_MASK     (3 << 0)    /**< USART1 clock source mask.  */
 #define STM32_USART1SW_PCLK     (0 << 0)    /**< USART1 clock is PCLK.      */
 #define STM32_USART1SW_SYSCLK   (1 << 0)    /**< USART1 clock is SYSCLK.    */
 #define STM32_USART1SW_LSE      (2 << 0)    /**< USART1 clock is LSE.       */
@@ -223,8 +222,8 @@
  */
 /* ADC attributes.*/
 #define STM32_HAS_ADC1          TRUE
-#define STM32_ADC1_DMA_MSK      (STM32_DMA_STREAM_ID_MSK(1, 0) |            \
-                                 STM32_DMA_STREAM_ID_MSK(1, 1))
+#define STM32_ADC1_DMA_MSK      (STM32_DMA_STREAM_ID_MSK(1, 1) |            \
+                                 STM32_DMA_STREAM_ID_MSK(1, 2))
 #define STM32_ADC1_DMA_CHN      0x00000000
 
 #define STM32_HAS_ADC2          FALSE
@@ -479,6 +478,7 @@
 #if !defined(STM32_LSE_ENABLED) || defined(__DOXYGEN__)
 #define STM32_LSE_ENABLED           FALSE
 #endif
+
 /**
  * @brief   Main clock source selection.
  * @note    If the selected clock source is not the PLL then the PLL is not
@@ -505,11 +505,11 @@
  * @brief   Crystal PLL pre-divider.
  * @note    This setting has only effect if the PLL is selected as the
  *          system clock source.
- * @note    The default value is calculated for a 48MHz system clock from
+ * @note    The default value is calculated for a 72MHz system clock from
  *          a 8MHz crystal using the PLL.
  */
-#if !defined(STM32_PLLXTPRE) || defined(__DOXYGEN__)
-#define STM32_PLLXTPRE              STM32_PLLXTPRE_DIV1
+#if !defined(STM32_PREDIV_VALUE) || defined(__DOXYGEN__)
+#define STM32_PREDIV_VALUE                  1
 #endif
 
 /**
@@ -703,16 +703,24 @@
 #error "LSE frequency not defined"
 #endif
 
+#if (STM32_LSECLK < STM32_LSECLK_MIN) || (STM32_LSECLK > STM32_LSECLK_MAX)
+#error "STM32_LSECLK outside acceptable range (STM32_LSECLK_MIN...STM32_LSECLK_MAX)"
+#endif
+
+#if !defined(STM32_LSEDRV)
+#error "STM32_LSEDRV not defined"
+#endif
+
+#if (STM32_LSEDRV >> 3) > 3
+#error "STM32_LSEDRV outside acceptable range ((0<<3)...(3<<3))"
+#endif
+
 #if STM32_CECSW == STM32_CECSW_LSE
 #error "LSE not enabled, required by STM32_CECSW"
 #endif
 
 #if STM32_USART1SW == STM32_USART1SW_LSE
 #error "LSE not enabled, required by STM32_USART1SW"
-#endif
-
-#if (STM32_LSECLK < STM32_LSECLK_MIN) || (STM32_LSECLK > STM32_LSECLK_MAX)
-#error "STM32_LSECLK outside acceptable range (STM32_LSECLK_MIN...STM32_LSECLK_MAX)"
 #endif
 
 #else /* !STM32_LSE_ENABLED */
@@ -736,9 +744,10 @@
 #endif
 
 /* HSE prescaler setting check.*/
-#if (STM32_PLLXTPRE != STM32_PLLXTPRE_DIV1) &&                              \
-    (STM32_PLLXTPRE != STM32_PLLXTPRE_DIV2)
-#error "invalid STM32_PLLXTPRE value specified"
+#if ((STM32_PREDIV_VALUE >= 1) || (STM32_PREDIV_VALUE <= 16))
+#define STM32_PREDIV                ((STM32_PREDIV_VALUE - 1) << 0)
+#else
+#error "invalid STM32_PREDIV value specified"
 #endif
 
 /**
@@ -755,11 +764,7 @@
  * @brief   PLL input clock frequency.
  */
 #if (STM32_PLLSRC == STM32_PLLSRC_HSE) || defined(__DOXYGEN__)
-#if STM32_PLLXTPRE == STM32_PLLXTPRE_DIV1
-#define STM32_PLLCLKIN              (STM32_HSECLK / 1)
-#else
-#define STM32_PLLCLKIN              (STM32_HSECLK / 2)
-#endif
+#define STM32_PLLCLKIN              (STM32_HSECLK / STM32_PREDIV_VALUE)
 #elif STM32_PLLSRC == STM32_PLLSRC_HSI
 #define STM32_PLLCLKIN              (STM32_HSICLK / 2)
 #else
@@ -791,7 +796,7 @@
 #elif (STM32_SW == STM32_SW_HSE)
 #define STM32_SYSCLK                STM32_HSECLK
 #else
-#error "invalid STM32_SYSCLK_SW value specified"
+#error "invalid STM32_SW value specified"
 #endif
 
 /* Check on the system clock.*/
@@ -924,6 +929,11 @@
 #else
 #error "invalid source selected for USART1 clock"
 #endif
+
+/**
+ * @brief   USART2 frequency.
+ */
+#define STM32_USART2CLK             STM32_PCLK
 
 /**
  * @brief   Timers clock.

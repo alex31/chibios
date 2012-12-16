@@ -45,13 +45,13 @@
  * @{
  */
 #if defined(__DOXYGEN__)
-#define PLATFORM_NAME           "STM32F1 Value Line"
+#define PLATFORM_NAME           "STM32F100 Value Line"
 
 #elif defined(STM32F10X_LD_VL)
-#define PLATFORM_NAME           "STM32F1 Value Line Low Density"
+#define PLATFORM_NAME           "STM32F100 Value Line Low Density"
 
 #elif defined(STM32F10X_MD_VL)
-#define PLATFORM_NAME           "STM32F1 Value Line Medium Density"
+#define PLATFORM_NAME           "STM32F100 Value Line Medium Density"
 #else
 #error "unsupported STM32 Value Line member"
 #endif
@@ -220,7 +220,7 @@
 #define STM32_HAS_GPIOB         TRUE
 #define STM32_HAS_GPIOC         TRUE
 #define STM32_HAS_GPIOD         TRUE
-#define STM32_HAS_GPIOE         TRUE
+#define STM32_HAS_GPIOE         FALSE
 #define STM32_HAS_GPIOF         FALSE
 #define STM32_HAS_GPIOG         FALSE
 #define STM32_HAS_GPIOH         FALSE
@@ -801,7 +801,7 @@
 #elif (STM32_SW == STM32_SW_HSE)
 #define STM32_SYSCLK                STM32_HSECLK
 #else
-#error "invalid STM32_SYSCLK_SW value specified"
+#error "invalid STM32_SW value specified"
 #endif
 
 /* Check on the system clock.*/

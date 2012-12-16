@@ -157,7 +157,7 @@ struct RTCWakeup {
    * @details Bits [15:0] contain value of WUTR register
    *          Bits [18:16] contain value of WUCKSEL bits in CR register
    *
-   * @notes   ((WUTR == 0) || (WUCKSEL == 3)) is forbidden combination.
+   * @note    ((WUTR == 0) || (WUCKSEL == 3)) is forbidden combination.
    */
   uint32_t wakeup;
 };
@@ -198,6 +198,7 @@ extern "C" {
                          RTCAlarm *alarmspec);
   void rtcSetPeriodicWakeup_v2(RTCDriver *rtcp, RTCWakeup *wakeupspec);
   void rtcGetPeriodicWakeup_v2(RTCDriver *rtcp, RTCWakeup *wakeupspec);
+  uint32_t rtc_lld_get_time_fat(RTCDriver *rtcp);
 #ifdef __cplusplus
 }
 #endif

@@ -49,8 +49,13 @@
 #define STM32_CAN2_RX1_HANDLER      CAN2_RX1_IRQHandler
 #define STM32_CAN2_SCE_HANDLER      CAN2_SCE_IRQHandler
 
+#ifdef STM32F10X_CL
+#define STM32_CAN1_TX_NUMBER        CAN1_TX_IRQn
+#define STM32_CAN1_RX0_NUMBER       CAN1_RX0_IRQn
+#else
 #define STM32_CAN1_TX_NUMBER        USB_HP_CAN1_TX_IRQn
 #define STM32_CAN1_RX0_NUMBER       USB_LP_CAN1_RX0_IRQn
+#endif
 #define STM32_CAN1_RX1_NUMBER       CAN1_RX1_IRQn
 #define STM32_CAN1_SCE_NUMBER       CAN1_SCE_IRQn
 #define STM32_CAN2_TX_NUMBER        CAN2_TX_IRQn
@@ -88,11 +93,7 @@
 #define STM32_TIM3_HANDLER          TIM3_IRQHandler
 #define STM32_TIM4_HANDLER          TIM4_IRQHandler
 #define STM32_TIM5_HANDLER          TIM5_IRQHandler
-#ifdef STM32F10X_XL
 #define STM32_TIM8_UP_HANDLER       TIM8_UP_IRQHandler
-#else
-#define STM32_TIM8_UP_HANDLER       TIM8_UP_IRQHandler
-#endif
 #define STM32_TIM8_CC_HANDLER       TIM8_CC_IRQHandler
 
 #if defined(STM32F10X_XL)

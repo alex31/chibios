@@ -47,6 +47,10 @@
                          RCC_AHB1ENR_GPIOGEN | RCC_AHB1ENR_GPIOHEN |        \
                          RCC_AHB1ENR_GPIOIEN)
 #define AHB1_LPEN_MASK  AHB1_EN_MASK
+#elif defined(STM32F30X)
+#define AHB_EN_MASK     (RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOBEN |          \
+                         RCC_AHBENR_GPIOCEN | RCC_AHBENR_GPIODEN |          \
+                         RCC_AHBENR_GPIOEEN | RCC_AHBENR_GPIOFEN)
 #elif defined(STM32F4XX)
 #define AHB1_EN_MASK    (RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN |        \
                          RCC_AHB1ENR_GPIOCEN | RCC_AHB1ENR_GPIODEN |        \
@@ -72,13 +76,13 @@
 
 static void initgpio(GPIO_TypeDef *gpiop, const stm32_gpio_setup_t *config) {
 
-  gpiop->MODER   = config->moder;
   gpiop->OTYPER  = config->otyper;
   gpiop->OSPEEDR = config->ospeedr;
   gpiop->PUPDR   = config->pupdr;
   gpiop->ODR     = config->odr;
   gpiop->AFRL    = config->afrl;
   gpiop->AFRH    = config->afrh;
+  gpiop->MODER   = config->moder;
 }
 
 /*===========================================================================*/
@@ -106,6 +110,8 @@ void _pal_lld_init(const PALConfig *config) {
   rccEnableAHB(AHB_EN_MASK, TRUE);
   RCC->AHBLPENR |= AHB_LPEN_MASK;
 #elif defined(STM32F0XX)
+  rccEnableAHB(AHB_EN_MASK, TRUE);
+#elif defined(STM32F30X)
   rccEnableAHB(AHB_EN_MASK, TRUE);
 #elif defined(STM32F2XX) || defined(STM32F4XX)
   RCC->AHB1ENR   |= AHB1_EN_MASK;

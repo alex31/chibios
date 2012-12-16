@@ -56,10 +56,10 @@
 /*
  * OS signature in ROM plus debug-related information.
  */
-ROMCONST chroot_t ch_root = {
-  "CHRT",
-  (uint8_t)sizeof (chroot_t),
+ROMCONST chdebug_t ch_debug = {
+  "main",
   (uint8_t)0,
+  (uint8_t)sizeof (chdebug_t),
   (uint16_t)((CH_KERNEL_MAJOR << 11) |
              (CH_KERNEL_MINOR << 6) |
              (CH_KERNEL_PATCH) << 0),
@@ -88,7 +88,11 @@ ROMCONST chroot_t ch_root = {
 #else
   (uint8_t)0,
 #endif
+#if CH_DBG_THREADS_PROFILING
   (uint8_t)_offsetof(Thread, p_time)
+#else
+  (uint8_t)0
+#endif
 };
 
 /**

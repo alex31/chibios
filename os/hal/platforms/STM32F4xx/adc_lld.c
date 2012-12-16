@@ -20,7 +20,7 @@
 
 /**
  * @file    STM32F4xx/adc_lld.c
- * @brief   STM32F4xx ADC subsystem low level driver source.
+ * @brief   STM32F4xx/STM32F2xx ADC subsystem low level driver source.
  *
  * @addtogroup ADC
  * @{
@@ -174,8 +174,6 @@ CH_IRQ_HANDLER(ADC1_2_3_IRQHandler) {
  */
 void adc_lld_init(void) {
 
-  ADC->CCR = STM32_ADC_ADCPRE;
-
 #if STM32_ADC_USE_ADC1
   /* Driver initialization.*/
   adcObjectInit(&ADCD1);
@@ -270,6 +268,10 @@ void adc_lld_start(ADCDriver *adcp) {
     }
 #endif /* STM32_ADC_USE_ADC3 */
 
+    /* This is a common register but apparently it requires that at least one
+       of the ADCs is clocked in order to allow writing, see bug 3575297.*/
+    ADC->CCR = STM32_ADC_ADCPRE << 16;
+
     /* ADC initial setup, starting the analog part here in order to reduce
        the latency when starting a conversion.*/
     adcp->adc->CR1 = 0;
@@ -348,7 +350,11 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
   /* ADC configuration and start, the start is performed using the method
      specified in the CR2 configuration, usually ADC_CR2_SWSTART.*/
   adcp->adc->CR1   = grpp->cr1 | ADC_CR1_OVRIE | ADC_CR1_SCAN;
-  adcp->adc->CR2   = grpp->cr2 | ADC_CR2_CONT  | ADC_CR2_DMA |
+  if ((grpp->cr2 & ADC_CR2_SWSTART) != 0)
+    adcp->adc->CR2 = grpp->cr2 | ADC_CR2_CONT  | ADC_CR2_DMA |
+                                 ADC_CR2_DDS   | ADC_CR2_ADON;
+  else
+    adcp->adc->CR2 = grpp->cr2 |                 ADC_CR2_DMA |
                                  ADC_CR2_DDS   | ADC_CR2_ADON;
 }
 

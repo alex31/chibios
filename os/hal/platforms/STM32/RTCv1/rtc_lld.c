@@ -30,8 +30,6 @@
  * @{
  */
 
-#include <time.h>
-
 #include "ch.h"
 #include "hal.h"
 
@@ -128,26 +126,35 @@ CH_IRQ_HANDLER(RTC_IRQHandler) {
 /*===========================================================================*/
 
 /**
- * @brief   Enable access to registers and initialize RTC if BKP domain
- *          was previously reseted.
- * @note:   Cold start time of LSE oscillator on STM32 platform 
- *          takes about 3 seconds.
+ * @brief   Load value of RTCCLK to prescaler registers.
+ * @note    The pre-scaler must not be set on every reset as RTC clock
+ *          counts are lost when it is set.
+ * @note    This function designed to be called from
+ *          hal_lld_backup_domain_init(). Because there is only place
+ *          where possible to detect BKP domain reset event reliably.
+ *
+ * @notapi
+ */
+void rtc_lld_set_prescaler(void){
+  rtc_lld_acquire();
+  RTC->PRLH = (uint16_t)((STM32_RTCCLK - 1) >> 16) & 0x000F;
+  RTC->PRLL = (uint16_t)(((STM32_RTCCLK - 1))      & 0xFFFF);
+  rtc_lld_release();
+}
+
+/**
+ * @brief   Initialize RTC.
  *
  * @notapi
  */
 void rtc_lld_init(void){
 
+  /* RSF bit must be cleared by software after an APB1 reset or an APB1 clock
+     stop. Otherwise its value will not be actual. */
+  RTC->CRL &= ~RTC_CRL_RSF;
+
   /* Required because access to PRL.*/
   rtc_lld_apb1_sync();
-
-  /* Writes preload register only if its value is not equal to desired value.*/
-  if (STM32_RTCCLK != (((uint32_t)(RTC->PRLH)) << 16) +
-                       ((uint32_t)RTC->PRLL) + 1) {
-    rtc_lld_acquire();
-    RTC->PRLH = (uint16_t)((STM32_RTCCLK - 1) >> 16);
-    RTC->PRLL = (uint16_t)((STM32_RTCCLK - 1) & 0xFFFF);
-    rtc_lld_release();
-  }
 
   /* All interrupts initially disabled.*/
   rtc_lld_wait_write();
@@ -290,6 +297,32 @@ void rtc_lld_set_callback(RTCDriver *rtcp, rtccb_t callback) {
     /* Callback set to NULL only after disabling the IRQ sources.*/
     rtcp->callback = NULL;
   }
+}
+
+#include "chrtclib.h"
+
+/**
+ * @brief   Get current time in format suitable for usage in FatFS.
+ *
+ * @param[in] rtcp      pointer to RTC driver structure
+ * @return              FAT time value.
+ *
+ * @api
+ */
+uint32_t rtc_lld_get_time_fat(RTCDriver *rtcp) {
+  uint32_t fattime;
+  struct tm timp;
+
+  rtcGetTimeTm(rtcp, &timp);
+
+  fattime  = (timp.tm_sec)       >> 1;
+  fattime |= (timp.tm_min)       << 5;
+  fattime |= (timp.tm_hour)      << 11;
+  fattime |= (timp.tm_mday)      << 16;
+  fattime |= (timp.tm_mon + 1)   << 21;
+  fattime |= (timp.tm_year - 80) << 25;
+
+  return fattime;
 }
 #endif /* HAL_USE_RTC */
 

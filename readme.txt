@@ -34,8 +34,7 @@
   |  |  |  +--STM32/    - Drivers for STM32 platform (common).
   |  |  |  +--STM32F0xx/- Drivers for STM32F0xx platform.
   |  |  |  +--STM32F1xx/- Drivers for STM32F1xx platform.
-  |  |  |  +--STM32F2xx/- Drivers for STM32F2xx platform.
-  |  |  |  +--STM32F4xx/- Drivers for STM32F4xx platform.
+  |  |  |  +--STM32F4xx/- Drivers for STM32F4xx/STM32F2xx platforms.
   |  |  |  +--STM32L1xx/- Drivers for STM32L1xx platform.
   |  |  |  +--STM8L/    - Drivers for STM8L platform.
   |  |  |  +--STM8S/    - Drivers for STM8S platform.
@@ -53,6 +52,7 @@
   |  |  |  +--SIMIA32/  - Port files for SIMIA32 simulator architecture.
   |  |  +--IAR/         - Ports for the IAR compiler.
   |  |  |  +--ARMCMx/   - Port files for ARMCMx architectures (ARMv6/7-M).
+  |  |  |  +--STM8/     - Port files for STM8 architecture.
   |  |  +--RVCT/        - Ports for the Keil RVCT compiler.
   |  |  |  +--ARMCMx/   - Port files for ARMCMx architectures (ARMv6/7-M).
   |  |  +--cosmic/      - Ports for the Cosmic compiler.
@@ -80,6 +80,115 @@
 *****************************************************************************
 *** Releases                                                              ***
 *****************************************************************************
+
+*** 2.5.1 ***
+- FIX: Fixed typo in chOQGetEmptyI() macro (bug 3595910)(backported to 2.2.10
+  and 2.4.3).
+- FIX: Fixed possible false detect of loaded prescaler in RTCv1 driver (bug 
+  3595489)(backported to 2.4.3).
+- FIX: Fixed unneeded RTC initialization when HAL_USE_RTC disabled
+  (bug 3594620)(backported to 2.4.3).
+- FIX: Fixed compilation issue with HAL_USE_RTC disabled (bug 3594083)
+  (backported to 2.4.3).
+- FIX: Fixed wasting of BKP registers in RTCv1 driver (bug 3594005)(backported
+  to 2.4.3).
+- FIX: Fixed potential problem with RTC_CRL_RSF bit (bug 3593972)(backported
+  to 2.4.3).
+- FIX: Fixed STM32F1x rtc_lld_init not functional (bug 3592817)(backported
+  to 2.4.3).
+- FIX: Fixed DMA reconfiguration problem in STM32 SPI driver (bug 3592809)
+  (backported to 2.4.3).
+- FIX: Fixed STM32 UART driver redundant initialization (bug 3592764)
+  (backported to 2.4.3).
+- FIX: Fixed wrong stack initializations in GCC STM32L1xx port files (bug
+  3591321)(backported to 2.4.3).
+- FIX: Fixed different redefinition for __main_stack_end__ symbol (bug
+  3591317)(backported to 2.4.3).
+- FIX: Fixed errors in STM32F0xx UART driver (bug 3589412)(backported
+  to 2.4.3).
+- FIX: Fixed MSP430 port_switch code for MSPGCC issue (bug 3587633)(backported
+  to 2.4.3).
+- FIX: Fixed workaround for errata in STM32F4-A devices (bug 3586425)
+  (backported to 2.4.3).
+- FIX: Fixed error in palWritePad() macro (bug 3586230)(backported to 2.2.10
+  and 2.4.3).
+- FIX: Fixed missing ; in testmbox.c (bug 3585979)(backported to 2.4.3).
+- FIX: Fixed STM32F4xx: Wrong CAN1 SCE interrupt number definition (bug
+  3581571).
+- FIX: Fixed STM32_P407: implement mmc_lld_is_card_inserted (bug 3581929)
+  (backported to 2.4.3).
+- FIX: Fixed double chSysInit() call in MSP430F1611 demo (bug 3581304)
+  (backported to 2.2.10 and 2.4.3).
+- FIX: Fixed patch for various demos (bug 3579734).
+- FIX: Fixed bug in abstract file interface (bug 3579660)(backported to
+  2.2.10 and 2.4.3).
+- FIX: Fixed wrong type for UART config registers (bug 3579434).
+- FIX: Fixed various typos and wrong limits in the STM32F4/F2 HAL driver
+  (bug 3578944)(backported to 2.4.3).
+- FIX: Fixed ARM CMx crt0.c fails at low optimization levels (bug 3578927)
+  (backported to 2.4.3).
+- FIX: Fixed compilation issue in chregistry.c (bug 3576776).
+- FIX: Fixed compilation issue in syscalls.c (bug 3576771)(backported
+  to 2.4.3).
+- FIX: Fixed Typos in STM32F0xx EXT driver (bug 3576193).
+- FIX: Fixed STM32F10X_CL: Wrong CAN1 interrupt number definitions (bug
+  3575766).
+- FIX: Fixed superfluous pack #defines cause nasty warning (bug 3575662)
+  (backported to 2.4.3).
+- FIX: Fixed mac.c won't compile due to misplaced declarations (bug 3575657)
+  (backported to 2.4.3).
+- FIX: Fixed STM32F4 ADC prescaler incorrectly initialized (bug 3575297)
+  (backported to 2.4.3).
+- FIX: Fixed RCC_APB2ENR_IOPEEN undeclared on STM32F10X_LD_VL devices (bug
+  3575098)(backported to 2.4.3).
+- FIX: Fixed misplaced declarations in lwip_bindings sys_arch.c (bug 3571053)
+  (backported to 2.4.3).
+- FIX: Fixed double definition of sd1fel and sd2fel breaks Posix simulator
+  (bug 3570532).
+- FIX: Fixed Ethernet PHY power down scheme prevents using LAN8720A (bug
+  3570335).
+- FIX: Fixed FatFS won't compile with _FS_REENTRANT enabled (bug 3570135)
+  (backported to 2.4.3).
+- FIX: Fixed mmc_spi.c won't compile due to misplaced declaration (bug
+  3570035)(backported to 2.4.3).
+- FIX: Fixed problem in STM32F1xx USB driver after revision 4598 (bug 3569374).
+- FIX: Fixed GPIO glitch during PAL initialization (bug 3569347)(backported
+  to 2.4.3).
+- FIX: Fixed FatFS timestamp incorrect (bug 3568626).
+- FIX: Fixed Data available event not generated in serial_usb driver (bug
+  3567992).
+- FIX: Fixed STM32F1x rtc_lld_init glitches rtc on hard reset (bug 3567597)
+  (backported to 2.4.3).
+- FIX: Fixed STM8L, cosmic compiler: c_lreg not saved (bug 3566342)(backported
+  to 2.2.10 and 2.4.3).
+- NEW: Initial support for STM32F30x (HAL, PAL, CAN, GPT, ICU, PWM, Serial,
+  SPI, UART, USB).
+- NEW: AT91SAM7A3 I2C support.
+- NEW: AT91SAM7A3 basic support.
+- NEW: Unified the STM32F4xx and STM32F2xx platform code. The STM32F2xx now is
+  only supported as an STM32F4xx variant and not tested separately.
+- NEW: Updated STM32F1, F2, F4, L1 ADC drivers to allow HW triggering.
+- NEW: Added a new option STM32_ETH1_CHANGE_PHY_STATE to the STM32 MAC driver,
+  this change is connected to bug 3570335.
+- NEW: Modified the CAN drivers to use the new event flags mechanism, the
+  previous flags handling has been removed.
+- NEW: Modified serial and serial_usb drivers to use the new event flags
+  mechanism, the previous flags handling in BaseAsynchronousChannel has
+  been removed.
+- NEW: Improved the kernel events subsystem, now event sources can associate
+  source-specific flags to the listener, the flags can then be retrieved
+  using the new APIs chEvtGetAndClearFlags() and chEvtGetAndClearFlagsI().
+  Some old APIs have been renamed to increase consistency of the module.
+- NEW: Added VLE support to the Power Architecture GCC port.
+- NEW: Reorganized the Power Architecture GCC port along the lines of the
+  ARMCMx port, now it can support multiple core types.
+- NEW: Updated the Power Architecture rules.mk file to put object and listing
+  files into a ./build directory like ARM ports already do.
+- CHANGE: The STM32 Serial driver has been split in two distinct versions,
+  one for older devices up the STM32F4xx, the other for new devices starting
+  from the STM32F0xx.
+  (TODO: Update IAR and Keil projects because different paths, update
+         documentation projects).
 
 *** 2.5.0 ***
 - FIX: Fixed anomaly in USB enumeration (bug 3565325)(backported to 2.4.3).
