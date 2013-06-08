@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+                 2011,2012,2013 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -43,8 +43,6 @@
  *            are implemented by pairing an input queue and an output queue
  *            together.
  *          .
- *          I/O queues are usually used as an implementation layer for the I/O
- *          channels interface, also see @ref io_channels.
  * @pre     In order to use the I/O queues the @p CH_USE_QUEUES option must
  *          be enabled in @p chconf.h.
  * @{
@@ -90,16 +88,19 @@ static msg_t qwait(GenericQueue *qp, systime_t time) {
  * @param[in] size      size of the queue buffer
  * @param[in] infy      pointer to a callback function that is invoked when
  *                      data is read from the queue. The value can be @p NULL.
+ * @param[in] link      application defined pointer
  *
  * @init
  */
-void chIQInit(InputQueue *iqp, uint8_t *bp, size_t size, qnotify_t infy) {
+void chIQInit(InputQueue *iqp, uint8_t *bp, size_t size, qnotify_t infy,
+              void *link) {
 
   queue_init(&iqp->q_waiting);
   iqp->q_counter = 0;
   iqp->q_buffer = iqp->q_rdptr = iqp->q_wrptr = bp;
   iqp->q_top = bp + size;
   iqp->q_notify = infy;
+  iqp->q_link = link;
 }
 
 /**
@@ -267,16 +268,19 @@ size_t chIQReadTimeout(InputQueue *iqp, uint8_t *bp,
  * @param[in] size      size of the queue buffer
  * @param[in] onfy      pointer to a callback function that is invoked when
  *                      data is written to the queue. The value can be @p NULL.
+ * @param[in] link      application defined pointer
  *
  * @init
  */
-void chOQInit(OutputQueue *oqp, uint8_t *bp, size_t size, qnotify_t onfy) {
+void chOQInit(OutputQueue *oqp, uint8_t *bp, size_t size, qnotify_t onfy,
+              void *link) {
 
   queue_init(&oqp->q_waiting);
   oqp->q_counter = size;
   oqp->q_buffer = oqp->q_rdptr = oqp->q_wrptr = bp;
   oqp->q_top = bp + size;
   oqp->q_notify = onfy;
+  oqp->q_link = link;
 }
 
 /**

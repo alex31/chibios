@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+                 2011,2012,2013 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -125,7 +125,7 @@ void _port_irq_epilogue(regarm_t lr) {
     }
 
     /* Note, returning without unlocking is intentional, this is done in
-       order to keep the rest of the context switching atomic.*/
+       order to keep the rest of the context switch atomic.*/
   }
 }
 

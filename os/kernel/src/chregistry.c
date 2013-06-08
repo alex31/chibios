@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+                 2011,2012,2013 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -90,7 +90,11 @@ ROMCONST chdebug_t ch_debug = {
 #else
   (uint8_t)0,
 #endif
-  (uint8_t)0, /* Not used in 2.4.x.*/
+#if CH_TIME_QUANTUM > 0
+  (uint8_t)_offsetof(Thread, p_preempt),
+#else
+  (uint8_t)0,
+#endif
 #if CH_DBG_THREADS_PROFILING
   (uint8_t)_offsetof(Thread, p_time)
 #else

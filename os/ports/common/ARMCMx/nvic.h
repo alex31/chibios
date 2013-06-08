@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+                 2011,2012,2013 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -196,7 +196,7 @@ typedef struct {
 
 #define AIRCR_VECTKEY           0x05FA0000U
 #define AIRCR_PRIGROUP_MASK     (0x7U << 8)
-#define AIRCR_PRIGROUP(n)       ((n##U) << 8)
+#define AIRCR_PRIGROUP(n)       ((n) << 8)
 
 /**
  * @brief Structure representing the FPU I/O space.

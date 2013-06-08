@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+                 2011,2012,2013 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -265,7 +265,7 @@ Mutex *chMtxUnlock(void) {
   chDbgAssert(ctp->p_mtxlist->m_owner == ctp,
               "chMtxUnlock(), #2",
               "ownership failure");
-  /* Removes the top Mutex from the Thread's owned mutexes list and mark it
+  /* Removes the top Mutex from the Thread's owned mutexes list and marks it
      as not owned.*/
   ump = ctp->p_mtxlist;
   ctp->p_mtxlist = ump->m_next;

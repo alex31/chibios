@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+                 2011,2012,2013 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -25,7 +25,7 @@
     for full details of how and when the exception can be applied.
 */
 
-/* * <-disabled
+/**
  * @file    templates/chcore.h
  * @brief   Port related template macros and structures.
  * @details This file is a template of the system driver macros provided by

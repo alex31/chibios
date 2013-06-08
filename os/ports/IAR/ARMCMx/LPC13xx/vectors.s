@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+                 2011,2012,2013 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -111,6 +111,8 @@ __vector_table:
         DCD     Vector114
         DCD     Vector118
         DCD     Vector11C
+        DCD     Vector120
+        DCD     Vector124
 
 /*
  * Default interrupt handlers.
@@ -185,6 +187,8 @@ __vector_table:
         PUBWEAK Vector114
         PUBWEAK Vector118
         PUBWEAK Vector11C
+        PUBWEAK Vector120
+        PUBWEAK Vector124
         PUBLIC  _unhandled_exception
 
         SECTION .text:CODE:REORDER(1)
@@ -260,6 +264,8 @@ Vector110
 Vector114
 Vector118
 Vector11C
+Vector120
+Vector124
 _unhandled_exception
         b       _unhandled_exception
 

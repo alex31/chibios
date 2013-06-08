@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+                 2011,2012,2013 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -94,6 +94,12 @@
   (((n) >= 0) && ((n) < CORTEX_PRIORITY_LEVELS))
 
 /**
+ * @brief   Priority level verification macro.
+ */
+#define CORTEX_IS_VALID_KERNEL_PRIORITY(n)                                  \
+  (((n) >= CORTEX_MAX_KERNEL_PRIORITY) && ((n) < CORTEX_PRIORITY_LEVELS))
+
+/**
  * @brief   Priority level to priority mask conversion macro.
  */
 #define CORTEX_PRIORITY_MASK(n)                                             \
@@ -175,8 +181,8 @@ struct intctx {};
  * @brief   Inline-able version of this kernel function.
  */
 #define chSchIsPreemptionRequired()                                         \
-  (rlist.r_preempt ? firstprio(&rlist.r_queue) > currp->p_prio :            \
-                     firstprio(&rlist.r_queue) >= currp->p_prio)
+  (currp->p_preempt ? firstprio(&rlist.r_queue) > currp->p_prio :           \
+                      firstprio(&rlist.r_queue) >= currp->p_prio)
 #else /* CH_TIME_QUANTUM == 0 */
 #define chSchIsPreemptionRequired()                                         \
   (firstprio(&rlist.r_queue) > currp->p_prio)

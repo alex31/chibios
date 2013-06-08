@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+                 2011,2012,2013 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -119,7 +119,7 @@ void _port_init(void) {
 
   /* Initialization of the vector table and priority related settings.*/
   SCB_VTOR = CORTEX_VTOR_INIT;
-  SCB_AIRCR = AIRCR_VECTKEY | AIRCR_PRIGROUP(0);
+  SCB_AIRCR = AIRCR_VECTKEY | AIRCR_PRIGROUP(CORTEX_PRIGROUP_INIT);
 
 #if CORTEX_USE_FPU
   {
@@ -196,7 +196,7 @@ void _port_irq_epilogue(void) {
 #endif
 
     /* Note, returning without unlocking is intentional, this is done in
-       order to keep the rest of the context switching atomic.*/
+       order to keep the rest of the context switch atomic.*/
     return;
   }
   port_unlock_from_isr();

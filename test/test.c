@@ -1,28 +1,17 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
-    This file is part of ChibiOS/RT.
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
 
-    ChibiOS/RT is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 3 of the License, or
-    (at your option) any later version.
+        http://www.apache.org/licenses/LICENSE-2.0
 
-    ChibiOS/RT is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-                                      ---
-
-    A special exception to the GPL can be applied should you wish to distribute
-    a combined work that includes ChibiOS/RT, without being obliged to provide
-    the source code for any proprietary components. See the file exception.txt
-    for full details of how and when the exception can be applied.
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
 */
 
 /**
@@ -92,7 +81,7 @@ void * ROMCONST wa[5] = {test.wa.T0, test.wa.T1, test.wa.T2,
 /*
  * Console output.
  */
-static BaseChannel *chp;
+static BaseSequentialStream *chp;
 
 /**
  * @brief   Prints a decimal unsigned number.
@@ -103,13 +92,13 @@ void test_printn(uint32_t n) {
   char buf[16], *p;
 
   if (!n)
-    chIOPut(chp, '0');
+    chSequentialStreamPut(chp, '0');
   else {
     p = buf;
     while (n)
       *p++ = (n % 10) + '0', n /= 10;
     while (p > buf)
-      chIOPut(chp, *--p);
+      chSequentialStreamPut(chp, *--p);
   }
 }
 
@@ -121,7 +110,7 @@ void test_printn(uint32_t n) {
 void test_print(const char *msgp) {
 
   while (*msgp)
-    chIOPut(chp, *msgp++);
+    chSequentialStreamPut(chp, *msgp++);
 }
 
 /**
@@ -132,8 +121,7 @@ void test_print(const char *msgp) {
 void test_println(const char *msgp) {
 
   test_print(msgp);
-  chIOPut(chp, '\r');
-  chIOPut(chp, '\n');
+  chSequentialStreamWrite(chp, (const uint8_t *)"\r\n", 2);
 }
 
 /*
@@ -148,7 +136,7 @@ static void print_tokens(void) {
   char *cp = tokens_buffer;
 
   while (cp < tokp)
-    chIOPut(chp, *cp++);
+    chSequentialStreamPut(chp, *cp++);
 }
 
 /**
@@ -285,9 +273,7 @@ void test_start_timer(unsigned ms) {
 
   systime_t duration = MS2ST(ms);
   test_timer_done = FALSE;
-  chSysLock();
-  chVTSetI(&vt, duration, tmr, NULL);
-  chSysUnlock();
+  chVTSet(&vt, duration, tmr, NULL);
 }
 
 /*
@@ -315,9 +301,8 @@ static void print_line(void) {
   unsigned i;
 
   for (i = 0; i < 76; i++)
-    chIOPut(chp, '-');
-  chIOPut(chp, '\r');
-  chIOPut(chp, '\n');
+    chSequentialStreamPut(chp, '-');
+  chSequentialStreamWrite(chp, (const uint8_t *)"\r\n", 2);
 }
 
 /**

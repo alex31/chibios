@@ -35,8 +35,6 @@
   |  |  |  +--STM32F2xx/- Drivers for STM32F2xx platform.
   |  |  |  +--STM32F4xx/- Drivers for STM32F4xx platform.
   |  |  |  +--STM32L1xx/- Drivers for STM32L1xx platform.
-  |  |  |  +--STM8L/    - Drivers for STM8L platform.
-  |  |  |  +--STM8S/    - Drivers for STM8S platform.
   |  |  |  +--Posix/    - Drivers for x86 Linux/OSX simulator platform.
   |  |  |  +--Win32/    - Drivers for x86 Win32 simulator platform.
   |  |  +--templates/   - Driver template files.
@@ -53,10 +51,6 @@
   |  |  |  +--ARMCMx/   - Port files for ARMCMx architectures (ARMv6/7-M).
   |  |  +--RVCT/        - Ports for the Keil RVCT compiler.
   |  |  |  +--ARMCMx/   - Port files for ARMCMx architectures (ARMv6/7-M).
-  |  |  +--cosmic/      - Ports for the Cosmic compiler.
-  |  |  |  +--STM8/     - Port files for STM8 architecture.
-  |  |  +--RC/          - Ports for the Raisonance compiler.
-  |  |     +--STM8/     - Port files for STM8 architecture.
   |  +--kernel/         - Kernel portable files.
   |  |  +--include/     - Kernel headers.
   |  |  +--src/         - Kernel source.
@@ -70,13 +64,213 @@
   |  +--STM32F1xx/      - STM32F1xx HAL demos.
   |  +--STM32F4xx/      - STM32F4xx HAL demos (valid for STM32F2xx too).
   |  +--STM32L1xx/      - STM32L1xx HAL demos.
-  |  +--STM8S/          - STM8S HAL demos.
   +--tools              - Various tools.
      +--eclipse         - Eclipse enhancements.
 
 *****************************************************************************
 *** Releases                                                              ***
 *****************************************************************************
+
+*** 2.6.0 ***
+- FIX: Fixed  MS2ST() and US2ST() macros error (bug #415).
+- NEW: Added new pwmIsChannelEnabledI() API to the PWM driver, implemented
+  in the STM32 driver.
+- NEW: Added support for timers 6, 7, 9, 11, 12, 14 to the STM32 GPT driver.
+- NEW: Added support for timer 9 to the STM32 PWM and ICU drivers.
+- NEW: Relicensed parts of the distribution tree under the Apache 2.0
+  license in order to make specific parts of the code more accessible
+  to the open source community and adopters.
+- NEW: Added ADC(EQADC), HAL, ICU, PAL, PWM, Serial drivers for SPC5xx
+  platforms, tests to be added on the various sub-families.
+- NEW: Added support for SPC56ELxx, SPC560BCxx, SPC560Pxx, SPC560Mxx and
+  SPC564Axx platforms.
+- NEW: Now the general documentation includes data extracted from the low
+  level driver templates. Per-platform/architecture documents are no more
+  required and will be replaced with technical articles and examples for
+  each specific driver.
+- NEW: Added a build test project for low level device driver templates.
+- NEW: Enhanced CAN driver model, support for mailboxes has been added. STM32
+  driver implementation upgraded.
+- NEW: Added ADC and PWM drivers for the AT91SAM7 platform, both donated
+  by Andrew Hannam.
+- NEW: Added kernel support for the SAM4L, an Atmel Studio 6 demo for the
+  SAM4L-EK board has been added.
+- NEW: CAN2 support for STM32 added.
+- NEW: Updated STM32L1xx header to the latest version.
+- NEW: Added an option to lwipthread to change the link status poll interval.
+- NEW: Added new C++ demo for the STM32F4-Discovery.
+- NEW: Updated C++ wrapper with a much more logical classes structure.
+- NEW: ADC driver implementation for the STM32F3xx, the driver supports also
+  the dual-ADC mode allowing for a very high combined bandwidth.
+- NEW: Added zero-copy capability to the STM32 MAC driver (experimental and
+  not tested yet).
+- NEW: Added an optional zero-copy mode API to the MAC driver model.
+- NEW: Added EXT driver to the STM32F3xx platform.
+- NEW: Improved the STM32 EXT driver to support more than 32 channels.
+- NEW: Added support for Olimex board STM32-LCD.
+- NEW: Support for STM32F30x and STM32F37x.
+- NEW: AT91SAM7A3 support.
+- NEW: Unified the STM32F4xx and STM32F2xx platform code. The STM32F2xx now is
+  only supported as an STM32F4xx variant and not tested separately.
+- NEW: Updated STM32F1, F2, F4, L1 ADC drivers to allow HW triggering.
+- NEW: Added a new option STM32_ETH1_CHANGE_PHY_STATE to the STM32 MAC driver,
+  this change is connected to bug 3570335.
+- NEW: Modified the CAN drivers to use the new event flags mechanism, the
+  previous flags handling has been removed.
+- NEW: Modified serial and serial_usb drivers to use the new event flags
+  mechanism, the previous flags handling in BaseAsynchronousChannel has
+  been removed.
+- NEW: Improved the kernel events subsystem, now event sources can associate
+  source-specific flags to the listener, the flags can then be retrieved
+  using the new APIs chEvtGetAndClearFlags() and chEvtGetAndClearFlagsI().
+  Some old APIs have been renamed to increase consistency of the module.
+- NEW: Added VLE support to the Power Architecture GCC port.
+- NEW: Reorganized the Power Architecture GCC port along the lines of the
+  ARMCMx port, now it can support multiple core types.
+- NEW: Updated the Power Architecture rules.mk file to put object and listing
+  files into a ./build directory like ARM ports already do.
+- NEW: Added Eclipse project files to most demos. The project are setup to
+  have paths relative to a variable named CHIBIOS that must point to the
+  ChibiOS/RT installation path. The variable must be defined under
+  Window->Preferences->General->Workspace->Linked_Resources and must contain
+  a path without the trailing slash character.
+- NEW: Added memory signature record to the registry in order to simplify
+  the implementation of ad-hoc debuggers.
+- NEW: Small andjustment in chcore.h files under ./os/ports/GCC required by a
+  difference in GCC 4.7.x.
+- NEW: Added another STM32F4-Discovery demo using the on-board MEMS, SPI
+  and PWM. Removed MEMS handling from the old demo because code size limits
+  on non-free compilers.
+- NEW: Added USART6 support to the STM32 UARTv1 driver, contributed by Erik
+  van der Zalm.
+- NEW: Added demo for Arduino Mega, contributed by Fabio Utzig.
+- NEW: Added support for ATmega1280, contributed by Fabio Utzig.
+- NEW: Added I2C driver for AVR, contributed by Fabio Utzig.
+- NEW: Added FatFs demo for the Olimex STM32-P107 board.
+- NEW: Added support for the Olimex STM32-E407 board. Added an integrated
+  demo including USB-CDC, lwIP with web server, FatFs and shell, all running
+  together.
+- NEW: Added an experimental and unsupported STM8 port for the IAR compiler,
+  contributed by "king2".
+- NEW: Reorganized the STM32 EXT driver to have a sub-platform specific
+  part containing all the ISR related code, this has been necessary because
+  the significant differences among the various sub-families.
+- NEW: Validated CAN driver on STM32F2/F4 (backported to 2.4.2).
+- NEW: USB implementation for STM32F105/F107/2xx/F4xx devices.
+- NEW: Improved SerialUSB driver using the new queued mode, much smaller
+  than the previous driver.
+- NEW: Improved USB driver model supporting also queues for endpoint I/O,
+  packet mode removed.
+- NEW: Added an application-defined field to I/O queues (a void pointer).
+- NEW: Added board files for Maple Mini STM32F103, contributed by Wagner
+  Sartori Junior.
+- NEW: Added SSP1 capability to the LPC13xx SPI driver.
+- NEW: Updated vendor headers for LPC11xx and LPC13xx, the new headers
+  support several new devices.
+- NEW: Demo for STM32F0-Discovery board.
+- NEW: Initial support for STM32F0xx devices, added a specific ADC driver.
+  Validated EXT, GPT, ICU, PAL, PWM, Serial, SPI, UART drivers.
+- NEW: Added a common ancestor class to the SDC and MMC_SPI drivers. This
+  allows to share code and definitions.
+- NEW: Modified the SDC driver to implement the new block devices abstract
+  interface.
+- NEW: Added two new functions to the MMC_SPI driver: mmcSync() and
+  mmcGetInfo(). Also implemented the new block devices abstract
+  interface. Moved the configuration parameters from mmcObjectInit() to
+  the configuration structure saving some RAM space. Updated demos.
+- NEW: Added an abstract interface for block devices in the HAL. This
+  abstraction layer is meant to unify the access protocol to the SDC and
+  MMC_SPI (and potentially others) device drivers.
+- NEW: Added an abstract interface for serial devices in the HAL. This
+  interface is meant to replace the equivalent class already present in the
+  kernel. access macros are similar except for the prefix, "chn" instead
+  of "chIO".
+- NEW: Updated the MSP port to work with the latest MSPGCC compiler (4.6.3
+  LTS 20120406 unpatched), now the old MSPGCC 3.2.3 is no more supported
+  (backported to 2.4.1).
+- NEW: EXT driver improved, now it is possible to reprogram channels at
+  runtime without necessarily specifying a new configuration.
+  TODO: Update AT91SAM7 EXT driver.
+- NEW: Integrated FatFS 0.9, now the FatFS integration files are centralized
+  under ./os/various/fatfs_bindings and shared among all demos. The FatFS
+  file ffconf.h is now application-specific like all the other configuration
+  files.
+- NEW: Added an new option CORTEX_PRIGROUP_INIT to the Cortex-Mx ports in
+  order to make priority organization configurable, the default is to
+  assign all the available priority bits to preemption priority with no
+  sub-priorities.
+- NEW: Added a new function chPoolLoadArray() to the Memory Pools subsystem,
+  it allows to load an entire array element's into a pool with a single
+  operation.
+- NEW: Addes support for .S patch in the GCC ARM ports, by Ayman El-Khashab.
+- NEW: Added a switch to the STM32F4 Makefile files in order to enable or
+  disable the FPU support in a single place.
+- NEW: Added float support (optional) to chprintf(), by Fabio Utzig.
+- NEW: Added overflow handling in the ICU driver (contributed by Xo).
+- NEW: Updated debug plugin 1.0.8 (backported to 2.4.0).
+- NEW: Added more accurate UBRR calculation in AVR serial driver (backported
+  to 2.4.0).
+- NEW: Revision of the round-robin scheduling, now threads do not lose their
+  time slice when preempted. Each thread has its own time slices counter.
+  TODO: Seek optimizations.
+- NEW: Modified the Virtual Timers management, now the callback is invoked
+  not in lock mode. This change reduces the interrupt jitter caused by
+  multiple timers used at same time.
+- NEW: Added board files and demo for Olimex LPC-P1343 (contributed by
+  Johnny Halfmoon).
+- NEW: Added handling of input 2 to the STM32 ICU driver (contributed by
+  Fabio).
+- NEW: STM32 Ethernet driver completed. Added STM32F107 and STM32F407
+  lwIP demos (backported to 2.4.1).
+- NEW: lwIP related code is not centralized into a single place, no need to
+  duplicate the code in each application or demo (backported to 2.4.1).
+- CHANGE: Added two new methods to the BaseSequentialStream interface:
+  chSequentialStreamPut() and chSequentialStreamGet().
+- CHANGE: Removed the chioch.h header from the kernel, now channels interface
+  is exported by the HAL. Removed functions chPutWouldBlock() and
+  chGetWouldBlock().
+- CHANGE: Removed macro chMsgGetS(), chMsgGet() is still available.
+- CHANGE: chprintf() now takes a BaseSequentialStream as parameter instead
+  of a BaseChannel making it more generic.
+- CHANGE: Now the shell requires a BaseSequentialStream instead of a
+  BaseChannel for communications making it more generic.
+- CHANGE: Kernel memory pools now do not check the alignment of the inserted
+  objects, it is responsibility of the application to insert properly
+  aligned objects.
+- CHANGE: The PORT_INT_REQUIRED_STACK parameter for the Cortex-Mx ports has
+  been increased to 32 from 16 because the stack frame sizes are increased
+  when compiling with optimizations disabled, which is common during
+  debugging. In order to save RAM trim back this value when compiling with
+  optimizations enabled (backported to 2.4.1).
+- CHANGE: Renamed Ethernet driver in AT91 HAL ETHD1 (backported to 2.4.1).
+- CHANGE: Macros icuGetWidthI() and icuGetPeriodI() renamed to icuGetWidth()
+  and icuGetPeriod().
+- Various documentation fixes and improvements.
+
+*** 2.4.4 ***
+- FIX: Fixed wrong Keil project in ARMCM3-STM32F107 demo (bug #408).
+- FIX: Fixed wrong macro in PWM driver (bug #407).
+- FIX: Fixed USB driver possible deadlock under certain configurations (bug
+  #406).
+- FIX: Fixed USB driver cannot be stopped (bug #405).
+- FIX: Fixed fixed I2C malfunction after fixing bug 3607518 (bug 3607549).
+- FIX: Fixed spurious interrupt disabling an STM32 DMA stream (bug 3607518).
+- FIX: Fixed start of any ADC disables VREF and VBAT (bug 3607467).
+- FIX: Fixed CAN_USE_SLEEP_MODE compilation problem (bug 3606616).
+- FIX: Fixed misplaced brace in icu_lld.c (bug 3605832).
+- FIX: Fixed bug prevents calling adcStartConversionI() within ISR (bug
+  3605053).
+- FIX: Fixed typo in platforms/STM32/can_lld.c (bug 3604657).
+- FIX: Fixed duplicated code in hal_lld.h (STM32F4xx) (bug 3602544).
+- FIX: Fixed compile errors in Posix-GCC demo (bug 3601621).
+- FIX: Fixed state checker error in MSP430 port (bug 3601460).
+- FIX: Fixed wrong assertion in UART driver (bug 3600789).
+- FIX: Fixed small bug in shell argument parsing code in shell_thread (bug
+  3599328).
+- FIX: Fixed wrong condition in checksum offload of STM32 MAC driver (bug
+  3598720).
+- FIX: Fixed error in STM32 MAC driver degrades performance (bug 3598719).
+- NEW: Updated STM32L1xx header to the latest version.
 
 *** 2.4.3 ***
 - FIX: Fixed warning in STM32 ICU driver using IAR compiler (bug 3598177).

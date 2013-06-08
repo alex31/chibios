@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+                 2011,2012,2013 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -61,18 +61,6 @@
  * @api
  */
 #define chMsgGet(tp) ((tp)->p_msg)
-
-/**
- * @brief   Returns the message carried by the specified thread.
- * @pre     This function must be invoked immediately after exiting a call
- *          to @p chMsgWait().
- *
- * @param[in] tp        pointer to the thread
- * @return              The message carried by the sender.
- *
- * @sclass
- */
-#define chMsgGetS(tp) ((tp)->p_msg)
 
 /**
  * @brief   Releases the thread waiting on top of the messages queue.

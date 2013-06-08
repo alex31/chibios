@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+                 2011,2012,2013 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -75,6 +75,7 @@ struct GenericQueue {
   uint8_t               *q_wrptr;   /**< @brief Write pointer.              */
   uint8_t               *q_rdptr;   /**< @brief Read pointer.               */
   qnotify_t             q_notify;   /**< @brief Data notification callback. */
+  void                  *q_link;    /**< @brief Application defined field.  */
 };
 
 /**
@@ -102,6 +103,17 @@ struct GenericQueue {
  * @iclass
  */
 #define chQSpaceI(qp) ((qp)->q_counter)
+
+/**
+ * @brief   Returns the queue application-defined link.
+ * @note    This function can be called in any context.
+ *
+ * @param[in] qp        pointer to a @p GenericQueue structure.
+ * @return              The application-defined link.
+ *
+ * @special
+ */
+#define chQGetLink(qp) ((qp)->q_link)
 /** @} */
 
 /**
@@ -148,8 +160,8 @@ typedef GenericQueue InputQueue;
  *
  * @param[in] iqp       pointer to an @p InputQueue structure.
  * @return              The queue status.
- * @retval FALSE        The queue is not empty.
- * @retval TRUE         The queue is empty.
+ * @retval FALSE        if the queue is not empty.
+ * @retval TRUE         if the queue is empty.
  *
  * @iclass
  */
@@ -160,8 +172,8 @@ typedef GenericQueue InputQueue;
  *
  * @param[in] iqp       pointer to an @p InputQueue structure.
  * @return              The queue status.
- * @retval FALSE        The queue is not full.
- * @retval TRUE         The queue is full.
+ * @retval FALSE        if the queue is not full.
+ * @retval TRUE         if the queue is full.
  *
  * @iclass
  */
@@ -192,15 +204,17 @@ typedef GenericQueue InputQueue;
  * @param[in] buffer    pointer to the queue buffer area
  * @param[in] size      size of the queue buffer area
  * @param[in] inotify   input notification callback pointer
+ * @param[in] link      application defined pointer
  */
-#define _INPUTQUEUE_DATA(name, buffer, size, inotify) {                     \
+#define _INPUTQUEUE_DATA(name, buffer, size, inotify, link) {               \
   _THREADSQUEUE_DATA(name),                                                 \
   0,                                                                        \
   (uint8_t *)(buffer),                                                      \
   (uint8_t *)(buffer) + (size),                                             \
   (uint8_t *)(buffer),                                                      \
   (uint8_t *)(buffer),                                                      \
-  inotify                                                                   \
+  (inotify),                                                                \
+  (link)                                                                    \
 }
 
 /**
@@ -212,9 +226,10 @@ typedef GenericQueue InputQueue;
  * @param[in] buffer    pointer to the queue buffer area
  * @param[in] size      size of the queue buffer area
  * @param[in] inotify   input notification callback pointer
+ * @param[in] link      application defined pointer
  */
-#define INPUTQUEUE_DECL(name, buffer, size, inotify)                    \
-  InputQueue name = _INPUTQUEUE_DATA(name, buffer, size, inotify)
+#define INPUTQUEUE_DECL(name, buffer, size, inotify, link)                  \
+  InputQueue name = _INPUTQUEUE_DATA(name, buffer, size, inotify, link)
 
 /**
  * @extends GenericQueue
@@ -260,8 +275,8 @@ typedef GenericQueue OutputQueue;
  *
  * @param[in] oqp       pointer to an @p OutputQueue structure.
  * @return              The queue status.
- * @retval FALSE        The queue is not empty.
- * @retval TRUE         The queue is empty.
+ * @retval FALSE        if the queue is not empty.
+ * @retval TRUE         if the queue is empty.
  *
  * @iclass
  */
@@ -273,8 +288,8 @@ typedef GenericQueue OutputQueue;
  *
  * @param[in] oqp       pointer to an @p OutputQueue structure.
  * @return              The queue status.
- * @retval FALSE        The queue is not full.
- * @retval TRUE         The queue is full.
+ * @retval FALSE        if the queue is not full.
+ * @retval TRUE         if the queue is full.
  *
  * @iclass
  */
@@ -306,15 +321,17 @@ typedef GenericQueue OutputQueue;
  * @param[in] buffer    pointer to the queue buffer area
  * @param[in] size      size of the queue buffer area
  * @param[in] onotify   output notification callback pointer
+ * @param[in] link      application defined pointer
  */
-#define _OUTPUTQUEUE_DATA(name, buffer, size, onotify) {                    \
+#define _OUTPUTQUEUE_DATA(name, buffer, size, onotify, link) {              \
   _THREADSQUEUE_DATA(name),                                                 \
   (size),                                                                   \
   (uint8_t *)(buffer),                                                      \
   (uint8_t *)(buffer) + (size),                                             \
   (uint8_t *)(buffer),                                                      \
   (uint8_t *)(buffer),                                                      \
-  onotify                                                                   \
+  (onotify),                                                                \
+  (link)                                                                    \
 }
 
 /**
@@ -326,21 +343,24 @@ typedef GenericQueue OutputQueue;
  * @param[in] buffer    pointer to the queue buffer area
  * @param[in] size      size of the queue buffer area
  * @param[in] onotify   output notification callback pointer
+ * @param[in] link      application defined pointer
  */
-#define OUTPUTQUEUE_DECL(name, buffer, size, onotify)                   \
-  OutputQueue name = _OUTPUTQUEUE_DATA(name, buffer, size, onotify)
+#define OUTPUTQUEUE_DECL(name, buffer, size, onotify, link)                 \
+  OutputQueue name = _OUTPUTQUEUE_DATA(name, buffer, size, onotify, link)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void chIQInit(InputQueue *iqp, uint8_t *bp, size_t size, qnotify_t infy);
+  void chIQInit(InputQueue *iqp, uint8_t *bp, size_t size, qnotify_t infy,
+                void *link);
   void chIQResetI(InputQueue *iqp);
   msg_t chIQPutI(InputQueue *iqp, uint8_t b);
   msg_t chIQGetTimeout(InputQueue *iqp, systime_t time);
   size_t chIQReadTimeout(InputQueue *iqp, uint8_t *bp,
                          size_t n, systime_t time);
 
-  void chOQInit(OutputQueue *oqp, uint8_t *bp, size_t size, qnotify_t onfy);
+  void chOQInit(OutputQueue *oqp, uint8_t *bp, size_t size, qnotify_t onfy,
+                void *link);
   void chOQResetI(OutputQueue *oqp);
   msg_t chOQPutTimeout(OutputQueue *oqp, uint8_t b, systime_t time);
   msg_t chOQGetI(OutputQueue *oqp);

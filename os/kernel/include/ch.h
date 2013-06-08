@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
+                 2011,2012,2013 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -47,7 +47,7 @@
 /**
  * @brief   Kernel version string.
  */
-#define CH_KERNEL_VERSION       "2.4.3"
+#define CH_KERNEL_VERSION       "2.6.0"
 
 /**
  * @name    Kernel version
@@ -61,23 +61,51 @@
 /**
  * @brief   Kernel version minor number.
  */
-#define CH_KERNEL_MINOR         4
+#define CH_KERNEL_MINOR         6
 
 /**
  * @brief   Kernel version patch number.
  */
-#define CH_KERNEL_PATCH         3
+#define CH_KERNEL_PATCH         0
 /** @} */
 
-/*
- * Common values.
+/**
+ * @name    Common constants
  */
-#ifndef FALSE
-#define FALSE       0
+/**
+ * @brief   Generic 'false' boolean constant.
+ */
+#if !defined(FALSE) || defined(__DOXYGEN__)
+#define FALSE                   0
 #endif
-#ifndef TRUE
-#define TRUE        (!FALSE)
+
+/**
+ * @brief   Generic 'true' boolean constant.
+ */
+#if !defined(TRUE) || defined(__DOXYGEN__)
+#define TRUE                    (!FALSE)
 #endif
+
+/**
+ * @brief   Generic success constant.
+ * @details This constant is functionally equivalent to @p FALSE but more
+ *          readable, it can be used as return value of all those functions
+ *          returning a @p bool_t as a status indicator.
+ */
+#if !defined(CH_SUCCESS) || defined(__DOXYGEN__)
+#define CH_SUCCESS              FALSE
+#endif
+
+/**
+ * @brief   Generic failure constant.
+ * @details This constant is functionally equivalent to @p TRUE but more
+ *          readable, it can be used as return value of all those functions
+ *          returning a @p bool_t as a status indicator.
+ */
+#if !defined(CH_FAILED) || defined(__DOXYGEN__)
+#define CH_FAILED               TRUE
+#endif
+/** @} */
 
 #include "chconf.h"
 #include "chtypes.h"
@@ -102,7 +130,6 @@
 #include "chinline.h"
 #include "chqueues.h"
 #include "chstreams.h"
-#include "chioch.h"
 #include "chfiles.h"
 #include "chdebug.h"
 
