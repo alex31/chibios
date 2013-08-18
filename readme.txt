@@ -71,6 +71,28 @@
 *** Releases                                                              ***
 *****************************************************************************
 
+*** 2.6.1 ***
+- FIX: Fixed PAL driver documentation error (bug #427).
+- FIX: Fixed UART4 and 5 marked as not present in STM32F30x devices (bug #426).
+- FIX: Fixed warning in STM32 ICU/PWM drivers when used on STM32F3xx (bug
+  #425).
+- FIX: Fixed conditional code error in STM32 PWM driver (bug #424).
+- FIX: Fixed error in Guards of pwm_lld.h from STM32 (bug #423).
+- FIX: Fixed wrong RTC macro names in STM32L1xx HAL (bug #422).
+- FIX: Fixed CodeSourcery personal version fails to build with undefined
+  errno_r (bug #421).
+- FIX: Fixed FSMC reset on STM32F4xx (bug #420).
+- FIX: Fixed invalid directory links in the demo files (bug #419).
+- FIX: Fixed missing casts in time-conversion macros (bug #418).
+- FIX: Fixed PLL2 activation condition is wrong in STM32F107 HAL (bug #417).
+- NEW: Improvements to the STM32F4xx backup domain initialization.
+- NEW: Added initializer for the DIER register to the STM32 GPT, ICU and
+  PWM drivers.
+- NEW: Added support for 32bits counters to the STM32 GPT driver.
+- NEW: Added port support for SCP560B64.
+- CHANGE: Moved the STM32 GPT, ICU and PWM low level drivers under
+  ./os/hal/platform/STM32/TIMv1. Updated all the impacted project files.
+
 *** 2.6.0 ***
 - FIX: Fixed  MS2ST() and US2ST() macros error (bug #415).
 - NEW: Added new pwmIsChannelEnabledI() API to the PWM driver, implemented
