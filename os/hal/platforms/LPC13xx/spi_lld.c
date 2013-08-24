@@ -1,17 +1,28 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -36,13 +47,8 @@
 SPIDriver SPID1;
 #endif
 
-#if LPC13xx_SPI_USE_SSP1 || defined(__DOXYGEN__)
-/** @brief SPI2 driver identifier.*/
-SPIDriver SPID2;
-#endif
-
 /*===========================================================================*/
-/* Driver local variables and types.                                         */
+/* Driver local variables.                                                   */
 /*===========================================================================*/
 
 /*===========================================================================*/
@@ -144,22 +150,6 @@ CH_IRQ_HANDLER(VectorF4) {
 }
 #endif
 
-#if LPC13xx_SPI_USE_SSP1 || defined(__DOXYGEN__)
-/**
- * @brief   SSP1 interrupt handler.
- *
- * @isr
- */
-CH_IRQ_HANDLER(Vector124) {
-
-  CH_IRQ_PROLOGUE();
-
-  spi_serve_interrupt(&SPID2);
-
-  CH_IRQ_EPILOGUE();
-}
-#endif
-
 /*===========================================================================*/
 /* Driver exported functions.                                                */
 /*===========================================================================*/
@@ -173,10 +163,10 @@ void spi_lld_init(void) {
 
 #if LPC13xx_SPI_USE_SSP0
   spiObjectInit(&SPID1);
-  SPID1.ssp = LPC_SSP0;
-  LPC_IOCON->SCK_LOC = LPC13xx_SPI_SCK0_SELECTOR;
+  SPID1.ssp = LPC_SSP;
+  LPC_IOCON->SCKLOC = LPC13xx_SPI_SCK0_SELECTOR;
 #if LPC13xx_SPI_SCK0_SELECTOR == SCK0_IS_PIO0_10
-  LPC_IOCON->SWCLK_PIO0_10 = 0xC2;          /* SCK0 without resistors.      */
+  LPC_IOCON->JTAG_TCK_PIO0_10 = 0xC2;       /* SCK0 without resistors.      */
 #elif LPC13xx_SPI_SCK0_SELECTOR == SCK0_IS_PIO2_11
   LPC_IOCON->PIO2_11 = 0xC1;                /* SCK0 without resistors.      */
 #else /* LPC13xx_SPI_SCK0_SELECTOR == SCK0_IS_PIO0_6 */
@@ -184,14 +174,6 @@ void spi_lld_init(void) {
 #endif
   LPC_IOCON->PIO0_8  = 0xC1;                /* MISO0 without resistors.     */
   LPC_IOCON->PIO0_9  = 0xC1;                /* MOSI0 without resistors.     */
-#endif /* LPC13xx_SPI_USE_SSP0 */
-
-#if LPC13xx_SPI_USE_SSP1
-  spiObjectInit(&SPID2);
-  SPID2.ssp = LPC_SSP1;
-  LPC_IOCON->PIO2_1  = 0xC2;                /* SCK1 without resistors.      */
-  LPC_IOCON->PIO2_2  = 0xC2;                /* MISO1 without resistors.     */
-  LPC_IOCON->PIO2_3  = 0xC2;                /* MOSI1 without resistors.     */
 #endif /* LPC13xx_SPI_USE_SSP0 */
 }
 
@@ -208,20 +190,11 @@ void spi_lld_start(SPIDriver *spip) {
     /* Clock activation.*/
 #if LPC13xx_SPI_USE_SSP0
     if (&SPID1 == spip) {
-      LPC_SYSCON->SSP0CLKDIV = LPC13xx_SPI_SSP0CLKDIV;
+      LPC_SYSCON->SSPCLKDIV = LPC13xx_SPI_SSP0CLKDIV;
       LPC_SYSCON->SYSAHBCLKCTRL |= (1 << 11);
       LPC_SYSCON->PRESETCTRL |= 1;
-      nvicEnableVector(SSP0_IRQn,
+      nvicEnableVector(SSP_IRQn,
                        CORTEX_PRIORITY_MASK(LPC13xx_SPI_SSP0_IRQ_PRIORITY));
-    }
-#endif
-#if LPC13xx_SPI_USE_SSP1
-    if (&SPID2 == spip) {
-      LPC_SYSCON->SSP1CLKDIV = LPC13xx_SPI_SSP1CLKDIV;
-      LPC_SYSCON->SYSAHBCLKCTRL |= (1 << 18);
-      LPC_SYSCON->PRESETCTRL |= 4;
-      nvicEnableVector(SSP1_IRQn,
-                       CORTEX_PRIORITY_MASK(LPC13xx_SPI_SSP1_IRQ_PRIORITY));
     }
 #endif
   }
@@ -250,16 +223,8 @@ void spi_lld_stop(SPIDriver *spip) {
     if (&SPID1 == spip) {
       LPC_SYSCON->PRESETCTRL &= ~1;
       LPC_SYSCON->SYSAHBCLKCTRL &= ~(1 << 11);
-      LPC_SYSCON->SSP0CLKDIV = 0;
-      nvicDisableVector(SSP0_IRQn);
-    }
-#endif
-#if LPC13xx_SPI_USE_SSP1
-    if (&SPID2 == spip) {
-      LPC_SYSCON->PRESETCTRL &= ~4;
-      LPC_SYSCON->SYSAHBCLKCTRL &= ~(1 << 18);
-      LPC_SYSCON->SSP1CLKDIV = 0;
-      nvicDisableVector(SSP1_IRQn);
+      LPC_SYSCON->SSPCLKDIV = 0;
+      nvicDisableVector(SSP_IRQn);
     }
 #endif
   }

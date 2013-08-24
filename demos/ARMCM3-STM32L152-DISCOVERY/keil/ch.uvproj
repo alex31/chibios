@@ -163,7 +163,7 @@
             <DriverSelection>4100</DriverSelection>
           </Flash1>
           <Flash2>STLink\ST-LINKIII-KEIL.dll</Flash2>
-          <Flash3></Flash3>
+          <Flash3>"" ()</Flash3>
           <Flash4></Flash4>
         </Utilities>
         <TargetArmAds>
@@ -346,7 +346,7 @@
               <MiscControls></MiscControls>
               <Define>__heap_base__=Image$$RW_IRAM1$$ZI$$Limit __heap_end__=Image$$RW_IRAM2$$Base</Define>
               <Undefine></Undefine>
-              <IncludePath>..\;..\..\..\os\kernel\include;..\..\..\os\ports\common\ARMCMx;..\..\..\os\ports\common\ARMCMx\CMSIS\include;..\..\..\os\ports\RVCT\ARMCMx;..\..\..\os\ports\RVCT\ARMCMx\STM32L1xx;..\..\..\os\hal\include;..\..\..\os\hal\platforms\STM32;..\..\..\os\hal\platforms\STM32\GPIOv2;..\..\..\os\hal\platforms\STM32\SPIv1;..\..\..\os\hal\platforms\STM32\TIMv1;..\..\..\os\hal\platforms\STM32\USARTv1;..\..\..\os\hal\platforms\STM32L1xx;..\..\..\boards\ST_STM32L_DISCOVERY;..\..\..\test</IncludePath>
+              <IncludePath>..\;..\..\..\os\kernel\include;..\..\..\os\ports\common\ARMCMx;..\..\..\os\ports\common\ARMCMx\CMSIS\include;..\..\..\os\ports\RVCT\ARMCMx;..\..\..\os\ports\RVCT\ARMCMx\STM32L1xx;..\..\..\os\hal\include;..\..\..\os\hal\platforms\STM32;..\..\..\os\hal\platforms\STM32\GPIOv2;..\..\..\os\hal\platforms\STM32L1xx;..\..\..\boards\ST_STM32L_DISCOVERY;..\..\..\test</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -782,6 +782,36 @@
               <FilePath>..\..\..\os\hal\platforms\STM32\GPIOv2\pal_lld.c</FilePath>
             </File>
             <File>
+              <FileName>uart_lld.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\platforms\STM32\uart_lld.c</FilePath>
+            </File>
+            <File>
+              <FileName>can_lld.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\platforms\STM32\can_lld.c</FilePath>
+            </File>
+            <File>
+              <FileName>ext_lld.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\platforms\STM32\ext_lld.c</FilePath>
+            </File>
+            <File>
+              <FileName>gpt_lld.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\platforms\STM32\gpt_lld.c</FilePath>
+            </File>
+            <File>
+              <FileName>i2c_lld.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\platforms\STM32\i2c_lld.c</FilePath>
+            </File>
+            <File>
+              <FileName>icu_lld.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\platforms\STM32\icu_lld.c</FilePath>
+            </File>
+            <File>
               <FileName>mac_lld.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\os\hal\platforms\STM32\mac_lld.c</FilePath>
@@ -789,17 +819,22 @@
             <File>
               <FileName>pwm_lld.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\TIMv1\pwm_lld.c</FilePath>
+              <FilePath>..\..\..\os\hal\platforms\STM32\pwm_lld.c</FilePath>
+            </File>
+            <File>
+              <FileName>sdc_lld.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\os\hal\platforms\STM32\sdc_lld.c</FilePath>
             </File>
             <File>
               <FileName>serial_lld.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\USARTv1\serial_lld.c</FilePath>
+              <FilePath>..\..\..\os\hal\platforms\STM32\serial_lld.c</FilePath>
             </File>
             <File>
               <FileName>spi_lld.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\os\hal\platforms\STM32\SPIv1\spi_lld.c</FilePath>
+              <FilePath>..\..\..\os\hal\platforms\STM32\spi_lld.c</FilePath>
             </File>
             <File>
               <FileName>stm32_dma.c</FileName>

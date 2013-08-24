@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012,2013 Giovanni Di Sirio.
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -56,7 +56,8 @@ void _vt_init(void) {
 
 /**
  * @brief   Enables a virtual timer.
- * @note    The associated function is invoked from interrupt context.
+ * @note    The associated function is invoked by an interrupt handler within
+ *          the I-Locked state, see @ref system_states.
  *
  * @param[out] vtp      the @p VirtualTimer structure pointer
  * @param[in] time      the number of ticks before the operation timeouts, the

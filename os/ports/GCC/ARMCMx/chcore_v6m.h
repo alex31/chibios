@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012,2013 Giovanni Di Sirio.
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -73,10 +73,12 @@
  * @brief   Per-thread stack overhead for interrupts servicing.
  * @details This constant is used in the calculation of the correct working
  *          area size.
- * @note    In this port this value is conservatively set to 32 because the
- *          function @p chSchDoReschedule() can have a stack frame, especially
- *          with compiler optimizations disabled. The value can be reduced
- *          when compiler optimizations are enabled.
+ *          This value can be zero on those architecture where there is a
+ *          separate interrupt stack and the stack space between @p intctx and
+ *          @p extctx is known to be zero.
+ * @note    In this port it is conservatively set to 32 because the function
+ *          @p chSchDoReschedule() can have a stack frame, especially with
+ *          compiler optimizations disabled.
  */
 #if !defined(PORT_INT_REQUIRED_STACK)
 #define PORT_INT_REQUIRED_STACK         32
@@ -113,15 +115,6 @@
 /*===========================================================================*/
 /* Port derived parameters.                                                  */
 /*===========================================================================*/
-
-/**
- * @brief   Maximum usable priority for normal ISRs.
- */
-#if CORTEX_ALTERNATE_SWITCH || defined(__DOXYGEN__)
-#define CORTEX_MAX_KERNEL_PRIORITY      1
-#else
-#define CORTEX_MAX_KERNEL_PRIORITY      0
-#endif
 
 /*===========================================================================*/
 /* Port exported info.                                                       */
@@ -215,9 +208,9 @@ struct context {
   tp->p_ctx.r13 = (struct intctx *)((uint8_t *)workspace +                  \
                                      wsize -                                \
                                      sizeof(struct intctx));                \
-  tp->p_ctx.r13->r4 = (void *)(pf);                                         \
-  tp->p_ctx.r13->r5 = (void *)(arg);                                        \
-  tp->p_ctx.r13->lr = (void *)(_port_thread_start);                         \
+  tp->p_ctx.r13->r4 = pf;                                                   \
+  tp->p_ctx.r13->r5 = arg;                                                  \
+  tp->p_ctx.r13->lr = _port_thread_start;                                   \
 }
 
 /**

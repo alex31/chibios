@@ -1,22 +1,34 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.hpp"
 #include "hal.h"
 #include "test.h"
+#include "evtimer.h"
 
 using namespace chibios_rt;
 
@@ -64,16 +76,16 @@ static const seqop_t LED1_sequence[] =
  * Any sequencer is just an instance of this class, all the details are
  * totally encapsulated and hidden to the application level.
  */
-class SequencerThread : public BaseStaticThread<128> {
+class SequencerThread : public EnhancedThread<128> {
 private:
   const seqop_t *base, *curr;                   // Thread local variables.
 
 protected:
-  virtual msg_t main(void) {
+  virtual msg_t Main(void) {
     while (true) {
       switch(curr->action) {
       case SLEEP:
-        sleep(curr->value);
+        Sleep(curr->value);
         break;
       case GOTO:
         curr = &base[curr->value];
@@ -92,7 +104,7 @@ protected:
   }
 
 public:
-  SequencerThread(const seqop_t *sequence) : BaseStaticThread<128>() {
+  SequencerThread(const seqop_t *sequence) : EnhancedThread<128>("sequencer") {
 
     base = curr = sequence;
   }
@@ -101,29 +113,40 @@ public:
 /*
  * Tester thread class. This thread executes the test suite.
  */
-class TesterThread : public BaseStaticThread<256> {
+class TesterThread : public EnhancedThread<256> {
 
 protected:
-  virtual msg_t main(void) {
-
-    setName("tester");
+  virtual msg_t Main(void) {
 
     return TestThread(&SD2);
   }
 
 public:
-  TesterThread(void) : BaseStaticThread<256>() {
+  TesterThread(void) : EnhancedThread<256>("tester") {
   }
 };
 
-/* Static threads instances.*/
-static TesterThread tester;
-static SequencerThread blinker1(LED1_sequence);
+/*
+ * Executed as an event handler at 500mS intervals.
+ */
+static void TimerHandler(eventid_t id) {
+
+  (void)id;
+  if (palReadPad(GPIOA, GPIOA_BUTTON)) {
+    TesterThread tester;
+    tester.Wait();
+  };
+}
 
 /*
  * Application entry point.
  */
 int main(void) {
+  static const evhandler_t evhndl[] = {
+    TimerHandler
+  };
+  static EvTimer evt;
+  struct EventListener el0;
 
   /*
    * System initializations.
@@ -133,29 +156,28 @@ int main(void) {
    *   RTOS is active.
    */
   halInit();
-  System::init();
+  System::Init();
 
   /*
    * Activates the serial driver 2 using the driver default configuration.
    */
   sdStart(&SD2, NULL);
 
+  evtInit(&evt, 500);                   // Initializes an event timer.
+  evtStart(&evt);                       // Starts the event timer.
+  chEvtRegister(&evt.et_es, &el0, 0);   // Registers a listener on the source.
+
   /*
    * Starts several instances of the SequencerThread class, each one operating
    * on a different LED.
    */
-  blinker1.start(NORMALPRIO + 10);
+  SequencerThread blinker1(LED1_sequence);
 
   /*
    * Serves timer events.
    */
-  while (true) {
-    if (palReadPad(GPIOA, GPIOA_BUTTON)) {
-      tester.start(NORMALPRIO);
-      tester.wait();
-    };
-    BaseThread::sleep(MS2ST(500));
-  }
+  while (true)
+    Event::Dispatch(evhndl, Event::WaitOne(ALL_EVENTS));
 
   return 0;
 }

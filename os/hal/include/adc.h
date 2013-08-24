@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012,2013 Giovanni Di Sirio.
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -71,8 +71,8 @@
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
-#if ADC_USE_MUTUAL_EXCLUSION && !CH_USE_MUTEXES && !CH_USE_SEMAPHORES
-#error "ADC_USE_MUTUAL_EXCLUSION requires CH_USE_MUTEXES and/or CH_USE_SEMAPHORES"
+#if ADC_USE_WAIT && !CH_USE_SEMAPHORES
+#error "ADC driver requires CH_USE_SEMAPHORES when ADC_USE_WAIT is enabled"
 #endif
 
 /*===========================================================================*/

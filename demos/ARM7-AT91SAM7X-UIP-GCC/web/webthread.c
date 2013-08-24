@@ -1,17 +1,28 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include <string.h>
@@ -46,7 +57,7 @@ static const MACConfig mac_config = {macaddr.addr};
 static void network_device_send(void) {
   MACTransmitDescriptor td;
 
-  if (macWaitTransmitDescriptor(&ETHD1, &td, MS2ST(SEND_TIMEOUT)) == RDY_OK) {
+  if (macWaitTransmitDescriptor(&ETH1, &td, MS2ST(SEND_TIMEOUT)) == RDY_OK) {
     if(uip_len <= UIP_LLH_LEN + UIP_TCPIP_HLEN)
       macWriteTransmitDescriptor(&td, uip_buf, uip_len);
     else {
@@ -66,7 +77,7 @@ static size_t network_device_read(void) {
   MACReceiveDescriptor rd;
   size_t size;
 
-  if (macWaitReceiveDescriptor(&ETHD1, &rd, TIME_IMMEDIATE) != RDY_OK)
+  if (macWaitReceiveDescriptor(&ETH1, &rd, TIME_IMMEDIATE) != RDY_OK)
     return 0;
   size = rd.size;
   macReadReceiveDescriptor(&rd, uip_buf, size);
@@ -103,7 +114,7 @@ static void PeriodicTimerHandler(eventid_t id) {
 static void ARPTimerHandler(eventid_t id) {
 
   (void)id;
-  (void)macPollLinkStatus(&ETHD1);
+  (void)macPollLinkStatus(&ETH1);
   uip_arp_timer();
 }
 
@@ -150,8 +161,8 @@ msg_t WebThread(void *p) {
   /*
    * Event sources setup.
    */
-  chEvtRegister(macGetReceiveEventSource(&ETHD1), &el0, FRAME_RECEIVED_ID);
-  chEvtAddEvents(EVENT_MASK(FRAME_RECEIVED_ID)); /* In case some frames are already buffered */
+  chEvtRegister(macGetReceiveEventSource(&ETH1), &el0, FRAME_RECEIVED_ID);
+  chEvtAddFlags(EVENT_MASK(FRAME_RECEIVED_ID)); /* In case some frames are already buffered */
 
   evtInit(&evt1, MS2ST(500));
   evtStart(&evt1);
@@ -164,8 +175,8 @@ msg_t WebThread(void *p) {
   /*
    * EMAC driver start.
    */
-  macStart(&ETHD1, &mac_config);
-  (void)macPollLinkStatus(&ETHD1);
+  macStart(&ETH1, &mac_config);
+  (void)macPollLinkStatus(&ETH1);
 
   /*
    * uIP initialization.

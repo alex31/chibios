@@ -1,23 +1,32 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
-#define STM32F103_MCUCONF
-
 /*
- * STM32F103 drivers configuration.
+ * STM32F1xx drivers configuration.
  * The following settings override the default settings present in
  * the various device driver implementation headers.
  * Note that the settings for each driver only have effect if the whole
@@ -56,14 +65,14 @@
 /*
  * ADC driver system settings.
  */
-#define STM32_ADC_USE_ADC1                  FALSE
+#define STM32_ADC_USE_ADC1                  TRUE
 #define STM32_ADC_ADC1_DMA_PRIORITY         2
-#define STM32_ADC_ADC1_IRQ_PRIORITY         6
+#define STM32_ADC_ADC1_IRQ_PRIORITY         5
 
 /*
  * CAN driver system settings.
  */
-#define STM32_CAN_USE_CAN1                  FALSE
+#define STM32_CAN_USE_CAN1                  TRUE
 #define STM32_CAN_CAN1_IRQ_PRIORITY         11
 
 /*
@@ -102,12 +111,16 @@
  */
 #define STM32_I2C_USE_I2C1                  FALSE
 #define STM32_I2C_USE_I2C2                  FALSE
-#define STM32_I2C_I2C1_IRQ_PRIORITY         5
-#define STM32_I2C_I2C2_IRQ_PRIORITY         5
-#define STM32_I2C_I2C1_DMA_PRIORITY         3
-#define STM32_I2C_I2C2_DMA_PRIORITY         3
+#define STM32_I2C_USE_I2C3                  FALSE
+#define STM32_I2C_I2C1_IRQ_PRIORITY         10
+#define STM32_I2C_I2C2_IRQ_PRIORITY         10
+#define STM32_I2C_I2C3_IRQ_PRIORITY         10
+#define STM32_I2C_I2C1_DMA_PRIORITY         1
+#define STM32_I2C_I2C2_DMA_PRIORITY         1
+#define STM32_I2C_I2C3_DMA_PRIORITY         1
 #define STM32_I2C_I2C1_DMA_ERROR_HOOK()     chSysHalt()
 #define STM32_I2C_I2C2_DMA_ERROR_HOOK()     chSysHalt()
+#define STM32_I2C_I2C3_DMA_ERROR_HOOK()     chSysHalt()
 
 /*
  * ICU driver system settings.
@@ -155,11 +168,13 @@
 #define STM32_SERIAL_USE_USART3             FALSE
 #define STM32_SERIAL_USE_UART4              FALSE
 #define STM32_SERIAL_USE_UART5              FALSE
+#define STM32_SERIAL_USE_USART6             FALSE
 #define STM32_SERIAL_USART1_PRIORITY        12
 #define STM32_SERIAL_USART2_PRIORITY        12
 #define STM32_SERIAL_USART3_PRIORITY        12
 #define STM32_SERIAL_UART4_PRIORITY         12
 #define STM32_SERIAL_UART5_PRIORITY         12
+#define STM32_SERIAL_USART6_PRIORITY        12
 
 /*
  * SPI driver system settings.
@@ -179,7 +194,7 @@
  * UART driver system settings.
  */
 #define STM32_UART_USE_USART1               FALSE
-#define STM32_UART_USE_USART2               FALSE
+#define STM32_UART_USE_USART2               TRUE
 #define STM32_UART_USE_USART3               FALSE
 #define STM32_UART_USART1_IRQ_PRIORITY      12
 #define STM32_UART_USART2_IRQ_PRIORITY      12
@@ -192,8 +207,7 @@
 /*
  * USB driver system settings.
  */
-#define STM32_USB_USE_USB1                  FALSE
+#define STM32_USB_USE_USB1                  TRUE
 #define STM32_USB_LOW_POWER_ON_SUSPEND      FALSE
-#define STM32_USB_USB1_HP_IRQ_PRIORITY      13
+#define STM32_USB_USB1_HP_IRQ_PRIORITY      6
 #define STM32_USB_USB1_LP_IRQ_PRIORITY      14
-

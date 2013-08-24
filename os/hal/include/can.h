@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012,2013 Giovanni Di Sirio.
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -68,11 +68,6 @@
 #define CAN_OVERFLOW_ERROR          16
 /** @} */
 
-/**
- * @brief   Special mailbox identifier.
- */
-#define CAN_ANY_MAILBOX             0
-
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -126,9 +121,14 @@ typedef enum {
  * @{
  */
 /**
- * @brief   Converts a mailbox index to a bit mask.
+ * @brief   Adds some flags to the CAN status mask.
+ *
+ * @param[in] canp      pointer to the @p CANDriver object
+ * @param[in] mask      flags to be added to the status mask
+ *
+ * @iclass
  */
-#define CAN_MAILBOX_TO_MASK(mbx) (1 << ((mbx) - 1))
+#define canAddFlagsI(canp, mask) ((canp)->status |= (mask))
 /** @} */
 
 /*===========================================================================*/
@@ -142,14 +142,9 @@ extern "C" {
   void canObjectInit(CANDriver *canp);
   void canStart(CANDriver *canp, const CANConfig *config);
   void canStop(CANDriver *canp);
-  msg_t canTransmit(CANDriver *canp,
-                    canmbx_t mailbox,
-                    const CANTxFrame *ctfp,
-                    systime_t timeout);
-  msg_t canReceive(CANDriver *canp,
-                   canmbx_t mailbox,
-                   CANRxFrame *crfp,
-                   systime_t timeout);
+  msg_t canTransmit(CANDriver *canp, const CANTxFrame *ctfp, systime_t timeout);
+  msg_t canReceive(CANDriver *canp, CANRxFrame *crfp, systime_t timeout);
+  canstatus_t canGetAndClearFlags(CANDriver *canp);
 #if CAN_USE_SLEEP_MODE
   void canSleep(CANDriver *canp);
   void canWakeup(CANDriver *canp);

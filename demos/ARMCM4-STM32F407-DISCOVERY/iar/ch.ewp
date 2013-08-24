@@ -164,7 +164,7 @@
         <debug>1</debug>
         <option>
           <name>CCDefines</name>
-          <state>CORTEX_USE_FPU=FALSE</state>
+          <state></state>
         </option>
         <option>
           <name>CCPreprocFile</name>
@@ -303,12 +303,8 @@
           <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32</state>
           <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\DMAv1</state>
           <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\GPIOv2</state>
-          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\SPIv1</state>
-          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\TIMv1</state>
-          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\USARTv1</state>
           <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F4xx</state>
           <state>$PROJ_DIR$\..\..\..\os\various</state>
-          <state>$PROJ_DIR$\..\..\..\os\various\devices_lib\accel</state>
           <state>$PROJ_DIR$\..\..\..\boards\ST_STM32F4_DISCOVERY</state>
           <state>$PROJ_DIR$\..\..\..\test</state>
         </option>
@@ -459,7 +455,7 @@
         </option>
         <option>
           <name>ADefines</name>
-          <state>CORTEX_USE_FPU=FALSE</state>
+          <state></state>
         </option>
         <option>
           <name>AList</name>
@@ -1089,7 +1085,6 @@
         <debug>0</debug>
         <option>
           <name>CCDefines</name>
-          <state>CORTEX_USE_FPU=FALSE</state>
           <state>NDEBUG</state>
         </option>
         <option>
@@ -1229,12 +1224,8 @@
           <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32</state>
           <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\DMAv1</state>
           <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\GPIOv2</state>
-          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\SPIv1</state>
-          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\TIMv1</state>
-          <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\USARTv1</state>
           <state>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F4xx</state>
           <state>$PROJ_DIR$\..\..\..\os\various</state>
-          <state>$PROJ_DIR$\..\..\..\os\various\devices_lib\accel</state>
           <state>$PROJ_DIR$\..\..\..\boards\ST_STM32F4_DISCOVERY</state>
           <state>$PROJ_DIR$\..\..\..\test</state>
         </option>
@@ -1385,7 +1376,7 @@
         </option>
         <option>
           <name>ADefines</name>
-          <state>CORTEX_USE_FPU=FALSE</state>
+          <state></state>
         </option>
         <option>
           <name>AList</name>
@@ -2137,22 +2128,22 @@
         <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\GPIOv2\pal_lld.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\TIMv1\pwm_lld.c</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\pwm_lld.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\TIMv1\pwm_lld.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\pwm_lld.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\USARTv1\serial_lld.c</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\serial_lld.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\USARTv1\serial_lld.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\serial_lld.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\SPIv1\spi_lld.c</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\spi_lld.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\SPIv1\spi_lld.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32\spi_lld.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\..\..\..\os\hal\platforms\STM32F4xx\stm32_dma.c</name>
@@ -2208,23 +2199,11 @@
     </group>
     <group>
       <name>various</name>
-      <group>
-        <name>devices_lib</name>
-        <group>
-          <name>accel</name>
-          <file>
-            <name>$PROJ_DIR$\..\..\..\os\various\devices_lib\accel\lis302dl.c</name>
-          </file>
-          <file>
-            <name>$PROJ_DIR$\..\..\..\os\various\devices_lib\accel\lis302dl.h</name>
-          </file>
-        </group>
-      </group>
       <file>
         <name>$PROJ_DIR$\..\..\..\os\various\chprintf.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\..\..\os\various\chprintf.h</name>
+        <name>$PROJ_DIR$\..\..\..\os\various\lis302dl.c</name>
       </file>
     </group>
   </group>

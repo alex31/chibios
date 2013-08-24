@@ -5,14 +5,14 @@ Settings: SYSCLK=168, ACR=0x705 (5 wait states)
 
 *** ChibiOS/RT test suite
 ***
-*** Kernel:       2.6.0
-*** Compiled:     May 11 2013 - 09:55:43
-*** Compiler:     GCC 4.7.3 20130312 (release) [ARM/embedded-4_7-branch revision 196615]
+*** Kernel:       2.4.3
+*** Compiled:     Dec 23 2012 - 12:04:24
+*** Compiler:     GCC 4.6.2 20121016 (release) [ARM/embedded-4_6-branch revision 192487]
 *** Architecture: ARMv7-ME
 *** Core Variant: Cortex-M4
 *** Port Info:    Advanced kernel mode
-*** Platform:     STM32F4xx High Performance
-*** Test Board:   STMicroelectronics STM32F4-Discovery
+*** Platform:     STM32F4 High Performance & DSP
+*** Test Board:   ST STM32F4-Discovery
 
 ----------------------------------------------------------------------------
 --- Test Case 1.1 (Threads, enqueuing test #1)
@@ -100,39 +100,39 @@ Settings: SYSCLK=168, ACR=0x705 (5 wait states)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.1 (Benchmark, messages #1)
---- Score : 749363 msgs/S, 1498726 ctxswc/S
+--- Score : 749359 msgs/S, 1498718 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.2 (Benchmark, messages #2)
---- Score : 608179 msgs/S, 1216358 ctxswc/S
+--- Score : 617119 msgs/S, 1234238 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.3 (Benchmark, messages #3)
---- Score : 608175 msgs/S, 1216350 ctxswc/S
+--- Score : 617119 msgs/S, 1234238 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.4 (Benchmark, context switch)
---- Score : 2510064 ctxswc/S
+--- Score : 2491424 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.5 (Benchmark, threads, full cycle)
---- Score : 440577 threads/S
+--- Score : 448821 threads/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.6 (Benchmark, threads, create only)
---- Score : 624014 threads/S
+--- Score : 631049 threads/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.7 (Benchmark, mass reschedule, 5 threads)
---- Score : 190529 reschedules/S, 1143174 ctxswc/S
+--- Score : 192450 reschedules/S, 1154700 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.8 (Benchmark, round robin context switching)
---- Score : 1350960 ctxswc/S
+--- Score : 1367460 ctxswc/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.9 (Benchmark, I/O Queues throughput)
---- Score : 1842068 bytes/S
+--- Score : 1804932 bytes/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.10 (Benchmark, virtual timers set/reset)
@@ -140,23 +140,23 @@ Settings: SYSCLK=168, ACR=0x705 (5 wait states)
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.11 (Benchmark, semaphores wait/signal)
---- Score : 2643424 wait+signal/S
+--- Score : 2685732 wait+signal/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.12 (Benchmark, mutexes lock/unlock)
---- Score : 1844600 lock+unlock/S
+--- Score : 1886044 lock+unlock/S
 --- Result: SUCCESS
 ----------------------------------------------------------------------------
 --- Test Case 11.13 (Benchmark, RAM footprint)
---- System: 404 bytes
+--- System: 408 bytes
 --- Thread: 72 bytes
 --- Timer : 20 bytes
 --- Semaph: 12 bytes
 --- EventS: 4 bytes
---- EventL: 16 bytes
+--- EventL: 12 bytes
 --- Mutex : 16 bytes
 --- CondV.: 8 bytes
---- Queue : 36 bytes
+--- Queue : 32 bytes
 --- MailB.: 40 bytes
 --- Result: SUCCESS
 ----------------------------------------------------------------------------

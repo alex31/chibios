@@ -1,17 +1,28 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include <stdio.h>
@@ -30,8 +41,8 @@
 /* Card insertion monitor.                                                   */
 /*===========================================================================*/
 
-#define POLLING_INTERVAL                10
-#define POLLING_DELAY                   10
+#define SDC_POLLING_INTERVAL            10
+#define SDC_POLLING_DELAY               10
 
 /**
  * @brief   Card monitor timer.
@@ -49,49 +60,74 @@ static unsigned cnt;
 static EventSource inserted_event, removed_event;
 
 /**
+ * @brief   Insertion monitor function.
+ *
+ * @param[in] sdcp      pointer to the @p SDCDriver object
+ *
+ * @notapi
+ */
+bool_t sdc_lld_is_card_inserted(SDCDriver *sdcp) {
+
+  (void)sdcp;
+  return !palReadPad(GPIOF, GPIOF_SD_DETECT);
+}
+
+/**
+ * @brief   Protection detection.
+ * @note    Not supported.
+ *
+ * @param[in] sdcp      pointer to the @p SDCDriver object
+ *
+ * @notapi
+ */
+bool_t sdc_lld_is_write_protected(SDCDriver *sdcp) {
+
+  (void)sdcp;
+  return FALSE;
+}
+
+/**
  * @brief   Insertion monitor timer callback function.
  *
- * @param[in] p         pointer to the @p BaseBlockDevice object
+ * @param[in] p         pointer to the @p SDCDriver object
  *
  * @notapi
  */
 static void tmrfunc(void *p) {
-  BaseBlockDevice *bbdp = p;
+  SDCDriver *sdcp = p;
 
-  chSysLockFromIsr();
   if (cnt > 0) {
-    if (blkIsInserted(bbdp)) {
+    if (sdcIsCardInserted(sdcp)) {
       if (--cnt == 0) {
         chEvtBroadcastI(&inserted_event);
       }
     }
     else
-      cnt = POLLING_INTERVAL;
+      cnt = SDC_POLLING_INTERVAL;
   }
   else {
-    if (!blkIsInserted(bbdp)) {
-      cnt = POLLING_INTERVAL;
+    if (!sdcIsCardInserted(sdcp)) {
+      cnt = SDC_POLLING_INTERVAL;
       chEvtBroadcastI(&removed_event);
     }
   }
-  chVTSetI(&tmr, MS2ST(POLLING_DELAY), tmrfunc, bbdp);
-  chSysUnlockFromIsr();
+  chVTSetI(&tmr, MS2ST(SDC_POLLING_DELAY), tmrfunc, sdcp);
 }
 
 /**
  * @brief   Polling monitor start.
  *
- * @param[in] p         pointer to an object implementing @p BaseBlockDevice
+ * @param[in] sdcp      pointer to the @p SDCDriver object
  *
  * @notapi
  */
-static void tmr_init(void *p) {
+static void tmr_init(SDCDriver *sdcp) {
 
   chEvtInit(&inserted_event);
   chEvtInit(&removed_event);
   chSysLock();
-  cnt = POLLING_INTERVAL;
-  chVTSetI(&tmr, MS2ST(POLLING_DELAY), tmrfunc, p);
+  cnt = SDC_POLLING_INTERVAL;
+  chVTSetI(&tmr, MS2ST(SDC_POLLING_DELAY), tmrfunc, sdcp);
   chSysUnlock();
 }
 
@@ -110,7 +146,7 @@ static bool_t fs_ready = FALSE;
 /* Generic large buffer.*/
 uint8_t fbuff[1024];
 
-static FRESULT scan_files(BaseSequentialStream *chp, char *path) {
+static FRESULT scan_files(BaseChannel *chp, char *path) {
   FRESULT res;
   FILINFO fno;
   DIR dir;
@@ -154,7 +190,7 @@ static FRESULT scan_files(BaseSequentialStream *chp, char *path) {
 #define SHELL_WA_SIZE   THD_WA_SIZE(2048)
 #define TEST_WA_SIZE    THD_WA_SIZE(256)
 
-static void cmd_mem(BaseSequentialStream *chp, int argc, char *argv[]) {
+static void cmd_mem(BaseChannel *chp, int argc, char *argv[]) {
   size_t n, size;
 
   (void)argv;
@@ -168,7 +204,7 @@ static void cmd_mem(BaseSequentialStream *chp, int argc, char *argv[]) {
   chprintf(chp, "heap free total  : %u bytes\r\n", size);
 }
 
-static void cmd_threads(BaseSequentialStream *chp, int argc, char *argv[]) {
+static void cmd_threads(BaseChannel *chp, int argc, char *argv[]) {
   static const char *states[] = {THD_STATE_NAMES};
   Thread *tp;
 
@@ -188,7 +224,7 @@ static void cmd_threads(BaseSequentialStream *chp, int argc, char *argv[]) {
   } while (tp != NULL);
 }
 
-static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[]) {
+static void cmd_test(BaseChannel *chp, int argc, char *argv[]) {
   Thread *tp;
 
   (void)argv;
@@ -205,7 +241,7 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[]) {
   chThdWait(tp);
 }
 
-static void cmd_tree(BaseSequentialStream *chp, int argc, char *argv[]) {
+static void cmd_tree(BaseChannel *chp, int argc, char *argv[]) {
   FRESULT err;
   uint32_t clusters;
   FATFS *fsp;
@@ -227,7 +263,7 @@ static void cmd_tree(BaseSequentialStream *chp, int argc, char *argv[]) {
   chprintf(chp,
            "FS: %lu free clusters, %lu sectors per cluster, %lu bytes free\r\n",
            clusters, (uint32_t)SDC_FS.csize,
-           clusters * (uint32_t)SDC_FS.csize * (uint32_t)MMCSD_BLOCK_SIZE);
+           clusters * (uint32_t)SDC_FS.csize * (uint32_t)SDC_BLOCK_SIZE);
   fbuff[0] = 0;
   scan_files(chp, (char *)fbuff);
 }
@@ -241,7 +277,7 @@ static const ShellCommand commands[] = {
 };
 
 static const ShellConfig shell_cfg1 = {
-  (BaseSequentialStream *)&SD1,
+  (BaseChannel *)&SD1,
   commands
 };
 
@@ -276,12 +312,13 @@ static void InsertHandler(eventid_t id) {
 static void RemoveHandler(eventid_t id) {
 
   (void)id;
-  sdcDisconnect(&SDCD1);
+  if (sdcGetDriverState(&SDCD1) == SDC_ACTIVE)
+    sdcDisconnect(&SDCD1);
   fs_ready = FALSE;
 }
 
 /*
- * LEDs blinker thread, times are in milliseconds.
+ * Red LED blinker thread, times are in milliseconds.
  */
 static WORKING_AREA(waThread1, 128);
 static msg_t Thread1(void *arg) {
@@ -360,6 +397,6 @@ int main(void) {
       chThdRelease(shelltp);    /* Recovers memory of the previous shell.   */
       shelltp = NULL;           /* Triggers spawning of a new shell.        */
     }
-    chEvtDispatch(evhndl, chEvtWaitOneTimeout(ALL_EVENTS, MS2ST(500)));
+    chEvtDispatch(evhndl, chEvtWaitOne(ALL_EVENTS));
   }
 }

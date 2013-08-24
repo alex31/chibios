@@ -1,17 +1,28 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include <stdio.h>
@@ -21,6 +32,7 @@
 #include "hal.h"
 #include "test.h"
 
+#include "usb_cdc.h"
 #include "shell.h"
 #include "chprintf.h"
 
@@ -29,14 +41,7 @@
 /*===========================================================================*/
 
 /*
- * Endpoints to be used for USBD1.
- */
-#define USBD1_DATA_REQUEST_EP           1
-#define USBD1_DATA_AVAILABLE_EP         1
-#define USBD1_INTERRUPT_REQUEST_EP      2
-
-/*
- * Serial over USB Driver structure.
+ * USB Driver structure.
  */
 static SerialUSBDriver SDU1;
 
@@ -116,7 +121,7 @@ static const uint8_t vcom_configuration_descriptor_data[67] = {
   USB_DESC_BYTE         (0x01),         /* bSlaveInterface0 (Data Class
                                            Interface).                      */
   /* Endpoint 2 Descriptor.*/
-  USB_DESC_ENDPOINT     (USBD1_INTERRUPT_REQUEST_EP|0x80,
+  USB_DESC_ENDPOINT     (USB_CDC_INTERRUPT_REQUEST_EP|0x80,
                          0x03,          /* bmAttributes (Interrupt).        */
                          0x0008,        /* wMaxPacketSize.                  */
                          0xFF),         /* bInterval.                       */
@@ -132,12 +137,12 @@ static const uint8_t vcom_configuration_descriptor_data[67] = {
                                            4.7).                            */
                          0x00),         /* iInterface.                      */
   /* Endpoint 3 Descriptor.*/
-  USB_DESC_ENDPOINT     (USBD1_DATA_AVAILABLE_EP,       /* bEndpointAddress.*/
+  USB_DESC_ENDPOINT     (USB_CDC_DATA_AVAILABLE_EP,     /* bEndpointAddress.*/
                          0x02,          /* bmAttributes (Bulk).             */
                          0x0040,        /* wMaxPacketSize.                  */
                          0x00),         /* bInterval.                       */
   /* Endpoint 1 Descriptor.*/
-  USB_DESC_ENDPOINT     (USBD1_DATA_REQUEST_EP|0x80,    /* bEndpointAddress.*/
+  USB_DESC_ENDPOINT     (USB_CDC_DATA_REQUEST_EP|0x80,  /* bEndpointAddress.*/
                          0x02,          /* bmAttributes (Bulk).             */
                          0x0040,        /* wMaxPacketSize.                  */
                          0x00)          /* bInterval.                       */
@@ -228,49 +233,44 @@ static const USBDescriptor *get_descriptor(USBDriver *usbp,
 }
 
 /**
- * @brief   IN EP1 state.
- */
-static USBInEndpointState ep1instate;
-
-/**
- * @brief   OUT EP1 state.
- */
-static USBOutEndpointState ep1outstate;
-
-/**
- * @brief   EP1 initialization structure (both IN and OUT).
+ * @brief   EP1 initialization structure (IN only).
  */
 static const USBEndpointConfig ep1config = {
-  USB_EP_MODE_TYPE_BULK,
+  USB_EP_MODE_TYPE_BULK | USB_EP_MODE_PACKET,
   NULL,
   sduDataTransmitted,
-  sduDataReceived,
+  NULL,
   0x0040,
-  0x0040,
-  &ep1instate,
-  &ep1outstate,
-  1,
+  0x0000,
+  NULL,
   NULL
 };
-
-/**
- * @brief   IN EP2 state.
- */
-static USBInEndpointState ep2instate;
 
 /**
  * @brief   EP2 initialization structure (IN only).
  */
 static const USBEndpointConfig ep2config = {
-  USB_EP_MODE_TYPE_INTR,
+  USB_EP_MODE_TYPE_INTR | USB_EP_MODE_PACKET,
   NULL,
   sduInterruptTransmitted,
   NULL,
   0x0010,
   0x0000,
-  &ep2instate,
   NULL,
-  1,
+  NULL
+};
+
+/**
+ * @brief   EP3 initialization structure (OUT only).
+ */
+static const USBEndpointConfig ep3config = {
+  USB_EP_MODE_TYPE_BULK | USB_EP_MODE_PACKET,
+  NULL,
+  NULL,
+  sduDataReceived,
+  0x0000,
+  0x0040,
+  NULL,
   NULL
 };
 
@@ -285,17 +285,13 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
   case USB_EVENT_ADDRESS:
     return;
   case USB_EVENT_CONFIGURED:
-    chSysLockFromIsr();
-
     /* Enables the endpoints specified into the configuration.
        Note, this callback is invoked from an ISR so I-Class functions
        must be used.*/
-    usbInitEndpointI(usbp, USBD1_DATA_REQUEST_EP, &ep1config);
-    usbInitEndpointI(usbp, USBD1_INTERRUPT_REQUEST_EP, &ep2config);
-
-    /* Resetting the state of the CDC subsystem.*/
-    sduConfigureHookI(&SDU1);
-
+    chSysLockFromIsr();
+    usbInitEndpointI(usbp, USB_CDC_DATA_REQUEST_EP, &ep1config);
+    usbInitEndpointI(usbp, USB_CDC_INTERRUPT_REQUEST_EP, &ep2config);
+    usbInitEndpointI(usbp, USB_CDC_DATA_AVAILABLE_EP, &ep3config);
     chSysUnlockFromIsr();
     return;
   case USB_EVENT_SUSPEND:
@@ -309,23 +305,16 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
 }
 
 /*
- * USB driver configuration.
- */
-static const USBConfig usbcfg = {
-  usb_event,
-  get_descriptor,
-  sduRequestsHook,
-  NULL
-};
-
-/*
  * Serial over USB driver configuration.
  */
 static const SerialUSBConfig serusbcfg = {
   &USBD1,
-  USBD1_DATA_REQUEST_EP,
-  USBD1_DATA_AVAILABLE_EP,
-  USBD1_INTERRUPT_REQUEST_EP
+  {
+    usb_event,
+    get_descriptor,
+    sduRequestsHook,
+    NULL
+  }
 };
 
 /*===========================================================================*/
@@ -335,7 +324,7 @@ static const SerialUSBConfig serusbcfg = {
 #define SHELL_WA_SIZE   THD_WA_SIZE(2048)
 #define TEST_WA_SIZE    THD_WA_SIZE(256)
 
-static void cmd_mem(BaseSequentialStream *chp, int argc, char *argv[]) {
+static void cmd_mem(BaseChannel *chp, int argc, char *argv[]) {
   size_t n, size;
 
   (void)argv;
@@ -349,7 +338,7 @@ static void cmd_mem(BaseSequentialStream *chp, int argc, char *argv[]) {
   chprintf(chp, "heap free total  : %u bytes\r\n", size);
 }
 
-static void cmd_threads(BaseSequentialStream *chp, int argc, char *argv[]) {
+static void cmd_threads(BaseChannel *chp, int argc, char *argv[]) {
   static const char *states[] = {THD_STATE_NAMES};
   Thread *tp;
 
@@ -369,7 +358,7 @@ static void cmd_threads(BaseSequentialStream *chp, int argc, char *argv[]) {
   } while (tp != NULL);
 }
 
-static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[]) {
+static void cmd_test(BaseChannel *chp, int argc, char *argv[]) {
   Thread *tp;
 
   (void)argv;
@@ -386,47 +375,15 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[]) {
   chThdWait(tp);
 }
 
-static void cmd_write(BaseSequentialStream *chp, int argc, char *argv[]) {
-  static uint8_t buf[] =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-
-  (void)argv;
-  if (argc > 0) {
-    chprintf(chp, "Usage: write\r\n");
-    return;
-  }
-
-  while (chnGetTimeout((BaseChannel *)chp, TIME_IMMEDIATE) == Q_TIMEOUT) {
-    chSequentialStreamWrite(&SDU1, buf, sizeof buf - 1);
-  }
-  chprintf(chp, "\r\n\nstopped\r\n");
-}
-
 static const ShellCommand commands[] = {
   {"mem", cmd_mem},
   {"threads", cmd_threads},
   {"test", cmd_test},
-  {"write", cmd_write},
   {NULL, NULL}
 };
 
 static const ShellConfig shell_cfg1 = {
-  (BaseSequentialStream *)&SDU1,
+  (BaseChannel *)&SDU1,
   commands
 };
 
@@ -443,11 +400,10 @@ static msg_t Thread1(void *arg) {
   (void)arg;
   chRegSetThreadName("blinker");
   while (TRUE) {
-    systime_t time = serusbcfg.usbp->state == USB_ACTIVE ? 250 : 500;
     palClearPad(IOPORT3, GPIOC_LED);
-    chThdSleepMilliseconds(time);
+    chThdSleepMilliseconds(500);
     palSetPad(IOPORT3, GPIOC_LED);
-    chThdSleepMilliseconds(time);
+    chThdSleepMilliseconds(500);
   }
 }
 
@@ -468,20 +424,12 @@ int main(void) {
   chSysInit();
 
   /*
-   * Initializes a serial-over-USB CDC driver.
+   * Activates the USB driver and then the USB bus pull-up on D+.
    */
   sduObjectInit(&SDU1);
   sduStart(&SDU1, &serusbcfg);
-
-  /*
-   * Activates the USB driver and then the USB bus pull-up on D+.
-   * Note, a delay is inserted in order to not have to disconnect the cable
-   * after a reset.
-   */
-  usbDisconnectBus(serusbcfg.usbp);
-  chThdSleepMilliseconds(1500);
-  usbStart(serusbcfg.usbp, &usbcfg);
   usbConnectBus(serusbcfg.usbp);
+  palClearPad(GPIOC, GPIOC_USB_DISC);
 
   /*
    * Shell manager initialization.

@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012,2013 Giovanni Di Sirio.
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -36,20 +36,11 @@
 #ifndef _HAL_H_
 #define _HAL_H_
 
-#include "ch.h"
 #include "board.h"
 #include "halconf.h"
 
 #include "hal_lld.h"
 
-/* Abstract interfaces.*/
-#include "io_channel.h"
-#include "io_block.h"
-
-/* Shared headers.*/
-#include "mmcsd.h"
-
-/* Layered drivers.*/
 #include "tm.h"
 #include "pal.h"
 #include "adc.h"
@@ -66,8 +57,6 @@
 #include "spi.h"
 #include "uart.h"
 #include "usb.h"
-
-/* Complex drivers.*/
 #include "mmc_spi.h"
 #include "serial_usb.h"
 
@@ -132,39 +121,6 @@
  */
 #define US2RTT(usec) (((halGetCounterFrequency() + 999999UL) / 1000000UL) * \
                       (usec))
-
-/**
- * @brief   Realtime ticks to seconds to.
- * @details Converts from realtime ticks number to seconds.
- *
- * @param[in] ticks     number of ticks
- * @return              The number of seconds.
- *
- * @api
- */
-#define RTT2S(ticks) ((ticks) / halGetCounterFrequency())
-
-/**
- * @brief   Realtime ticks to milliseconds.
- * @details Converts from realtime ticks number to milliseconds.
- *
- * @param[in] ticks     number of ticks
- * @return              The number of milliseconds.
- *
- * @api
- */
-#define RTT2MS(ticks) ((ticks) / (halGetCounterFrequency() / 1000UL))
-
-/**
- * @brief   Realtime ticks to microseconds.
- * @details Converts from realtime ticks number to microseconds.
- *
- * @param[in] ticks     number of ticks
- * @return              The number of microseconds.
- *
- * @api
- */
-#define RTT2US(ticks) ((ticks) / (halGetCounterFrequency() / 1000000UL))
 /** @} */
 
 /**

@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012,2013 Giovanni Di Sirio.
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -51,7 +51,7 @@
 /*===========================================================================*/
 
 /*===========================================================================*/
-/* Driver local variables and types.                                         */
+/* Driver local variables.                                                   */
 /*===========================================================================*/
 
 /*===========================================================================*/
@@ -173,20 +173,6 @@ void rtcSetCallback(RTCDriver *rtcp, rtccb_t callback) {
   chSysUnlock();
 }
 #endif /* RTC_SUPPORTS_CALLBACKS */
-
-/**
- * @brief   Get current time in format suitable for usage in FatFS.
- *
- * @param[in] rtcp      pointer to RTC driver structure
- * @return              FAT time value.
- *
- * @api
- */
-uint32_t rtcGetTimeFat(RTCDriver *rtcp) {
-
-  chDbgCheck((rtcp != NULL), "rtcSetTime");
-  return rtc_lld_get_time_fat(rtcp);
-}
 
 #endif /* HAL_USE_RTC */
 

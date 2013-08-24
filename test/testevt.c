@@ -1,17 +1,28 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -74,7 +85,7 @@ static EVENTSOURCE_DECL(es2);
 
 static void evt1_setup(void) {
 
-  chEvtGetAndClearEvents(ALL_EVENTS);
+  chEvtClearFlags(ALL_EVENTS);
 }
 
 static void h1(eventid_t id) {(void)id;test_emit_token('A');}
@@ -127,13 +138,13 @@ ROMCONST struct testcase testevt1 = {
 
 static void evt2_setup(void) {
 
-  chEvtGetAndClearEvents(ALL_EVENTS);
+  chEvtClearFlags(ALL_EVENTS);
 }
 
 static msg_t thread1(void *p) {
 
   chThdSleepMilliseconds(50);
-  chEvtSignal((Thread *)p, 1);
+  chEvtSignalFlags((Thread *)p, 1);
   return 0;
 }
 
@@ -154,12 +165,12 @@ static void evt2_execute(void) {
   /*
    * Test on chEvtWaitOne() without wait.
    */
-  chEvtAddEvents(5);
+  chEvtAddFlags(5);
   m = chEvtWaitOne(ALL_EVENTS);
   test_assert(1, m == 1, "single event error");
   m = chEvtWaitOne(ALL_EVENTS);
   test_assert(2, m == 4, "single event error");
-  m = chEvtGetAndClearEvents(ALL_EVENTS);
+  m = chEvtClearFlags(ALL_EVENTS);
   test_assert(3, m == 0, "stuck event");
 
   /*
@@ -172,17 +183,17 @@ static void evt2_execute(void) {
   m = chEvtWaitOne(ALL_EVENTS);
   test_assert_time_window(4, target_time, target_time + ALLOWED_DELAY);
   test_assert(5, m == 1, "single event error");
-  m = chEvtGetAndClearEvents(ALL_EVENTS);
+  m = chEvtClearFlags(ALL_EVENTS);
   test_assert(6, m == 0, "stuck event");
   test_wait_threads();
 
   /*
    * Test on chEvtWaitAny() without wait.
    */
-  chEvtAddEvents(5);
+  chEvtAddFlags(5);
   m = chEvtWaitAny(ALL_EVENTS);
   test_assert(7, m == 5, "unexpected pending bit");
-  m = chEvtGetAndClearEvents(ALL_EVENTS);
+  m = chEvtClearFlags(ALL_EVENTS);
   test_assert(8, m == 0, "stuck event");
 
   /*
@@ -195,7 +206,7 @@ static void evt2_execute(void) {
   m = chEvtWaitAny(ALL_EVENTS);
   test_assert_time_window(9, target_time, target_time + ALLOWED_DELAY);
   test_assert(10, m == 1, "single event error");
-  m = chEvtGetAndClearEvents(ALL_EVENTS);
+  m = chEvtClearFlags(ALL_EVENTS);
   test_assert(11, m == 0, "stuck event");
   test_wait_threads();
 
@@ -212,7 +223,7 @@ static void evt2_execute(void) {
                                  thread2, "A");
   m = chEvtWaitAll(5);
   test_assert_time_window(12, target_time, target_time + ALLOWED_DELAY);
-  m = chEvtGetAndClearEvents(ALL_EVENTS);
+  m = chEvtClearFlags(ALL_EVENTS);
   test_assert(13, m == 0, "stuck event");
   test_wait_threads();
   chEvtUnregister(&es1, &el1);
@@ -246,7 +257,7 @@ ROMCONST struct testcase testevt2 = {
 
 static void evt3_setup(void) {
 
-  chEvtGetAndClearEvents(ALL_EVENTS);
+  chEvtClearFlags(ALL_EVENTS);
 }
 
 static void evt3_execute(void) {

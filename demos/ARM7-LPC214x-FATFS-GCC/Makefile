@@ -51,8 +51,8 @@ include $(CHIBIOS)/os/hal/platforms/LPC214x/platform.mk
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/ports/GCC/ARM/LPC214x/port.mk
 include $(CHIBIOS)/os/kernel/kernel.mk
-include $(CHIBIOS)/os/various/fatfs_bindings/fatfs.mk
 include $(CHIBIOS)/test/test.mk
+include $(CHIBIOS)/ext/fatfs/fatfs.mk
 
 # Define linker script file here
 LDSCRIPT= $(PORTLD)/LPC2148.ld
@@ -61,14 +61,14 @@ LDSCRIPT= $(PORTLD)/LPC2148.ld
 # setting.
 CSRC = $(PORTSRC) \
        $(KERNSRC) \
+       $(TESTSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
-       $(BOARDSRC) \
        $(FATFSSRC) \
-       $(TESTSRC) \
+       $(BOARDSRC) \
        ${BOARDPATH}/buzzer.c \
        $(CHIBIOS)/os/various/evtimer.c \
-       $(CHIBIOS)/os/various/chprintf.c \
+       $(CHIBIOS)/os/various/syscalls.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -149,7 +149,7 @@ CPPWARN = -Wall -Wextra
 #
 
 # List all default C defines here, like -D_DEBUG=1
-DDEFS =
+DDEFS = -DSTDOUT_SD=SD1 -DSTDIN_SD=SD1
 
 # List all default ASM defines here, like -D_DEBUG=1
 DADEFS =

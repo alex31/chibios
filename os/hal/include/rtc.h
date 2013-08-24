@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012,2013 Giovanni Di Sirio.
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -45,18 +45,6 @@
 /*===========================================================================*/
 /* Driver constants.                                                         */
 /*===========================================================================*/
-
-/**
- * @name    Date/Time bit masks
- * @{
- */
-#define RTC_TIME_SECONDS_MASK   0x0000001F  /* @brief Seconds mask.         */
-#define RTC_TIME_MINUTES_MASK   0x000007E0  /* @brief Minutes mask.         */
-#define RTC_TIME_HOURS_MASK     0x0000F800  /* @brief Hours mask.           */
-#define RTC_DATE_DAYS_MASK      0x001F0000  /* @brief Days mask.            */
-#define RTC_DATE_MONTHS_MASK    0x01E00000  /* @brief Months mask.          */
-#define RTC_DATE_YEARS_MASK     0xFE000000  /* @brief Years mask.           */
-/** @} */
 
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
@@ -164,7 +152,6 @@ extern "C" {
                    const RTCAlarm *alarmspec);
   void rtcGetAlarm(RTCDriver *rtcp, rtcalarm_t alarm, RTCAlarm *alarmspec);
 #endif
-  uint32_t rtcGetTimeFat(RTCDriver *rtcp);
 #if RTC_SUPPORTS_CALLBACKS
   void rtcSetCallback(RTCDriver *rtcp, rtccb_t callback);
 #endif

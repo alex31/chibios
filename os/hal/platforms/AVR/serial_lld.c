@@ -1,17 +1,28 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -50,7 +61,7 @@ SerialDriver SD2;
 #endif
 
 /*===========================================================================*/
-/* Driver local variables and types.                                         */
+/* Driver local variables.                                                   */
 /*===========================================================================*/
 
 /**
@@ -58,7 +69,7 @@ SerialDriver SD2;
  */
 static const SerialConfig default_config = {
   UBRR(SERIAL_DEFAULT_BITRATE),
-  USART_CHAR_SIZE_8
+  (1 << UCSZ1) | (1 << UCSZ0)
 };
 
 /*===========================================================================*/
@@ -66,35 +77,16 @@ static const SerialConfig default_config = {
 /*===========================================================================*/
 
 static void set_error(uint8_t sra, SerialDriver *sdp) {
-  flagsmask_t sts = 0;
-  uint8_t dor = 0;
-  uint8_t upe = 0;
-  uint8_t fe = 0;
+  ioflags_t sts = 0;
 
-#if USE_AVR_USART0
-  if (&SD1 == sdp) {
-    dor = (1 << DOR0);
-    upe = (1 << UPE0);
-    fe = (1 << FE0);
-  }
-#endif
-
-#if USE_AVR_USART1
-  if (&SD2 == sdp) {
-    dor = (1 << DOR1);
-    upe = (1 << UPE1);
-    fe = (1 << FE1);
-  }
-#endif
-
-  if (sra & dor)
+  if (sra & (1 << DOR))
     sts |= SD_OVERRUN_ERROR;
-  if (sra & upe)
+  if (sra & (1 << UPE))
     sts |= SD_PARITY_ERROR;
-  if (sra & fe)
+  if (sra & (1 << FE))
     sts |= SD_FRAMING_ERROR;
   chSysLockFromIsr();
-  chnAddFlagsI(sdp, sts);
+  chIOAddFlagsI(sdp, sts);
   chSysUnlockFromIsr();
 }
 
@@ -102,7 +94,7 @@ static void set_error(uint8_t sra, SerialDriver *sdp) {
 static void notify1(GenericQueue *qp) {
 
   (void)qp;
-  UCSR0B |= (1 << UDRIE0);
+  UCSR0B |= (1 << UDRIE);
 }
 
 /**
@@ -115,25 +107,8 @@ static void usart0_init(const SerialConfig *config) {
   UBRR0L = config->sc_brr;
   UBRR0H = config->sc_brr >> 8;
   UCSR0A = 0;
-  UCSR0B = (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0);
-  switch (config->sc_bits_per_char) {
-  case USART_CHAR_SIZE_5:
-    UCSR0C = 0;
-    break;
-  case USART_CHAR_SIZE_6:
-    UCSR0C = (1 << UCSZ00);
-    break;
-  case USART_CHAR_SIZE_7:
-    UCSR0C = (1 << UCSZ01);
-    break;
-  case USART_CHAR_SIZE_9:
-    UCSR0B |= (1 << UCSZ02);
-    UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);
-    break;
-  case USART_CHAR_SIZE_8:
-  default:
-    UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);
-  }
+  UCSR0B = (1 << RXEN) | (1 << TXEN) | (1 << RXCIE);
+  UCSR0C = config->sc_csrc;
 }
 
 /**
@@ -151,7 +126,7 @@ static void usart0_deinit(void) {
 static void notify2(GenericQueue *qp) {
 
   (void)qp;
-  UCSR1B |= (1 << UDRIE1);
+  UCSR1B |= (1 << UDRIE);
 }
 
 /**
@@ -164,25 +139,8 @@ static void usart1_init(const SerialConfig *config) {
   UBRR1L = config->sc_brr;
   UBRR1H = config->sc_brr >> 8;
   UCSR1A = 0;
-  UCSR1B = (1 << RXEN1) | (1 << TXEN1) | (1 << RXCIE1);
-  switch (config->sc_bits_per_char) {
-  case USART_CHAR_SIZE_5:
-    UCSR1C = 0;
-    break;
-  case USART_CHAR_SIZE_6:
-    UCSR1C = (1 << UCSZ10);
-    break;
-  case USART_CHAR_SIZE_7:
-    UCSR1C = (1 << UCSZ11);
-    break;
-  case USART_CHAR_SIZE_9:
-    UCSR1B |= (1 << UCSZ12);
-    UCSR1C = (1 << UCSZ10) | (1 << UCSZ11);
-    break;
-  case USART_CHAR_SIZE_8:
-  default:
-    UCSR1C = (1 << UCSZ10) | (1 << UCSZ11);
-  }
+  UCSR1B = (1 << RXEN) | (1 << TXEN) | (1 << RXCIE);
+  UCSR1C = config->sc_csrc;
 }
 
 /**
@@ -212,7 +170,7 @@ CH_IRQ_HANDLER(USART0_RX_vect) {
   CH_IRQ_PROLOGUE();
 
   sra = UCSR0A;
-  if (sra & ((1 << DOR0) | (1 << UPE0) | (1 << FE0)))
+  if (sra & ((1 << DOR) | (1 << UPE) | (1 << FE)))
     set_error(sra, &SD1);
   chSysLockFromIsr();
   sdIncomingDataI(&SD1, UDR0);
@@ -235,7 +193,7 @@ CH_IRQ_HANDLER(USART0_UDRE_vect) {
   b = sdRequestDataI(&SD1);
   chSysUnlockFromIsr();
   if (b < Q_OK)
-    UCSR0B &= ~(1 << UDRIE0);
+    UCSR0B &= ~(1 << UDRIE);
   else
     UDR0 = b;
 
@@ -255,7 +213,7 @@ CH_IRQ_HANDLER(USART1_RX_vect) {
   CH_IRQ_PROLOGUE();
 
   sra = UCSR1A;
-  if (sra & ((1 << DOR1) | (1 << UPE1) | (1 << FE1)))
+  if (sra & ((1 << DOR) | (1 << UPE) | (1 << FE)))
     set_error(sra, &SD2);
   chSysLockFromIsr();
   sdIncomingDataI(&SD2, UDR1);
@@ -278,7 +236,7 @@ CH_IRQ_HANDLER(USART1_UDRE_vect) {
   b = sdRequestDataI(&SD2);
   chSysUnlockFromIsr();
   if (b < Q_OK)
-    UCSR1B &= ~(1 << UDRIE1);
+    UCSR1B &= ~(1 << UDRIE);
   else
     UDR1 = b;
 

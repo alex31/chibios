@@ -1,17 +1,28 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -31,27 +42,9 @@
 /* Driver constants.                                                         */
 /*===========================================================================*/
 
-/**
- * @brief   This implementation supports the zero-copy mode API.
- */
-#define MAC_SUPPORTS_ZERO_COPY              TRUE
-
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
-
-/**
- * @name    Configuration options
- * @{
- */
-/**
- * @brief   MAC driver enable switch.
- * @details If set to @p TRUE the support for MAC1 is included.
- */
-#if !defined(PLATFORM_MAC_USE_MAC1) || defined(__DOXYGEN__)
-#define PLATFORM_MAC_USE_MAC1               FALSE
-#endif
-/** @} */
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
@@ -108,11 +101,11 @@ typedef struct {
   /**
    * @brief Current write offset.
    */
-  size_t                    offset;
+  size_t                offset;
   /**
    * @brief Available space size.
    */
-  size_t                    size;
+  size_t                size;
   /* End of the mandatory fields.*/
 } MACTransmitDescriptor;
 
@@ -139,8 +132,8 @@ typedef struct {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
-#if PLATFORM_MAC_USE_MAC1 && !defined(__DOXYGEN__)
-extern MACDriver ETHD1;
+#if !defined(__DOXYGEN__)
+extern MACDriver ETH1;
 #endif
 
 #ifdef __cplusplus
@@ -151,24 +144,17 @@ extern "C" {
   void mac_lld_stop(MACDriver *macp);
   msg_t mac_lld_get_transmit_descriptor(MACDriver *macp,
                                         MACTransmitDescriptor *tdp);
-  void mac_lld_release_transmit_descriptor(MACTransmitDescriptor *tdp);
-  msg_t mac_lld_get_receive_descriptor(MACDriver *macp,
-                                       MACReceiveDescriptor *rdp);
-  void mac_lld_release_receive_descriptor(MACReceiveDescriptor *rdp);
-  bool_t mac_lld_poll_link_status(MACDriver *macp);
   size_t mac_lld_write_transmit_descriptor(MACTransmitDescriptor *tdp,
                                            uint8_t *buf,
                                            size_t size);
+  void mac_lld_release_transmit_descriptor(MACTransmitDescriptor *tdp);
+  msg_t mac_lld_get_receive_descriptor(MACDriver *macp,
+                                       MACReceiveDescriptor *rdp);
   size_t mac_lld_read_receive_descriptor(MACReceiveDescriptor *rdp,
                                          uint8_t *buf,
                                          size_t size);
-#if MAC_USE_ZERO_COPY
-  uint8_t *mac_lld_get_next_transmit_buffer(MACTransmitDescriptor *tdp,
-                                            size_t size,
-                                            size_t *sizep);
-  const uint8_t *mac_lld_get_next_receive_buffer(MACReceiveDescriptor *rdp,
-                                                 size_t *sizep);
-#endif /* MAC_USE_ZERO_COPY */
+  void mac_lld_release_receive_descriptor(MACReceiveDescriptor *rdp);
+  bool_t mac_lld_poll_link_status(MACDriver *macp);
 #ifdef __cplusplus
 }
 #endif

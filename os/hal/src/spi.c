@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012,2013 Giovanni Di Sirio.
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -47,7 +47,7 @@
 /*===========================================================================*/
 
 /*===========================================================================*/
-/* Driver local variables and types.                                         */
+/* Driver local variables.                                                   */
 /*===========================================================================*/
 
 /*===========================================================================*/
@@ -324,7 +324,7 @@ void spiIgnore(SPIDriver *spip, size_t n) {
  * @api
  */
 void spiExchange(SPIDriver *spip, size_t n,
-                 const void *txbuf, void *rxbuf) {
+                     const void *txbuf, void *rxbuf) {
 
   chDbgCheck((spip != NULL) && (n > 0) && (rxbuf != NULL) && (txbuf != NULL),
              "spiExchange");

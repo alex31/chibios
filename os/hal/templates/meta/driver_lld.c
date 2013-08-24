@@ -1,17 +1,28 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -35,19 +46,8 @@
 /* Driver exported variables.                                                */
 /*===========================================================================*/
 
-/**
- * @brief   XXX1 driver identifier.
- */
-#if PLATFORM_XXX_USE_XXX1 || defined(__DOXYGEN__)
-XXXDriver XXXD1;
-#endif
-
 /*===========================================================================*/
-/* Driver local types.                                                       */
-/*===========================================================================*/
-
-/*===========================================================================*/
-/* Driver local variables and types.                                         */
+/* Driver local variables.                                                   */
 /*===========================================================================*/
 
 /*===========================================================================*/
@@ -69,10 +69,6 @@ XXXDriver XXXD1;
  */
 void xxx_lld_init(void) {
 
-#if PLATFORM_XXX_USE_XXX1
-  /* Driver initialization.*/
-  xxxObjectInit(&XXXD1);
-#endif /* PLATFORM_XXX_USE_XXX1 */
 }
 
 /**
@@ -85,15 +81,9 @@ void xxx_lld_init(void) {
 void xxx_lld_start(XXXDriver *xxxp) {
 
   if (xxxp->state == XXX_STOP) {
-    /* Enables the peripheral.*/
-#if PLATFORM_XXX_USE_XXX1
-    if (&XXXD1 == xxxp) {
-
-    }
-#endif /* PLATFORM_XXX_USE_XXX1 */
+    /* Clock activation.*/
   }
-  /* Configures the peripheral.*/
-
+  /* Configuration.*/
 }
 
 /**
@@ -106,14 +96,8 @@ void xxx_lld_start(XXXDriver *xxxp) {
 void xxx_lld_stop(XXXDriver *xxxp) {
 
   if (xxxp->state == XXX_READY) {
-    /* Resets the peripheral.*/
+    /* Clock deactivation.*/
 
-    /* Disables the peripheral.*/
-#if PLATFORM_XXX_USE_XXX1
-    if (&XXXD1 == xxxp) {
-
-    }
-#endif /* PLATFORM_XXX_USE_XXX1 */
   }
 }
 

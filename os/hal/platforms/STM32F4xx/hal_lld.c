@@ -1,42 +1,47 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
  * @file    STM32F4xx/hal_lld.c
- * @brief   STM32F4xx/STM32F2xx HAL subsystem low level driver source.
+ * @brief   STM32F4xx HAL subsystem low level driver source.
  *
  * @addtogroup HAL
  * @{
  */
 
-/* TODO: LSEBYP like in F3.*/
-
 #include "ch.h"
 #include "hal.h"
-
-/*===========================================================================*/
-/* Driver local definitions.                                                 */
-/*===========================================================================*/
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
 
 /*===========================================================================*/
-/* Driver local variables and types.                                         */
+/* Driver local variables.                                                   */
 /*===========================================================================*/
 
 /*===========================================================================*/
@@ -45,8 +50,6 @@
 
 /**
  * @brief   Initializes the backup domain.
- * @note    WARNING! Changing clock source impossible without resetting
- *          of the whole BKP domain.
  */
 static void hal_lld_backup_domain_init(void) {
 
@@ -60,13 +63,14 @@ static void hal_lld_backup_domain_init(void) {
     RCC->BDCR = 0;
   }
 
+  /* If enabled then the LSE is started.*/
 #if STM32_LSE_ENABLED
   RCC->BDCR |= RCC_BDCR_LSEON;
   while ((RCC->BDCR & RCC_BDCR_LSERDY) == 0)
-    ;                                       /* Waits until LSE is stable.   */
+    ;                                     /* Waits until LSE is stable.   */
 #endif
 
-#if HAL_USE_RTC
+#if STM32_RTCSEL != STM32_RTCSEL_NOCLOCK
   /* If the backup domain hasn't been initialized yet then proceed with
      initialization.*/
   if ((RCC->BDCR & RCC_BDCR_RTCEN) == 0) {
@@ -76,17 +80,7 @@ static void hal_lld_backup_domain_init(void) {
     /* RTC clock enabled.*/
     RCC->BDCR |= RCC_BDCR_RTCEN;
   }
-#endif /* HAL_USE_RTC */
-
-#if STM32_BKPRAM_ENABLE
-  rccEnableBKPSRAM(false);
-
-  PWR->CSR |= PWR_CSR_BRE;
-  while ((PWR->CSR & PWR_CSR_BRR) == 0)
-    ;                                /* Waits until the regulator is stable */
-#else
-  PWR->CSR &= ~PWR_CSR_BRE;
-#endif /* STM32_BKPRAM_ENABLE */
+#endif /* STM32_RTCSEL != STM32_RTCSEL_NOCLOCK */
 }
 
 /*===========================================================================*/
@@ -152,13 +146,9 @@ void stm32_clock_init(void) {
   RCC->APB1ENR = RCC_APB1ENR_PWREN;
 
   /* PWR initialization.*/
-#if defined(STM32F4XX) || defined(__DOXYGEN__)
   PWR->CR = STM32_VOS;
   while ((PWR->CSR & PWR_CSR_VOSRDY) == 0)
     ;                           /* Waits until power regulator is stable.   */
-#else
-  PWR->CR = 0;
-#endif
 
   /* Initial clocks setup and wait for HSI stabilization, the MSI clock is
      always enabled because it is the fallback clock when PLL the fails.*/
@@ -168,13 +158,7 @@ void stm32_clock_init(void) {
 
 #if STM32_HSE_ENABLED
   /* HSE activation.*/
-#if defined(STM32_HSE_BYPASS)
-  /* HSE Bypass.*/
-  RCC->CR |= RCC_CR_HSEON | RCC_CR_HSEBYP;
-#else
-  /* No HSE Bypass.*/
   RCC->CR |= RCC_CR_HSEON;
-#endif
   while ((RCC->CR & RCC_CR_HSERDY) == 0)
     ;                           /* Waits until HSE is stable.               */
 #endif
@@ -186,10 +170,20 @@ void stm32_clock_init(void) {
     ;                           /* Waits until LSI is stable.               */
 #endif
 
+#if STM32_LSE_ENABLED
+  /* LSE activation, have to unlock the register.*/
+  if ((RCC->BDCR & RCC_BDCR_LSEON) == 0) {
+    PWR->CR |= PWR_CR_DBP;
+    RCC->BDCR |= RCC_BDCR_LSEON;
+    PWR->CR &= ~PWR_CR_DBP;
+  }
+  while ((RCC->BDCR & RCC_BDCR_LSERDY) == 0)
+    ;                           /* Waits until LSE is stable.               */
+#endif
+
 #if STM32_ACTIVATE_PLL
   /* PLL activation.*/
-  RCC->PLLCFGR = STM32_PLLQ | STM32_PLLSRC | STM32_PLLP | STM32_PLLN |
-                 STM32_PLLM;
+  RCC->PLLCFGR = STM32_PLLQ | STM32_PLLSRC | STM32_PLLP | STM32_PLLN | STM32_PLLM;
   RCC->CR |= RCC_CR_PLLON;
   while (!(RCC->CR & RCC_CR_PLLRDY))
     ;                           /* Waits until PLL is stable.               */

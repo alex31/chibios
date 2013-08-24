@@ -1,5 +1,5 @@
 # List of the required lwIP files.
-LWIP = 	${CHIBIOS}/ext/lwip
+LWIP = 	${CHIBIOS}/ext/lwip-1.4.0
 
 LWBINDSRC = \
         $(CHIBIOS)/os/various/lwip_bindings/lwipthread.c \

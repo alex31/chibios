@@ -1,17 +1,28 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 #include "ch.h"
@@ -27,7 +38,7 @@ const PALConfig pal_default_config =
 {
   {VAL_PIOA_ODSR, VAL_PIOA_OSR, VAL_PIOA_PUSR},
 #if (SAM7_PLATFORM == SAM7X128) || (SAM7_PLATFORM == SAM7X256) || \
-    (SAM7_PLATFORM == SAM7X512) || (SAM7_PLATFORM == SAM7A3)
+    (SAM7_PLATFORM == SAM7X512)
   {VAL_PIOB_ODSR, VAL_PIOB_OSR, VAL_PIOB_PUSR}
 #endif
 };
@@ -48,12 +59,11 @@ static CH_IRQ_HANDLER(SYSIrqHandler) {
   }
   
 #if USE_SAM7_DBGU_UART
-  if (AT91C_BASE_DBGU->DBGU_CSR &
-      (AT91C_US_RXRDY | AT91C_US_TXRDY | AT91C_US_PARE | AT91C_US_FRAME |
-       AT91C_US_OVRE | AT91C_US_RXBRK)) {
-    sd_lld_serve_interrupt(&SDDBG);
+  if (AT91C_BASE_DBGU->DBGU_CSR & 
+    (AT91C_US_RXRDY | AT91C_US_TXRDY | AT91C_US_PARE | AT91C_US_FRAME | AT91C_US_OVRE | AT91C_US_RXBRK)) {
+    sd_lld_serve_interrupt(&SD3);
   }
-#endif
+#endif  
   AT91C_BASE_AIC->AIC_EOICR = 0;
   CH_IRQ_EPILOGUE();
 }
@@ -70,21 +80,6 @@ void __early_init(void) {
   
   at91sam7_clock_init();
 }
-
-#if HAL_USE_MMC_SPI
-/* Board-related functions related to the MMC_SPI driver.*/
-bool_t mmc_lld_is_card_inserted(MMCDriver *mmcp) {
-
-  (void)mmcp;
-  return !palReadPad(IOPORT2, PIOB_MMC_CP);
-}
-
-bool_t mmc_lld_is_write_protected(MMCDriver *mmcp) {
-
-  (void)mmcp;
-  return palReadPad(IOPORT2, PIOB_MMC_WP);
-}
-#endif
 
 /*
  * Board-specific initialization code.

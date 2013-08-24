@@ -1,47 +1,24 @@
-# PPC makefile scripts and rules.
-
-# Output directory and files
-ifeq ($(BUILDDIR),)
-  BUILDDIR = build
-endif
-ifeq ($(BUILDDIR),.)
-  BUILDDIR = build
-endif
-OUTFILES = $(BUILDDIR)/$(PROJECT).elf $(BUILDDIR)/$(PROJECT).hex \
-           $(BUILDDIR)/$(PROJECT).bin $(BUILDDIR)/$(PROJECT).dmp
+# PPC e200Z makefile scripts and rules.
 
 # Automatic compiler options
 OPT = $(USE_OPT)
 COPT = $(USE_COPT)
 CPPOPT = $(USE_CPPOPT)
+ifeq ($(USE_CURRP_CACHING),yes)
+  OPT += -ffixed-r7 -DCH_CURRP_REGISTER_CACHE='"r7"'
+endif
 ifeq ($(USE_LINK_GC),yes)
   OPT += -ffunction-sections -fdata-sections
 endif
 
-# VLE option handling.
-ifeq ($(USE_VLE),yes)
-  DDEFS += -DPPC_USE_VLE=1
-  DADEFS += -DPPC_USE_VLE=1
-  MCU += -mvle
-else
-  DDEFS += -DPPC_USE_VLE=0
-  DADEFS += -DPPC_USE_VLE=0
-endif
-
-# Source files groups and paths
-SRC	      = $(CSRC)$(CPPSRC)
-SRCPATHS  = $(sort $(dir $(ASMXSRC)) $(dir $(ASMSRC)) $(dir $(SRC)))
-
-# Various directories
-OBJDIR    = $(BUILDDIR)/obj
-LSTDIR    = $(BUILDDIR)/lst
+# Source files groups
+SRC	     = $(CSRC)$(CPPSRC)
 
 # Object files groups
-COBJS     = $(addprefix $(OBJDIR)/, $(notdir $(CSRC:.c=.o)))
-CPPOBJS   = $(addprefix $(OBJDIR)/, $(notdir $(CPPSRC:.cpp=.o)))
-ASMOBJS   = $(addprefix $(OBJDIR)/, $(notdir $(ASMSRC:.s=.o)))
-ASMXOBJS  = $(addprefix $(OBJDIR)/, $(notdir $(ASMXSRC:.S=.o)))
-OBJS	  = $(ASMXOBJS) $(ASMOBJS) $(COBJS) $(CPPOBJS)
+COBJS   = $(CSRC:.c=.o)
+CPPOBJS = $(CPPSRC:.cpp=.o)
+ASMOBJS = $(ASMSRC:.s=.o)
+OBJS	= $(ASMOBJS) $(COBJS) $(CPPOBJS)
 
 # Paths
 IINCDIR = $(patsubst %,-I%,$(INCDIR) $(DINCDIR) $(UINCDIR))
@@ -54,125 +31,56 @@ ADEFS   = $(DADEFS) $(UADEFS)
 # Libs
 LIBS    = $(DLIBS) $(ULIBS)
 
-# Various settings
-MCFLAGS   = -mcpu=$(MCU)
-ODFLAGS	  = -x --syms
-ASFLAGS   = $(MCFLAGS) -Wa,-amhls=$(LSTDIR)/$(notdir $(<:.s=.lst)) $(ADEFS)
-ASXFLAGS  = $(MCFLAGS) -Wa,-amhls=$(LSTDIR)/$(notdir $(<:.S=.lst)) $(ADEFS)
-CFLAGS    = $(MCFLAGS) $(OPT) $(COPT) $(CWARN) -Wa,-alms=$(LSTDIR)/$(notdir $(<:.c=.lst)) $(DEFS)
-CPPFLAGS  = $(MCFLAGS) $(OPT) $(CPPOPT) $(CPPWARN) -Wa,-alms=$(LSTDIR)/$(notdir $(<:.cpp=.lst)) $(DEFS)
-ifeq ($(USE_LINK_GC),yes)
-GCLDFLAGS = ,--gc-sections
+MCFLAGS = -mcpu=$(MCU)
+ODFLAGS	= -x --syms
+ASFLAGS = $(MCFLAGS) -Wa,-amhls=$(<:.s=.lst) $(ADEFS)
+CPFLAGS = $(MCFLAGS) $(OPT) $(COPT) $(CWARN) -Wa,-alms=$(<:.c=.lst) $(DEFS)
+ifeq ($(LINK_GC),yes)
+  LDFLAGS = $(MCFLAGS) -nostartfiles -T$(LDSCRIPT) -Wl,-Map=$(PROJECT).map,--cref,--no-warn-mismatch,--gc-sections $(LLIBDIR)
 else
-GCLDFLAGS =
+  LDFLAGS = $(MCFLAGS) -nostartfiles -T$(LDSCRIPT) -Wl,-Map=$(PROJECT).map,--cref,--no-warn-mismatch $(LLIBDIR)
 endif
-ifneq ($(USE_LDOPT),)
-XLDFLAGS  =,$(USE_LDOPT)
-else
-XLDFLAGS  =
-endif
-LDFLAGS = $(MCFLAGS) -nostartfiles -T$(LDSCRIPT) -Wl,-Map=$(BUILDDIR)/$(PROJECT).map,--cref,--no-warn-mismatch$(GCLDFLAGS)$(XLDFLAGS) $(LLIBDIR)
 
 # Generate dependency information
-CFLAGS   += -MD -MP -MF .dep/$(@F).d
-CPPFLAGS += -MD -MP -MF .dep/$(@F).d
-
-# Paths where to search for sources
-VPATH     = $(SRCPATHS)
+CPFLAGS += -MD -MP -MF .dep/$(@F).d
 
 #
 # Makefile rules
 #
-
-all: $(OBJS) $(OUTFILES) MAKE_ALL_RULE_HOOK
+all: $(OBJS) $(PROJECT).elf $(PROJECT).hex $(PROJECT).bin $(PROJECT).dmp MAKE_ALL_RULE_HOOK
 
 MAKE_ALL_RULE_HOOK:
 
-$(OBJS): | $(BUILDDIR)
-
-$(BUILDDIR) $(OBJDIR) $(LSTDIR):
-ifneq ($(USE_VERBOSE_COMPILE),yes)
-	@echo Compiler Options
-	@echo $(CC) -c $(CFLAGS) -I. $(IINCDIR) main.c -o main.o
+$(CPPOBJS) : %.o : %.cpp
 	@echo
-endif
-	mkdir -p $(OBJDIR)
-	mkdir -p $(LSTDIR)
+	$(CPPC) -c $(CPPFLAGS) -I . $(IINCDIR) $< -o $@
 
-$(CPPOBJS) : $(OBJDIR)/%.o : %.cpp Makefile
-ifeq ($(USE_VERBOSE_COMPILE),yes)
+$(COBJS) : %.o : %.c
 	@echo
-	$(CPPC) -c $(CPPFLAGS) -I. $(IINCDIR) $< -o $@
-else
-	@echo Compiling $(<F)
-	@$(CPPC) -c $(CPPFLAGS) -I. $(IINCDIR) $< -o $@
-endif
+	$(CC) -c $(CPFLAGS) -I . $(IINCDIR) $< -o $@
 
-$(COBJS) : $(OBJDIR)/%.o : %.c Makefile
-ifeq ($(USE_VERBOSE_COMPILE),yes)
+$(ASMOBJS) : %.o : %.s
 	@echo
-	$(CC) -c $(CFLAGS) -I. $(IINCDIR) $< -o $@
-else
-	@echo Compiling $(<F)
-	@$(CC) -c $(CFLAGS) -I. $(IINCDIR) $< -o $@
-endif
+	$(AS) -c $(ASFLAGS) -I . $(IINCDIR) $< -o $@
 
-$(ASMOBJS) : $(OBJDIR)/%.o : %.s Makefile
-ifeq ($(USE_VERBOSE_COMPILE),yes)
-	@echo
-	$(AS) -c $(ASFLAGS) -I. $(IINCDIR) $< -o $@
-else
-	@echo Compiling $(<F)
-	@$(AS) -c $(ASFLAGS) -I. $(IINCDIR) $< -o $@
-endif
-
-$(ASMXOBJS) : $(OBJDIR)/%.o : %.S Makefile
-ifeq ($(USE_VERBOSE_COMPILE),yes)
-	@echo 
-	$(CC) -c $(ASXFLAGS) -I. $(IINCDIR) $< -o $@
-else
-	@echo Compiling $(<F)
-	@$(CC) -c $(ASXFLAGS) -I. $(IINCDIR) $< -o $@
-endif
-
-%.elf: $(OBJS) $(LDSCRIPT)
-ifeq ($(USE_VERBOSE_COMPILE),yes)
+%elf: $(OBJS)
 	@echo
 	$(LD) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
-else
-	@echo Linking $@
-	@$(LD) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
-endif
 
-%.hex: %.elf $(LDSCRIPT)
-ifeq ($(USE_VERBOSE_COMPILE),yes)
+%hex: %elf
 	$(HEX) $< $@
-else
-	@echo Creating $@
-	@$(HEX) $< $@
-endif
 
-%.bin: %.elf $(LDSCRIPT)
-ifeq ($(USE_VERBOSE_COMPILE),yes)
+%bin: %elf
 	$(BIN) $< $@
-else
-	@echo Creating $@
-	@$(BIN) $< $@
-endif
 
-%.dmp: %.elf $(LDSCRIPT)
-ifeq ($(USE_VERBOSE_COMPILE),yes)
+%dmp: %elf
 	$(OD) $(ODFLAGS) $< > $@
-else
-	@echo Creating $@
-	@$(OD) $(ODFLAGS) $< > $@
-	@echo Done
-endif
 
 clean:
-	@echo Cleaning
-	-rm -fR .dep $(BUILDDIR)
-	@echo Done
+	-rm -f $(OBJS)
+	-rm -f $(CSRC:.c=.lst) $(CPPSRC:.cpp=.lst) $(ASMSRC:.s=.lst)
+	-rm -f $(PROJECT).elf $(PROJECT).dmp $(PROJECT).map $(PROJECT).hex $(PROJECT).bin
+	-rm -fR .dep
 
 #
 # Include the dependency files, should be the last of the makefile

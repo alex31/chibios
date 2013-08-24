@@ -1,6 +1,6 @@
 /*
     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012,2013 Giovanni Di Sirio.
+                 2011,2012 Giovanni Di Sirio.
 
     This file is part of ChibiOS/RT.
 
@@ -83,7 +83,7 @@ typedef struct  {
 /**
  * @brief   Static semaphore initializer.
  * @details Statically initialized semaphores require no explicit
- *          initialization using @p chBSemInit().
+ *          initialization using @p chSemInit().
  *
  * @param[in] name      the name of the semaphore variable
  * @param[in] taken     the semaphore initial state

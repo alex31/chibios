@@ -84,7 +84,7 @@ CSRC = $(PORTSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
-       $(CHIBIOS)/os/various/devices_lib/accel/lis302dl.c \
+       $(CHIBIOS)/os/various/lis302dl.c \
        $(CHIBIOS)/os/various/chprintf.c \
        main.c
 
@@ -117,7 +117,6 @@ ASMSRC = $(PORTASM)
 
 INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) \
-         $(CHIBIOS)/os/various/devices_lib/accel \
          $(CHIBIOS)/os/various
 
 #
