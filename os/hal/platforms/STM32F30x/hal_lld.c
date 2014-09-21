@@ -100,6 +100,7 @@ static void hal_lld_backup_domain_init(void) {
 void hal_lld_init(void) {
 
   /* Reset of all peripherals.*/
+  rccResetAHB(0xFFFFFFFF);
   rccResetAPB1(0xFFFFFFFF);
   rccResetAPB2(0xFFFFFFFF);
 
@@ -183,8 +184,8 @@ void stm32_clock_init(void) {
                STM32_HPRE;
   RCC->CFGR2 = STM32_ADC34PRES | STM32_ADC12PRES | STM32_PREDIV;
   RCC->CFGR3 = STM32_UART5SW   | STM32_UART4SW   | STM32_USART3SW |
-               STM32_USART2SW  | STM32_TIM8SW    | STM32_TIM1SW   |
-               STM32_I2C2SW    | STM32_I2C1SW    | STM32_USART1SW;
+               STM32_USART2SW  | STM32_I2C2SW    | STM32_I2C1SW   |
+               STM32_USART1SW;
 
 #if STM32_ACTIVATE_PLL
   /* PLL activation.*/
@@ -203,6 +204,10 @@ void stm32_clock_init(void) {
   while ((RCC->CFGR & RCC_CFGR_SWS) != (STM32_SW << 2))
     ;                                       /* Waits selection complete.    */
 #endif
+
+  /* After PLL activation because the special requirements for TIM1 and
+     TIM8 bits.*/
+  RCC->CFGR3 |= STM32_TIM8SW | STM32_TIM1SW;
 #endif /* !STM32_NO_INIT */
 }
 
