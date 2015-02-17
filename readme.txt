@@ -1,4 +1,4 @@
-*****************************************************************************
+﻿*****************************************************************************
 *** Files Organization                                                    ***
 *****************************************************************************
 
@@ -70,6 +70,30 @@
 *****************************************************************************
 *** Releases                                                              ***
 *****************************************************************************
+
+*** 2.6.7 ***
+- FIX: Fixed random R0 register corruption in Keil ARMCMx port when FPU
+  is enabled (bug #556).
+- FIX: Fixed wrong CORTEX_PRIORITY_PENDSV value in ARMCMx ports (bug #555).
+- FIX: Safer ADC start for STM32F4 and STM32L1.
+- FIX: AT91SAM7 SPI1 undocumented errata on manual CS manipulation.
+- FIX: AT91SAM7 SPI set CS pin mode.
+- FIX: Fixed AT91SAM7 gpio modes.
+- FIX: AT91SAM7 i2c and spi driver using wrong pins for many cpu variants
+- FIX: Fixed STM32 USB driver randomly unable to transition to VALID state
+  (bug #554).
+- FIX: Fixed OLIMEX STM32-E407 board.h errors (FAULT input swap and wrong
+  BUSON initial output state) (bug #551).
+- FIX: Fixed STM32F3xx clock init fails if PLL is enabled at startup
+  (bug #550).
+- FIX: Fixed problem in GCC scatter files (bug #548).
+- FIX: Fixed kernel function chEvtWaitOne() malfunctioning (bug #547).
+- FIX: Fixed minor warnings while building with IAR 7.3.0 (bug #542).
+- FIX: Fixed STM32 OTGv1 usb_lld_pump improper stack filling (bug #541).
+- FIX: Fixed chsnprintf sometimes doesn't terminate str (bug #538).
+- FIX: Fixed wrong wait states for STM32F401 (bug #537).
+- FIX: Fixed failure to compile EXT driver on STM32F401, re-opened
+  ticket (bug #517).
 
 *** 2.6.6 ***
 - FIX: Fixed error in STM32F30x adc_lld_stop() (bug #535).
@@ -808,7 +832,7 @@
 
 *** 2.0.5 ***
 - FIX: Incorrect AT91SAM7X initialization, thanks Leszek (bug 3075354).
-- FIX: Fixed race condition in function chSchGoSleepTimeoutS, thanks Bal�zs
+- FIX: Fixed race condition in function chSchGoSleepTimeoutS, thanks Balzs
   (bug 3074984).
 - FIX: Fixed race condition in threads creation (bug 3069854).
 - FIX: Fixed broken CH_DBG_ENABLE_STACK_CHECK option in legacy CM3 port (bug
