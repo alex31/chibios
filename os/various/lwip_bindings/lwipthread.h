@@ -1,5 +1,5 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@
 
 /** @brief MAC thread stack size. */
 #if !defined(LWIP_THREAD_STACK_SIZE) || defined(__DOXYGEN__)
-#define LWIP_THREAD_STACK_SIZE              512
+#define LWIP_THREAD_STACK_SIZE              576
 #endif
 
 /** @brief Link poll interval. */
@@ -116,12 +116,12 @@ struct lwipthread_opts {
   uint32_t      gateway;
 };
 
-extern WORKING_AREA(wa_lwip_thread, LWIP_THREAD_STACK_SIZE);
+extern THD_WORKING_AREA(wa_lwip_thread, LWIP_THREAD_STACK_SIZE);
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-  msg_t lwip_thread(void *p);
+  THD_FUNCTION(lwip_thread, p);
 #ifdef __cplusplus
 }
 #endif
