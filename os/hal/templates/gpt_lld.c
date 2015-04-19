@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,16 +15,17 @@
 */
 
 /**
- * @file    gpt_lld.c
- * @brief   PLATFORM GPT subsystem low level driver source.
+ * @file    templates/gpt_lld.c
+ * @brief   GPT Driver subsystem low level driver source template.
  *
  * @addtogroup GPT
  * @{
  */
 
+#include "ch.h"
 #include "hal.h"
 
-#if (HAL_USE_GPT == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_GPT || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver local definitions.                                                 */
@@ -37,7 +38,7 @@
 /**
  * @brief   GPTD1 driver identifier.
  */
-#if (PLATFORM_GPT_USE_GPT1 == TRUE) || defined(__DOXYGEN__)
+#if PLATFORM_GPT_USE_GPT1 || defined(__DOXYGEN__)
 GPTDriver GPTD1;
 #endif
 
@@ -64,7 +65,7 @@ GPTDriver GPTD1;
  */
 void gpt_lld_init(void) {
 
-#if PLATFORM_GPT_USE_GPT1 == TRUE
+#if PLATFORM2_GPT_USE_TIM1
   /* Driver initialization.*/
   gptObjectInit(&GPTD1);
 #endif
@@ -81,11 +82,11 @@ void gpt_lld_start(GPTDriver *gptp) {
 
   if (gptp->state == GPT_STOP) {
     /* Enables the peripheral.*/
-#if PLATFORM_GPT_USE_GPT1 == TRUE
+#if PLATFORM_GPT_USE_GPT1
     if (&GPTD1 == gptp) {
 
     }
-#endif
+#endif /* PLATFORM_GPT_USE_GPT1 */
   }
   /* Configures the peripheral.*/
 
@@ -104,11 +105,11 @@ void gpt_lld_stop(GPTDriver *gptp) {
     /* Resets the peripheral.*/
 
     /* Disables the peripheral.*/
-#if PLATFORM_GPT_USE_GPT1 == TRUE
+#if PLATFORM_GPT_USE_GPT1
     if (&GPTD1 == gptp) {
 
     }
-#endif
+#endif /* PLATFORM_GPT_USE_GPT1 */
   }
 }
 
@@ -158,6 +159,6 @@ void gpt_lld_polled_delay(GPTDriver *gptp, gptcnt_t interval) {
 
 }
 
-#endif /* HAL_USE_GPT == TRUE */
+#endif /* HAL_USE_GPT */
 
 /** @} */

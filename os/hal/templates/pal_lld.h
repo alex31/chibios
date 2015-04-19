@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 */
 
 /**
- * @file    pal_lld.h
- * @brief   PLATFORM PAL subsystem low level driver header.
+ * @file    templates/pal_lld.h
+ * @brief   PAL subsystem low level driver header template.
  *
  * @addtogroup PAL
  * @{
@@ -25,7 +25,7 @@
 #ifndef _PAL_LLD_H_
 #define _PAL_LLD_H_
 
-#if (HAL_USE_PAL == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_PAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Unsupported modes and specific modes                                      */
@@ -51,13 +51,13 @@ typedef struct {
 /**
  * @brief   Width, in bits, of an I/O port.
  */
-#define PAL_IOPORTS_WIDTH 32U
+#define PAL_IOPORTS_WIDTH 32
 
 /**
  * @brief   Whole port mask.
  * @brief   This macro specifies all the valid bits into a port.
  */
-#define PAL_WHOLE_PORT ((ioportmask_t)0xFFFFFFFFU)
+#define PAL_WHOLE_PORT ((ioportmask_t)0xFFFFFFFF)
 
 /**
  * @brief   Digital I/O port sized unsigned type.
@@ -110,7 +110,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_readport(port) 0U
+#define pal_lld_readport(port) 0
 
 /**
  * @brief   Reads the output latch.
@@ -122,7 +122,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_readlatch(port) 0U
+#define pal_lld_readlatch(port) 0
 
 /**
  * @brief   Writes a bits mask on a I/O port.
@@ -132,12 +132,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_writeport(port, bits)                                       \
-  do {                                                                      \
-    (void)port;                                                             \
-    (void)bits;                                                             \
-  } while (false)
-
+#define pal_lld_writeport(port, bits)
 
 /**
  * @brief   Sets a bits mask on a I/O port.
@@ -150,12 +145,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_setport(port, bits)                                         \
-  do {                                                                      \
-    (void)port;                                                             \
-    (void)bits;                                                             \
-  } while (false)
-
+#define pal_lld_setport(port, bits)
 
 /**
  * @brief   Clears a bits mask on a I/O port.
@@ -168,12 +158,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_clearport(port, bits)                                       \
-  do {                                                                      \
-    (void)port;                                                             \
-    (void)bits;                                                             \
-  } while (false)
-
+#define pal_lld_clearport(port, bits)
 
 /**
  * @brief   Toggles a bits mask on a I/O port.
@@ -186,12 +171,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_toggleport(port, bits)                                      \
-  do {                                                                      \
-    (void)port;                                                             \
-    (void)bits;                                                             \
-  } while (false)
-
+#define pal_lld_toggleport(port, bits)
 
 /**
  * @brief   Reads a group of bits.
@@ -206,7 +186,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_readgroup(port, mask, offset) 0U
+#define pal_lld_readgroup(port, mask, offset) 0
 
 /**
  * @brief   Writes a group of bits.
@@ -222,13 +202,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_writegroup(port, mask, offset, bits)                        \
-  do {                                                                      \
-    (void)port;                                                             \
-    (void)mask;                                                             \
-    (void)offset;                                                           \
-    (void)bits;                                                             \
-  } while (false)
+#define pal_lld_writegroup(port, mask, offset, bits) (void)bits
 
 /**
  * @brief   Pads group mode setup.
@@ -277,12 +251,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_writepad(port, pad, bit)                                    \
-  do {                                                                      \
-    (void)port;                                                             \
-    (void)pad;                                                              \
-    (void)bit;                                                              \
-  } while (false)
+#define pal_lld_writepad(port, pad, bit)
 
 /**
  * @brief   Sets a pad logical state to @p PAL_HIGH.
@@ -295,12 +264,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_setpad(port, pad)                                           \
-  do {                                                                      \
-    (void)port;                                                             \
-    (void)pad;                                                              \
-  } while (false)
-
+#define pal_lld_setpad(port, pad)
 
 /**
  * @brief   Clears a pad logical state to @p PAL_LOW.
@@ -313,12 +277,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_clearpad(port, pad)                                         \
-  do {                                                                      \
-    (void)port;                                                             \
-    (void)pad;                                                              \
-  } while (false)
-
+#define pal_lld_clearpad(port, pad)
 
 /**
  * @brief   Toggles a pad logical state.
@@ -331,12 +290,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_togglepad(port, pad)                                        \
-  do {                                                                      \
-    (void)port;                                                             \
-    (void)pad;                                                              \
-  } while (false)
-
+#define pal_lld_togglepad(port, pad)
 
 /**
  * @brief   Pad mode setup.
@@ -352,13 +306,7 @@ typedef uint32_t ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_setpadmode(port, pad, mode)                                 \
-  do {                                                                      \
-    (void)port;                                                             \
-    (void)pad;                                                              \
-    (void)mode;                                                             \
-  } while (false)
-
+#define pal_lld_setpadmode(port, pad, mode)
 
 #if !defined(__DOXYGEN__)
 extern const PALConfig pal_default_config;
@@ -375,7 +323,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_PAL == TRUE */
+#endif /* HAL_USE_PAL */
 
 #endif /* _PAL_LLD_H_ */
 

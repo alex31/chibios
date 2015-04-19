@@ -1,17 +1,28 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012,2013 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -22,15 +33,16 @@
  * @{
  */
 
+#include "ch.h"
 #include "hal.h"
 
-#if (HAL_USE_MAC == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_MAC || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver local definitions.                                                 */
 /*===========================================================================*/
 
-#if (MAC_USE_ZERO_COPY == TRUE) && (MAC_SUPPORTS_ZERO_COPY == FALSE)
+#if MAC_USE_ZERO_COPY && !MAC_SUPPORTS_ZERO_COPY
 #error "MAC_USE_ZERO_COPY not supported by this implementation"
 #endif
 
@@ -77,10 +89,10 @@ void macObjectInit(MACDriver *macp) {
 
   macp->state  = MAC_STOP;
   macp->config = NULL;
-  osalThreadQueueObjectInit(&macp->tdqueue);
-  osalThreadQueueObjectInit(&macp->rdqueue);
-#if MAC_USE_EVENTS == TRUE
-  osalEventObjectInit(&macp->rdevent);
+  chSemInit(&macp->tdsem, 0);
+  chSemInit(&macp->rdsem, 0);
+#if MAC_USE_EVENTS
+  chEvtInit(&macp->rdevent);
 #endif
 }
 
@@ -94,15 +106,15 @@ void macObjectInit(MACDriver *macp) {
  */
 void macStart(MACDriver *macp, const MACConfig *config) {
 
-  osalDbgCheck((macp != NULL) && (config != NULL));
+  chDbgCheck((macp != NULL) && (config != NULL), "macStart");
 
-  osalSysLock();
-  osalDbgAssert(macp->state == MAC_STOP,
-                "invalid state");
+  chSysLock();
+  chDbgAssert(macp->state == MAC_STOP,
+              "macStart(), #1", "invalid state");
   macp->config = config;
   mac_lld_start(macp);
   macp->state = MAC_ACTIVE;
-  osalSysUnlock();
+  chSysUnlock();
 }
 
 /**
@@ -114,14 +126,14 @@ void macStart(MACDriver *macp, const MACConfig *config) {
  */
 void macStop(MACDriver *macp) {
 
-  osalDbgCheck(macp != NULL);
+  chDbgCheck(macp != NULL, "macStop");
 
-  osalSysLock();
-  osalDbgAssert((macp->state == MAC_STOP) || (macp->state == MAC_ACTIVE),
-                "invalid state");
+  chSysLock();
+  chDbgAssert((macp->state == MAC_STOP) || (macp->state == MAC_ACTIVE),
+              "macStop(), #1", "invalid state");
   mac_lld_stop(macp);
   macp->state = MAC_STOP;
-  osalSysUnlock();
+  chSysUnlock();
 }
 
 /**
@@ -132,39 +144,38 @@ void macStop(MACDriver *macp) {
  *
  * @param[in] macp      pointer to the @p MACDriver object
  * @param[out] tdp      pointer to a @p MACTransmitDescriptor structure
- * @param[in] timeout   the number of ticks before the operation timeouts,
+ * @param[in] time      the number of ticks before the operation timeouts,
  *                      the following special values are allowed:
  *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      - @a TIME_INFINITE no timeout.
  *                      .
  * @return              The operation status.
- * @retval MSG_OK       the descriptor was obtained.
- * @retval MSG_TIMEOUT  the operation timed out, descriptor not initialized.
+ * @retval RDY_OK       the descriptor was obtained.
+ * @retval RDY_TIMEOUT  the operation timed out, descriptor not initialized.
  *
  * @api
  */
 msg_t macWaitTransmitDescriptor(MACDriver *macp,
                                 MACTransmitDescriptor *tdp,
-                                systime_t timeout) {
+                                systime_t time) {
   msg_t msg;
   systime_t now;
 
-  osalDbgCheck((macp != NULL) && (tdp != NULL));
-  osalDbgAssert(macp->state == MAC_ACTIVE, "not active");
+  chDbgCheck((macp != NULL) && (tdp != NULL), "macWaitTransmitDescriptor");
+  chDbgAssert(macp->state == MAC_ACTIVE, "macWaitTransmitDescriptor(), #1",
+              "not active");
 
-  while (((msg = mac_lld_get_transmit_descriptor(macp, tdp)) != MSG_OK) &&
-         (timeout > (systime_t)0)) {
-    osalSysLock();
-    now = osalOsGetSystemTimeX();
-    msg = osalThreadEnqueueTimeoutS(&macp->tdqueue, timeout);
-    if (msg == MSG_TIMEOUT) {
-      osalSysUnlock();
+  while (((msg = mac_lld_get_transmit_descriptor(macp, tdp)) != RDY_OK) &&
+         (time > 0)) {
+    chSysLock();
+    now = chTimeNow();
+    if ((msg = chSemWaitTimeoutS(&macp->tdsem, time)) == RDY_TIMEOUT) {
+      chSysUnlock();
       break;
     }
-    if (timeout != TIME_INFINITE) {
-      timeout -= (osalOsGetSystemTimeX() - now);
-    }
-    osalSysUnlock();
+    if (time != TIME_INFINITE)
+      time -= (chTimeNow() - now);
+    chSysUnlock();
   }
   return msg;
 }
@@ -179,7 +190,7 @@ msg_t macWaitTransmitDescriptor(MACDriver *macp,
  */
 void macReleaseTransmitDescriptor(MACTransmitDescriptor *tdp) {
 
-  osalDbgCheck(tdp != NULL);
+  chDbgCheck((tdp != NULL), "macReleaseTransmitDescriptor");
 
   mac_lld_release_transmit_descriptor(tdp);
 }
@@ -192,39 +203,38 @@ void macReleaseTransmitDescriptor(MACTransmitDescriptor *tdp) {
  *
  * @param[in] macp      pointer to the @p MACDriver object
  * @param[out] rdp      pointer to a @p MACReceiveDescriptor structure
- * @param[in] timeout   the number of ticks before the operation timeouts,
+ * @param[in] time      the number of ticks before the operation timeouts,
  *                      the following special values are allowed:
  *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      - @a TIME_INFINITE no timeout.
  *                      .
  * @return              The operation status.
- * @retval MSG_OK       the descriptor was obtained.
- * @retval MSG_TIMEOUT  the operation timed out, descriptor not initialized.
+ * @retval RDY_OK       the descriptor was obtained.
+ * @retval RDY_TIMEOUT  the operation timed out, descriptor not initialized.
  *
  * @api
  */
 msg_t macWaitReceiveDescriptor(MACDriver *macp,
                                MACReceiveDescriptor *rdp,
-                               systime_t timeout) {
+                               systime_t time) {
   msg_t msg;
   systime_t now;
 
-  osalDbgCheck((macp != NULL) && (rdp != NULL));
-  osalDbgAssert(macp->state == MAC_ACTIVE, "not active");
+  chDbgCheck((macp != NULL) && (rdp != NULL), "macWaitReceiveDescriptor");
+  chDbgAssert(macp->state == MAC_ACTIVE, "macWaitReceiveDescriptor(), #1",
+              "not active");
 
-  while (((msg = mac_lld_get_receive_descriptor(macp, rdp)) != MSG_OK) &&
-         (timeout > (systime_t)0)) {
-    osalSysLock();
-    now = osalOsGetSystemTimeX();
-    msg = osalThreadEnqueueTimeoutS(&macp->rdqueue, timeout);
-    if (msg == MSG_TIMEOUT) {
-      osalSysUnlock();
+  while (((msg = mac_lld_get_receive_descriptor(macp, rdp)) != RDY_OK) &&
+         (time > 0)) {
+    chSysLock();
+    now = chTimeNow();
+    if ((msg = chSemWaitTimeoutS(&macp->rdsem, time)) == RDY_TIMEOUT) {
+      chSysUnlock();
       break;
     }
-    if (timeout != TIME_INFINITE) {
-      timeout -= (osalOsGetSystemTimeX() - now);
-    }
-    osalSysUnlock();
+    if (time != TIME_INFINITE)
+      time -= (chTimeNow() - now);
+    chSysUnlock();
   }
   return msg;
 }
@@ -240,7 +250,7 @@ msg_t macWaitReceiveDescriptor(MACDriver *macp,
  */
 void macReleaseReceiveDescriptor(MACReceiveDescriptor *rdp) {
 
-  osalDbgCheck(rdp != NULL);
+  chDbgCheck((rdp != NULL), "macReleaseReceiveDescriptor");
 
   mac_lld_release_receive_descriptor(rdp);
 }
@@ -250,19 +260,20 @@ void macReleaseReceiveDescriptor(MACReceiveDescriptor *rdp) {
  *
  * @param[in] macp      pointer to the @p MACDriver object
  * @return              The link status.
- * @retval true         if the link is active.
- * @retval false        if the link is down.
+ * @retval TRUE         if the link is active.
+ * @retval FALSE        if the link is down.
  *
  * @api
  */
-bool macPollLinkStatus(MACDriver *macp) {
+bool_t macPollLinkStatus(MACDriver *macp) {
 
-  osalDbgCheck(macp != NULL);
-  osalDbgAssert(macp->state == MAC_ACTIVE, "not active");
+  chDbgCheck((macp != NULL), "macPollLinkStatus");
+  chDbgAssert(macp->state == MAC_ACTIVE, "macPollLinkStatus(), #1",
+              "not active");
 
   return mac_lld_poll_link_status(macp);
 }
 
-#endif /* HAL_USE_MAC == TRUE */
+#endif /* HAL_USE_MAC */
 
 /** @} */

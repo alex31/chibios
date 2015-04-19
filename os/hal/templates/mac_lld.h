@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 */
 
 /**
- * @file    mac_lld.h
- * @brief   PLATFORM MAC subsystem low level driver header.
+ * @file    templates/mac_lld.h
+ * @brief   MAC Driver subsystem low level driver header template.
  *
  * @addtogroup MAC
  * @{
@@ -25,7 +25,7 @@
 #ifndef _MAC_LLD_H_
 #define _MAC_LLD_H_
 
-#if (HAL_USE_MAC == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_MAC || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -34,20 +34,19 @@
 /**
  * @brief   This implementation supports the zero-copy mode API.
  */
-#define MAC_SUPPORTS_ZERO_COPY      TRUE
+#define MAC_SUPPORTS_ZERO_COPY              TRUE
 
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
 
 /**
- * @name    PLATFORM configuration options
+ * @name    Configuration options
  * @{
  */
 /**
  * @brief   MAC driver enable switch.
  * @details If set to @p TRUE the support for MAC1 is included.
- * @note    The default is @p FALSE.
  */
 #if !defined(PLATFORM_MAC_USE_MAC1) || defined(__DOXYGEN__)
 #define PLATFORM_MAC_USE_MAC1               FALSE
@@ -88,16 +87,16 @@ struct MACDriver {
   /**
    * @brief Transmit semaphore.
    */
-  threads_queue_t       tdqueue;
+  Semaphore             tdsem;
   /**
    * @brief Receive semaphore.
    */
-  threads_queue_t       rdqueue;
-#if (MAC_USE_EVENTS == TRUE) || defined(__DOXYGEN__)
+  Semaphore             rdsem;
+#if MAC_USE_EVENTS || defined(__DOXYGEN__)
   /**
    * @brief Receive event.
    */
-  event_source_t        rdevent;
+  EventSource           rdevent;
 #endif
   /* End of the mandatory fields.*/
 };
@@ -140,7 +139,7 @@ typedef struct {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
-#if (PLATFORM_MAC_USE_MAC1 == TRUE) && !defined(__DOXYGEN__)
+#if PLATFORM_MAC_USE_MAC1 && !defined(__DOXYGEN__)
 extern MACDriver ETHD1;
 #endif
 
@@ -156,25 +155,25 @@ extern "C" {
   msg_t mac_lld_get_receive_descriptor(MACDriver *macp,
                                        MACReceiveDescriptor *rdp);
   void mac_lld_release_receive_descriptor(MACReceiveDescriptor *rdp);
-  bool mac_lld_poll_link_status(MACDriver *macp);
+  bool_t mac_lld_poll_link_status(MACDriver *macp);
   size_t mac_lld_write_transmit_descriptor(MACTransmitDescriptor *tdp,
                                            uint8_t *buf,
                                            size_t size);
   size_t mac_lld_read_receive_descriptor(MACReceiveDescriptor *rdp,
                                          uint8_t *buf,
                                          size_t size);
-#if MAC_USE_ZERO_COPY == TRUE
+#if MAC_USE_ZERO_COPY
   uint8_t *mac_lld_get_next_transmit_buffer(MACTransmitDescriptor *tdp,
                                             size_t size,
                                             size_t *sizep);
   const uint8_t *mac_lld_get_next_receive_buffer(MACReceiveDescriptor *rdp,
                                                  size_t *sizep);
-#endif
+#endif /* MAC_USE_ZERO_COPY */
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* HAL_USE_MAC == TRUE */
+#endif /* HAL_USE_MAC */
 
 #endif /* _MAC_LLD_H_ */
 

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -48,19 +48,19 @@
  *
  */
 
-#include <hal.h>
+#include <ch.h>
 
 #ifndef __SYS_ARCH_H__
 #define __SYS_ARCH_H__
 
-typedef semaphore_t *   sys_sem_t;
-typedef mailbox_t *     sys_mbox_t;
-typedef thread_t *      sys_thread_t;
+typedef Semaphore *     sys_sem_t;
+typedef Mailbox *       sys_mbox_t;
+typedef Thread *        sys_thread_t;
 typedef int             sys_prot_t;
 
-#define SYS_MBOX_NULL   (mailbox_t *)0
-#define SYS_THREAD_NULL (thread_t *)0
-#define SYS_SEM_NULL    (semaphore_t *)0
+#define SYS_MBOX_NULL   (Mailbox *)0
+#define SYS_THREAD_NULL (Thread *)0
+#define SYS_SEM_NULL    (Semaphore *)0
 
 /* let sys.h use binary semaphores for mutexes */
 #define LWIP_COMPAT_MUTEX 1

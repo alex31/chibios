@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -63,6 +63,11 @@
 #include "ch.h"
 #if defined(STDOUT_SD) || defined(STDIN_SD)
 #include "hal.h"
+#endif
+
+#ifndef __errno_r
+#include <sys/reent.h>
+#define __errno_r(reent) reent->_errno
 #endif
 
 /***************************************************************************/
@@ -129,10 +134,10 @@ int _close_r(struct _reent *r, int file)
 
 caddr_t _sbrk_r(struct _reent *r, int incr)
 {
-#if CH_CFG_USE_MEMCORE
+#if CH_USE_MEMCORE
   void *p;
 
-  chDbgCheck(incr > 0);
+  chDbgCheck(incr > 0, "_sbrk_r");
 
   p = chCoreAlloc((size_t)incr);
   if (p == NULL) {

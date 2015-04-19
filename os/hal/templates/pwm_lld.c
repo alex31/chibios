@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,16 +15,17 @@
 */
 
 /**
- * @file    pwm_lld.c
- * @brief   PLATFORM PWM subsystem low level driver source.
+ * @file    templates/pwm_lld.c
+ * @brief   PWM Driver subsystem low level driver source template.
  *
  * @addtogroup PWM
  * @{
  */
 
+#include "ch.h"
 #include "hal.h"
 
-#if (HAL_USE_PWM == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_PWM || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver local definitions.                                                 */
@@ -35,10 +36,9 @@
 /*===========================================================================*/
 
 /**
- * @brief   PWMD1 driver identifier.
- * @note    The driver PWMD1 allocates the complex timer TIM1 when enabled.
+ * @brief   PWM1 driver identifier.
  */
-#if (PLATFORM_PWM_USE_PWM1 == TRUE) || defined(__DOXYGEN__)
+#if PLATFORM_PWM_USE_PWM1 || defined(__DOXYGEN__)
 PWMDriver PWMD1;
 #endif
 
@@ -65,61 +65,87 @@ PWMDriver PWMD1;
  */
 void pwm_lld_init(void) {
 
-#if PLATFORM_PWM_USE_PWM1 == TRUE
+#if PLATFORM_PWM_USE_PWM1
   /* Driver initialization.*/
   pwmObjectInit(&PWMD1);
-#endif
+#endif /* PLATFORM_PWM_USE_PWM1 */
 }
 
 /**
  * @brief   Configures and activates the PWM peripheral.
- * @note    Starting a driver that is already in the @p PWM_READY state
- *          disables all the active channels.
  *
- * @param[in] pwmp      pointer to a @p PWMDriver object
+ * @param[in] pwmp      pointer to the @p PWMDriver object
  *
  * @notapi
  */
 void pwm_lld_start(PWMDriver *pwmp) {
 
   if (pwmp->state == PWM_STOP) {
-    /* Clock activation and timer reset.*/
-#if PLATFORM_PWM_USE_PWM1 == TRUE
+    /* Enables the peripheral.*/
+#if PLATFORM_PWM_USE_PWM1
     if (&PWMD1 == pwmp) {
 
     }
-#endif
+#endif /* PLATFORM_PWM_USE_PWM1 */
   }
+  /* Configures the peripheral.*/
+
 }
 
 /**
  * @brief   Deactivates the PWM peripheral.
  *
- * @param[in] pwmp      pointer to a @p PWMDriver object
+ * @param[in] pwmp      pointer to the @p PWMDriver object
  *
  * @notapi
  */
 void pwm_lld_stop(PWMDriver *pwmp) {
 
-  /* If in ready state then disables the PWM clock.*/
   if (pwmp->state == PWM_READY) {
-#if PLATFORM_PWM_USE_PWM1 == TRUE
+    /* Resets the peripheral.*/
+
+    /* Disables the peripheral.*/
+#if PLATFORM_PWM_USE_PWM1
     if (&PWMD1 == pwmp) {
 
     }
-#endif
+#endif /* PLATFORM_PWM_USE_PWM1 */
   }
+}
+
+/**
+ * @brief   Changes the period the PWM peripheral.
+ * @details This function changes the period of a PWM unit that has already
+ *          been activated using @p pwmStart().
+ * @pre     The PWM unit must have been activated using @p pwmStart().
+ * @post    The PWM unit period is changed to the new value.
+ * @note    The function has effect at the next cycle start.
+ * @note    If a period is specified that is shorter than the pulse width
+ *          programmed in one of the channels then the behavior is not
+ *          guaranteed.
+ *
+ * @param[in] pwmp      pointer to a @p PWMDriver object
+ * @param[in] period    new cycle time in ticks
+ *
+ * @notapi
+ */
+void pwm_lld_change_period(PWMDriver *pwmp, pwmcnt_t period) {
+
+  (void)pwmp;
+  (void)period;
+
 }
 
 /**
  * @brief   Enables a PWM channel.
  * @pre     The PWM unit must have been activated using @p pwmStart().
  * @post    The channel is active using the specified configuration.
- * @note    The function has effect at the next cycle start.
- * @note    Channel notification is not enabled.
+ * @note    Depending on the hardware implementation this function has
+ *          effect starting on the next cycle (recommended implementation)
+ *          or immediately (fallback implementation).
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
- * @param[in] channel   PWM channel identifier (0...channels-1)
+ * @param[in] channel   PWM channel identifier (0...PWM_CHANNELS-1)
  * @param[in] width     PWM pulse width as clock pulses number
  *
  * @notapi
@@ -131,17 +157,20 @@ void pwm_lld_enable_channel(PWMDriver *pwmp,
   (void)pwmp;
   (void)channel;
   (void)width;
+
 }
 
 /**
- * @brief   Disables a PWM channel and its notification.
+ * @brief   Disables a PWM channel.
  * @pre     The PWM unit must have been activated using @p pwmStart().
  * @post    The channel is disabled and its output line returned to the
  *          idle state.
- * @note    The function has effect at the next cycle start.
+ * @note    Depending on the hardware implementation this function has
+ *          effect starting on the next cycle (recommended implementation)
+ *          or immediately (fallback implementation).
  *
  * @param[in] pwmp      pointer to a @p PWMDriver object
- * @param[in] channel   PWM channel identifier (0...channels-1)
+ * @param[in] channel   PWM channel identifier (0...PWM_CHANNELS-1)
  *
  * @notapi
  */
@@ -149,72 +178,9 @@ void pwm_lld_disable_channel(PWMDriver *pwmp, pwmchannel_t channel) {
 
   (void)pwmp;
   (void)channel;
+
 }
 
-/**
- * @brief   Enables the periodic activation edge notification.
- * @pre     The PWM unit must have been activated using @p pwmStart().
- * @note    If the notification is already enabled then the call has no effect.
- *
- * @param[in] pwmp      pointer to a @p PWMDriver object
- *
- * @notapi
- */
-void pwm_lld_enable_periodic_notification(PWMDriver *pwmp) {
-
-  (void)pwmp;
-}
-
-/**
- * @brief   Disables the periodic activation edge notification.
- * @pre     The PWM unit must have been activated using @p pwmStart().
- * @note    If the notification is already disabled then the call has no effect.
- *
- * @param[in] pwmp      pointer to a @p PWMDriver object
- *
- * @notapi
- */
-void pwm_lld_disable_periodic_notification(PWMDriver *pwmp) {
-
-  (void)pwmp;
-}
-
-/**
- * @brief   Enables a channel de-activation edge notification.
- * @pre     The PWM unit must have been activated using @p pwmStart().
- * @pre     The channel must have been activated using @p pwmEnableChannel().
- * @note    If the notification is already enabled then the call has no effect.
- *
- * @param[in] pwmp      pointer to a @p PWMDriver object
- * @param[in] channel   PWM channel identifier (0...channels-1)
- *
- * @notapi
- */
-void pwm_lld_enable_channel_notification(PWMDriver *pwmp,
-                                         pwmchannel_t channel) {
-
-  (void)pwmp;
-  (void)channel;
-}
-
-/**
- * @brief   Disables a channel de-activation edge notification.
- * @pre     The PWM unit must have been activated using @p pwmStart().
- * @pre     The channel must have been activated using @p pwmEnableChannel().
- * @note    If the notification is already disabled then the call has no effect.
- *
- * @param[in] pwmp      pointer to a @p PWMDriver object
- * @param[in] channel   PWM channel identifier (0...channels-1)
- *
- * @notapi
- */
-void pwm_lld_disable_channel_notification(PWMDriver *pwmp,
-                                          pwmchannel_t channel) {
-
-  (void)pwmp;
-  (void)channel;
-}
-
-#endif /* HAL_USE_PWM == TRUE */
+#endif /* HAL_USE_PWM */
 
 /** @} */

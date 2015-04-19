@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -19,14 +19,14 @@
 /* (C)ChaN, 2011                                                          */
 /*------------------------------------------------------------------------*/
 
-#include "hal.h"
+#include "ch.h"
 #include "ff.h"
 
 #if _FS_REENTRANT
 /*------------------------------------------------------------------------*/
 /* Static array of Synchronization Objects                                */
 /*------------------------------------------------------------------------*/
-static semaphore_t ff_sem[_VOLUMES];
+static Semaphore ff_sem[_VOLUMES];
 
 /*------------------------------------------------------------------------*/
 /* Create a Synchronization Object                                        */
@@ -34,7 +34,7 @@ static semaphore_t ff_sem[_VOLUMES];
 int ff_cre_syncobj(BYTE vol, _SYNC_t *sobj) {
 
   *sobj = &ff_sem[vol];
-  chSemObjectInit(*sobj, 1);
+  chSemInit(*sobj, 1);
   return TRUE;
 }
 
@@ -53,7 +53,7 @@ int ff_del_syncobj(_SYNC_t sobj) {
 int ff_req_grant(_SYNC_t sobj) {
 
   msg_t msg = chSemWaitTimeout(sobj, (systime_t)_FS_TIMEOUT);
-  return msg == MSG_OK;
+  return msg == RDY_OK;
 }
 
 /*------------------------------------------------------------------------*/

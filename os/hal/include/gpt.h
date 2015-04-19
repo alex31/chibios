@@ -1,17 +1,28 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012,2013 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -25,7 +36,7 @@
 #ifndef _GPT_H_
 #define _GPT_H_
 
-#if (HAL_USE_GPT == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_GPT || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -75,7 +86,9 @@ typedef void (*gptcallback_t)(GPTDriver *gptp);
 /**
  * @brief   Changes the interval of GPT peripheral.
  * @details This function changes the interval of a running GPT unit.
- * @pre     The GPT unit must be running in continuous mode.
+ * @pre     The GPT unit must have been activated using @p gptStart().
+ * @pre     The GPT unit must have been running in continuous mode using
+ *          @p gptStartContinuous().
  * @post    The GPT unit interval is changed to the new value.
  *
  * @param[in] gptp      pointer to a @p GPTDriver object
@@ -83,33 +96,9 @@ typedef void (*gptcallback_t)(GPTDriver *gptp);
  *
  * @iclass
  */
-#define gptChangeIntervalI(gptp, interval) {                                \
-  gpt_lld_change_interval(gptp, interval);                                  \
+#define gptChangeIntervalI(gptp, interval) {                                  \
+  gpt_lld_change_interval(gptp, interval);                                    \
 }
-
-/**
- * @brief   Returns the interval of GPT peripheral.
- * @pre     The GPT unit must be running in continuous mode.
- *
- * @param[in] gptp      pointer to a @p GPTDriver object
- * @return              The current interval.
- *
- * @xclass
- */
-#define gptGetIntervalX(gptp) gpt_lld_get_interval(gptp)
-
-/**
- * @brief   Returns the counter value of GPT peripheral.
- * @pre     The GPT unit must be running in continuous mode.
- * @note    The nature of the counter is not defined, it may count upward
- *          or downward, it could be continuously running or not.
- *
- * @param[in] gptp      pointer to a @p GPTDriver object
- * @return              The current counter value.
- *
- * @xclass
- */
-#define gptGetCounterX(gptp) gpt_lld_get_counter(gptp)
 
 /*===========================================================================*/
 /* External declarations.                                                    */
@@ -134,7 +123,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_GPT == TRUE */
+#endif /* HAL_USE_GPT */
 
 #endif /* _GPT_H_ */
 

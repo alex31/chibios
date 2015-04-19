@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,16 +15,17 @@
 */
 
 /**
- * @file    adc_lld.c
- * @brief   PLATFORM ADC subsystem low level driver source.
+ * @file    templates/adc_lld.c
+ * @brief   ADC Driver subsystem low level driver source template.
  *
  * @addtogroup ADC
  * @{
  */
 
+#include "ch.h"
 #include "hal.h"
 
-#if (HAL_USE_ADC == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_ADC || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver local definitions.                                                 */
@@ -37,7 +38,7 @@
 /**
  * @brief   ADC1 driver identifier.
  */
-#if (PLATFORM_ADC_USE_ADC1 == TRUE) || defined(__DOXYGEN__)
+#if PLATFORM_ADC_USE_ADC1 || defined(__DOXYGEN__)
 ADCDriver ADCD1;
 #endif
 
@@ -64,10 +65,10 @@ ADCDriver ADCD1;
  */
 void adc_lld_init(void) {
 
-#if PLATFORM_ADC_USE_ADC1 == TRUE
+#if PLATFORM_ADC_USE_ADC1
   /* Driver initialization.*/
   adcObjectInit(&ADCD1);
-#endif
+#endif /* PLATFORM_ADC_USE_ADC1 */
 }
 
 /**
@@ -81,11 +82,11 @@ void adc_lld_start(ADCDriver *adcp) {
 
   if (adcp->state == ADC_STOP) {
     /* Enables the peripheral.*/
-#if PLATFORM_ADC_USE_ADC1 == TRUE
+#if PLATFORM_ADC_USE_ADC1
     if (&ADCD1 == adcp) {
 
     }
-#endif
+#endif /* PLATFORM_ADC_USE_ADC1 */
   }
   /* Configures the peripheral.*/
 
@@ -104,11 +105,11 @@ void adc_lld_stop(ADCDriver *adcp) {
     /* Resets the peripheral.*/
 
     /* Disables the peripheral.*/
-#if PLATFORM_ADC_USE_ADC1 == TRUE
+#if PLATFORM_ADC_USE_ADC1
     if (&ADCD1 == adcp) {
 
     }
-#endif
+#endif /* PLATFORM_ADC_USE_ADC1 */
   }
 }
 
@@ -136,6 +137,6 @@ void adc_lld_stop_conversion(ADCDriver *adcp) {
   (void)adcp;
 }
 
-#endif /* HAL_USE_ADC == TRUE */
+#endif /* HAL_USE_ADC */
 
 /** @} */

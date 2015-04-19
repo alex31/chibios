@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -25,61 +25,40 @@
 #include "ch.h"
 #include "evtimer.h"
 
-/*===========================================================================*/
-/* Module local definitions.                                                 */
-/*===========================================================================*/
-
-/*===========================================================================*/
-/* Module exported variables.                                                */
-/*===========================================================================*/
-
-/*===========================================================================*/
-/* Module local types.                                                       */
-/*===========================================================================*/
-
-/*===========================================================================*/
-/* Module local variables.                                                   */
-/*===========================================================================*/
-
-/*===========================================================================*/
-/* Module local functions.                                                   */
-/*===========================================================================*/
-
 static void tmrcb(void *p) {
-  event_timer_t *etp = p;
+  EvTimer *etp = p;
 
-  chSysLockFromISR();
+  chSysLockFromIsr();
   chEvtBroadcastI(&etp->et_es);
-  chVTDoSetI(&etp->et_vt, etp->et_interval, tmrcb, etp);
-  chSysUnlockFromISR();
-}
-
-/*===========================================================================*/
-/* Module exported functions.                                                */
-/*===========================================================================*/
-
-/**
- * @brief Initializes an @p event_timer_t structure.
- *
- * @param[out] etp      the @p event_timer_t structure to be initialized
- * @param[in] time      the interval in system ticks
- */
-void evtObjectInit(event_timer_t *etp, systime_t time) {
-
-  chEvtObjectInit(&etp->et_es);
-  chVTObjectInit(&etp->et_vt);
-  etp->et_interval = time;
+  chVTSetI(&etp->et_vt, etp->et_interval, tmrcb, etp);
+  chSysUnlockFromIsr();
 }
 
 /**
- * @brief   Starts the timer
+ * @brief Starts the timer
  * @details If the timer was already running then the function has no effect.
  *
- * @param[in] etp       pointer to an initialized @p event_timer_t structure.
+ * @param etp pointer to an initialized @p EvTimer structure.
  */
-void evtStart(event_timer_t *etp) {
+void evtStart(EvTimer *etp) {
 
-  chVTSet(&etp->et_vt, etp->et_interval, tmrcb, etp);
+  chSysLock();
+
+  if (!chVTIsArmedI(&etp->et_vt))
+    chVTSetI(&etp->et_vt, etp->et_interval, tmrcb, etp);
+
+  chSysUnlock();
+}
+
+/**
+ * @brief Stops the timer.
+ * @details If the timer was already stopped then the function has no effect.
+ *
+ * @param etp pointer to an initialized @p EvTimer structure.
+ */
+void evtStop(EvTimer *etp) {
+
+  chVTReset(&etp->et_vt);
 }
 
 /** @} */

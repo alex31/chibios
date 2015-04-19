@@ -1,17 +1,28 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012,2013 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -25,7 +36,7 @@
 #ifndef _PAL_H_
 #define _PAL_H_
 
-#if (HAL_USE_PAL == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_PAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -41,7 +52,7 @@
  *          it is guaranteed to be equal to the after-reset state. It is
  *          usually an input state.
  */
-#define PAL_MODE_RESET                  0U
+#define PAL_MODE_RESET                  0
 
 /**
  * @brief   Safe state for <b>unconnected</b> pads.
@@ -50,37 +61,37 @@
  *          @p PAL_MODE_INPUT_PULLDOWN or @p PAL_MODE_OUTPUT_PUSHPULL for
  *          example.
  */
-#define PAL_MODE_UNCONNECTED            1U
+#define PAL_MODE_UNCONNECTED            1
 
 /**
  * @brief   Regular input high-Z pad.
  */
-#define PAL_MODE_INPUT                  2U
+#define PAL_MODE_INPUT                  2
 
 /**
  * @brief   Input pad with weak pull up resistor.
  */
-#define PAL_MODE_INPUT_PULLUP           3U
+#define PAL_MODE_INPUT_PULLUP           3
 
 /**
  * @brief   Input pad with weak pull down resistor.
  */
-#define PAL_MODE_INPUT_PULLDOWN         4U
+#define PAL_MODE_INPUT_PULLDOWN         4
 
 /**
  * @brief   Analog input mode.
  */
-#define PAL_MODE_INPUT_ANALOG           5U
+#define PAL_MODE_INPUT_ANALOG           5
 
 /**
  * @brief   Push-pull output pad.
  */
-#define PAL_MODE_OUTPUT_PUSHPULL        6U
+#define PAL_MODE_OUTPUT_PUSHPULL        6
 
 /**
  * @brief   Open-drain output pad.
  */
-#define PAL_MODE_OUTPUT_OPENDRAIN       7U
+#define PAL_MODE_OUTPUT_OPENDRAIN       7
 /** @} */
 
 /**
@@ -90,12 +101,12 @@
 /**
  * @brief   Logical low state.
  */
-#define PAL_LOW                         0U
+#define PAL_LOW                         0
 
 /**
  * @brief   Logical high state.
  */
-#define PAL_HIGH                        1U
+#define PAL_HIGH                        1
 /** @} */
 
 /*===========================================================================*/
@@ -148,7 +159,7 @@ typedef struct {
  * @return              The bit mask.
  */
 #if !defined(PAL_PORT_BIT) || defined(__DOXYGEN__)
-#define PAL_PORT_BIT(n) ((ioportmask_t)(1U << (n)))
+#define PAL_PORT_BIT(n) ((ioportmask_t)(1 << (n)))
 #endif
 
 /**
@@ -159,7 +170,7 @@ typedef struct {
  * @return                  The group mask.
  */
 #if !defined(PAL_GROUP_MASK) || defined(__DOXYGEN__)
-#define PAL_GROUP_MASK(width) ((ioportmask_t)(1U << (width)) - 1U)
+#define PAL_GROUP_MASK(width) ((ioportmask_t)(1 << (width)) - 1)
 #endif
 
 /**
@@ -215,7 +226,7 @@ typedef struct {
  * @special
  */
 #if !defined(pal_lld_readport) || defined(__DOXYGEN__)
-#define palReadPort(port) ((void)(port), 0U)
+#define palReadPort(port) ((void)(port), 0)
 #else
 #define palReadPort(port) pal_lld_readport(port)
 #endif
@@ -234,7 +245,7 @@ typedef struct {
  * @special
  */
 #if !defined(pal_lld_readlatch) || defined(__DOXYGEN__)
-#define palReadLatch(port) ((void)(port), 0U)
+#define palReadLatch(port) ((void)(port), 0)
 #else
 #define palReadLatch(port) pal_lld_readlatch(port)
 #endif
@@ -405,7 +416,7 @@ typedef struct {
  * @special
  */
 #if !defined(pal_lld_readpad) || defined(__DOXYGEN__)
-#define palReadPad(port, pad) ((palReadPort(port) >> (pad)) & 1U)
+#define palReadPad(port, pad) ((palReadPort(port) >> (pad)) & 1)
 #else
 #define palReadPad(port, pad) pal_lld_readpad(port, pad)
 #endif
@@ -433,7 +444,7 @@ typedef struct {
 #if !defined(pal_lld_writepad) || defined(__DOXYGEN__)
 #define palWritePad(port, pad, bit)                                         \
   palWritePort(port, (palReadLatch(port) & ~PAL_PORT_BIT(pad)) |            \
-                     (((bit) & 1U) << pad))
+                     (((bit) & 1) << pad))
 #else
 #define palWritePad(port, pad, bit) pal_lld_writepad(port, pad, bit)
 #endif
@@ -524,7 +535,7 @@ typedef struct {
  */
 #if !defined(pal_lld_setpadmode) || defined(__DOXYGEN__)
 #define palSetPadMode(port, pad, mode)                                      \
-  palSetGroupMode(port, PAL_PORT_BIT(pad), 0U, mode)
+  palSetGroupMode(port, PAL_PORT_BIT(pad), 0, mode)
 #else
 #define palSetPadMode(port, pad, mode) pal_lld_setpadmode(port, pad, mode)
 #endif
@@ -546,6 +557,6 @@ extern "C" {
 
 #endif /* _PAL_H_ */
 
-#endif /* HAL_USE_PAL == TRUE */
+#endif /* HAL_USE_PAL */
 
 /** @} */

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,16 +15,17 @@
 */
 
 /**
- * @file    icu_lld.c
- * @brief   PLATFORM ADC subsystem low level driver source.
+ * @file    templates/icu_lld.c
+ * @brief   ICU Driver subsystem low level driver source template.
  *
  * @addtogroup ICU
  * @{
  */
 
+#include "ch.h"
 #include "hal.h"
 
-#if (HAL_USE_ICU == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_ICU || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver local definitions.                                                 */
@@ -35,10 +36,9 @@
 /*===========================================================================*/
 
 /**
- * @brief   ICUD1 driver identifier.
- * @note    The driver ICUD1 allocates the complex timer TIM1 when enabled.
+ * @brief   ICU1 driver identifier.
  */
-#if (PLATFORM_ICU_USE_ICU1 == TRUE) || defined(__DOXYGEN__)
+#if PLATFORM_ICU_USE_ICU1 || defined(__DOXYGEN__)
 ICUDriver ICUD1;
 #endif
 
@@ -65,10 +65,10 @@ ICUDriver ICUD1;
  */
 void icu_lld_init(void) {
 
-#if PLATFORM_ICU_USE_ICU1 == TRUE
+#if PLATFORM_ICU_USE_ICU1
   /* Driver initialization.*/
   icuObjectInit(&ICUD1);
-#endif
+#endif /* PLATFORM_ICU_USE_ICU1 */
 }
 
 /**
@@ -81,13 +81,15 @@ void icu_lld_init(void) {
 void icu_lld_start(ICUDriver *icup) {
 
   if (icup->state == ICU_STOP) {
-    /* Clock activation and timer reset.*/
-#if PLATFORM_ICU_USE_ICU1 == TRUE
+    /* Enables the peripheral.*/
+#if PLATFORM_ICU_USE_ICU1
     if (&ICUD1 == icup) {
 
     }
-#endif
+#endif /* PLATFORM_ICU_USE_ICU1 */
   }
+  /* Configures the peripheral.*/
+
 }
 
 /**
@@ -100,86 +102,77 @@ void icu_lld_start(ICUDriver *icup) {
 void icu_lld_stop(ICUDriver *icup) {
 
   if (icup->state == ICU_READY) {
-    /* Clock deactivation.*/
-#if PLATFORM_ICU_USE_ICU1 == TRUE
+    /* Resets the peripheral.*/
+
+    /* Disables the peripheral.*/
+#if PLATFORM_ICU_USE_ICU1
     if (&ICUD1 == icup) {
 
     }
-#endif
+#endif /* PLATFORM_ICU_USE_ICU1 */
   }
 }
 
 /**
- * @brief   Starts the input capture.
+ * @brief   Enables the input capture.
  *
  * @param[in] icup      pointer to the @p ICUDriver object
  *
  * @notapi
  */
-void icu_lld_start_capture(ICUDriver *icup) {
-
-  (void)icup;
-}
-
-/**
- * @brief   Waits for a completed capture.
- * @note    The operation is performed in polled mode.
- * @note    In order to use this function notifications must be disabled.
- *
- * @param[in] icup      pointer to the @p ICUDriver object
- * @return              The capture status.
- * @retval false        if the capture is successful.
- * @retval true         if a timer overflow occurred.
- *
- * @notapi
- */
-bool icu_lld_wait_capture(ICUDriver *icup) {
+void icu_lld_enable(ICUDriver *icup) {
 
   (void)icup;
 
-  return false;
 }
 
 /**
- * @brief   Stops the input capture.
+ * @brief   Disables the input capture.
  *
  * @param[in] icup      pointer to the @p ICUDriver object
  *
  * @notapi
  */
-void icu_lld_stop_capture(ICUDriver *icup) {
+void icu_lld_disable(ICUDriver *icup) {
 
   (void)icup;
+
 }
 
 /**
- * @brief   Enables notifications.
- * @pre     The ICU unit must have been activated using @p icuStart().
- * @note    If the notification is already enabled then the call has no effect.
+ * @brief   Returns the width of the latest pulse.
+ * @details The pulse width is defined as number of ticks between the start
+ *          edge and the stop edge.
  *
  * @param[in] icup      pointer to the @p ICUDriver object
+ * @return              The number of ticks.
  *
- * @api
+ * @notapi
  */
-void icu_lld_enable_notifications(ICUDriver *icup) {
+icucnt_t icu_lld_get_width(ICUDriver *icup) {
 
   (void)icup;
+
+  return 0;
 }
 
 /**
- * @brief   Disables notifications.
- * @pre     The ICU unit must have been activated using @p icuStart().
- * @note    If the notification is already disabled then the call has no effect.
+ * @brief   Returns the width of the latest cycle.
+ * @details The cycle width is defined as number of ticks between a start
+ *          edge and the next start edge.
  *
  * @param[in] icup      pointer to the @p ICUDriver object
+ * @return              The number of ticks.
  *
- * @api
+ * @notapi
  */
-void icu_lld_disable_notifications(ICUDriver *icup) {
+icucnt_t icu_lld_get_period(ICUDriver *icup) {
 
   (void)icup;
+
+  return 0;
 }
 
-#endif /* HAL_USE_ICU == TRUE */
+#endif /* HAL_USE_ICU */
 
 /** @} */

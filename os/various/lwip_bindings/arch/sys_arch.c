@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@
 
 // see http://lwip.wikia.com/wiki/Porting_for_an_OS for instructions
 
-#include "hal.h"
+#include "ch.h"
 
 #include "lwip/opt.h"
 #include "lwip/mem.h"
@@ -66,13 +66,13 @@ void sys_init(void) {
 
 err_t sys_sem_new(sys_sem_t *sem, u8_t count) {
 
-  *sem = chHeapAlloc(NULL, sizeof(semaphore_t));
+  *sem = chHeapAlloc(NULL, sizeof(Semaphore));
   if (*sem == 0) {
     SYS_STATS_INC(sem.err);
     return ERR_MEM;
   }
   else {
-    chSemObjectInit(*sem, (cnt_t)count);
+    chSemInit(*sem, (cnt_t)count);
     SYS_STATS_INC_USED(sem);
     return ERR_OK;
   }
@@ -101,14 +101,14 @@ void sys_sem_signal_S(sys_sem_t *sem) {
 u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout) {
   systime_t time, tmo;
 
-  osalSysLock();
+  chSysLock();
   tmo = timeout > 0 ? (systime_t)timeout : TIME_INFINITE;
-  time = osalOsGetSystemTimeX();
-  if (chSemWaitTimeoutS(*sem, tmo) != MSG_OK)
+  time = chTimeNow();
+  if (chSemWaitTimeoutS(*sem, tmo) != RDY_OK)
     time = SYS_ARCH_TIMEOUT;
   else
-    time = osalOsGetSystemTimeX() - time;
-  osalSysUnlock();
+    time = chTimeNow() - time;
+  chSysUnlock();
   return time;
 }
 
@@ -124,26 +124,21 @@ void sys_sem_set_invalid(sys_sem_t *sem) {
 
 err_t sys_mbox_new(sys_mbox_t *mbox, int size) {
   
-  *mbox = chHeapAlloc(NULL, sizeof(mailbox_t) + sizeof(msg_t) * size);
+  *mbox = chHeapAlloc(NULL, sizeof(Mailbox) + sizeof(msg_t) * size);
   if (*mbox == 0) {
     SYS_STATS_INC(mbox.err);
     return ERR_MEM;
   }
   else {
-    chMBObjectInit(*mbox, (void *)(((uint8_t *)*mbox) + sizeof(mailbox_t)), size);
+    chMBInit(*mbox, (void *)(((uint8_t *)*mbox) + sizeof(Mailbox)), size);
     SYS_STATS_INC(mbox.used);
     return ERR_OK;
   }
 }
 
 void sys_mbox_free(sys_mbox_t *mbox) {
-  cnt_t tmpcnt;
 
-  osalSysLock();
-  tmpcnt = chMBGetUsedCountI(*mbox);
-  osalSysUnlock();
-
-  if (tmpcnt != 0) {
+  if (chMBGetUsedCountI(*mbox) != 0) {
     // If there are messages still present in the mailbox when the mailbox
     // is deallocated, it is an indication of a programming error in lwIP
     // and the developer should be notified.
@@ -162,7 +157,7 @@ void sys_mbox_post(sys_mbox_t *mbox, void *msg) {
 
 err_t sys_mbox_trypost(sys_mbox_t *mbox, void *msg) {
 
-  if (chMBPost(*mbox, (msg_t)msg, TIME_IMMEDIATE) == MSG_TIMEOUT) {
+  if (chMBPost(*mbox, (msg_t)msg, TIME_IMMEDIATE) == RDY_TIMEOUT) {
     SYS_STATS_INC(mbox.err);
     return ERR_MEM;
   }
@@ -172,20 +167,20 @@ err_t sys_mbox_trypost(sys_mbox_t *mbox, void *msg) {
 u32_t sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout) {
   systime_t time, tmo;
 
-  osalSysLock();
+  chSysLock();
   tmo = timeout > 0 ? (systime_t)timeout : TIME_INFINITE;
-  time = osalOsGetSystemTimeX();
-  if (chMBFetchS(*mbox, (msg_t *)msg, tmo) != MSG_OK)
+  time = chTimeNow();
+  if (chMBFetchS(*mbox, (msg_t *)msg, tmo) != RDY_OK)
     time = SYS_ARCH_TIMEOUT;
   else
-    time = osalOsGetSystemTimeX() - time;
-  osalSysUnlock();
+    time = chTimeNow() - time;
+  chSysUnlock();
   return time;
 }
 
 u32_t sys_arch_mbox_tryfetch(sys_mbox_t *mbox, void **msg) {
 
-  if (chMBFetch(*mbox, (msg_t *)msg, TIME_IMMEDIATE) == MSG_TIMEOUT)
+  if (chMBFetch(*mbox, (msg_t *)msg, TIME_IMMEDIATE) == RDY_TIMEOUT)
     return SYS_MBOX_EMPTY;
   return 0;
 }
@@ -207,7 +202,7 @@ sys_thread_t sys_thread_new(const char *name, lwip_thread_fn thread,
   void *wsp;
 
   (void)name;
-  wsz = THD_WORKING_AREA_SIZE(stacksize);
+  wsz = THD_WA_SIZE(stacksize);
   wsp = chCoreAlloc(wsz);
   if (wsp == NULL)
     return NULL;
@@ -216,25 +211,25 @@ sys_thread_t sys_thread_new(const char *name, lwip_thread_fn thread,
 
 sys_prot_t sys_arch_protect(void) {
 
-  osalSysLock();
+  chSysLock();
   return 0;
 }
 
 void sys_arch_unprotect(sys_prot_t pval) {
 
   (void)pval;
-  osalSysUnlock();
+  chSysUnlock();
 }
 
 u32_t sys_now(void) {
 
-#if OSAL_ST_FREQUENCY == 1000
-  return (u32_t)osalOsGetSystemTimeX();
-#elif (OSAL_ST_FREQUENCY / 1000) >= 1 && (OSAL_ST_FREQUENCY % 1000) == 0
-  return ((u32_t)osalOsGetSystemTimeX() - 1) / (OSAL_ST_FREQUENCY / 1000) + 1;
-#elif (1000 / OSAL_ST_FREQUENCY) >= 1 && (1000 % OSAL_ST_FREQUENCY) == 0
-  return ((u32_t)osalOsGetSystemTimeX() - 1) * (1000 / OSAL_ST_FREQUENCY) + 1;
+#if CH_FREQUENCY == 1000
+  return (u32_t)chTimeNow();
+#elif (CH_FREQUENCY / 1000) >= 1 && (CH_FREQUENCY % 1000) == 0
+  return ((u32_t)chTimeNow() - 1) / (CH_FREQUENCY / 1000) + 1;
+#elif (1000 / CH_FREQUENCY) >= 1 && (1000 % CH_FREQUENCY) == 0
+  return ((u32_t)chTimeNow() - 1) * (1000 / CH_FREQUENCY) + 1;
 #else
-  return (u32_t)(((u64_t)(osalOsGetSystemTimeX() - 1) * 1000) / OSAL_ST_FREQUENCY) + 1;
+  return (u32_t)(((u64_t)(chTimeNow() - 1) * 1000) / CH_FREQUENCY) + 1;
 #endif
 }

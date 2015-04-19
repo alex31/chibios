@@ -1,17 +1,28 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012,2013 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -22,9 +33,10 @@
  * @{
  */
 
+#include "ch.h"
 #include "hal.h"
 
-#if (HAL_USE_ICU == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_ICU || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver local definitions.                                                 */
@@ -81,15 +93,15 @@ void icuObjectInit(ICUDriver *icup) {
  */
 void icuStart(ICUDriver *icup, const ICUConfig *config) {
 
-  osalDbgCheck((icup != NULL) && (config != NULL));
+  chDbgCheck((icup != NULL) && (config != NULL), "icuStart");
 
-  osalSysLock();
-  osalDbgAssert((icup->state == ICU_STOP) || (icup->state == ICU_READY),
-                "invalid state");
+  chSysLock();
+  chDbgAssert((icup->state == ICU_STOP) || (icup->state == ICU_READY),
+              "icuStart(), #1", "invalid state");
   icup->config = config;
   icu_lld_start(icup);
   icup->state = ICU_READY;
-  osalSysUnlock();
+  chSysUnlock();
 }
 
 /**
@@ -101,125 +113,54 @@ void icuStart(ICUDriver *icup, const ICUConfig *config) {
  */
 void icuStop(ICUDriver *icup) {
 
-  osalDbgCheck(icup != NULL);
+  chDbgCheck(icup != NULL, "icuStop");
 
-  osalSysLock();
-  osalDbgAssert((icup->state == ICU_STOP) || (icup->state == ICU_READY),
-                "invalid state");
+  chSysLock();
+  chDbgAssert((icup->state == ICU_STOP) || (icup->state == ICU_READY),
+              "icuStop(), #1", "invalid state");
   icu_lld_stop(icup);
   icup->state = ICU_STOP;
-  osalSysUnlock();
+  chSysUnlock();
 }
 
 /**
- * @brief   Starts the input capture.
+ * @brief   Enables the input capture.
  *
  * @param[in] icup      pointer to the @p ICUDriver object
  *
  * @api
  */
-void icuStartCapture(ICUDriver *icup) {
+void icuEnable(ICUDriver *icup) {
 
-  osalDbgCheck(icup != NULL);
+  chDbgCheck(icup != NULL, "icuEnable");
 
-  osalSysLock();
-  osalDbgAssert(icup->state == ICU_READY, "invalid state");
-  icuStartCaptureI(icup);
-  osalSysUnlock();
+  chSysLock();
+  chDbgAssert(icup->state == ICU_READY, "icuEnable(), #1", "invalid state");
+  icu_lld_enable(icup);
+  icup->state = ICU_WAITING;
+  chSysUnlock();
 }
 
 /**
- * @brief   Waits for a completed capture.
- * @note    The operation could be performed in polled mode depending on.
- * @note    In order to use this function notifications must be disabled.
- * @pre     The driver must be in @p ICU_WAITING or  @p ICU_ACTIVE states.
- * @post    After the capture is available the driver is in @p ICU_ACTIVE
- *          state. If a capture fails then the driver is in @p ICU_WAITING
- *          state.
- *
- * @param[in] icup      pointer to the @p ICUDriver object
- * @return              The capture status.
- * @retval false        if the capture is successful.
- * @retval true         if a timer overflow occurred.
- *
- * @api
- */
-bool icuWaitCapture(ICUDriver *icup) {
-  bool result;
-
-  osalDbgCheck(icup != NULL);
-
-  osalSysLock();
-  osalDbgAssert((icup->state == ICU_WAITING) || (icup->state == ICU_ACTIVE),
-                "invalid state");
-  osalDbgAssert(icuAreNotificationsEnabledX(icup) == false,
-                "notifications enabled");
-  result = icu_lld_wait_capture(icup);
-  icup->state = result ? ICU_WAITING : ICU_ACTIVE;
-  osalSysUnlock();
-
-  return result;
-}
-
-/**
- * @brief   Stops the input capture.
+ * @brief   Disables the input capture.
  *
  * @param[in] icup      pointer to the @p ICUDriver object
  *
  * @api
  */
-void icuStopCapture(ICUDriver *icup) {
+void icuDisable(ICUDriver *icup) {
 
-  osalDbgCheck(icup != NULL);
+  chDbgCheck(icup != NULL, "icuDisable");
 
-  osalSysLock();
-  osalDbgAssert((icup->state == ICU_READY) || (icup->state == ICU_WAITING) ||
-                (icup->state == ICU_ACTIVE),
-                "invalid state");
-  icuStopCaptureI(icup);
-  osalSysUnlock();
+  chSysLock();
+  chDbgAssert((icup->state == ICU_READY) || (icup->state == ICU_WAITING) ||
+              (icup->state == ICU_ACTIVE) || (icup->state == ICU_IDLE),
+              "icuDisable(), #1", "invalid state");
+  icu_lld_disable(icup);
+  icup->state = ICU_READY;
+  chSysUnlock();
 }
 
-/**
- * @brief   Enables notifications.
- * @pre     The ICU unit must have been activated using @p icuStart().
- * @note    If the notification is already enabled then the call has no effect.
- *
- * @param[in] icup      pointer to the @p ICUDriver object
- *
- * @api
- */
-void icuEnableNotifications(ICUDriver *icup) {
-
-  osalDbgCheck(icup != NULL);
-
-  osalSysLock();
-  osalDbgAssert((icup->state == ICU_WAITING) || (icup->state == ICU_ACTIVE),
-                "invalid state");
-  icuEnableNotificationsI(icup);
-  osalSysUnlock();
-}
-
-/**
- * @brief   Disables notifications.
- * @pre     The ICU unit must have been activated using @p icuStart().
- * @note    If the notification is already disabled then the call has no effect.
- *
- * @param[in] icup      pointer to the @p ICUDriver object
- *
- * @api
- */
-void icuDisableNotifications(ICUDriver *icup) {
-
-  osalDbgCheck(icup != NULL);
-
-  osalSysLock();
-  osalDbgAssert((icup->state == ICU_WAITING) || (icup->state == ICU_ACTIVE),
-                "invalid state");
-  icuDisableNotificationsI(icup);
-  osalSysUnlock();
-}
-
-#endif /* HAL_USE_ICU == TRUE */
+#endif /* HAL_USE_ICU */
 
 /** @} */

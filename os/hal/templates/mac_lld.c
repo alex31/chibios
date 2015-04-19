@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 */
 
 /**
- * @file    mac_lld.c
- * @brief   PLATFORM MAC subsystem low level driver source.
+ * @file    templates/mac_lld.c
+ * @brief   MAC Driver subsystem low level driver source template.
  *
  * @addtogroup MAC
  * @{
@@ -24,11 +24,11 @@
 
 #include <string.h>
 
+#include "ch.h"
 #include "hal.h"
-
-#if (HAL_USE_MAC == TRUE) || defined(__DOXYGEN__)
-
 #include "mii.h"
+
+#if HAL_USE_MAC || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver local definitions.                                                 */
@@ -41,7 +41,7 @@
 /**
  * @brief MAC1 driver identifier.
  */
-#if (PLATFORM_MAC_USE_MAC1 == TRUE) || defined(__DOXYGEN__)
+#if PLATFORM_MAC_USE_MAC1 || defined(__DOXYGEN__)
 MACDriver ETHD1;
 #endif
 
@@ -68,10 +68,10 @@ MACDriver ETHD1;
  */
 void mac_lld_init(void) {
 
-#if PLATFORM_MAC_USE_MAC1 == TRUE
+#if PLATFORM_MAC_USE_MAC1
   /* Driver initialization.*/
   macObjectInit(&MACD1);
-#endif
+#endif /* PLATFORM_MAC_USE_MAC1 */
 }
 
 /**
@@ -85,11 +85,11 @@ void mac_lld_start(MACDriver *macp) {
 
   if (macp->state == MAC_STOP) {
     /* Enables the peripheral.*/
-#if PLATFORM_MAC_USE_MAC1 == TRUE
+#if PLATFORM_MAC_USE_MAC1
     if (&MACD1 == macp) {
 
     }
-#endif
+#endif /* PLATFORM_MAC_USE_MAC1 */
   }
   /* Configures the peripheral.*/
 
@@ -104,15 +104,15 @@ void mac_lld_start(MACDriver *macp) {
  */
 void mac_lld_stop(MACDriver *macp) {
 
-  if (macp->state != MAC_STOP) {
+  if (macp->state == MAC_ACTIVE) {
     /* Resets the peripheral.*/
 
     /* Disables the peripheral.*/
-#if PLATFORM_MAC_USE_MAC1 == TRUE
+#if PLATFORM_MAC_USE_MAC1
     if (&MACD1 == macp) {
 
     }
-#endif
+#endif /* PLATFORM_MAC_USE_MAC1 */
   }
 }
 
@@ -124,8 +124,8 @@ void mac_lld_stop(MACDriver *macp) {
  * @param[in] macp      pointer to the @p MACDriver object
  * @param[out] tdp      pointer to a @p MACTransmitDescriptor structure
  * @return              The operation status.
- * @retval MSG_OK       the descriptor has been obtained.
- * @retval MSG_TIMEOUT  descriptor not available.
+ * @retval RDY_OK       the descriptor has been obtained.
+ * @retval RDY_TIMEOUT  descriptor not available.
  *
  * @notapi
  */
@@ -135,7 +135,7 @@ msg_t mac_lld_get_transmit_descriptor(MACDriver *macp,
   (void)macp;
   (void)tdp;
 
-  return MSG_OK;
+  return RDY_OK;
 }
 
 /**
@@ -158,8 +158,8 @@ void mac_lld_release_transmit_descriptor(MACTransmitDescriptor *tdp) {
  * @param[in] macp      pointer to the @p MACDriver object
  * @param[out] rdp      pointer to a @p MACReceiveDescriptor structure
  * @return              The operation status.
- * @retval MSG_OK       the descriptor has been obtained.
- * @retval MSG_TIMEOUT  descriptor not available.
+ * @retval RDY_OK       the descriptor has been obtained.
+ * @retval RDY_TIMEOUT  descriptor not available.
  *
  * @notapi
  */
@@ -169,7 +169,7 @@ msg_t mac_lld_get_receive_descriptor(MACDriver *macp,
   (void)macp;
   (void)rdp;
 
-  return MSG_OK;
+  return RDY_OK;
 }
 
 /**
@@ -192,16 +192,16 @@ void mac_lld_release_receive_descriptor(MACReceiveDescriptor *rdp) {
  *
  * @param[in] macp      pointer to the @p MACDriver object
  * @return              The link status.
- * @retval true         if the link is active.
- * @retval false        if the link is down.
+ * @retval TRUE         if the link is active.
+ * @retval FALSE        if the link is down.
  *
  * @notapi
  */
-bool mac_lld_poll_link_status(MACDriver *macp) {
+bool_t mac_lld_poll_link_status(MACDriver *macp) {
 
   (void)macp;
 
-  return false;
+  return FALSE;
 }
 
 /**
@@ -251,7 +251,7 @@ size_t mac_lld_read_receive_descriptor(MACReceiveDescriptor *rdp,
   return size;
 }
 
-#if (MAC_USE_ZERO_COPY == TRUE) || defined(__DOXYGEN__)
+#if MAC_USE_ZERO_COPY || defined(__DOXYGEN__)
 /**
  * @brief   Returns a pointer to the next transmit buffer in the descriptor
  *          chain.
@@ -306,8 +306,8 @@ const uint8_t *mac_lld_get_next_receive_buffer(MACReceiveDescriptor *rdp,
 
   return NULL;
 }
-#endif /* MAC_USE_ZERO_COPY == TRUE */
+#endif /* MAC_USE_ZERO_COPY */
 
-#endif /* HAL_USE_MAC == TRUE */
+#endif /* HAL_USE_MAC */
 
 /** @} */

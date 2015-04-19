@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@
 /**
  * @brief   Shell termination event source.
  */
-event_source_t shell_terminated;
+EventSource shell_terminated;
 
 static char *_strtok(char *str, const char *delim, char **saveptr) {
   char *token;
@@ -73,15 +73,15 @@ static void cmd_info(BaseSequentialStream *chp, int argc, char *argv[]) {
   }
 
   chprintf(chp, "Kernel:       %s\r\n", CH_KERNEL_VERSION);
-#ifdef PORT_COMPILER_NAME
-  chprintf(chp, "Compiler:     %s\r\n", PORT_COMPILER_NAME);
+#ifdef CH_COMPILER_NAME
+  chprintf(chp, "Compiler:     %s\r\n", CH_COMPILER_NAME);
 #endif
-  chprintf(chp, "Architecture: %s\r\n", PORT_ARCHITECTURE_NAME);
-#ifdef PORT_CORE_VARIANT_NAME
-  chprintf(chp, "Core Variant: %s\r\n", PORT_CORE_VARIANT_NAME);
+  chprintf(chp, "Architecture: %s\r\n", CH_ARCHITECTURE_NAME);
+#ifdef CH_CORE_VARIANT_NAME
+  chprintf(chp, "Core Variant: %s\r\n", CH_CORE_VARIANT_NAME);
 #endif
-#ifdef PORT_INFO
-  chprintf(chp, "Port Info:    %s\r\n", PORT_INFO);
+#ifdef CH_PORT_INFO
+  chprintf(chp, "Port Info:    %s\r\n", CH_PORT_INFO);
 #endif
 #ifdef PLATFORM_NAME
   chprintf(chp, "Platform:     %s\r\n", PLATFORM_NAME);
@@ -103,7 +103,7 @@ static void cmd_systime(BaseSequentialStream *chp, int argc, char *argv[]) {
     usage(chp, "systime");
     return;
   }
-  chprintf(chp, "%lu\r\n", (unsigned long)chVTGetSystemTime());
+  chprintf(chp, "%lu\r\n", (unsigned long)chTimeNow());
 }
 
 /**
@@ -115,25 +115,30 @@ static ShellCommand local_commands[] = {
   {NULL, NULL}
 };
 
-static bool cmdexec(const ShellCommand *scp, BaseSequentialStream *chp,
+static bool_t cmdexec(const ShellCommand *scp, BaseSequentialStream *chp,
                       char *name, int argc, char *argv[]) {
 
   while (scp->sc_name != NULL) {
     if (strcasecmp(scp->sc_name, name) == 0) {
       scp->sc_function(chp, argc, argv);
-      return false;
+      return FALSE;
     }
     scp++;
   }
-  return true;
+  return TRUE;
 }
 
 /**
  * @brief   Shell thread function.
  *
  * @param[in] p         pointer to a @p BaseSequentialStream object
+ * @return              Termination reason.
+ * @retval RDY_OK       terminated by command.
+ * @retval RDY_RESET    terminated by reset condition on the I/O channel.
+ *
+ * @notapi
  */
-static THD_FUNCTION(shell_thread, p) {
+static msg_t shell_thread(void *p) {
   int n;
   BaseSequentialStream *chp = ((ShellConfig *)p)->sc_channel;
   const ShellCommand *scp = ((ShellConfig *)p)->sc_commands;
@@ -142,7 +147,7 @@ static THD_FUNCTION(shell_thread, p) {
 
   chRegSetThreadName("shell");
   chprintf(chp, "\r\nChibiOS/RT Shell\r\n");
-  while (true) {
+  while (TRUE) {
     chprintf(chp, "ch> ");
     if (shellGetLine(chp, line, sizeof(line))) {
       chprintf(chp, "\r\nlogout");
@@ -186,7 +191,9 @@ static THD_FUNCTION(shell_thread, p) {
       }
     }
   }
-  shellExit(MSG_OK);
+  shellExit(RDY_OK);
+  /* Never executed, silencing a warning.*/
+  return 0;
 }
 
 /**
@@ -196,7 +203,7 @@ static THD_FUNCTION(shell_thread, p) {
  */
 void shellInit(void) {
 
-  chEvtObjectInit(&shell_terminated);
+  chEvtInit(&shell_terminated);
 }
 
 /**
@@ -219,7 +226,7 @@ void shellExit(msg_t msg) {
 
 /**
  * @brief   Spawns a new shell.
- * @pre     @p CH_CFG_USE_HEAP and @p CH_CFG_USE_DYNAMIC must be enabled.
+ * @pre     @p CH_USE_HEAP and @p CH_USE_DYNAMIC must be enabled.
  *
  * @param[in] scp       pointer to a @p ShellConfig object
  * @param[in] size      size of the shell working area to be allocated
@@ -229,8 +236,8 @@ void shellExit(msg_t msg) {
  *
  * @api
  */
-#if CH_CFG_USE_HEAP && CH_CFG_USE_DYNAMIC
-thread_t *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio) {
+#if CH_USE_HEAP && CH_USE_DYNAMIC
+Thread *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio) {
 
   return chThdCreateFromHeap(NULL, size, prio, shell_thread, (void *)scp);
 }
@@ -247,8 +254,8 @@ thread_t *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio) {
  *
  * @api
  */
-thread_t *shellCreateStatic(const ShellConfig *scp, void *wsp,
-                            size_t size, tprio_t prio) {
+Thread *shellCreateStatic(const ShellConfig *scp, void *wsp,
+                          size_t size, tprio_t prio) {
 
   return chThdCreateStatic(wsp, size, prio, shell_thread, (void *)scp);
 }
@@ -260,22 +267,22 @@ thread_t *shellCreateStatic(const ShellConfig *scp, void *wsp,
  * @param[in] line      pointer to the line buffer
  * @param[in] size      buffer maximum length
  * @return              The operation status.
- * @retval true         the channel was reset or CTRL-D pressed.
- * @retval false        operation successful.
+ * @retval TRUE         the channel was reset or CTRL-D pressed.
+ * @retval FALSE        operation successful.
  *
  * @api
  */
-bool shellGetLine(BaseSequentialStream *chp, char *line, unsigned size) {
+bool_t shellGetLine(BaseSequentialStream *chp, char *line, unsigned size) {
   char *p = line;
 
-  while (true) {
+  while (TRUE) {
     char c;
 
     if (chSequentialStreamRead(chp, (uint8_t *)&c, 1) == 0)
-      return true;
+      return TRUE;
     if (c == 4) {
       chprintf(chp, "^D");
-      return true;
+      return TRUE;
     }
     if ((c == 8) || (c == 127)) {
       if (p != line) {
@@ -289,7 +296,7 @@ bool shellGetLine(BaseSequentialStream *chp, char *line, unsigned size) {
     if (c == '\r') {
       chprintf(chp, "\r\n");
       *p = 0;
-      return false;
+      return FALSE;
     }
     if (c < 0x20)
       continue;

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 */
 
 /**
- * @file    can_lld.h
- * @brief   PLATFORM CAN subsystem low level driver header.
+ * @file    templates/can_lld.h
+ * @brief   CAN Driver subsystem low level driver header template.
  *
  * @addtogroup CAN
  * @{
@@ -25,43 +25,52 @@
 #ifndef _CAN_LLD_H_
 #define _CAN_LLD_H_
 
-#if (HAL_USE_CAN == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_CAN || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
 /*===========================================================================*/
 
 /**
- * @brief   Number of transmit mailboxes.
+ * @brief   This switch defines whether the driver implementation supports
+ *          a low power switch mode with automatic an wakeup feature.
  */
-#define CAN_TX_MAILBOXES            1
+#define CAN_SUPPORTS_SLEEP          TRUE
 
 /**
- * @brief   Number of receive mailboxes.
+ * @brief   This implementation supports three transmit mailboxes.
  */
-#define CAN_RX_MAILBOXES            1
+#define CAN_TX_MAILBOXES            3
+
+/**
+ * @brief   This implementation supports two receive mailboxes.
+ */
+#define CAN_RX_MAILBOXES            2
 
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
 
 /**
- * @name    PLATFORM configuration options
+ * @name    Configuration options
  * @{
  */
 /**
  * @brief   CAN1 driver enable switch.
  * @details If set to @p TRUE the support for CAN1 is included.
- * @note    The default is @p FALSE.
  */
 #if !defined(PLATFORM_CAN_USE_CAN1) || defined(__DOXYGEN__)
-#define PLATFORM_CAN_USE_CAN1                  FALSE
+#define PLATFORM_CAN_USE_CAN1               FALSE
 #endif
 /** @} */
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
+
+#if CAN_USE_SLEEP_MODE && !CAN_SUPPORTS_SLEEP
+#error "CAN sleep mode not supported in this architecture"
+#endif
 
 /*===========================================================================*/
 /* Driver data structures and types.                                         */
@@ -78,16 +87,19 @@ typedef uint32_t canmbx_t;
  *          machine data endianness, it can be still useful for a quick filling.
  */
 typedef struct {
-  /*lint -save -e46 [6.1] Standard types are fine too.*/
-  uint8_t                   DLC:4;          /**< @brief Data length.        */
-  uint8_t                   RTR:1;          /**< @brief Frame type.         */
-  uint8_t                   IDE:1;          /**< @brief Identifier type.    */
-  union {
-    uint32_t                SID:11;         /**< @brief Standard identifier.*/
-    uint32_t                EID:29;         /**< @brief Extended identifier.*/
-    uint32_t                _align1;
+  struct {
+    uint8_t                 DLC:4;          /**< @brief Data length.        */
+    uint8_t                 RTR:1;          /**< @brief Frame type.         */
+    uint8_t                 IDE:1;          /**< @brief Identifier type.    */
   };
-  /*lint -restore*/
+  union {
+    struct {
+      uint32_t              SID:11;         /**< @brief Standard identifier.*/
+    };
+    struct {
+      uint32_t              EID:29;         /**< @brief Extended identifier.*/
+    };
+  };
   union {
     uint8_t                 data8[8];       /**< @brief Frame data.         */
     uint16_t                data16[4];      /**< @brief Frame data.         */
@@ -101,18 +113,19 @@ typedef struct {
  *          machine data endianness, it can be still useful for a quick filling.
  */
 typedef struct {
-  /*lint -save -e46 [6.1] Standard types are fine too.*/
-  uint8_t                   FMI;            /**< @brief Filter id.          */
-  uint16_t                  TIME;           /**< @brief Time stamp.         */
-  uint8_t                   DLC:4;          /**< @brief Data length.        */
-  uint8_t                   RTR:1;          /**< @brief Frame type.         */
-  uint8_t                   IDE:1;          /**< @brief Identifier type.    */
-  union {
-    uint32_t                SID:11;         /**< @brief Standard identifier.*/
-    uint32_t                EID:29;         /**< @brief Extended identifier.*/
-    uint32_t                _align1;
+  struct {
+    uint8_t                 DLC:4;          /**< @brief Data length.        */
+    uint8_t                 RTR:1;          /**< @brief Frame type.         */
+    uint8_t                 IDE:1;          /**< @brief Identifier type.    */
   };
-  /*lint -restore*/
+  union {
+    struct {
+      uint32_t              SID:11;         /**< @brief Standard identifier.*/
+    };
+    struct {
+      uint32_t              EID:29;         /**< @brief Extended identifier.*/
+    };
+  };
   union {
     uint8_t                 data8[8];       /**< @brief Frame data.         */
     uint16_t                data16[4];      /**< @brief Frame data.         */
@@ -121,10 +134,22 @@ typedef struct {
 } CANRxFrame;
 
 /**
- * @brief   Driver configuration structure.
+ * @brief   CAN filter.
+ * @note    Implementations may extend this structure to contain more,
+ *          architecture dependent, fields.
+ * @note    It could not be present on some architectures.
  */
 typedef struct {
-  /* End of the mandatory fields.*/
+  uint32_t                  dummy;
+} CANFilter;
+
+/**
+ * @brief   Driver configuration structure.
+ * @note    Implementations may extend this structure to contain more,
+ *          architecture dependent, fields.
+ * @note    It could be empty on some architectures.
+ */
+typedef struct {
   uint32_t                  dummy;
 } CANConfig;
 
@@ -141,13 +166,13 @@ typedef struct {
    */
   const CANConfig           *config;
   /**
-   * @brief   Transmission threads queue.
+   * @brief   Transmission queue semaphore.
    */
-  threads_queue_t           txqueue;
+  Semaphore                 txsem;
   /**
-   * @brief   Receive threads queue.
+   * @brief   Receive queue semaphore.
    */
-  threads_queue_t           rxqueue;
+  Semaphore                 rxsem;
   /**
    * @brief   One or more frames become available.
    * @note    After broadcasting this event it will not be broadcasted again
@@ -160,30 +185,30 @@ typedef struct {
    * @note    The flags associated to the listeners will indicate which
    *          receive mailboxes become non-empty.
    */
-  event_source_t            rxfull_event;
+  EventSource               rxfull_event;
   /**
    * @brief   One or more transmission mailbox become available.
    * @note    The flags associated to the listeners will indicate which
    *          transmit mailboxes become empty.
    *
    */
-  event_source_t            txempty_event;
+  EventSource               txempty_event;
   /**
    * @brief   A CAN bus error happened.
    * @note    The flags associated to the listeners will indicate the
    *          error(s) that have occurred.
    */
-  event_source_t            error_event;
-#if (CAN_USE_SLEEP_MODE == TRUE) || defined (__DOXYGEN__)
+  EventSource               error_event;
+#if CAN_USE_SLEEP_MODE || defined (__DOXYGEN__)
   /**
    * @brief   Entering sleep state event.
    */
-  event_source_t            sleep_event;
+  EventSource               sleep_event;
   /**
    * @brief   Exiting sleep state event.
    */
-  event_source_t            wakeup_event;
-#endif
+  EventSource               wakeup_event;
+#endif /* CAN_USE_SLEEP_MODE */
   /* End of the mandatory fields.*/
 } CANDriver;
 
@@ -195,7 +220,7 @@ typedef struct {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
-#if (PLATFORM_CAN_USE_CAN1 == TRUE) && !defined(__DOXYGEN__)
+#if PLATFORM_CAN_USE_CAN1 && !defined(__DOXYGEN__)
 extern CANDriver CAND1;
 #endif
 
@@ -205,23 +230,25 @@ extern "C" {
   void can_lld_init(void);
   void can_lld_start(CANDriver *canp);
   void can_lld_stop(CANDriver *canp);
-  bool can_lld_is_tx_empty(CANDriver *canp, canmbx_t mailbox);
+  bool_t can_lld_is_tx_empty(CANDriver *canp,
+                             canmbx_t mailbox);
   void can_lld_transmit(CANDriver *canp,
                         canmbx_t mailbox,
-                        const CANTxFrame *ctfp);
-  bool can_lld_is_rx_nonempty(CANDriver *canp, canmbx_t mailbox);
+                        const CANTxFrame *crfp);
+  bool_t can_lld_is_rx_nonempty(CANDriver *canp,
+                                canmbx_t mailbox);
   void can_lld_receive(CANDriver *canp,
                        canmbx_t mailbox,
-                       CANRxFrame *crfp);
-#if CAN_USE_SLEEP_MODE == TRUE
+                       CANRxFrame *ctfp);
+#if CAN_USE_SLEEP_MODE
   void can_lld_sleep(CANDriver *canp);
   void can_lld_wakeup(CANDriver *canp);
-#endif
+#endif /* CAN_USE_SLEEP_MODE */
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* HAL_USE_CAN == TRUE */
+#endif /* HAL_USE_CAN */
 
 #endif /* _CAN_LLD_H_ */
 

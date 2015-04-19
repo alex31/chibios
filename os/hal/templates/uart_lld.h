@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 */
 
 /**
- * @file    uart_lld.h
- * @brief   PLATFORM UART subsystem low level driver header.
+ * @file    templates/uart_lld.h
+ * @brief   UART Driver subsystem low level driver header template.
  *
  * @addtogroup UART
  * @{
@@ -25,7 +25,7 @@
 #ifndef _UART_LLD_H_
 #define _UART_LLD_H_
 
-#if (HAL_USE_UART == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_UART || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -36,13 +36,12 @@
 /*===========================================================================*/
 
 /**
- * @name    PLATFORM configuration options
+ * @name    Configuration options
  * @{
  */
 /**
  * @brief   UART driver enable switch.
  * @details If set to @p TRUE the support for UART1 is included.
- * @note    The default is @p FALSE.
  */
 #if !defined(PLATFORM_UART_USE_UART1) || defined(__DOXYGEN__)
 #define PLATFORM_UART_USE_UART1             FALSE
@@ -157,7 +156,7 @@ struct UARTDriver {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
-#if (PLATFORM_UART_USE_UART1 == TRUE) && !defined(__DOXYGEN__)
+#if PLATFORM_UART_USE_UART1 && !defined(__DOXYGEN__)
 extern UARTDriver UARTD1;
 #endif
 
@@ -175,7 +174,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_UART == TRUE */
+#endif /* HAL_USE_UART */
 
 #endif /* _UART_LLD_H_ */
 

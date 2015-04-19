@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,13 +15,14 @@
 */
 
 /**
- * @file    hal_lld.c
- * @brief   PLATFORM HAL subsystem low level driver source.
+ * @file    templates/hal_lld.c
+ * @brief   HAL Driver subsystem low level driver source template.
  *
  * @addtogroup HAL
  * @{
  */
 
+#include "ch.h"
 #include "hal.h"
 
 /*===========================================================================*/
@@ -54,6 +55,19 @@
  * @notapi
  */
 void hal_lld_init(void) {
+
+}
+
+/**
+ * @brief   Platform early initialization.
+ * @note    All the involved constants come from the file @p board.h.
+ * @note    This function is meant to be invoked early during the system
+ *          initialization, it is usually invoked from the file
+ *          @p board.c.
+ *
+ * @special
+ */
+void platform_early_init(void) {
 
 }
 

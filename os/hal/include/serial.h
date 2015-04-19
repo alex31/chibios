@@ -1,17 +1,28 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011,2012,2013 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+                                      ---
+
+    A special exception to the GPL can be applied should you wish to distribute
+    a combined work that includes ChibiOS/RT, without being obliged to provide
+    the source code for any proprietary components. See the file exception.txt
+    for full details of how and when the exception can be applied.
 */
 
 /**
@@ -25,7 +36,7 @@
 #ifndef _SERIAL_H_
 #define _SERIAL_H_
 
-#if (HAL_USE_SERIAL == TRUE) || defined(__DOXYGEN__)
+#if HAL_USE_SERIAL || defined(__DOXYGEN__)
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -35,11 +46,11 @@
  * @name    Serial status flags
  * @{
  */
-#define SD_PARITY_ERROR         (eventflags_t)32    /**< @brief Parity.     */
-#define SD_FRAMING_ERROR        (eventflags_t)64    /**< @brief Framing.    */
-#define SD_OVERRUN_ERROR        (eventflags_t)128   /**< @brief Overflow.   */
-#define SD_NOISE_ERROR          (eventflags_t)256   /**< @brief Line noise. */
-#define SD_BREAK_DETECTED       (eventflags_t)512   /**< @brief LIN Break.  */
+#define SD_PARITY_ERROR         32  /**< @brief Parity error happened.      */
+#define SD_FRAMING_ERROR        64  /**< @brief Framing error happened.     */
+#define SD_OVERRUN_ERROR        128 /**< @brief Overflow happened.          */
+#define SD_NOISE_ERROR          256 /**< @brief Noise on the line.          */
+#define SD_BREAK_DETECTED       512 /**< @brief Break detected.             */
 /** @} */
 
 /*===========================================================================*/
@@ -74,6 +85,10 @@
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
+
+#if !CH_USE_QUEUES && !CH_USE_EVENTS
+#error "Serial Driver requires CH_USE_QUEUES and CH_USE_EVENTS"
+#endif
 
 /*===========================================================================*/
 /* Driver data structures and types.                                         */
@@ -141,7 +156,7 @@ struct SerialDriver {
  *
  * @api
  */
-#define sdPutWouldBlock(sdp) oqIsFullI(&(sdp)->oqueue)
+#define sdPutWouldBlock(sdp) chOQIsFullI(&(sdp)->oqueue)
 
 /**
  * @brief   Direct input check on a @p SerialDriver.
@@ -153,7 +168,7 @@ struct SerialDriver {
  *
  * @api
  */
-#define sdGetWouldBlock(sdp) iqIsEmptyI(&(sdp)->iqueue)
+#define sdGetWouldBlock(sdp) chIQIsEmptyI(&(sdp)->iqueue)
 
 /**
  * @brief   Direct write to a @p SerialDriver.
@@ -165,7 +180,7 @@ struct SerialDriver {
  *
  * @api
  */
-#define sdPut(sdp, b) oqPut(&(sdp)->oqueue, b)
+#define sdPut(sdp, b) chOQPut(&(sdp)->oqueue, b)
 
 /**
  * @brief   Direct write to a @p SerialDriver with timeout specification.
@@ -177,7 +192,7 @@ struct SerialDriver {
  *
  * @api
  */
-#define sdPutTimeout(sdp, b, t) oqPutTimeout(&(sdp)->oqueue, b, t)
+#define sdPutTimeout(sdp, b, t) chOQPutTimeout(&(sdp)->oqueue, b, t)
 
 /**
  * @brief   Direct read from a @p SerialDriver.
@@ -189,7 +204,7 @@ struct SerialDriver {
  *
  * @api
  */
-#define sdGet(sdp) iqGet(&(sdp)->iqueue)
+#define sdGet(sdp) chIQGet(&(sdp)->iqueue)
 
 /**
  * @brief   Direct read from a @p SerialDriver with timeout specification.
@@ -201,7 +216,7 @@ struct SerialDriver {
  *
  * @api
  */
-#define sdGetTimeout(sdp, t) iqGetTimeout(&(sdp)->iqueue, t)
+#define sdGetTimeout(sdp, t) chIQGetTimeout(&(sdp)->iqueue, t)
 
 /**
  * @brief   Direct blocking write to a @p SerialDriver.
@@ -214,7 +229,7 @@ struct SerialDriver {
  * @api
  */
 #define sdWrite(sdp, b, n)                                                  \
-  oqWriteTimeout(&(sdp)->oqueue, b, n, TIME_INFINITE)
+  chOQWriteTimeout(&(sdp)->oqueue, b, n, TIME_INFINITE)
 
 /**
  * @brief   Direct blocking write to a @p SerialDriver with timeout
@@ -228,7 +243,7 @@ struct SerialDriver {
  * @api
  */
 #define sdWriteTimeout(sdp, b, n, t)                                        \
-  oqWriteTimeout(&(sdp)->oqueue, b, n, t)
+  chOQWriteTimeout(&(sdp)->oqueue, b, n, t)
 
 /**
  * @brief   Direct non-blocking write to a @p SerialDriver.
@@ -241,7 +256,7 @@ struct SerialDriver {
  * @api
  */
 #define sdAsynchronousWrite(sdp, b, n)                                      \
-  oqWriteTimeout(&(sdp)->oqueue, b, n, TIME_IMMEDIATE)
+  chOQWriteTimeout(&(sdp)->oqueue, b, n, TIME_IMMEDIATE)
 
 /**
  * @brief   Direct blocking read from a @p SerialDriver.
@@ -254,7 +269,7 @@ struct SerialDriver {
  * @api
  */
 #define sdRead(sdp, b, n)                                                   \
-  iqReadTimeout(&(sdp)->iqueue, b, n, TIME_INFINITE)
+  chIQReadTimeout(&(sdp)->iqueue, b, n, TIME_INFINITE)
 
 /**
  * @brief   Direct blocking read from a @p SerialDriver with timeout
@@ -268,7 +283,7 @@ struct SerialDriver {
  * @api
  */
 #define sdReadTimeout(sdp, b, n, t)                                         \
-  iqReadTimeout(&(sdp)->iqueue, b, n, t)
+  chIQReadTimeout(&(sdp)->iqueue, b, n, t)
 
 /**
  * @brief   Direct non-blocking read from a @p SerialDriver.
@@ -281,7 +296,7 @@ struct SerialDriver {
  * @api
  */
 #define sdAsynchronousRead(sdp, b, n)                                       \
-  iqReadTimeout(&(sdp)->iqueue, b, n, TIME_IMMEDIATE)
+  chIQReadTimeout(&(sdp)->iqueue, b, n, TIME_IMMEDIATE)
 /** @} */
 
 /*===========================================================================*/
@@ -301,7 +316,7 @@ extern "C" {
 }
 #endif
 
-#endif /* HAL_USE_SERIAL == TRUE */
+#endif /* HAL_USE_SERIAL */
 
 #endif /* _SERIAL_H_ */
 
