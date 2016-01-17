@@ -548,7 +548,7 @@ static inline void osalSysUnlockFromISR(void) {
  *
  * @xclass
  */
-static inline syssts_t osalSysGetStatusAndLockX(void)  {
+static inline syssts_t osalSysGetStatusAndLockX(void) {
 
   return chSysGetStatusAndLockX();
 }
@@ -791,7 +791,7 @@ static inline void osalThreadQueueObjectInit(threads_queue_t *tqp) {
 static inline msg_t osalThreadEnqueueTimeoutS(threads_queue_t *tqp,
                                               systime_t time) {
 
-  return chSemWaitTimeout(&tqp->sem, time);
+  return chSemWaitTimeoutS(&tqp->sem, time);
 }
 
 /**
