@@ -72,6 +72,11 @@
 *** Releases and Change Log                                               ***
 *****************************************************************************
 
+*** 16.1.2 ***
+- VAR: Fixed missing time convesion in lwIP arch module (bug #696).
+- HAL: Fixed incorrect handling of TIME_IMMEDIATE in the HAL buffer queues
+       (bug #695).
+
 *** 16.1.1 ***
 - NIL: NIL_CFG_USE_EVENTS not properly checked in NIL (bug #694).
 - RT:  Fixed ISR statistics are not updated from a critical zone in RT
