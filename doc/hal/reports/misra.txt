@@ -1,8 +1,6 @@
 
 --- Module:   ..\..\..\os\hal\src\hal.c (C)
 
---- Module:   ..\..\..\os\hal\src\hal_buffers.c (C)
-
 --- Module:   ..\..\..\os\hal\src\hal_queues.c (C)
 
 --- Module:   ..\..\..\os\hal\src\hal_mmcsd.c (C)
@@ -46,8 +44,6 @@
 --- Module:   ..\..\..\os\hal\src\uart.c (C)
 
 --- Module:   ..\..\..\os\hal\src\usb.c (C)
-
---- Module:   ..\..\..\os\hal\src\wdg.c (C)
 
 --- Module:   ..\..\..\os\hal\templates\osal\osal.c (C)
 

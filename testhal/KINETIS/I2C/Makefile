@@ -83,24 +83,24 @@ PROJECT = ch
 
 # Imported source files and paths
 CHIBIOS = ../../..
-include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/startup_k20x.mk
 include $(CHIBIOS)/os/hal/hal.mk
-include $(CHIBIOS)/os/hal/ports/KINETIS/K20x/platform.mk
 include $(CHIBIOS)/os/hal/boards/FREESCALE_FREEDOM_K20D50M/board.mk
+include $(CHIBIOS)/os/hal/ports/KINETIS/K20x/platform.mk
 include $(CHIBIOS)/os/hal/osal/rt/osal.mk
 include $(CHIBIOS)/os/rt/rt.mk
-include $(CHIBIOS)/os/rt/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk
+include $(CHIBIOS)/os/rt/ports/ARMCMx/compilers/GCC/mk/port_k20x.mk
+#include $(CHIBIOS)/test/rt/test.mk
 
 # Define linker script file here
-LDSCRIPT= $(STARTUPLD)/MK20DX128.ld
+LDSCRIPT= $(PORTLD)/MK20DX128.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CSRC = $(STARTUPSRC) \
+CSRC = $(PORTSRC) \
        $(KERNSRC) \
-       $(PORTSRC) \
-       $(OSALSRC) \
+       $(TESTSRC) \
        $(HALSRC) \
+       $(OSALSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
        main.c
@@ -130,10 +130,10 @@ TCSRC =
 TCPPSRC =
 
 # List ASM source files here
-ASMSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
+ASMSRC = $(PORTASM)
 
-INCDIR = $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
-         $(HALINC) $(PLATFORMINC) $(BOARDINC) \
+INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
+         $(HALINC) $(OSALINC) $(PLATFORMINC) $(BOARDINC) \
          $(CHIBIOS)/os/various
 
 #

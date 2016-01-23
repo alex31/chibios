@@ -82,31 +82,25 @@ PROJECT = ch
 
 # Imported source files and paths
 CHIBIOS = ../../..
-# Startup files.
-include $(CHIBIOS)/os/common/ports/e200/compilers/GCC/mk/startup_spc560pxx.mk
-# HAL-OSAL files (optional).
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/hal/boards/ST_EVB_SPC560P/board.mk
 include $(CHIBIOS)/os/hal/ports/SPC5/SPC560Pxx/platform.mk
 include $(CHIBIOS)/os/hal/osal/rt/osal.mk
-# RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
-include $(CHIBIOS)/os/rt/ports/e200/compilers/GCC/mk/port.mk
-# Other files (optional).
+include $(CHIBIOS)/os/rt/ports/e200/compilers/GCC/mk/port_spc560pxx.mk
 include $(CHIBIOS)/test/rt/test.mk
 
 # Define linker script file here
-LDSCRIPT= $(STARTUPLD)/SPC560P50.ld
+LDSCRIPT= $(PORTLD)/SPC560P50.ld
 
 # C sources here.
-CSRC = $(STARTUPSRC) \
+CSRC = $(PORTSRC) \
        $(KERNSRC) \
-       $(PORTSRC) \
-       $(OSALSRC) \
+       $(TESTSRC) \
        $(HALSRC) \
+       $(OSALSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
-       $(TESTSRC) \
        $(CHIBIOS)/os/hal/lib/streams/memstreams.c \
        $(CHIBIOS)/os/hal/lib/streams/chprintf.c \
        $(CHIBIOS)/os/various/shell.c \
@@ -116,10 +110,10 @@ CSRC = $(STARTUPSRC) \
 CPPSRC =
 
 # List ASM source files here
-ASMSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
+ASMSRC = $(PORTASM)
 
-INCDIR = $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
-         $(HALINC) $(PLATFORMINC) $(BOARDINC) $(TESTINC) \
+INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
+         $(HALINC) $(OSALINC) $(PLATFORMINC) $(BOARDINC) \
          $(CHIBIOS)/os/hal/lib/streams $(CHIBIOS)/os/various
 
 #

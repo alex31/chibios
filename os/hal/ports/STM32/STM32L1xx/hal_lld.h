@@ -24,13 +24,9 @@
  *          - STM32_HSE_BYPASS (optionally).
  *          .
  *          One of the following macros must also be defined:
- *          - STM32L100xB, STM32L100xBA, STM32L100xC.
- *          - STM32L151xB, STM32L151xBA, STM32L151xC, STM32L151xCA,
- *            STM32L151xD, STM32L151xDX, STM32L151xE.
- *          - STM32L152xB, STM32L152xBA, STM32L152xC, STM32L152xCA,
- *            STM32L152xD, STM32L152xDX, STM32L152xE.
- *          - STM32L162xC, STM32L162xCA, STM32L162xD, STM32L162xDX,
- *            STM32L162xE.
+ *          - STM32L1XX_MD for Ultra Low Power Medium-density devices.
+ *          - STM32L1XX_MDP for Ultra Low Power Medium-density Plus devices.
+ *          - STM32L1XX_HD for Ultra Low Power High-density devices.
  *          .
  *
  * @addtogroup HAL
@@ -50,22 +46,13 @@
  * @name    Platform identification
  * @{
  */
-#if defined(STM32L100xB) || defined(STM32L151xB) ||                         \
-    defined(STM32L152xB) || defined(__DOXYGEN__)
+#if defined(STM32L1XX_MD) || defined(__DOXYGEN__)
 #define PLATFORM_NAME           "STM32L1xx Ultra Low Power Medium Density"
 
-#elif defined(STM32L100xBA) || defined(STM32L100xC)  ||                     \
-      defined(STM32L151xBA) || defined(STM32L151xC)  ||                     \
-      defined(STM32L151xCA) || defined(STM32L152xBA) ||                     \
-      defined(STM32L152xC)  || defined(STM32L152xCA) ||                     \
-      defined(STM32L162xC)  || defined(STM32L162xCA)
+#elif defined(STM32L1XX_MDP)
 #define PLATFORM_NAME           "STM32L1xx Ultra Low Power Medium Density Plus"
 
-#elif defined(STM32L151xD)  || defined(STM32L151xDX) ||                     \
-      defined(STM32L151xE)  || defined(STM32L152xD)  ||                     \
-      defined(STM32L152xDX) || defined(STM32L152xE)  ||                     \
-      defined(STM32L162xD)  || defined(STM32L162xDX) ||                     \
-      defined(STM32L162xE)
+#elif defined(STM32L1XX_HD)
 #define PLATFORM_NAME           "STM32L1xx Ultra Low Power High Density"
 
 #else
@@ -611,6 +598,7 @@
 
 /**
  * @brief   MSI frequency.
+ * @note    Values are taken from the STM8Lxx datasheet.
  */
 #if STM32_MSIRANGE == STM32_MSIRANGE_64K
 #define STM32_MSICLK                65500

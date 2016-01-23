@@ -101,15 +101,6 @@
 #endif
 
 /**
- * @brief   Enables HS mode on OTG2 else FS mode.
- * @note    The default is @p TRUE.
- * @note    Has effect only if @p BOARD_OTG2_USES_ULPI is defined.
- */
-#if !defined(STM32_USE_USB_OTG2_HS) || defined(__DOXYGEN__)
-#define STM32_USE_USB_OTG2_HS               TRUE
-#endif
-
-/**
  * @brief   Dedicated data pump threads priority.
  */
 #if !defined(STM32_USB_OTG_THREAD_PRIO) || defined(__DOXYGEN__)
@@ -185,7 +176,7 @@
 #error "OTG2 RX FIFO size must be a multiple of 4"
 #endif
 
-#if defined(STM32F2XX) || defined(STM32F4XX) || defined(STM32F7XX)
+#if defined(STM32F4XX) || defined(STM32F2XX)
 #define STM32_USBCLK                        STM32_PLL48CLK
 #elif defined(STM32F10X_CL)
 #define STM32_USBCLK                        STM32_OTGFSCLK
@@ -215,6 +206,10 @@ typedef struct {
  */
 typedef struct {
   /**
+   * @brief   Buffer mode, queue or linear.
+   */
+  bool                          txqueued;
+  /**
    * @brief   Requested transmit transfer size.
    */
   size_t                        txsize;
@@ -222,17 +217,20 @@ typedef struct {
    * @brief   Transmitted bytes so far.
    */
   size_t                        txcnt;
-  /**
-   * @brief   Pointer to the transmission linear buffer.
-   */
-  const uint8_t                 *txbuf;
-#if (USB_USE_WAIT == TRUE) || defined(__DOXYGEN__)
-  /**
-   * @brief   Waiting thread.
-   */
-  thread_reference_t            thread;
-#endif
-  /* End of the mandatory fields.*/
+  union {
+    struct {
+      /**
+       * @brief   Pointer to the transmission linear buffer.
+       */
+      const uint8_t             *txbuf;
+    } linear;
+    struct {
+      /**
+       * @brief   Pointer to the output queue.
+       */
+      output_queue_t            *txqueue;
+    } queue;
+  } mode;
   /**
    * @brief   Total transmit transfer size.
    */
@@ -244,6 +242,10 @@ typedef struct {
  */
 typedef struct {
   /**
+   * @brief   Buffer mode, queue or linear.
+   */
+  bool                          rxqueued;
+  /**
    * @brief   Requested receive transfer size.
    */
   size_t                        rxsize;
@@ -251,17 +253,20 @@ typedef struct {
    * @brief   Received bytes so far.
    */
   size_t                        rxcnt;
-  /**
-   * @brief   Pointer to the receive linear buffer.
-   */
-  uint8_t                       *rxbuf;
-#if (USB_USE_WAIT == TRUE) || defined(__DOXYGEN__)
-  /**
-   * @brief   Waiting thread.
-   */
-  thread_reference_t            thread;
-#endif
-  /* End of the mandatory fields.*/
+  union {
+    struct {
+      /**
+       * @brief   Pointer to the receive linear buffer.
+       */
+      uint8_t                   *rxbuf;
+    } linear;
+    struct {
+      /**
+       * @brief   Pointer to the input queue.
+       */
+      input_queue_t            *rxqueue;
+    } queue;
+  } mode;
   /**
    * @brief   Total transmit transfer size.
    */
@@ -290,34 +295,36 @@ typedef struct {
   usbepcallback_t               setup_cb;
   /**
    * @brief   IN endpoint notification callback.
-   * @details This field must be set to @p NULL if callback is not required.
+   * @details This field must be set to @p NULL if the IN endpoint is not
+   *          used.
    */
   usbepcallback_t               in_cb;
   /**
    * @brief   OUT endpoint notification callback.
-   * @details This field must be set to @p NULL if callback is not required.
+   * @details This field must be set to @p NULL if the OUT endpoint is not
+   *          used.
    */
   usbepcallback_t               out_cb;
   /**
    * @brief   IN endpoint maximum packet size.
-   * @details This field must be set to zero if the IN endpoint is not used.
+   * @details This field must be set to zero if the IN endpoint is not
+   *          used.
    */
   uint16_t                      in_maxsize;
   /**
    * @brief   OUT endpoint maximum packet size.
-   * @details This field must be set to zero if the OUT endpoint is not used.
+   * @details This field must be set to zero if the OUT endpoint is not
+   *          used.
    */
   uint16_t                      out_maxsize;
   /**
    * @brief   @p USBEndpointState associated to the IN endpoint.
-   * @details This field must be set to @p NULL if the IN endpoint is not
-   *          used.
+   * @details This structure maintains the state of the IN endpoint.
    */
   USBInEndpointState            *in_state;
   /**
    * @brief   @p USBEndpointState associated to the OUT endpoint.
-   * @details This field must be set to @p NULL if the OUT endpoint is not
-   *          used.
+   * @details This structure maintains the state of the OUT endpoint.
    */
   USBOutEndpointState           *out_state;
   /* End of the mandatory fields.*/
@@ -494,22 +501,14 @@ struct USBDriver {
  *
  * @api
  */
-#if defined(STM32F7XX) || defined(__DOXYGEN__)
-#define usb_lld_connect_bus(usbp) ((usbp)->otg->DCTL &= ~DCTL_SDIS)
-#else
 #define usb_lld_connect_bus(usbp) ((usbp)->otg->GCCFG |= GCCFG_VBUSBSEN)
-#endif
 
 /**
  * @brief   Disconnect the USB device.
  *
  * @api
  */
-#if defined(STM32F7XX) || defined(__DOXYGEN__)
-#define usb_lld_disconnect_bus(usbp) ((usbp)->otg->DCTL |= DCTL_SDIS)
-#else
 #define usb_lld_disconnect_bus(usbp) ((usbp)->otg->GCCFG &= ~GCCFG_VBUSBSEN)
-#endif
 
 /*===========================================================================*/
 /* External declarations.                                                    */
@@ -536,6 +535,8 @@ extern "C" {
   usbepstatus_t usb_lld_get_status_in(USBDriver *usbp, usbep_t ep);
   usbepstatus_t usb_lld_get_status_out(USBDriver *usbp, usbep_t ep);
   void usb_lld_read_setup(USBDriver *usbp, usbep_t ep, uint8_t *buf);
+  void usb_lld_prepare_receive(USBDriver *usbp, usbep_t ep);
+  void usb_lld_prepare_transmit(USBDriver *usbp, usbep_t ep);
   void usb_lld_start_out(USBDriver *usbp, usbep_t ep);
   void usb_lld_start_in(USBDriver *usbp, usbep_t ep);
   void usb_lld_stall_out(USBDriver *usbp, usbep_t ep);

@@ -164,7 +164,7 @@ struct context {
   tp->p_ctx.sp->r3  = (int)pf >> 8;                                         \
   tp->p_ctx.sp->r4  = (int)arg;                                             \
   tp->p_ctx.sp->r5  = (int)arg >> 8;                                        \
-  tp->p_ctx.sp->pcx = (int)0;                                               \
+  tp->p_ctx.sp->pcx = (int)_port_thread_start >> 16;                        \
   tp->p_ctx.sp->pcl = (int)_port_thread_start >> 8;                         \
   tp->p_ctx.sp->pch = (int)_port_thread_start;                              \
 }
@@ -379,10 +379,6 @@ extern "C" {
   void _port_thread_start(void);
 #ifdef __cplusplus
 }
-#endif
-
-#if CH_CFG_ST_TIMEDELTA > 0
-#include "chcore_timer.h"
 #endif
 
 #endif /* _CHCORE_H_ */

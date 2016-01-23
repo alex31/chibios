@@ -153,37 +153,37 @@ _ivinit:
 
         .globl      IVORS
 IVORS:
-        b           _IVOR0
+IVOR0:  b           IVOR0
         .align      4
-        b           _IVOR1
+IVOR1:  b           _IVOR1
         .align      4
-        b           _IVOR2
+IVOR2:  b           _IVOR2
         .align      4
-        b           _IVOR3
+IVOR3:  b           _IVOR3
         .align      4
-        b           _IVOR4
+IVOR4:  b           _IVOR4
         .align      4
-        b           _IVOR5
+IVOR5:  b           _IVOR5
         .align      4
-        b           _IVOR6
+IVOR6:  b           _IVOR6
         .align      4
-        b           _IVOR7
+IVOR7:  b           _IVOR7
         .align      4
-        b           _IVOR8
+IVOR8:  b           _IVOR8
         .align      4
-        b           _IVOR9
+IVOR9:  b           _IVOR9
         .align      4
-        b           _IVOR10
+IVOR10: b           _IVOR10
         .align      4
-        b           _IVOR11
+IVOR11: b           _IVOR11
         .align      4
-        b           _IVOR12
+IVOR12: b           _IVOR12
         .align      4
-        b           _IVOR13
+IVOR13: b           _IVOR13
         .align      4
-        b           _IVOR14
+IVOR14: b           _IVOR14
         .align      4
-        b           _IVOR15
+IVOR15: b           _IVOR15
 
         .section    .handlers, "ax"
 
@@ -194,6 +194,7 @@ IVORS:
         .weak       _IVOR0,  _IVOR1,  _IVOR2,  _IVOR3,  _IVOR4,  _IVOR5
         .weak       _IVOR6,  _IVOR7,  _IVOR8,  _IVOR9,  _IVOR10, _IVOR11
         .weak       _IVOR12, _IVOR13, _IVOR14, _IVOR15
+        .weak       _unhandled_exception
 _IVOR0:
 _IVOR1:
 _IVOR2:
@@ -208,7 +209,6 @@ _IVOR12:
 _IVOR13:
 _IVOR14:
 _IVOR15:
-        .global     _unhandled_exception
 _unhandled_exception:
         b           _unhandled_exception
 

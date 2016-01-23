@@ -21,7 +21,7 @@
  * @file    vectors.h
  * @brief   ISR vector module header.
  *
- * @addtogroup PPC_GCC_CORE
+ * @addtogroup VECTORS
  * @{
  */
 

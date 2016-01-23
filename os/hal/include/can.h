@@ -38,23 +38,23 @@
 /**
  * @brief   Errors rate warning.
  */
-#define CAN_LIMIT_WARNING           1U
+#define CAN_LIMIT_WARNING           1
 /**
  * @brief   Errors rate error.
  */
-#define CAN_LIMIT_ERROR             2U
+#define CAN_LIMIT_ERROR             2
 /**
  * @brief   Bus off condition reached.
  */
-#define CAN_BUS_OFF_ERROR           4U
+#define CAN_BUS_OFF_ERROR           4
 /**
  * @brief   Framing error of some kind on the CAN bus.
  */
-#define CAN_FRAMING_ERROR           8U
+#define CAN_FRAMING_ERROR           8
 /**
  * @brief   Overflow in receive queue.
  */
-#define CAN_OVERFLOW_ERROR          16U
+#define CAN_OVERFLOW_ERROR          16
 /** @} */
 
 /**
@@ -113,7 +113,7 @@ typedef enum {
 /**
  * @brief   Converts a mailbox index to a bit mask.
  */
-#define CAN_MAILBOX_TO_MASK(mbx) (1U << ((mbx) - 1U))
+#define CAN_MAILBOX_TO_MASK(mbx) (1 << ((mbx) - 1))
 /** @} */
 
 /*===========================================================================*/
@@ -127,12 +127,6 @@ extern "C" {
   void canObjectInit(CANDriver *canp);
   void canStart(CANDriver *canp, const CANConfig *config);
   void canStop(CANDriver *canp);
-  bool canTryTransmitI(CANDriver *canp,
-                       canmbx_t mailbox,
-                       const CANTxFrame *ctfp);
-  bool canTryReceiveI(CANDriver *canp,
-                       canmbx_t mailbox,
-                       CANRxFrame *crfp);
   msg_t canTransmit(CANDriver *canp,
                     canmbx_t mailbox,
                     const CANTxFrame *ctfp,

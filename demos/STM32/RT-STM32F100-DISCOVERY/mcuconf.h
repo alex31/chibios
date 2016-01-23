@@ -183,9 +183,4 @@
 #define STM32_UART_USART3_DMA_PRIORITY      0
 #define STM32_UART_DMA_ERROR_HOOK(uartp)    osalSysHalt("DMA failure")
 
-/*
- * WDG driver system settings.
- */
-#define STM32_WDG_USE_IWDG                  FALSE
-
 #endif /* _MCUCONF_H_ */

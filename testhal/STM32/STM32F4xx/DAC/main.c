@@ -100,7 +100,7 @@ static const DACConversionGroup dacgrpcfg1 = {
 };
 
 /*
- * GPT6 configuration.
+ * GPT2 configuration.
  */
 static const GPTConfig gpt6cfg1 = {
   frequency:    1000000U,

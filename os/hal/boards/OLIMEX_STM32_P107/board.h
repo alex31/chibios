@@ -36,7 +36,7 @@
 /*
  * MCU type, supported types are defined in ./os/hal/platforms/hal_lld.h.
  */
-#define STM32F107xC
+#define STM32F10X_CL
 
 /*
  * Ethernet PHY type.

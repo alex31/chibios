@@ -19,7 +19,7 @@
 
 /**
  * @file    PPC/chcore.h
- * @brief   Power e200 port macros and structures.
+ * @brief   PowerPC architecture port macros and structures.
  *
  * @addtogroup PPC_CORE
  * @{
@@ -58,9 +58,6 @@
  */
 #if defined(__GNUC__) || defined(__DOXYGEN__)
 #define PORT_COMPILER_NAME              "GCC " __VERSION__
-
-#elif defined(__MWERKS__)
-#define PORT_COMPILER_NAME              "CW"
 
 #else
 #error "unsupported compiler"
@@ -120,7 +117,7 @@
  *          @p chcore_timer.h, if this option is enabled then the file
  *          @p chcore_timer_alt.h is included instead.
  */
-#if !defined(PORT_USE_ALT_TIMER) || defined(__DOXYGEN__)
+#if !defined(PORT_USE_ALT_TIMER)
 #define PORT_USE_ALT_TIMER              FALSE
 #endif
 
@@ -128,14 +125,14 @@
  * @brief   Use VLE instruction set.
  * @note    This parameter is usually set in the Makefile.
  */
-#if !defined(PPC_USE_VLE) || defined(__DOXYGEN__)
+#if !defined(PPC_USE_VLE)
 #define PPC_USE_VLE                     TRUE
 #endif
 
 /**
  * @brief   Enables the use of the @p WFI instruction.
  */
-#if !defined(PPC_ENABLE_WFI_IDLE) || defined(__DOXYGEN__)
+#if !defined(PPC_ENABLE_WFI_IDLE)
 #define PPC_ENABLE_WFI_IDLE             FALSE
 #endif
 
@@ -425,17 +422,12 @@ static inline void port_init(void) {
   port_write_spr(272, n);
 
 #if PPC_SUPPORTS_IVORS
-  {
-    /* The CPU supports IVOR registers, the kernel requires IVOR4 and IVOR10
-       and the initialization is performed here.*/
-    extern void _IVOR4(void);
-    port_write_spr(404, _IVOR4);
-
-#if PPC_SUPPORTS_DECREMENTER
-    extern void _IVOR10(void);
-    port_write_spr(410, _IVOR10);
-#endif
-  }
+  /* The CPU supports IVOR registers, the kernel requires IVOR4 and IVOR10
+     and the initialization is performed here.*/
+  asm volatile ("li          %%r3, _IVOR4@l       \t\n"
+                "mtIVOR4     %%r3                 \t\n"
+                "li          %%r3, _IVOR10@l      \t\n"
+                "mtIVOR10    %%r3" : : : "r3", "memory");
 #endif
 
   /* INTC initialization, software vector mode, 4 bytes vectors, starting

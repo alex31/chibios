@@ -60,20 +60,20 @@ void osalThreadDequeueNextI(threads_queue_t *tqp, msg_t msg) {
   semaphore_t *sp = &tqp->sem;
 
   if (chSemGetCounterI(&tqp->sem) < (cnt_t)0) {
-    thread_t *tp = nil.threads;
+    thread_reference_t tr = nil.threads;
     while (true) {
       /* Is this thread waiting on this semaphore?*/
-      if (tp->u1.semp == sp) {
+      if (tr->u1.semp == sp) {
         sp->cnt++;
 
-        chDbgAssert(NIL_THD_IS_WTSEM(tp), "not waiting");
+        chDbgAssert(NIL_THD_IS_WTSEM(tr), "not waiting");
 
-        (void) chSchReadyI(tp, msg);
+        (void) chSchReadyI(tr, msg);
         return;
       }
-      tp++;
+      tr++;
 
-      chDbgAssert(tp < &nil.threads[NIL_CFG_NUM_THREADS],
+      chDbgAssert(tr < &nil.threads[NIL_CFG_NUM_THREADS],
                   "pointer out of range");
     }
   }
@@ -89,26 +89,26 @@ void osalThreadDequeueNextI(threads_queue_t *tqp, msg_t msg) {
  */
 void osalThreadDequeueAllI(threads_queue_t *tqp, msg_t msg) {
   semaphore_t *sp = &tqp->sem;
-  thread_t *tp;
+  thread_reference_t tr;
   cnt_t cnt;
 
   cnt = sp->cnt;
   sp->cnt = (cnt_t)0;
-  tp = nil.threads;
+  tr = nil.threads;
   while (cnt < (cnt_t)0) {
 
-    chDbgAssert(tp < &nil.threads[NIL_CFG_NUM_THREADS],
+    chDbgAssert(tr < &nil.threads[NIL_CFG_NUM_THREADS],
                 "pointer out of range");
 
     /* Is this thread waiting on this semaphore?*/
-    if (tp->u1.semp == sp) {
+    if (tr->u1.semp == sp) {
 
-      chDbgAssert(NIL_THD_IS_WTSEM(tp), "not waiting");
+      chDbgAssert(NIL_THD_IS_WTSEM(tr), "not waiting");
 
       cnt++;
-      (void) chSchReadyI(tp, msg);
+      (void) chSchReadyI(tr, msg);
     }
-    tp++;
+    tr++;
   }
 }
 

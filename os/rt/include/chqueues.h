@@ -321,9 +321,7 @@ static inline bool chIQIsFullI(input_queue_t *iqp) {
 
   chDbgCheckClassI();
 
-  /*lint -save -e9007 [13.5] No side effects.*/
   return (bool)((iqp->q_wrptr == iqp->q_rdptr) && (iqp->q_counter != 0U));
-  /*lint -restore*/
 }
 
 /**
@@ -389,9 +387,7 @@ static inline bool chOQIsEmptyI(output_queue_t *oqp) {
 
   chDbgCheckClassI();
 
-  /*lint -save -e9007 [13.5] No side effects.*/
   return (bool)((oqp->q_wrptr == oqp->q_rdptr) && (oqp->q_counter != 0U));
-  /*lint -restore*/
 }
 
 /**

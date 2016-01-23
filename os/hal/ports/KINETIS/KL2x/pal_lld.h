@@ -147,8 +147,7 @@ typedef struct
  *
  * @notapi
  */
-#define pal_lld_readlatch(port) \
-          (port)->PDOR
+#define pal_lld_readlatch(port) 0
 
 /**
  * @brief   Writes a bits mask on a I/O port.
@@ -158,8 +157,7 @@ typedef struct
  *
  * @notapi
  */
-#define pal_lld_writeport(port, bits) \
-          (port)->PDOR = (bits)
+#define pal_lld_writeport(port, bits)
 
 /**
  * @brief   Sets a bits mask on a I/O port.
@@ -172,8 +170,7 @@ typedef struct
  *
  * @notapi
  */
-#define pal_lld_setport(port, bits) \
-          (port)->PSOR = (bits)
+#define pal_lld_setport(port, bits)
 
 /**
  * @brief   Clears a bits mask on a I/O port.
@@ -186,8 +183,7 @@ typedef struct
  *
  * @notapi
  */
-#define pal_lld_clearport(port, bits) \
-          (port)->PCOR = (bits)
+#define pal_lld_clearport(port, bits)
 
 /**
  * @brief   Toggles a bits mask on a I/O port.
@@ -200,8 +196,7 @@ typedef struct
  *
  * @notapi
  */
-#define pal_lld_toggleport(port, bits) \
-          (port)->PTOR = (bits)
+#define pal_lld_toggleport(port, bits)
 
 /**
  * @brief   Reads a group of bits.
@@ -261,7 +256,7 @@ typedef struct
  *
  * @notapi
  */
-#define pal_lld_setpad(port, pad) (port)->PSOR = ((uint32_t) 1 << (pad))
+#define pal_lld_setpad(port, pad) (port)->PSOR |= ((uint32_t) 1 << (pad))
 
 /**
  * @brief   Clears a pad logical state to @p PAL_LOW.
@@ -274,7 +269,7 @@ typedef struct
  *
  * @notapi
  */
-#define pal_lld_clearpad(port, pad) (port)->PCOR = ((uint32_t) 1 << (pad))
+#define pal_lld_clearpad(port, pad) (port)->PCOR |= ((uint32_t) 1 << (pad))
 
 /**
  * @brief   Toggles a pad logical state.
@@ -287,7 +282,7 @@ typedef struct
  *
  * @notapi
  */
-#define pal_lld_togglepad(port, pad) (port)->PTOR = ((uint32_t) 1 << (pad))
+#define pal_lld_togglepad(port, pad) (port)->PTOR |= ((uint32_t) 1 << (pad))
 
 /**
  * @brief   Pad mode setup.

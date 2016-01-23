@@ -36,7 +36,7 @@
  * @brief   CMSIS system core clock variable.
  * @note    It is declared in system_stm32f4xx.h.
  */
-uint32_t SystemCoreClock = STM32_HCLK;
+uint32_t SystemCoreClock = STM32_SYSCLK;
 
 /*===========================================================================*/
 /* Driver local variables and types.                                         */
@@ -262,7 +262,7 @@ void stm32_clock_init(void) {
                FLASH_ACR_DCEN | STM32_FLASHBITS;
 #endif
 
-  /* Switching to the configured clock source if it is different from HSI.*/
+  /* Switching to the configured clock source if it is different from MSI.*/
 #if (STM32_SW != STM32_SW_HSI)
   RCC->CFGR |= STM32_SW;        /* Switches on the selected clock source.   */
   while ((RCC->CFGR & RCC_CFGR_SWS) != (STM32_SW << 2))

@@ -68,7 +68,7 @@ OUTFILES = $(BUILDDIR)/$(PROJECT).elf \
            $(BUILDDIR)/$(PROJECT).list
 
 ifdef SREC
-  OUTFILES += $(BUILDDIR)/$(PROJECT).srec
+OUTFILES += $(BUILDDIR)/$(PROJECT).srec
 endif
 
 # Source files groups and paths
@@ -230,7 +230,7 @@ else
 	@$(CC) -c $(ASXFLAGS) $(TOPT) -I. $(IINCDIR) $< -o $@
 endif
 
-$(BUILDDIR)/$(PROJECT).elf: $(OBJS) $(LDSCRIPT)
+%.elf: $(OBJS) $(LDSCRIPT)
 ifeq ($(USE_VERBOSE_COMPILE),yes)
 	@echo
 	$(LD) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
@@ -239,7 +239,7 @@ else
 	@$(LD) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
 endif
 
-%.hex: %.elf
+%.hex: %.elf $(LDSCRIPT)
 ifeq ($(USE_VERBOSE_COMPILE),yes)
 	$(HEX) $< $@
 else
@@ -247,7 +247,7 @@ else
 	@$(HEX) $< $@
 endif
 
-%.bin: %.elf
+%.bin: %.elf $(LDSCRIPT)
 ifeq ($(USE_VERBOSE_COMPILE),yes)
 	$(BIN) $< $@
 else
@@ -255,17 +255,15 @@ else
 	@$(BIN) $< $@
 endif
 
-%.srec: %.elf
-ifdef SREC
-  ifeq ($(USE_VERBOSE_COMPILE),yes)
+%.srec: %.elf $(LDSCRIPT)
+ifeq ($(USE_VERBOSE_COMPILE),yes)
 	$(SREC) $< $@
-  else
+else
 	@echo Creating $@
 	@$(SREC) $< $@
-  endif
 endif
 
-%.dmp: %.elf
+%.dmp: %.elf $(LDSCRIPT)
 ifeq ($(USE_VERBOSE_COMPILE),yes)
 	$(OD) $(ODFLAGS) $< > $@
 	$(SZ) $<
@@ -276,7 +274,7 @@ else
 	@$(SZ) $<
 endif
 
-%.list: %.elf
+%.list: %.elf $(LDSCRIPT)
 ifeq ($(USE_VERBOSE_COMPILE),yes)
 	$(OD) -S $< > $@
 else

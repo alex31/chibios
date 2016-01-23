@@ -14,10 +14,8 @@
     limitations under the License.
 */
 
+#include "ch.h"
 #include "hal.h"
-
-/* Virtual serial port over USB.*/
-SerialUSBDriver SDU1;
 
 /*
  * Endpoints to be used for USBD1.
@@ -35,8 +33,8 @@ static const uint8_t vcom_device_descriptor_data[18] = {
                          0x00,          /* bDeviceSubClass.                 */
                          0x00,          /* bDeviceProtocol.                 */
                          0x40,          /* bMaxPacketSize.                  */
-                         0x0483,        /* idVendor (ST).                   */
-                         0x5740,        /* idProduct.                       */
+                         0x1eaf,        /* idVendor (LeafLabs).             */
+                         0x0004,        /* idProduct.                       */
                          0x0200,        /* bcdDevice.                       */
                          1,             /* iManufacturer.                   */
                          2,             /* iProduct.                        */
@@ -150,11 +148,9 @@ static const uint8_t vcom_string0[] = {
  * Vendor string.
  */
 static const uint8_t vcom_string1[] = {
-  USB_DESC_BYTE(38),                    /* bLength.                         */
+  USB_DESC_BYTE(18),                    /* bLength.                         */
   USB_DESC_BYTE(USB_DESCRIPTOR_STRING), /* bDescriptorType.                 */
-  'S', 0, 'T', 0, 'M', 0, 'i', 0, 'c', 0, 'r', 0, 'o', 0, 'e', 0,
-  'l', 0, 'e', 0, 'c', 0, 't', 0, 'r', 0, 'o', 0, 'n', 0, 'i', 0,
-  'c', 0, 's', 0
+  'L', 0, 'e', 0, 'a', 0, 'f', 0, 'L', 0, 'a', 0, 'b', 0, 's', 0,
 };
 
 /*
@@ -286,12 +282,6 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
     chSysUnlockFromISR();
     return;
   case USB_EVENT_SUSPEND:
-    chSysLockFromISR();
-
-    /* Disconnection event on suspend.*/
-    sduDisconnectI(&SDU1);
-
-    chSysUnlockFromISR();
     return;
   case USB_EVENT_WAKEUP:
     return;
@@ -302,25 +292,13 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
 }
 
 /*
- * Handles the USB driver global events.
- */
-static void sof_handler(USBDriver *usbp) {
-
-  (void)usbp;
-
-  osalSysLockFromISR();
-  sduSOFHookI(&SDU1);
-  osalSysUnlockFromISR();
-}
-
-/*
  * USB driver configuration.
  */
 const USBConfig usbcfg = {
   usb_event,
   get_descriptor,
   sduRequestsHook,
-  sof_handler
+  NULL
 };
 
 /*

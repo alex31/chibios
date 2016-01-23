@@ -102,7 +102,7 @@
  *          @p nilcore_timer.h, if this option is enabled then the file
  *          @p nilcore_timer_alt.h is included instead.
  */
-#if !defined(PORT_USE_ALT_TIMER) || defined(__DOXYGEN__)
+#if !defined(PORT_USE_ALT_TIMER)
 #define PORT_USE_ALT_TIMER              FALSE
 #endif
 

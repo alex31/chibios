@@ -170,13 +170,6 @@
 #define HAL_USE_USB                 FALSE
 #endif
 
-/**
- * @brief   Enables the WDG subsystem.
- */
-#if !defined(HAL_USE_WDG) || defined(__DOXYGEN__)
-#define HAL_USE_WDG                 FALSE
-#endif
-
 /*===========================================================================*/
 /* ADC driver related settings.                                              */
 /*===========================================================================*/
@@ -301,7 +294,7 @@
  * @brief   Serial buffers size.
  * @details Configuration parameter, you can change the depth of the queue
  *          buffers depending on the requirements of your application.
- * @note    The default is 16 bytes for both the transmission and receive
+ * @note    The default is 64 bytes for both the transmission and receive
  *          buffers.
  */
 #if !defined(SERIAL_BUFFERS_SIZE) || defined(__DOXYGEN__)
@@ -326,38 +319,6 @@
  */
 #if !defined(SPI_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
 #define SPI_USE_MUTUAL_EXCLUSION    TRUE
-#endif
-
-/*===========================================================================*/
-/* UART driver related settings.                                             */
-/*===========================================================================*/
-
-/**
- * @brief   Enables synchronous APIs.
- * @note    Disabling this option saves both code and data space.
- */
-#if !defined(UART_USE_WAIT) || defined(__DOXYGEN__)
-#define UART_USE_WAIT               FALSE
-#endif
-
-/**
- * @brief   Enables the @p uartAcquireBus() and @p uartReleaseBus() APIs.
- * @note    Disabling this option saves both code and data space.
- */
-#if !defined(UART_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
-#define UART_USE_MUTUAL_EXCLUSION   FALSE
-#endif
-
-/*===========================================================================*/
-/* USB driver related settings.                                              */
-/*===========================================================================*/
-
-/**
- * @brief   Enables synchronous APIs.
- * @note    Disabling this option saves both code and data space.
- */
-#if !defined(USB_USE_WAIT) || defined(__DOXYGEN__)
-#define USB_USE_WAIT                FALSE
 #endif
 
 #endif /* _HALCONF_H_ */

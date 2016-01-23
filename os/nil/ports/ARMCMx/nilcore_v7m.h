@@ -157,20 +157,11 @@
 
 #elif (CORTEX_MODEL == 4)
 #define PORT_ARCHITECTURE_ARM_v7ME
-#define PORT_ARCHITECTURE_NAME          "ARMv7E-M"
+#define PORT_ARCHITECTURE_NAME          "ARMv7-ME"
 #if CORTEX_USE_FPU
 #define PORT_CORE_VARIANT_NAME          "Cortex-M4F"
 #else
 #define PORT_CORE_VARIANT_NAME          "Cortex-M4"
-#endif
-
-#elif (CORTEX_MODEL == 7)
-#define PORT_ARCHITECTURE_ARM_v7ME
-#define PORT_ARCHITECTURE_NAME          "ARMv7E-M"
-#if CORTEX_USE_FPU
-#define PORT_CORE_VARIANT_NAME          "Cortex-M7F"
-#else
-#define PORT_CORE_VARIANT_NAME          "Cortex-M7"
 #endif
 #endif
 
@@ -389,9 +380,6 @@ static inline void port_init(void) {
 
   /* DWT cycle counter enable.*/
   CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-#if CORTEX_MODEL == 7
-  DWT->LAR = 0xC5ACCE55U;
-#endif
   DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
   /* Initialization of the system vectors used by the port.*/
@@ -455,17 +443,7 @@ static inline bool port_is_isr_context(void) {
 static inline void port_lock(void) {
 
 #if CORTEX_SIMPLIFIED_PRIORITY == FALSE
-#if defined(__CM7_REV)
-#if __CM7_REV == 0
-  __disable_irq();
-#endif
-#endif
   __set_BASEPRI(CORTEX_BASEPRI_KERNEL);
-#if defined(__CM7_REV)
-#if __CM7_REV == 0
-  __enable_irq();
-#endif
-#endif
 #else /* CORTEX_SIMPLIFIED_PRIORITY */
   __disable_irq();
 #endif /* CORTEX_SIMPLIFIED_PRIORITY */
