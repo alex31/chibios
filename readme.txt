@@ -72,6 +72,32 @@
 *** Releases and Change Log                                               ***
 *****************************************************************************
 
+*** 16.1.4 ***
+- ALL: Startup files relicensed under Apache 2.0.
+- RT:  Added RT-STM32L476-DISCOVERY demo.
+- HAL: Added more STM32L4xx testhal demos.
+- HAL: Updated all STM32F476 mcuconf.h files.
+- VAR: Fixed palSetMode glitching outputs (bug #723).
+- VAR: Fixed error in STM32 PWM driver regarding channels 4 and 5 (bug #722).
+- VAR: Fixed GCC 5.2 crashes while compiling ChibiOS (bug #718).
+- HAL: Fixed wrong definition in STM32L4 ext_lld_isr.h (bug #717).
+- HAL: Fixed wrong definitions in STM32F746 mcuconf.h files (bug #716)
+- RT:  Fixed wrong SysTick initialization in generic demos (bug #715).
+- NIL: Fixed wrong SysTick initialization in generic demos (bug #715).
+- HAL: Fixed usbStop does not resume threads suspended in synchronous calls
+       to usbTransmit (bug #714).
+- VAR: Fixed state check in lwIP when SYS_LIGHTWEIGHT_PROT is disabled
+       (bug #713).
+- RT:  Fixed race condition in RT registry (bug #712). 
+- HAL: Fixed IAR warnings in ext_lld_isr.c (bug #711).
+- HAL: Fixed build error caused by STM32 SPIv1 driver (bug #710).
+- HAL: Fixed shift of signed constant causes warnings with IAR compiler
+       (bug #709).
+- HAL: Fixed wrong RTCv2 settings for STM32L4 (bug #708).
+- HAL: Fixed missing OTGv1 support for STM32L4 (bug #707).
+- NIL: Fixed ARM errata 752419 (bug #706).
+- RT:  Fixed ARM errata 752419 (bug #706).
+
 *** 16.1.3 ***
 - HAL: Fixed unused variable in STM32 SPIv2 driver (bug #705).
 - HAL: Fixed chDbgAssert() still called from STM32 SPIv1 driver (bug #704).
