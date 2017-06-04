@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
@@ -25,8 +25,8 @@
  * @{
  */
 
-#ifndef _CHVT_H_
-#define _CHVT_H_
+#ifndef CHVT_H
+#define CHVT_H
 
 /*===========================================================================*/
 /* Module constants.                                                         */
@@ -51,7 +51,17 @@
  *          see the specific function documentation.
  */
 #define TIME_INFINITE   ((systime_t)-1)
+
+/**
+ * @brief   Maximum time constant.
+ */
+#define TIME_MAXIMUM    ((systime_t)-2)
 /** @} */
+
+/**
+ * @brief   Maximum unsigned integer.
+ */
+#define __UINT_MAX      ((unsigned int)-1)
 
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
@@ -91,13 +101,16 @@
 /*===========================================================================*/
 
 /**
- * @name    Time conversion utilities
+ * @name    Fast time conversion utilities
  * @{
  */
 /**
  * @brief   Seconds to system ticks.
  * @details Converts from seconds to system ticks number.
  * @note    The result is rounded upward to the next tick boundary.
+ * @note    Use of this macro for large values is not secure because
+ *          integer overflows, make sure your value can be correctly
+ *          converted.
  *
  * @param[in] sec       number of seconds
  * @return              The number of ticks.
@@ -111,6 +124,9 @@
  * @brief   Milliseconds to system ticks.
  * @details Converts from milliseconds to system ticks number.
  * @note    The result is rounded upward to the next tick boundary.
+ * @note    Use of this macro for large values is not secure because
+ *          integer overflows, make sure your value can be correctly
+ *          converted.
  *
  * @param[in] msec      number of milliseconds
  * @return              The number of ticks.
@@ -125,6 +141,9 @@
  * @brief   Microseconds to system ticks.
  * @details Converts from microseconds to system ticks number.
  * @note    The result is rounded upward to the next tick boundary.
+ * @note    Use of this macro for large values is not secure because
+ *          integer overflows, make sure your value can be correctly
+ *          converted.
  *
  * @param[in] usec      number of microseconds
  * @return              The number of ticks.
@@ -139,6 +158,9 @@
  * @brief   System ticks to seconds.
  * @details Converts from system ticks number to seconds.
  * @note    The result is rounded up to the next second boundary.
+ * @note    Use of this macro for large values is not secure because
+ *          integer overflows, make sure your value can be correctly
+ *          converted.
  *
  * @param[in] n         number of system ticks
  * @return              The number of seconds.
@@ -151,6 +173,9 @@
  * @brief   System ticks to milliseconds.
  * @details Converts from system ticks number to milliseconds.
  * @note    The result is rounded up to the next millisecond boundary.
+ * @note    Use of this macro for large values is not secure because
+ *          integer overflows, make sure your value can be correctly
+ *          converted.
  *
  * @param[in] n         number of system ticks
  * @return              The number of milliseconds.
@@ -164,6 +189,9 @@
  * @brief   System ticks to microseconds.
  * @details Converts from system ticks number to microseconds.
  * @note    The result is rounded up to the next microsecond boundary.
+ * @note    Use of this macro for large values is not secure because
+ *          integer overflows, make sure your value can be correctly
+ *          converted.
  *
  * @param[in] n         number of system ticks
  * @return              The number of microseconds.
@@ -197,6 +225,142 @@ extern "C" {
 /*===========================================================================*/
 
 /**
+ * @name    Secure time conversion utilities
+ * @{
+ */
+/**
+ * @brief   Seconds to system ticks.
+ * @details Converts from seconds to system ticks number.
+ * @note    The result is rounded upward to the next tick boundary.
+ * @note    This function uses a 64 bits internal representation,
+ *          use with non-constant parameters can lead to inefficient
+ *          code because 64 bits arithmetic would be used at runtime.
+ *
+ * @param[in] sec       number of seconds
+ * @return              The number of ticks.
+ *
+ * @api
+ */
+static inline systime_t LL_S2ST(unsigned int sec) {
+  uint64_t ticks = (uint64_t)sec * (uint64_t)CH_CFG_ST_FREQUENCY;
+
+  chDbgAssert(ticks <= (uint64_t)TIME_MAXIMUM, "conversion overflow");
+
+  return (systime_t)ticks;
+}
+
+/**
+ * @brief   Milliseconds to system ticks.
+ * @details Converts from milliseconds to system ticks number.
+ * @note    The result is rounded upward to the next tick boundary.
+ * @note    This function uses a 64 bits internal representation,
+ *          use with non-constant parameters can lead to inefficient
+ *          code because 64 bits arithmetic would be used at runtime.
+ *
+ * @param[in] msec      number of milliseconds
+ * @return              The number of ticks.
+ *
+ * @api
+ */
+static inline systime_t LL_MS2ST(unsigned int msec) {
+  uint64_t ticks = (((uint64_t)msec * (uint64_t)CH_CFG_ST_FREQUENCY) + 999ULL)
+                   / 1000ULL;
+
+  chDbgAssert(ticks <= (uint64_t)TIME_MAXIMUM, "conversion overflow");
+
+  return (systime_t)ticks;
+}
+
+/**
+ * @brief   Microseconds to system ticks.
+ * @details Converts from microseconds to system ticks number.
+ * @note    The result is rounded upward to the next tick boundary.
+ * @note    This function uses a 64 bits internal representation,
+ *          use with non-constant parameters can lead to inefficient
+ *          code because 64 bits arithmetic would be used at runtime.
+ *
+ * @param[in] usec      number of microseconds
+ * @return              The number of ticks.
+ *
+ * @api
+ */
+static inline systime_t LL_US2ST(unsigned int usec) {
+  uint64_t ticks = (((uint64_t)usec * (uint64_t)CH_CFG_ST_FREQUENCY) + 999999ULL)
+                   / 1000000ULL;
+
+  chDbgAssert(ticks <= (uint64_t)TIME_MAXIMUM, "conversion overflow");
+
+  return (systime_t)ticks;
+}
+
+/**
+ * @brief   System ticks to seconds.
+ * @details Converts from system ticks number to seconds.
+ * @note    The result is rounded up to the next second boundary.
+ * @note    This function uses a 64 bits internal representation,
+ *          use with non-constant parameters can lead to inefficient
+ *          code because 64 bits arithmetic would be used at runtime.
+ *
+ * @param[in] n         number of system ticks
+ * @return              The number of seconds.
+ *
+ * @api
+ */
+static inline unsigned int LL_ST2S(systime_t n) {
+  uint64_t sec = ((uint64_t)n + (uint64_t)CH_CFG_ST_FREQUENCY - 1ULL)
+                 / (uint64_t)CH_CFG_ST_FREQUENCY;
+
+  chDbgAssert(sec < (uint64_t)__UINT_MAX, "conversion overflow");
+
+  return (unsigned int)sec;
+}
+
+/**
+ * @brief   System ticks to milliseconds.
+ * @details Converts from system ticks number to milliseconds.
+ * @note    The result is rounded up to the next millisecond boundary.
+ * @note    This function uses a 64 bits internal representation,
+ *          use with non-constant parameters can lead to inefficient
+ *          code because 64 bits arithmetic would be used at runtime.
+ *
+ * @param[in] n         number of system ticks
+ * @return              The number of milliseconds.
+ *
+ * @api
+ */
+static inline unsigned int LL_ST2MS(systime_t n) {
+  uint64_t msec = (((uint64_t)n * 1000ULL) + (uint64_t)CH_CFG_ST_FREQUENCY - 1ULL)
+                   / (uint64_t)CH_CFG_ST_FREQUENCY;
+
+  chDbgAssert(msec < (uint64_t)__UINT_MAX, "conversion overflow");
+
+  return (unsigned int)msec;
+}
+
+/**
+ * @brief   System ticks to microseconds.
+ * @details Converts from system ticks number to microseconds.
+ * @note    The result is rounded up to the next microsecond boundary.
+ * @note    This function uses a 64 bits internal representation,
+ *          use with non-constant parameters can lead to inefficient
+ *          code because 64 bits arithmetic would be used at runtime.
+ *
+ * @param[in] n         number of system ticks
+ * @return              The number of microseconds.
+ *
+ * @api
+ */
+static inline unsigned int LL_ST2US(systime_t n) {
+  uint64_t usec = (((uint64_t)n * 1000000ULL) + (uint64_t)CH_CFG_ST_FREQUENCY - 1ULL)
+                   / (uint64_t)CH_CFG_ST_FREQUENCY;
+
+  chDbgAssert(usec < (uint64_t)__UINT_MAX, "conversion overflow");
+
+  return (unsigned int)usec;
+}
+/** @} */
+
+/**
  * @brief   Initializes a @p virtual_timer_t object.
  * @note    Initializing a timer object is not strictly required because
  *          the function @p chVTSetI() initializes the object too. This
@@ -209,7 +373,7 @@ extern "C" {
  */
 static inline void chVTObjectInit(virtual_timer_t *vtp) {
 
-  vtp->vt_func = NULL;
+  vtp->func = NULL;
 }
 
 /**
@@ -228,7 +392,7 @@ static inline void chVTObjectInit(virtual_timer_t *vtp) {
 static inline systime_t chVTGetSystemTimeX(void) {
 
 #if CH_CFG_ST_TIMEDELTA == 0
-  return ch.vtlist.vt_systime;
+  return ch.vtlist.systime;
 #else /* CH_CFG_ST_TIMEDELTA > 0 */
   return port_timer_get_time();
 #endif /* CH_CFG_ST_TIMEDELTA > 0 */
@@ -344,15 +508,15 @@ static inline bool chVTGetTimersStateI(systime_t *timep) {
 
   chDbgCheckClassI();
 
-  if (&ch.vtlist == (virtual_timers_list_t *)ch.vtlist.vt_next) {
+  if (&ch.vtlist == (virtual_timers_list_t *)ch.vtlist.next) {
     return false;
   }
 
   if (timep != NULL) {
 #if CH_CFG_ST_TIMEDELTA == 0
-    *timep = ch.vtlist.vt_next->vt_delta;
+    *timep = ch.vtlist.next->delta;
 #else
-    *timep = ch.vtlist.vt_lasttime + ch.vtlist.vt_next->vt_delta +
+    *timep = ch.vtlist.lasttime + ch.vtlist.next->delta +
              CH_CFG_ST_TIMEDELTA - chVTGetSystemTimeX();
 #endif
   }
@@ -374,7 +538,7 @@ static inline bool chVTIsArmedI(virtual_timer_t *vtp) {
 
   chDbgCheckClassI();
 
-  return (bool)(vtp->vt_func != NULL);
+  return (bool)(vtp->func != NULL);
 }
 
 /**
@@ -504,21 +668,21 @@ static inline void chVTDoTickI(void) {
   chDbgCheckClassI();
 
 #if CH_CFG_ST_TIMEDELTA == 0
-  ch.vtlist.vt_systime++;
-  if (&ch.vtlist != (virtual_timers_list_t *)ch.vtlist.vt_next) {
+  ch.vtlist.systime++;
+  if (&ch.vtlist != (virtual_timers_list_t *)ch.vtlist.next) {
     /* The list is not empty, processing elements on top.*/
-    --ch.vtlist.vt_next->vt_delta;
-    while (ch.vtlist.vt_next->vt_delta == (systime_t)0) {
+    --ch.vtlist.next->delta;
+    while (ch.vtlist.next->delta == (systime_t)0) {
       virtual_timer_t *vtp;
       vtfunc_t fn;
 
-      vtp = ch.vtlist.vt_next;
-      fn = vtp->vt_func;
-      vtp->vt_func = NULL;
-      vtp->vt_next->vt_prev = (virtual_timer_t *)&ch.vtlist;
-      ch.vtlist.vt_next = vtp->vt_next;
+      vtp = ch.vtlist.next;
+      fn = vtp->func;
+      vtp->func = NULL;
+      vtp->next->prev = (virtual_timer_t *)&ch.vtlist;
+      ch.vtlist.next = vtp->next;
       chSysUnlockFromISR();
-      fn(vtp->vt_par);
+      fn(vtp->par);
       chSysLockFromISR();
     }
   }
@@ -527,26 +691,26 @@ static inline void chVTDoTickI(void) {
   systime_t now, delta;
 
   /* First timer to be processed.*/
-  vtp = ch.vtlist.vt_next;
+  vtp = ch.vtlist.next;
   now = chVTGetSystemTimeX();
 
   /* All timers within the time window are triggered and removed,
      note that the loop is stopped by the timers header having
      "ch.vtlist.vt_delta == (systime_t)-1" which is greater than
      all deltas.*/
-  while (vtp->vt_delta <= (systime_t)(now - ch.vtlist.vt_lasttime)) {
+  while (vtp->delta <= (systime_t)(now - ch.vtlist.lasttime)) {
     vtfunc_t fn;
 
     /* The "last time" becomes this timer's expiration time.*/
-    ch.vtlist.vt_lasttime += vtp->vt_delta;
+    ch.vtlist.lasttime += vtp->delta;
 
-    vtp->vt_next->vt_prev = (virtual_timer_t *)&ch.vtlist;
-    ch.vtlist.vt_next = vtp->vt_next;
-    fn = vtp->vt_func;
-    vtp->vt_func = NULL;
+    vtp->next->prev = (virtual_timer_t *)&ch.vtlist;
+    ch.vtlist.next = vtp->next;
+    fn = vtp->func;
+    vtp->func = NULL;
 
     /* if the list becomes empty then the timer is stopped.*/
-    if (ch.vtlist.vt_next == (virtual_timer_t *)&ch.vtlist) {
+    if (ch.vtlist.next == (virtual_timer_t *)&ch.vtlist) {
       port_timer_stop_alarm();
     }
 
@@ -556,7 +720,7 @@ static inline void chVTDoTickI(void) {
     chSysUnlockFromISR();
 
     /* The callback is invoked outside the kernel critical zone.*/
-    fn(vtp->vt_par);
+    fn(vtp->par);
 
     /* Re-entering the critical zone in order to continue the exploration
        of the list.*/
@@ -564,28 +728,28 @@ static inline void chVTDoTickI(void) {
 
     /* Next element in the list, the current time could have advanced so
        recalculating the time window.*/
-    vtp = ch.vtlist.vt_next;
+    vtp = ch.vtlist.next;
     now = chVTGetSystemTimeX();
   }
 
   /* if the list is empty, nothing else to do.*/
-  if (ch.vtlist.vt_next == (virtual_timer_t *)&ch.vtlist) {
+  if (ch.vtlist.next == (virtual_timer_t *)&ch.vtlist) {
     return;
   }
 
   /* Recalculating the next alarm time.*/
-  delta = ch.vtlist.vt_lasttime + vtp->vt_delta - now;
+  delta = ch.vtlist.lasttime + vtp->delta - now;
   if (delta < (systime_t)CH_CFG_ST_TIMEDELTA) {
     delta = (systime_t)CH_CFG_ST_TIMEDELTA;
   }
   port_timer_set_alarm(now + delta);
 
-  chDbgAssert((chVTGetSystemTimeX() - ch.vtlist.vt_lasttime) <=
-              (now + delta - ch.vtlist.vt_lasttime),
+  chDbgAssert((chVTGetSystemTimeX() - ch.vtlist.lasttime) <=
+              (now + delta - ch.vtlist.lasttime),
               "exceeding delta");
 #endif /* CH_CFG_ST_TIMEDELTA > 0 */
 }
 
-#endif /* _CHVT_H_ */
+#endif /* CHVT_H */
 
 /** @} */

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
@@ -28,8 +28,8 @@
  * @{
  */
 
-#ifndef _CHEVENTS_H_
-#define _CHEVENTS_H_
+#ifndef CHEVENTS_H
+#define CHEVENTS_H
 
 #if (CH_CFG_USE_EVENTS == TRUE) || defined(__DOXYGEN__)
 
@@ -55,16 +55,16 @@ typedef struct event_listener event_listener_t;
  * @brief   Event Listener structure.
  */
 struct event_listener {
-  event_listener_t      *el_next;       /**< @brief Next Event Listener
+  event_listener_t      *next;          /**< @brief Next Event Listener
                                                     registered on the event
                                                     source.                 */
-  thread_t              *el_listener;   /**< @brief Thread interested in the
+  thread_t              *listener;      /**< @brief Thread interested in the
                                                     event source.           */
-  eventmask_t           el_events;      /**< @brief Events to be set in
+  eventmask_t           events;         /**< @brief Events to be set in
                                                     the listening thread.   */
-  eventflags_t          el_flags;       /**< @brief Flags added to the listener
+  eventflags_t          flags;          /**< @brief Flags added to the listener
                                                     by the event source.    */
-  eventflags_t          el_wflags;      /**< @brief Flags that this listener
+  eventflags_t          wflags;         /**< @brief Flags that this listener
                                                     interested in.          */
 };
 
@@ -72,7 +72,7 @@ struct event_listener {
  * @brief   Event Source structure.
  */
 typedef struct event_source {
-  event_listener_t      *es_next;       /**< @brief First Event Listener
+  event_listener_t      *next;          /**< @brief First Event Listener
                                                     registered on the Event
                                                     Source.                 */
 } event_source_t;
@@ -100,7 +100,7 @@ typedef void (*evhandler_t)(eventid_t id);
  * @brief   Data part of a static event source initializer.
  * @details This macro should be used when statically initializing an event
  *          source that is part of a bigger structure.
- * @param name the name of the event source variable
+ * @param name          the name of the event source variable
  */
 #define _EVENTSOURCE_DATA(name) {(void *)(&name)}
 
@@ -169,15 +169,15 @@ extern "C" {
  */
 static inline void chEvtObjectInit(event_source_t *esp) {
 
-  esp->es_next = (event_listener_t *)esp;
+  esp->next = (event_listener_t *)esp;
 }
 
 /**
- * @brief     Registers an Event Listener on an Event Source.
+ * @brief   Registers an Event Listener on an Event Source.
  * @details Once a thread has registered as listener on an event source it
- *             will be notified of all events broadcasted there.
- * @note     Multiple Event Listeners can specify the same bits to be ORed to
- *             different threads.
+ *          will be notified of all events broadcasted there.
+ * @note    Multiple Event Listeners can specify the same bits to be ORed to
+ *          different threads.
  *
  * @param[in] esp       pointer to the @p event_source_t structure
  * @param[out] elp      pointer to the @p event_listener_t structure
@@ -223,7 +223,7 @@ static inline void chEvtRegister(event_source_t *esp,
  */
 static inline bool chEvtIsListeningI(event_source_t *esp) {
 
-  return (bool)(esp != (event_source_t *)esp->es_next);
+  return (bool)(esp != (event_source_t *)esp->next);
 }
 
 /**
@@ -256,8 +256,21 @@ static inline void chEvtBroadcastI(event_source_t *esp) {
   chEvtBroadcastFlagsI(esp, (eventflags_t)0);
 }
 
+/**
+ * @brief   Returns the events mask.
+ * @details The pending events mask is returned but not altered in any way.
+ *
+ * @return              The pending events mask.
+ *
+ * @api
+ */
+static inline eventmask_t chEvtGetEventsX(void) {
+
+  return currp->epending;
+}
+
 #endif /* CH_CFG_USE_EVENTS == TRUE */
 
-#endif /* _CHEVENTS_H_ */
+#endif /* CHEVENTS_H */
 
 /** @} */

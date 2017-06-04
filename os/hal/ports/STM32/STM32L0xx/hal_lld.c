@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -208,6 +208,12 @@ void stm32_clock_init(void) {
   RCC->CR |= RCC_CR_HSION;
   while ((RCC->CR & RCC_CR_HSIRDY) == 0)
     ;                           /* Waits until HSI16 is stable.             */
+
+#if STM32_HSI16_DIVIDER_ENABLED
+  RCC->CR |= RCC_CR_HSIDIVEN;
+  while ((RCC->CR & RCC_CR_HSIDIVF) == 0)
+    ;
+#endif
 #endif
 
 #if STM32_HSE_ENABLED

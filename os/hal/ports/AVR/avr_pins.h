@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
     limitations under the License.
 */
 
-#ifndef _AVR_PINS_H_
-#define _AVR_PINS_H_
+#ifndef AVR_PINS_H
+#define AVR_PINS_H
 
 #include <avr/io.h>
 
 #if AVR_SPI_USE_SPI1
 
-#if defined(__AVR_ATmega644__) || defined(__AVR_ATmega644P__)
+#if defined(__AVR_ATmega644__) || defined(__AVR_ATmega644P__) || defined(__AVR_ATmega162__)
   #define PIN_SPI1            PINB
   #define PORT_SPI1           PORTB
   #define DDR_SPI1            DDRB
@@ -91,4 +91,69 @@
 
 #endif /* AVR_ADC_USE_ADC1 */
 
-#endif /* _AVR_PINS_H_ */
+#if AVR_EXT_USE_PCINT0
+#if defined(__AVR_ATmega162__)
+  #define PCINT0_PIN            PINA
+#elif defined(__AVR_ATmega328P__) || \
+      defined(__AVR_ATmega1280__) || \
+      defined(__AVR_ATmega2560__)
+  #define PCINT0_PIN            PINB
+#else
+  #warning "Device not supported by EXT driver"
+#endif
+#endif /* AVR_EXT_USE_PCINT0 */
+
+#if AVR_EXT_USE_PCINT1
+#if defined(__AVR_ATmega162__) || \
+    defined(__AVR_ATmega328P__)
+  #define PCINT1_PIN            PINC
+#elif defined(__AVR_ATmega1280__) || \
+      defined(__AVR_ATmega2560__)
+  #define PCINT1_PIN            PINE
+#else
+  #warning "Device not supported by EXT driver"
+#endif
+#endif /* AVR_EXT_USE_PCINT1 */
+
+#if AVR_EXT_USE_PCINT2
+#if defined(__AVR_ATmega1280__) || \
+    defined(__AVR_ATmega2560__)
+  #define PCINT2_PIN            PINK
+#else
+  #warning "Device not supported by EXT driver"
+#endif
+#endif /* AVR_EXT_USE_PCINT2 */
+
+#if AVR_EXT_USE_PCINT3
+#warning "Device not supported by EXT driver"
+#endif /* AVR_EXT_USE_PCINT3 */
+
+#if AVR_EXT_USE_PCINT4
+#warning "Device not supported by EXT driver"
+#endif /* AVR_EXT_USE_PCINT4 */
+
+#if AVR_EXT_USE_PCINT5
+#warning "Device not supported by EXT driver"
+#endif /* AVR_EXT_USE_PCINT5 */
+
+#if AVR_EXT_USE_PCINT6
+#warning "Device not supported by EXT driver"
+#endif /* AVR_EXT_USE_PCINT6 */
+
+#if AVR_EXT_USE_PCINT7
+#warning "Device not supported by EXT driver"
+#endif /* AVR_EXT_USE_PCINT7 */
+
+#if AVR_EXT_USE_PCINT8
+#warning "Device not supported by EXT driver"
+#endif /* AVR_EXT_USE_PCINT8 */
+
+#if AVR_EXT_USE_PCINT9
+#warning "Device not supported by EXT driver"
+#endif /* AVR_EXT_USE_PCINT9 */
+
+#if AVR_EXT_USE_PCINT10
+#warning "Device not supported by EXT driver"
+#endif /* AVR_EXT_USE_PCINT10 */
+
+#endif /* AVR_PINS_H */
