@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
     limitations under the License.
 */
 
-#ifndef MCUCONF_H
-#define MCUCONF_H
+#ifndef _MCUCONF_H_
+#define _MCUCONF_H_
 
 /*
  * SPC563Mxx drivers configuration.
@@ -155,4 +155,4 @@
 #define SPC5_CAN_FLEXCAN1_USE_EXT_CLK       FALSE
 #define SPC5_CAN_FLEXCAN1_IRQ_PRIORITY      11
 
-#endif /* MCUCONF_H */
+#endif /* _MCUCONF_H_ */

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@
  * @{
  */
 
-#ifndef STM32_DMA_H
-#define STM32_DMA_H
+#ifndef _STM32_DMA_H_
+#define _STM32_DMA_H_
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -55,7 +55,7 @@
  *                      nibble
  * @return              Returns the channel associated to the stream.
  */
-#define STM32_DMA_GETCHANNEL(id, c) (((c) >> (((id) & 7U) * 4U)) & 15U)
+#define STM32_DMA_GETCHANNEL(id, c) (((c) >> (((id) & 7U) * 4U)) & 7U)
 
 /**
  * @brief   Checks if a DMA priority is within the valid range.
@@ -671,6 +671,6 @@ extern "C" {
 }
 #endif
 
-#endif /* STM32_DMA_H */
+#endif /* _STM32_DMA_H_ */
 
 /** @} */

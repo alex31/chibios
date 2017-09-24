@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -92,14 +92,6 @@ static void rxend(UARTDriver *uartp) {
 }
 
 /*
- * This callback is invoked when configured timeout reached.
- */
-static void rxtimeout(UARTDriver *uartp) {
-
-  (void)uartp;
-}
-
-/*
  * UART driver configuration structure.
  */
 static UARTConfig uart_cfg_1 = {
@@ -108,8 +100,6 @@ static UARTConfig uart_cfg_1 = {
   rxend,
   rxchar,
   rxerr,
-  rxtimeout,
-  0,
   38400,
   0,
   USART_CR2_LINEN,

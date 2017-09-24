@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -25,17 +25,10 @@
  * @{
  */
 
-#ifndef HALCONF_H
-#define HALCONF_H
+#ifndef _HALCONF_H_
+#define _HALCONF_H_
 
 #include "mcuconf.h"
-
-/**
- * @brief   Enables the TM subsystem.
- */
-#if !defined(HAL_USE_TM) || defined(__DOXYGEN__)
-#define HAL_USE_TM                  FALSE
-#endif
 
 /**
  * @brief   Enables the PAL subsystem.
@@ -119,13 +112,6 @@
  */
 #if !defined(HAL_USE_PWM) || defined(__DOXYGEN__)
 #define HAL_USE_PWM                 FALSE
-#endif
-
-/**
- * @brief   Enables the QSPI subsystem.
- */
-#if !defined(HAL_USE_QSPI) || defined(__DOXYGEN__)
-#define HAL_USE_QSPI                FALSE
 #endif
 
 /**
@@ -390,6 +376,6 @@
 #define USB_USE_WAIT                FALSE
 #endif
 
-#endif /* HALCONF_H */
+#endif /* _HALCONF_H_ */
 
 /** @} */

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 #include "ch.h"
 #include "hal.h"
-#include "ch_test.h"
+#include "test.h"
 
 /*
  * Blinker thread #1.
@@ -86,7 +86,7 @@ int main(void) {
    */
   while (true) {
     if (palReadPad(GPIOA, GPIOA_BUTTON))
-      test_execute((BaseSequentialStream *)&SD1);
+      TestThread(&SD1);
     chThdSleepMilliseconds(500);
   }
 }

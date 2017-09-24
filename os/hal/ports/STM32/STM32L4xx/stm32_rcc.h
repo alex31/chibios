@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -553,36 +553,6 @@
 /** @} */
 
 /**
- * @name    QUADSPI peripherals specific RCC operations
- * @{
- */
-/**
- * @brief   Enables the QUADSPI1 peripheral clock.
- *
- * @param[in] lp        low power enable flag
- *
- * @api
- */
-#define rccEnableQUADSPI1(lp) rccEnableAHB3(RCC_AHB3ENR_QSPIEN, lp)
-
-/**
- * @brief   Disables the QUADSPI1 peripheral clock.
- *
- * @param[in] lp        low power enable flag
- *
- * @api
- */
-#define rccDisableQUADSPI1(lp) rccDisableAHB3(RCC_AHB3ENR_QSPIEN, lp)
-
-/**
- * @brief   Resets the QUADSPI1 peripheral.
- *
- * @api
- */
-#define rccResetQUADSPI1() rccResetAHB3(RCC_AHB3RSTR_QSPIRST)
-/** @} */
-
-/**
  * @name    SDMMC peripheral specific RCC operations
  * @{
  */
@@ -1125,36 +1095,6 @@
  * @api
  */
 #define rccResetLPUART1() rccResetAPB1R2(RCC_APB1RSTR2_LPUART1RST)
-/** @} */
-
-/**
- * @name    USB peripheral specific RCC operations
- * @{
- */
-/**
- * @brief   Enables the USB peripheral clock.
- *
- * @param[in] lp        low power enable flag
- *
- * @api
- */
-#define rccEnableUSB(lp) rccEnableAPB1R1(RCC_APB1ENR1_USBFSEN, lp)
-
-/**
- * @brief   Disables the USB peripheral clock.
- *
- * @param[in] lp        low power enable flag
- *
- * @api
- */
-#define rccDisableUSB(lp) rccDisableAPB1R1(RCC_APB1ENR1_USBFSEN, lp)
-
-/**
- * @brief   Resets the USB peripheral.
- *
- * @api
- */
-#define rccResetUSB() rccResetAPB1R1(RCC_APB1RSTR1_USBFSRST)
 /** @} */
 
 /**

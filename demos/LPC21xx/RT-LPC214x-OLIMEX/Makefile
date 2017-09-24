@@ -112,7 +112,7 @@ PROJECT = ch
 # Imported source files and paths
 CHIBIOS = ../../..
 # Startup files.
-include $(CHIBIOS)/os/common/startup/ARM/compilers/GCC/mk/startup_lpc214x.mk
+include $(CHIBIOS)/os/common/ports/ARM/compilers/GCC/mk/startup_lpc214x.mk
 # HAL-OSAL files (optional).
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/hal/ports/LPC/LPC214x/platform.mk
@@ -120,7 +120,7 @@ include $(CHIBIOS)/os/hal/boards/OLIMEX_LPC_P2148/board.mk
 include $(CHIBIOS)/os/hal/osal/rt/osal.mk
 # RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
-include $(CHIBIOS)/os/common/ports/ARM/compilers/GCC/mk/port_generic.mk
+include $(CHIBIOS)/os/rt/ports/ARM/compilers/GCC/mk/port_generic.mk
 # Other files (optional).
 include $(CHIBIOS)/test/rt/test.mk
 
@@ -164,11 +164,9 @@ TCSRC =
 TCPPSRC =
 
 # List ASM source files here
-ASMSRC =
-ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
+ASMSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 
-INCDIR = $(CHIBIOS)/os/license \
-         $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
+INCDIR = $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) $(TESTINC) \
          $(CHIBIOS)/os/various
 
@@ -238,5 +236,5 @@ ULIBS =
 # End of user defines
 ##############################################################################
 
-RULESPATH = $(CHIBIOS)/os/common/startup/ARM/compilers/GCC
+RULESPATH = $(CHIBIOS)/os/common/ports/ARM/compilers/GCC
 include $(RULESPATH)/rules.mk

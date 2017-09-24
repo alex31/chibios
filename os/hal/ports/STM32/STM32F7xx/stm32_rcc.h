@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -522,31 +522,6 @@
  * @api
  */
 #define rccResetCAN2() rccResetAPB1(RCC_APB1RSTR_CAN2RST)
-
-/**
- * @brief   Resets the CAN3 peripheral.
- *
- * @api
- */
-#define rccResetCAN3() rccResetAPB1(RCC_APB1RSTR_CAN3RST)
-
-/**
- * @brief   Enables the CAN3 peripheral clock.
- *
- * @param[in] lp        low power enable flag
- *
- * @api
- */
-#define rccEnableCAN3(lp) rccEnableAPB1(RCC_APB1ENR_CAN3EN, lp)
-
-/**
- * @brief   Disables the CAN3 peripheral clock.
- *
- * @param[in] lp        low power enable flag
- *
- * @api
- */
-#define rccDisableCAN3(lp) rccDisableAPB1(RCC_APB1ENR_CAN3EN, lp)
 /** @} */
 
 /**
@@ -759,36 +734,6 @@
  * @api
  */
 #define rccDisableOTG_HSULPI(lp) rccDisableAHB1(RCC_AHB1ENR_OTGHSULPIEN, lp)
-/** @} */
-
-/**
- * @name    QUADSPI peripherals specific RCC operations
- * @{
- */
-/**
- * @brief   Enables the QUADSPI1 peripheral clock.
- *
- * @param[in] lp        low power enable flag
- *
- * @api
- */
-#define rccEnableQUADSPI1(lp) rccEnableAHB3(RCC_AHB3ENR_QSPIEN, lp)
-
-/**
- * @brief   Disables the QUADSPI1 peripheral clock.
- *
- * @param[in] lp        low power enable flag
- *
- * @api
- */
-#define rccDisableQUADSPI1(lp) rccDisableAHB3(RCC_AHB3ENR_QSPIEN, lp)
-
-/**
- * @brief   Resets the QUADSPI1 peripheral.
- *
- * @api
- */
-#define rccResetQUADSPI1() rccResetAHB3(RCC_AHB3RSTR_QSPIRST)
 /** @} */
 
 /**

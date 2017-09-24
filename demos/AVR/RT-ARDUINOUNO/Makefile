@@ -63,7 +63,7 @@ include $(CHIBIOS)/os/hal/boards/ARDUINO_UNO/board.mk
 include $(CHIBIOS)/os/hal/ports/AVR/platform.mk
 include $(CHIBIOS)/os/hal/osal/rt/osal.mk
 include $(CHIBIOS)/os/rt/rt.mk
-include $(CHIBIOS)/os/common/ports/AVR/compilers/GCC/mk/port.mk
+include $(CHIBIOS)/os/rt/ports/AVR/compilers/GCC/mk/port.mk
 #include $(CHIBIOS)/test/rt/test.mk
 
 # List C source files here. (C dependencies are automatically generated.)
@@ -103,7 +103,7 @@ DEBUG = dwarf-2
 #     Each directory must be seperated by a space.
 #     Use forward slashes for directory separators.
 #     For a directory that has spaces, enclose it in quotes.
-EXTRAINCDIRS = $(CHIBIOS)/os/license $(PORTINC) $(KERNINC) $(TESTINC) \
+EXTRAINCDIRS = $(PORTINC) $(KERNINC) $(TESTINC) \
                $(HALINC) $(OSALINC) $(PLATFORMINC) \
                $(BOARDINC) $(CHIBIOS)/os/various
 
@@ -254,12 +254,12 @@ LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
 # Type: avrdude -c ?
 # to get a full listing.
 #
-AVRDUDE_PROGRAMMER = arduino
+AVRDUDE_PROGRAMMER = avrisp2 
 
 # com1 = serial port. Use lpt1 to connect to parallel port.
-AVRDUDE_PORT = /dev/ttyACM0
+AVRDUDE_PORT = /dev/tty.usbmodem00034091
 
-AVRDUDE_WRITE_FLASH = -D -U flash:w:$(TARGET).hex
+AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 #AVRDUDE_WRITE_EEPROM = -U eeprom:w:$(TARGET).eep
 
 # Uncomment the following if you want avrdude's erase cycle counter.
@@ -278,7 +278,7 @@ AVRDUDE_WRITE_FLASH = -D -U flash:w:$(TARGET).hex
 
 AVRDUDE_FLAGS = -p $(MCU)
 AVRDUDE_FLAGS += -P $(AVRDUDE_PORT)
-AVRDUDE_FLAGS += -b 115200
+AVRDUDE_FLAGS += -b 57600
 AVRDUDE_FLAGS += -c $(AVRDUDE_PROGRAMMER)
 AVRDUDE_FLAGS += $(AVRDUDE_NO_VERIFY)
 AVRDUDE_FLAGS += $(AVRDUDE_VERBOSE)

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "ch.h"
+#include "nil.h"
 
 #if defined(__SPC5_HAL__)
 #include "platform.h"
@@ -92,17 +92,17 @@
 /**
  * @brief   Size in bits of the @p systick_t type.
  */
-#define OSAL_ST_RESOLUTION                  CH_CFG_ST_RESOLUTION
+#define OSAL_ST_RESOLUTION                  NIL_CFG_ST_RESOLUTION
 
 /**
  * @brief   Required systick frequency or resolution.
  */
-#define OSAL_ST_FREQUENCY                   CH_CFG_ST_FREQUENCY
+#define OSAL_ST_FREQUENCY                   NIL_CFG_ST_FREQUENCY
 
 /**
  * @brief   Systick mode required by the underlying OS.
  */
-#if (CH_CFG_ST_TIMEDELTA == 0) || defined(__DOXYGEN__)
+#if (NIL_CFG_ST_TIMEDELTA == 0) || defined(__DOXYGEN__)
 #define OSAL_ST_MODE                        OSAL_ST_MODE_PERIODIC
 #else
 #define OSAL_ST_MODE                        OSAL_ST_MODE_FREERUNNING
@@ -117,12 +117,8 @@
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
-#if CH_CFG_USE_SEMAPHORES == FALSE
-#error "OSAL requires CH_CFG_USE_SEMAPHORES=TRUE"
-#endif
-
-#if CH_CFG_USE_EVENTS == FALSE
-#error "OSAL requires CH_CFG_USE_EVENTS=TRUE"
+#if NIL_CFG_USE_EVENTS == FALSE
+#error "OSAL requires NIL_CFG_USE_EVENTS=TRUE"
 #endif
 
 #if !(OSAL_ST_MODE == OSAL_ST_MODE_NONE) &&                                 \
@@ -191,12 +187,10 @@ typedef struct event_source event_source_t;
  */
 typedef void (*eventcallback_t)(event_source_t *p);
 
-#if 0
 /**
  * @brief   Type of an event flags mask.
  */
 typedef uint32_t eventflags_t;
-#endif
 
 /**
  * @brief   Events source object.
@@ -219,8 +213,6 @@ struct event_source {
  */
 typedef semaphore_t mutex_t;
 
-
-#if 0
 /**
  * @brief   Type of a thread queue.
  * @details A thread queue is a queue of sleeping threads, queued threads
@@ -229,9 +221,8 @@ typedef semaphore_t mutex_t;
  *          because there are no real threads.
  */
 typedef struct {
-  thread_reference_t    tr;
+  semaphore_t   sem;
 } threads_queue_t;
-#endif
 
 /*===========================================================================*/
 /* Module macros.                                                            */
@@ -267,17 +258,19 @@ typedef struct {
  *
  * @api
  */
-#define osalDbgCheck(c) chDbgCheck(c)
+#define osalDbgCheck(c) chDbgAssert(c, "parameter check")
 
 /**
  * @brief   I-Class state check.
+ * @note    Not implemented in this simplified OSAL.
  */
-#define osalDbgCheckClassI() chDbgCheckClassI()
+#define osalDbgCheckClassI() /*chDbgCheckClassI()*/
 
 /**
  * @brief   S-Class state check.
+ * @note    Not implemented in this simplified OSAL.
  */
-#define osalDbgCheckClassS() chDbgCheckClassS()
+#define osalDbgCheckClassS() /*chDbgCheckClassS()*/
 /** @} */
 
 /**
@@ -447,7 +440,8 @@ typedef struct {
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+  void osalThreadDequeueNextI(threads_queue_t *tqp, msg_t msg);
+  void osalThreadDequeueAllI(threads_queue_t *tqp, msg_t msg);
 #ifdef __cplusplus
 }
 #endif
@@ -768,7 +762,7 @@ static inline void osalThreadResumeS(thread_reference_t *trp, msg_t msg) {
  */
 static inline void osalThreadQueueObjectInit(threads_queue_t *tqp) {
 
-  chThdQueueObjectInit(tqp);
+  chSemObjectInit(&tqp->sem, (cnt_t)0);
 }
 
 /**
@@ -797,33 +791,7 @@ static inline void osalThreadQueueObjectInit(threads_queue_t *tqp) {
 static inline msg_t osalThreadEnqueueTimeoutS(threads_queue_t *tqp,
                                               systime_t time) {
 
-  return chThdEnqueueTimeoutS(tqp, time);
-}
-
-/**
- * @brief   Dequeues and wakes up one thread from the queue, if any.
- *
- * @param[in] tqp       pointer to the threads queue object
- * @param[in] msg       the message code
- *
- * @iclass
- */
-static inline void osalThreadDequeueNextI(threads_queue_t *tqp, msg_t msg) {
-
-  chThdDequeueNextI(tqp, msg);
-}
-
-/**
- * @brief   Dequeues and wakes up all threads from the queue.
- *
- * @param[in] tqp       pointer to the threads queue object
- * @param[in] msg       the message code
- *
- * @iclass
- */
-static inline void osalThreadDequeueAllI(threads_queue_t *tqp, msg_t msg) {
-
-  chThdDequeueAllI(tqp, msg);
+  return chSemWaitTimeoutS(&tqp->sem, time);
 }
 
 /**

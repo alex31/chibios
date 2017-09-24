@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -16,48 +16,63 @@
 
 #include "ch.h"
 #include "hal.h"
-#include "ch_test.h"
+#include "test.h"
 
 /*
  * Blinker thread #1.
  */
-THD_WORKING_AREA(waThread1, 128);
-THD_FUNCTION(Thread1, arg) {
+static THD_WORKING_AREA(waThread1, 128);
+static THD_FUNCTION(Thread1, arg) {
 
   (void)arg;
 
-  chRegSetThreadName("blinker 1");
+  chRegSetThreadName("blinker");
   while (true) {
-    palToggleLine(LINE_LED3_RED);
-    chThdSleepMilliseconds(100);
-    palToggleLine(LINE_LED7_GREEN);
-    chThdSleepMilliseconds(100);
-    palToggleLine(LINE_LED10_RED);
-    chThdSleepMilliseconds(100);
-    palToggleLine(LINE_LED6_GREEN);
-    chThdSleepMilliseconds(100);
+    palSetPad(GPIOE, GPIOE_LED3_RED);
+    chThdSleepMilliseconds(125);
+    palClearPad(GPIOE, GPIOE_LED3_RED);
+    chThdSleepMilliseconds(125);
+    palSetPad(GPIOE, GPIOE_LED7_GREEN);
+    chThdSleepMilliseconds(125);
+    palClearPad(GPIOE, GPIOE_LED7_GREEN);
+    chThdSleepMilliseconds(125);
+    palSetPad(GPIOE, GPIOE_LED10_RED);
+    chThdSleepMilliseconds(125);
+    palClearPad(GPIOE, GPIOE_LED10_RED);
+    chThdSleepMilliseconds(125);
+    palSetPad(GPIOE, GPIOE_LED6_GREEN);
+    chThdSleepMilliseconds(125);
+    palClearPad(GPIOE, GPIOE_LED6_GREEN);
+    chThdSleepMilliseconds(125);
   }
 }
 
 /*
  * Blinker thread #2.
  */
-THD_WORKING_AREA(waThread2, 128);
-THD_FUNCTION(Thread2, arg) {
+static THD_WORKING_AREA(waThread2, 128);
+static THD_FUNCTION(Thread2, arg) {
 
   (void)arg;
 
-  chRegSetThreadName("blinker 2");
+  chRegSetThreadName("blinker");
   while (true) {
-    chThdSleepMilliseconds(50);
-    palToggleLine(LINE_LED5_ORANGE);
-    chThdSleepMilliseconds(100);
-    palToggleLine(LINE_LED9_BLUE);
-    chThdSleepMilliseconds(100);
-    palToggleLine(LINE_LED8_ORANGE);
-    chThdSleepMilliseconds(100);
-    palToggleLine(LINE_LED4_BLUE);
-    chThdSleepMilliseconds(50);
+    chThdSleepMilliseconds(125);
+    palSetPad(GPIOE, GPIOE_LED5_ORANGE);
+    chThdSleepMilliseconds(125);
+    palClearPad(GPIOE, GPIOE_LED5_ORANGE);
+    chThdSleepMilliseconds(125);
+    palSetPad(GPIOE, GPIOE_LED9_BLUE);
+    chThdSleepMilliseconds(125);
+    palClearPad(GPIOE, GPIOE_LED9_BLUE);
+    chThdSleepMilliseconds(125);
+    palSetPad(GPIOE, GPIOE_LED8_ORANGE);
+    chThdSleepMilliseconds(125);
+    palClearPad(GPIOE, GPIOE_LED8_ORANGE);
+    chThdSleepMilliseconds(125);
+    palSetPad(GPIOE, GPIOE_LED4_BLUE);
+    chThdSleepMilliseconds(125);
+    palClearPad(GPIOE, GPIOE_LED4_BLUE);
   }
 }
 
@@ -97,7 +112,7 @@ int main(void) {
    */
   while (true) {
     if (palReadPad(GPIOA, GPIOA_BUTTON))
-      test_execute((BaseSequentialStream *)&SD1);
+      TestThread(&SD1);
     chThdSleepMilliseconds(500);
   }
 }

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -47,9 +47,8 @@
  * @name    Platform identification
  * @{
  */
-#if defined(STM32L432xx) || defined(STM32L471xx) ||                         \
-    defined(STM32L475xx) || defined(STM32L476xx) ||                         \
-    defined(__DOXYGEN__)
+#if defined(STM32L471xx) || defined(STM32L475xx) ||                         \
+    defined(STM32L476xx) || defined(__DOXYGEN__)
 #define PLATFORM_NAME           "STM32L4xx Ultra Low Power"
 
 #elif defined(STM32L485xx) || defined(STM32L486xx)
@@ -1974,7 +1973,6 @@
 #else
 #error "invalid source selected for 48CLK clock"
 #endif
-#define STM32_USBCLK                STM32_48CLK
 
 /**
  * @brief   ADC clock frequency.

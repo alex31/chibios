@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -14,8 +14,10 @@
     limitations under the License.
 */
 
-#ifndef MCUCONF_H
-#define MCUCONF_H
+#ifndef _MCUCONF_H_
+#define _MCUCONF_H_
+
+#define STM32F103_MCUCONF
 
 /*
  * STM32F107 drivers configuration.
@@ -30,8 +32,6 @@
  * DMA priorities:
  * 0...3        Lowest...Highest.
  */
-
-#define STM32F107_MCUCONF
 
 /*
  * HAL driver system settings.
@@ -117,8 +117,7 @@
 #define STM32_I2C_I2C2_IRQ_PRIORITY         5
 #define STM32_I2C_I2C1_DMA_PRIORITY         3
 #define STM32_I2C_I2C2_DMA_PRIORITY         3
-#define STM32_I2C_I2C1_DMA_ERROR_HOOK(i2cp) osalSysHalt("DMA failure")
-#define STM32_I2C_I2C2_DMA_ERROR_HOOK(i2cp) osalSysHalt("DMA failure")
+#define STM32_I2C_DMA_ERROR_HOOK(i2cp)      osalSysHalt("DMA failure")
 
 /*
  * ICU driver system settings.
@@ -221,4 +220,4 @@
  */
 #define STM32_WDG_USE_IWDG                  FALSE
 
-#endif /* MCUCONF_H */
+#endif /* _MCUCONF_H_ */

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@
  * @{
  */
 
-#ifndef STM32_REGISTRY_H
-#define STM32_REGISTRY_H
+#ifndef _STM32_REGISTRY_H_
+#define _STM32_REGISTRY_H_
 
 /*===========================================================================*/
 /* Platform capabilities.                                                    */
@@ -50,7 +50,6 @@
 /* CAN attributes.*/
 #define STM32_HAS_CAN1                      TRUE
 #define STM32_HAS_CAN2                      FALSE
-#define STM32_HAS_CAN3                      FALSE
 #define STM32_CAN_MAX_FILTERS               14
 
 /* DAC attributes.*/
@@ -135,9 +134,6 @@
 #define STM32_HAS_I2C3                      FALSE
 #define STM32_HAS_I2C4                      FALSE
 
-/* QUADSPI attributes.*/
-#define STM32_HAS_QUADSPI1                  FALSE
-
 /* RTC attributes.*/
 #define STM32_HAS_RTC                       TRUE
 #define STM32_RTC_HAS_SUBSECONDS            TRUE
@@ -204,11 +200,11 @@
 
 #define STM32_HAS_TIM13                     TRUE
 #define STM32_TIM13_IS_32BITS               FALSE
-#define STM32_TIM13_CHANNELS                1
+#define STM32_TIM13_CHANNELS                2
 
 #define STM32_HAS_TIM14                     TRUE
 #define STM32_TIM14_IS_32BITS               FALSE
-#define STM32_TIM14_CHANNELS                1
+#define STM32_TIM14_CHANNELS                2
 
 #define STM32_HAS_TIM15                     TRUE
 #define STM32_TIM15_IS_32BITS               FALSE
@@ -216,11 +212,11 @@
 
 #define STM32_HAS_TIM16                     TRUE
 #define STM32_TIM16_IS_32BITS               FALSE
-#define STM32_TIM16_CHANNELS                1
+#define STM32_TIM16_CHANNELS                2
 
 #define STM32_HAS_TIM17                     TRUE
 #define STM32_TIM17_IS_32BITS               FALSE
-#define STM32_TIM17_CHANNELS                1
+#define STM32_TIM17_CHANNELS                2
 
 #define STM32_HAS_TIM18                     TRUE
 #define STM32_TIM18_IS_32BITS               FALSE
@@ -302,7 +298,6 @@
 /* CAN attributes.*/
 #define STM32_HAS_CAN1                      TRUE
 #define STM32_HAS_CAN2                      FALSE
-#define STM32_HAS_CAN3                      FALSE
 #define STM32_CAN_MAX_FILTERS               14
 
 /* DAC attributes.*/
@@ -387,9 +382,6 @@
 #define STM32_HAS_I2C3                      FALSE
 #define STM32_HAS_I2C4                      FALSE
 
-/* QUADSPI attributes.*/
-#define STM32_HAS_QUADSPI1                  FALSE
-
 /* RTC attributes.*/
 #define STM32_HAS_RTC                       TRUE
 #define STM32_RTC_HAS_SUBSECONDS            TRUE
@@ -456,11 +448,11 @@
 
 #define STM32_HAS_TIM13                     TRUE
 #define STM32_TIM13_IS_32BITS               FALSE
-#define STM32_TIM13_CHANNELS                1
+#define STM32_TIM13_CHANNELS                2
 
 #define STM32_HAS_TIM14                     TRUE
 #define STM32_TIM14_IS_32BITS               FALSE
-#define STM32_TIM14_CHANNELS                1
+#define STM32_TIM14_CHANNELS                2
 
 #define STM32_HAS_TIM15                     TRUE
 #define STM32_TIM15_IS_32BITS               FALSE
@@ -468,11 +460,11 @@
 
 #define STM32_HAS_TIM16                     TRUE
 #define STM32_TIM16_IS_32BITS               FALSE
-#define STM32_TIM16_CHANNELS                1
+#define STM32_TIM16_CHANNELS                2
 
 #define STM32_HAS_TIM17                     TRUE
 #define STM32_TIM17_IS_32BITS               FALSE
-#define STM32_TIM17_CHANNELS                1
+#define STM32_TIM17_CHANNELS                2
 
 #define STM32_HAS_TIM18                     TRUE
 #define STM32_TIM18_IS_32BITS               FALSE
@@ -537,6 +529,6 @@
 #endif /* defined(STM32F378xx) */
 /** @} */
 
-#endif /* STM32_REGISTRY_H */
+#endif /* _STM32_REGISTRY_H_ */
 
 /** @} */

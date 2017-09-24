@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 */
 
 #include "hal.h"
-#include "ch.h"
+#include "nil.h"
 #include "ch_test.h"
 
 /*
@@ -71,7 +71,7 @@ THD_FUNCTION(Thread3, arg) {
 
   /* Waiting for button push and activation of the test suite.*/
   while (true) {
-    if (palReadLine(LINE_BUTTON))
+    if (palReadPad(GPIOA, GPIOA_BUTTON))
       test_execute((BaseSequentialStream *)&SD1);
     chThdSleepMilliseconds(500);
   }

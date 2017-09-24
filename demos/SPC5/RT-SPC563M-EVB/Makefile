@@ -83,7 +83,7 @@ PROJECT = ch
 # Imported source files and paths
 CHIBIOS = ../../..
 # Startup files.
-include $(CHIBIOS)/os/common/startup/e200/compilers/GCC/mk/startup_spc563mxx.mk
+include $(CHIBIOS)/os/common/ports/e200/compilers/GCC/mk/startup_spc563mxx.mk
 # HAL-OSAL files (optional).
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/hal/boards/ST_EVB_SPC563M/board.mk
@@ -91,11 +91,9 @@ include $(CHIBIOS)/os/hal/ports/SPC5/SPC563Mxx/platform.mk
 include $(CHIBIOS)/os/hal/osal/rt/osal.mk
 # RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
-include $(CHIBIOS)/os/common/ports/e200/compilers/GCC/mk/port.mk
+include $(CHIBIOS)/os/rt/ports/e200/compilers/GCC/mk/port.mk
 # Other files (optional).
 include $(CHIBIOS)/test/rt/test.mk
-include $(CHIBIOS)/os/hal/lib/streams/streams.mk
-include $(CHIBIOS)/os/various/shell/shell.mk
 
 # Define linker script file here
 LDSCRIPT= $(STARTUPLD)/SPC563M64.ld
@@ -109,21 +107,20 @@ CSRC = $(STARTUPSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
        $(TESTSRC) \
-       $(STREAMSSRC) \
-       $(SHELLSRC) \
+       $(CHIBIOS)/os/hal/lib/streams/memstreams.c \
+       $(CHIBIOS)/os/hal/lib/streams/chprintf.c \
+       $(CHIBIOS)/os/various/shell.c \
        main.c
 
 # C++ sources here.
 CPPSRC =
 
 # List ASM source files here
-ASMSRC =
-ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
+ASMSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 
-INCDIR = $(CHIBIOS)/os/license \
-         $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
+INCDIR = $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) $(TESTINC) \
-         $(STREAMSINC) $(SHELLINC)
+         $(CHIBIOS)/os/hal/lib/streams $(CHIBIOS)/os/various
 
 #
 # Project, sources and paths
@@ -133,12 +130,11 @@ INCDIR = $(CHIBIOS)/os/license \
 # Compiler settings
 #
 
-#MCU  = e200zx -meabi -msdata=none -mnew-mnemonics -mregnames # HighTec
-MCU  = e200z3 -meabi -msdata=none -mregnames # Free GCC
+#MCU  = e500mc -meabi -msdata=none -mnew-mnemonics -mregnames
+MCU  = e200zx -meabi -msdata=none -mnew-mnemonics -mregnames
 
-#TRGT = ppc-vle-
-#TRGT = powerpc-eabivle-
-TRGT = ppc-freevle-eabi-
+#TRGT = powerpc-eabi-
+TRGT = ppc-vle-
 CC   = $(TRGT)gcc
 CPPC = $(TRGT)g++
 # Enable loading with g++ only if you need C++ runtime support.
@@ -188,5 +184,5 @@ ULIBS =
 # End of user defines
 ##############################################################################
 
-RULESPATH = $(CHIBIOS)/os/common/startup/e200/compilers/GCC
+RULESPATH = $(CHIBIOS)/os/common/ports/e200/compilers/GCC
 include $(RULESPATH)/rules.mk

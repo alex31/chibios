@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -18,15 +18,15 @@
 #include "hal.h"
 #include "chprintf.h"
 
-BaseSequentialStream * chp = (BaseSequentialStream *) &SD1;
-
-static void gpt3cb(GPTDriver *gptp) {
+static void gpt2cb(GPTDriver *gptp)
+{
   palTogglePad(IOPORT2, 7);
 }
 
-static GPTConfig gpt3cfg = {
+static GPTConfig gpt2cfg =
+{
   1000,         /* Timer clock.    */
-  gpt3cb        /* Timer callback. */
+  gpt2cb        /* Timer callback. */
 };
 
 /*
@@ -48,17 +48,16 @@ int main(void) {
   palSetPadMode(IOPORT2, 7, PAL_MODE_OUTPUT_PUSHPULL);
 
   sdStart(&SD1, NULL);
-  gptStart(&GPTD3, &gpt3cfg);
+  gptStart(&GPTD1, &gpt2cfg);
 
-  gptStartContinuous(&GPTD3, 500);
-
+  gptStartContinuous(&GPTD1, 500);
   while (1) {
-    chprintf(chp, "OCR3A: %d, TCCR3B: %x, period: %d, counter: %d , TCNT3: %d\r\n",
-                   OCR3A,
-                   TCCR3B,
-                   GPTD3.period,
-                   GPTD3.counter,
-                   TCNT3);
+    chprintf(&SD1, "OCR1A: %d, TCCR1B: %x, period: %d, counter: %d , TCNT1: %d\r\n",
+                   OCR1A,
+                   TCCR1B,
+                   GPTD1.period,
+                   GPTD1.counter,
+                   TCNT1);
     chThdSleepMilliseconds(100);
   }
 }

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
@@ -34,7 +34,7 @@
  */
 
 /**
- * @defgroup checks License Checks
+ * @defgroup types Kernel Types
  * @ingroup kernel
  */
 
@@ -107,9 +107,8 @@
  */
 
 /**
- * @defgroup mem Memory Alignment
- * @details Memory Alignment services.
- * @ingroup kernel
+ * @defgroup io_queues I/O Queues
+ * @ingroup synchronization
  */
 
 /**
@@ -138,6 +137,17 @@
  * @ingroup memory
  */
 
+ /**
+ * @defgroup streams Streams and Files
+ * @details Stream and Files interfaces.
+ * @ingroup kernel
+ */
+
+/**
+ * @defgroup data_streams Abstract Sequential Streams
+ * @ingroup streams
+ */
+
 /**
  * @defgroup registry Registry
  * @ingroup kernel
@@ -145,11 +155,6 @@
 
 /**
  * @defgroup debug Debug
- * @ingroup kernel
- */
-
-/**
- * @defgroup trace Trace
  * @ingroup kernel
  */
 

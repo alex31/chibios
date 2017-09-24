@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -373,6 +373,8 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
   extern SerialUSBDriver SDU2;
 
   switch (event) {
+  case USB_EVENT_RESET:
+    return;
   case USB_EVENT_ADDRESS:
     return;
   case USB_EVENT_CONFIGURED:
@@ -397,27 +399,18 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
 
     chSysUnlockFromISR();
     return;
-  case USB_EVENT_RESET:
-    /* Falls into.*/
   case USB_EVENT_UNCONFIGURED:
-    /* Falls into.*/
+    return;
   case USB_EVENT_SUSPEND:
     chSysLockFromISR();
 
     /* Disconnection event on suspend.*/
-    sduSuspendHookI(&SDU1);
-    sduSuspendHookI(&SDU2);
+    sduDisconnectI(&SDU1);
+    sduDisconnectI(&SDU2);
 
     chSysUnlockFromISR();
     return;
   case USB_EVENT_WAKEUP:
-    chSysLockFromISR();
-
-    /* Disconnection event on suspend.*/
-    sduWakeupHookI(&SDU1);
-    sduWakeupHookI(&SDU2);
-
-    chSysUnlockFromISR();
     return;
   case USB_EVENT_STALLED:
     return;

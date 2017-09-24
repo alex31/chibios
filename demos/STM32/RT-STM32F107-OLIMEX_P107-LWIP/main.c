@@ -16,7 +16,7 @@
 
 #include "ch.h"
 #include "hal.h"
-#include "ch_test.h"
+#include "test.h"
 
 #include "lwipthread.h"
 
@@ -76,7 +76,7 @@ int main(void) {
    */
   while (true) {
     if (palReadPad(GPIOC, GPIOC_SWITCH_TAMPER) == 0)
-      test_execute((BaseSequentialStream *)&SD3);
+      TestThread(&SD3);
     chThdSleepMilliseconds(500);
   }
 }

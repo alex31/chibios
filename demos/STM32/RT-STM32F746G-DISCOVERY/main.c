@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 #include "ch.h"
 #include "hal.h"
-#include "ch_test.h"
+#include "test.h"
 
 /*
  * This is a periodic thread that does absolutely nothing except flashing
@@ -51,7 +51,7 @@ int main(void) {
   chSysInit();
 
   /*
-   * ARD_D13 is programmed as output (board LED).
+   * GPIOI1 is programmed as output (board LED).
    */
   palClearLine(LINE_ARD_D13);
   palSetLineMode(LINE_ARD_D13, PAL_MODE_OUTPUT_PUSHPULL);
@@ -71,8 +71,8 @@ int main(void) {
    * sleeping in a loop and check the button state.
    */
   while (true) {
-    if (palReadLine(LINE_BUTTON_USER))
-      test_execute((BaseSequentialStream *)&SD1);
+    if (palReadPad(GPIOI, GPIOI_BUTTON_USER))
+      TestThread(&SD1);
     chThdSleepMilliseconds(500);
   }
 }

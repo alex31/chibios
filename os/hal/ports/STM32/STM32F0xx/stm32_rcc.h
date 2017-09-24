@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -839,7 +839,7 @@
  *
  * @api
  */
-#define rccEnableUART5(lp) rccEnableAPB1(RCC_APB1ENR_USART5EN, lp)
+#define rccEnableUART5(lp) rccEnableAPB1(RCC_APB1ENR_USARTS5EN, lp)
 
 /**
  * @brief   Disables the USART5 peripheral clock.

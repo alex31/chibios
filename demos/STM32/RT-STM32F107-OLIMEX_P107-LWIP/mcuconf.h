@@ -14,8 +14,8 @@
     limitations under the License.
 */
 
-#ifndef MCUCONF_H
-#define MCUCONF_H
+#ifndef _MCUCONF_H_
+#define _MCUCONF_H_
 
 /*
  * STM32F107 drivers configuration.
@@ -221,4 +221,4 @@
  */
 #define STM32_WDG_USE_IWDG                  FALSE
 
-#endif /* MCUCONF_H */
+#endif /* _MCUCONF_H_ */

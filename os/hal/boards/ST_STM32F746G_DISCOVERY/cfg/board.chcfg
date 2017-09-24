@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- STM32F7xx board Template -->
+<!-- STM32F4xx board Template -->
 <board
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="http://www.chibios.org/xml/schema/boards/stm32f7xx_board.xsd">
@@ -30,8 +30,7 @@
     HSEBypass="true"
     LSEFrequency="32768"
     LSEBypass="false"
-    VDD="300"
-    LSEDrive="3 High Drive (default)" />
+    VDD="300" />
   <ports>
     <GPIOA>
       <pin0
@@ -884,8 +883,8 @@
         Level="High"
         Speed="Maximum"
         Resistor="Floating"
-        Mode="Alternate"
-        Alternate="12" />
+        Mode="Input"
+        Alternate="0" />
       <pin9
         ID="DCMI_VSYNC"
         Type="PushPull"
@@ -1176,8 +1175,8 @@
         Level="High"
         Speed="Maximum"
         Resistor="Floating"
-        Mode="Output"
-        Alternate="0" />
+        Mode="Alternate"
+        Alternate="14" />
       <pin13
         ID="LCD_INT"
         Type="PushPull"

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 #include "ch.hpp"
 #include "hal.h"
-#include "ch_test.h"
+#include "test.h"
 
 using namespace chibios_rt;
 
@@ -129,7 +129,7 @@ protected:
 
     setName("tester");
 
-    test_execute((BaseSequentialStream *)&SD2);
+    TestThread(&SD2);
     exit(test_global_fail);
   }
 
