@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
     limitations under the License.
 */
 
-#ifndef _AVR_TIMERS_H_
-#define _AVR_TIMERS_H_
+#ifndef AVR_TIMERS_H
+#define AVR_TIMERS_H
 
 #include "mcuconf.h"
 
@@ -52,4 +52,4 @@
   #error "Timer 5 cannot simultaneously be used by multiple drivers."
 #endif
 
-#endif /* _AVR_TIMERS_H_ */
+#endif /* AVR_TIMERS_H */

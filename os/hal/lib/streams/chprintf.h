@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@
  * @{
  */
 
-#ifndef _CHPRINTF_H_
-#define _CHPRINTF_H_
+#ifndef CHPRINTF_H
+#define CHPRINTF_H
 
 #include <stdarg.h>
 
@@ -31,7 +31,7 @@
  * @brief   Float type support.
  */
 #if !defined(CHPRINTF_USE_FLOAT) || defined(__DOXYGEN__)
-#define CHPRINTF_USE_FLOAT          FALSE
+#define CHPRINTF_USE_FLOAT          TRUE
 #endif
 
 #ifdef __cplusplus
@@ -44,6 +44,6 @@ extern "C" {
 }
 #endif
 
-#endif /* _CHPRINTF_H_ */
+#endif /* CHPRINTF_H */
 
 /** @} */
