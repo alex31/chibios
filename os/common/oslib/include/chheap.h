@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
@@ -27,6 +27,10 @@
 
 #ifndef CHHEAP_H
 #define CHHEAP_H
+
+#if !defined(CH_CFG_USE_HEAP)
+#define CH_CFG_USE_HEAP                     FALSE
+#endif
 
 #if (CH_CFG_USE_HEAP == TRUE) || defined(__DOXYGEN__)
 

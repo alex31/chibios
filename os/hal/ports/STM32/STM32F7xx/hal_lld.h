@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -27,9 +27,11 @@
  *          - STM32_VDD (as hundredths of Volt).
  *          .
  *          One of the following macros must also be defined:
+ *          - STM32F722xx, STM32F723xx very high-performance MCUs.
+ *          - STM32F732xx, STM32F733xx very high-performance MCUs.
  *          - STM32F745xx, STM32F746xx, STM32F756xx very high-performance MCUs.
- *          - STM32F767xx, STM32F769xx, STM32F777xx, STM32F779xx very
- *            high-performance MCUs.
+ *          - STM32F765xx, STM32F767xx, STM32F769xx very high-performance MCUs.
+ *          - STM32F777xx, STM32F779xx very high-performance MCUs.
  *          .
  *
  * @addtogroup HAL
@@ -54,7 +56,19 @@
  * @name    Platform identification macros
  * @{
  */
-#if defined(STM32F745xx) || defined(__DOXYGEN__)
+#if defined(STM32F722xx) || defined(__DOXYGEN__)
+#define PLATFORM_NAME           "STM32F745 Very High Performance with DSP and FPU"
+
+#elif defined(STM32F723xx)
+#define PLATFORM_NAME           "STM32F745 Very High Performance with DSP and FPU"
+
+#elif defined(STM32F732xx)
+#define PLATFORM_NAME           "STM32F745 Very High Performance with DSP and FPU"
+
+#elif defined(STM32F733xx)
+#define PLATFORM_NAME           "STM32F745 Very High Performance with DSP and FPU"
+
+#elif defined(STM32F745xx)
 #define PLATFORM_NAME           "STM32F745 Very High Performance with DSP and FPU"
 
 #elif defined(STM32F746xx)
@@ -62,6 +76,9 @@
 
 #elif defined(STM32F756xx)
 #define PLATFORM_NAME           "STM32F756 Very High Performance with DSP and FPU"
+
+#elif defined(STM32F765xx)
+#define PLATFORM_NAME           "STM32F767 Very High Performance with DSP and DP FPU"
 
 #elif defined(STM32F767xx)
 #define PLATFORM_NAME           "STM32F767 Very High Performance with DSP and DP FPU"
@@ -412,9 +429,13 @@
 #define STM32_CK48MSEL_PLL      (0 << 27)   /**< PLL48CLK source is PLL.    */
 #define STM32_CK48MSEL_PLLSAI   (1 << 27)   /**< PLL48CLK source is PLLSAI. */
 
-#define STM32_SDMMCSEL_MASK     (1 << 28)   /**< SDMMCSEL mask.             */
-#define STM32_SDMMCSEL_PLL48CLK (0 << 28)   /**< SDMMC source is PLL48CLK.  */
-#define STM32_SDMMCSEL_SYSCLK   (1 << 28)   /**< SDMMC source is SYSCLK.    */
+#define STM32_SDMMC1SEL_MASK     (1 << 28)  /**< SDMMC1SEL mask.            */
+#define STM32_SDMMC1SEL_PLL48CLK (0 << 28)  /**< SDMMC1 source is PLL48CLK. */
+#define STM32_SDMMC1SEL_SYSCLK   (1 << 28)  /**< SDMMC1 source is SYSCLK.   */
+
+#define STM32_SDMMC2SEL_MASK     (1 << 29)  /**< SDMMC2SEL mask.            */
+#define STM32_SDMMC2SEL_PLL48CLK (0 << 29)  /**< SDMMC2 source is PLL48CLK. */
+#define STM32_SDMMC2SEL_SYSCLK   (1 << 29)  /**< SDMMC2 source is SYSCLK.   */
 /** @} */
 
 /**
@@ -848,10 +869,17 @@
 #endif
 
 /**
- * @brief   SDMMC clock source.
+ * @brief   SDMMC1 clock source.
  */
-#if !defined(STM32_SDMMCSEL) || defined(__DOXYGEN__)
-#define STM32_SDMMCSEL                      STM32_SDMMCSEL_PLL48CLK
+#if !defined(STM32_SDMMC1SEL) || defined(__DOXYGEN__)
+#define STM32_SDMMC1SEL                     STM32_SDMMC1SEL_PLL48CLK
+#endif
+
+/**
+ * @brief   SDMMC2 clock source.
+ */
+#if !defined(STM32_SDMMC2SEL) || defined(__DOXYGEN__)
+#define STM32_SDMMC2SEL                     STM32_SDMMC2SEL_PLL48CLK
 #endif
 
 /**
@@ -1913,7 +1941,7 @@
 #if (STM32_CK48MSEL == STM32_CK48MSEL_PLL) || defined(__DOXYGEN__)
 #define STM32_PLL48CLK              (STM32_PLLVCO / STM32_PLLQ_VALUE)
 #elif STM32_CK48MSEL == STM32_CK48MSEL_PLLSAI
-#define STM32_PLL48CLK              (STM32_PLLSAIVCO / STM32_PLLSAIQ_VALUE)
+#define STM32_PLL48CLK              (STM32_PLLSAIVCO / STM32_PLLSAIP_VALUE)
 #else
 #error "invalid source selected for PLL48CLK clock"
 #endif
@@ -1965,14 +1993,25 @@
 #endif
 
 /**
- * @brief   SDMMC frequency.
+ * @brief   SDMMC1 frequency.
  */
-#if (STM32_SDMMCSEL == STM32_SDMMCSEL_PLL48CLK) || defined(__DOXYGEN__)
-#define STM32_SDMMCCLK               STM32_PLL48CLK
-#elif STM32_SDMMCSEL == STM32_SDMMCSEL_SYSCLK
-#define STM32_SDMMCCLK               STM32_SYSCLK
+#if (STM32_SDMMC1SEL == STM32_SDMMC1SEL_PLL48CLK) || defined(__DOXYGEN__)
+#define STM32_SDMMC1CLK              STM32_PLL48CLK
+#elif STM32_SDMMC1SEL == STM32_SDMMC1SEL_SYSCLK
+#define STM32_SDMMC1CLK              STM32_SYSCLK
 #else
-#error "invalid source selected for SDMMC clock"
+#error "invalid source selected for SDMMC1 clock"
+#endif
+
+/**
+ * @brief   SDMMC2 frequency.
+ */
+#if (STM32_SDMMC2SEL == STM32_SDMMC2SEL_PLL48CLK) || defined(__DOXYGEN__)
+#define STM32_SDMMC2CLK              STM32_PLL48CLK
+#elif STM32_SDMMC2SEL == STM32_SDMMC2SEL_SYSCLK
+#define STM32_SDMMC2CLK              STM32_SYSCLK
+#else
+#error "invalid source selected for SDMMC2 clock"
 #endif
 
 /**
@@ -2044,7 +2083,9 @@
 
 /* Various helpers.*/
 #include "nvic.h"
-#include "mpu.h"
+#include "cache.h"
+#include "mpu_v7m.h"
+#include "stm32_isr.h"
 #include "stm32_dma.h"
 #include "stm32_rcc.h"
 
