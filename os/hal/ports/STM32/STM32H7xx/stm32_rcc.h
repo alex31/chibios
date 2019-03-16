@@ -472,21 +472,21 @@
  *
  * @api
  */
-#define rccEnableADC3(lp) rccEnableAPB2(RCC_APB2ENR_ADC3EN, lp)
+#define rccEnableADC3(lp) rccEnableAHB4(RCC_AHB4ENR_ADC3EN, lp)
 
 /**
  * @brief   Disables the ADC3 peripheral clock.
  *
  * @api
  */
-#define rccDisableADC3() rccDisableAPB2(RCC_APB2ENR_ADC3EN)
+#define rccDisableADC3() rccDisableAHB4(RCC_AHB4ENR_ADC3EN)
 
 /**
  * @brief   Resets the ADC3 peripheral.
  *
  * @api
  */
-#define rccResetADC3() rccResetAPB2(RCC_APB2RSTR_ADC3RST)
+#define rccResetADC3() rccResetAHB4(RCC_AHB4RSTR_ADC3RST)
 /** @} */
 
 /**
@@ -500,21 +500,21 @@
  *
  * @api
  */
-#define rccEnableDAC1(lp) rccEnableAPB1L(RCC_APB1LENR_DACEN, lp)
+#define rccEnableDAC1(lp) rccEnableAPB1L(RCC_APB1LENR_DAC12EN, lp)
 
 /**
  * @brief   Disables the DAC1 peripheral clock.
  *
  * @api
  */
-#define rccDisableDAC1() rccDisableAPB1L(RCC_APB1LENR_DACEN)
+#define rccDisableDAC1() rccDisableAPB1L(RCC_APB1LENR_DAC12EN)
 
 /**
  * @brief   Resets the DAC1 peripheral.
  *
  * @api
  */
-#define rccResetDAC1() rccResetAPB1L(RCC_APB1LRSTR_DACRST)
+#define rccResetDAC1() rccResetAPB1L(RCC_APB1LRSTR_DAC12RST)
 /** @} */
 
 /**

@@ -63,8 +63,8 @@
 #define STM32_HAS_CAN3                      FALSE
 
 /* DAC attributes.*/
-#define STM32_HAS_DAC1_CH1                  FALSE
-#define STM32_HAS_DAC1_CH2                  FALSE
+#define STM32_HAS_DAC1_CH1                  TRUE
+#define STM32_HAS_DAC1_CH2                  TRUE
 #define STM32_HAS_DAC2_CH1                  FALSE
 #define STM32_HAS_DAC2_CH2                  FALSE
 
@@ -89,6 +89,7 @@
 
 /* DMA attributes.*/
 #define STM32_ADVANCED_DMA                  TRUE
+#define STM32_DMA_SUPPORTS_DMAMUX           TRUE
 
 #define STM32_HAS_DMA1                      TRUE
 #define STM32_DMA1_CH0_HANDLER              Vector6C
@@ -132,7 +133,9 @@
 #define STM32_ETH_NUMBER                    61
 
 /* EXTI attributes.*/
-#define STM32_EXTI_ENHANCED
+#define STM32_EXTI_NUM_LINES                34
+#define STM32_EXTI_IMR1_MASK                0x1F800000U
+#define STM32_EXTI_IMR2_MASK                0xFFFFFFFCU
 
 /* GPIO attributes.*/
 #define STM32_HAS_GPIOA                     TRUE
@@ -387,9 +390,15 @@
 
 /* LTDC attributes.*/
 #define STM32_HAS_LTDC                      TRUE
+#define STM32_LTDC_EV_HANDLER               Vector1A0
+#define STM32_LTDC_ER_HANDLER               Vector1A4
+#define STM32_LTDC_EV_NUMBER                88
+#define STM32_LTDC_ER_NUMBER                89
 
 /* DMA2D attributes.*/
 #define STM32_HAS_DMA2D                     TRUE
+#define STM32_DMA2D_HANDLER                 Vector1A8
+#define STM32_DMA2D_NUMBER                  90
 
 /* FSMC attributes.*/
 #define STM32_HAS_FSMC                      TRUE
@@ -397,19 +406,14 @@
 #define STM32_FSMC_HANDLER                  Vector100
 #define STM32_FSMC_NUMBER                   48
 
-/* LTDC attributes.*/
-#define STM32_LTDC_EV_HANDLER               Vector1A0
-#define STM32_LTDC_ER_HANDLER               Vector1A4
-#define STM32_LTDC_EV_NUMBER                88
-#define STM32_LTDC_ER_NUMBER                89
-
-/* DMA2D attributes.*/
-#define STM32_DMA2D_HANDLER                 Vector1A8
-#define STM32_DMA2D_NUMBER                  90
-
 /* CRC attributes.*/
 #define STM32_HAS_CRC                       TRUE
 #define STM32_CRC_PROGRAMMABLE              TRUE
+
+/* DCMI attributes.*/
+#define STM32_HAS_DCMI                      TRUE
+#define STM32_DCMI_HANDLER                  Vector178
+#define STM32_DCMI_NUMBER                   78
 
 #endif /* defined(STM32H743xx) || defined(STM32H753xx) */
 /** @} */

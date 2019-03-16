@@ -225,8 +225,18 @@
 #define STM32_USBCLK                        STM32_PLL48CLK
 #elif defined(STM32F10X_CL)
 #define STM32_USBCLK                        STM32_OTGFSCLK
-#elif defined(STM32L4XX)
+#elif defined(STM32L4XX) || defined(STM32L4XXP)
 #define STM32_USBCLK                        STM32_48CLK
+#elif  defined(STM32H7XX)
+/* Defines directly STM32_USBCLK.*/
+#define rccEnableOTG_FS                     rccEnableUSB2_OTG_HS
+#define rccDisableOTG_FS                    rccDisableUSB2_OTG_HS
+#define rccResetOTG_FS                      rccResetUSB2_OTG_HS
+#define rccEnableOTG_HS                     rccEnableUSB1_OTG_HS
+#define rccDisableOTG_HS                    rccDisableUSB1_OTG_HS
+#define rccResetOTG_HS                      rccResetUSB1_OTG_HS
+#define rccEnableOTG_HSULPI                 rccEnableUSB1_HSULPI
+#define rccDisableOTG_HSULPI                rccDisableUSB1_HSULPI
 #else
 #error "unsupported STM32 platform for OTG functionality"
 #endif

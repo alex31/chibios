@@ -55,7 +55,6 @@ nil_system_t nil;
  *
  * @param[in] state     thread state
  * @param[in] p         object pointer
- *
  * @return              Pointer to the thread.
  */
 static thread_t *nil_find_thread(tstate_t state, void * p) {
@@ -82,8 +81,6 @@ static thread_t *nil_find_thread(tstate_t state, void * p) {
  *                      non negative numbers are ignored
  * @param[in] msg       the wakeup message
  * @return              Always zero.
- *
- * @iclass
  */
 static cnt_t nil_ready_all(void * p, cnt_t cnt, msg_t msg) {
   thread_t *tp = nil.threads;;
@@ -677,7 +674,7 @@ void chSchRescheduleS(void) {
  * @param[in] timeout   the number of ticks before the operation timeouts.
  *                      the following special values are allowed:
  *                      - @a TIME_INFINITE no timeout.
- *
+ *                      .
  * @return              The wakeup message.
  * @retval NIL_MSG_TMO  if a timeout occurred.
  *
@@ -759,9 +756,7 @@ msg_t chSchGoSleepTimeoutS(tstate_t newstate, sysinterval_t timeout) {
  * @param[in] timeout   the number of ticks before the operation timeouts,
  *                      the following special values are allowed:
  *                      - @a TIME_INFINITE no timeout.
- *                      - @a TIME_IMMEDIATE the thread is not enqueued and
- *                        the function returns @p MSG_TIMEOUT as if a timeout
- *                        occurred.
+ *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      .
  * @return              The wake up message.
  *
@@ -857,11 +852,8 @@ void chThdSleepUntil(systime_t abstime) {
  * @param[in] tqp       pointer to the threads queue object
  * @param[in] timeout   the timeout in system ticks, the special values are
  *                      handled as follow:
- *                      - @a TIME_INFINITE the thread enters an infinite sleep
- *                        state.
- *                      - @a TIME_IMMEDIATE the thread is not enqueued and
- *                        the function returns @p MSG_TIMEOUT as if a timeout
- *                        occurred.
+ *                      - @a TIME_INFINITE no timeout.
+ *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      .
  * @return              The message from @p osalQueueWakeupOneI() or
  *                      @p osalQueueWakeupAllI() functions.
@@ -951,8 +943,8 @@ void chThdDequeueAllI(threads_queue_t *tqp, msg_t msg) {
  * @param[in] sp        pointer to a @p semaphore_t structure
  * @param[in] timeout   the number of ticks before the operation timeouts,
  *                      the following special values are allowed:
- *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      - @a TIME_INFINITE no timeout.
+ *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      .
  * @return              A message specifying how the invoking thread has been
  *                      released from the semaphore.
@@ -980,8 +972,8 @@ msg_t chSemWaitTimeout(semaphore_t *sp, sysinterval_t timeout) {
  * @param[in] sp        pointer to a @p semaphore_t structure
  * @param[in] timeout   the number of ticks before the operation timeouts,
  *                      the following special values are allowed:
- *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      - @a TIME_INFINITE no timeout.
+ *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      .
  * @return              A message specifying how the invoking thread has been
  *                      released from the semaphore.
@@ -1154,8 +1146,8 @@ void chEvtSignalI(thread_t *tp, eventmask_t mask) {
  *                      for, @p ALL_EVENTS enables all the events
  * @param[in] timeout   the number of ticks before the operation timeouts,
  *                      the following special values are allowed:
- *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      - @a TIME_INFINITE no timeout.
+ *                      - @a TIME_IMMEDIATE immediate timeout.
  *                      .
  * @return              The mask of the served and cleared events.
  * @retval 0            if the operation has timed out.

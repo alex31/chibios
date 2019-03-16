@@ -53,7 +53,7 @@
               <value>Mailboxes.</value>
             </brief>
             <description>
-              <value>This sequence tests the ChibiOS libraryfunctionalities related to mailboxes.</value>
+              <value>This sequence tests the ChibiOS library functionalities related to mailboxes.</value>
             </description>
             <condition>
               <value>CH_CFG_USE_MAILBOXES</value>
@@ -435,10 +435,381 @@ test_assert(msg1 == MSG_TIMEOUT, "wrong wake-up message");]]></value>
               <value>Internal Tests</value>
             </type>
             <brief>
+              <value>Pipes</value>
+            </brief>
+            <description>
+              <value>This sequence tests the ChibiOS library functionalities related to pipes.</value>
+            </description>
+            <condition>
+              <value>CH_CFG_USE_PIPES</value>
+            </condition>
+            <shared_code>
+              <value><![CDATA[#include <string.h>
+
+#define PIPE_SIZE 16
+
+static uint8_t buffer[PIPE_SIZE];
+static PIPE_DECL(pipe1, buffer, PIPE_SIZE);
+
+static const uint8_t pipe_pattern[] = "0123456789ABCDEF";]]></value>
+            </shared_code>
+            <cases>
+              <case>
+                <brief>
+                  <value>Pipes normal API, non-blocking tests.</value>
+                </brief>
+                <description>
+                  <value>The pipe functionality is tested by loading and emptying it, all conditions are tested.</value>
+                </description>
+                <condition>
+                  <value>
+                  </value>
+                </condition>
+                <various_code>
+                  <setup_code>
+                    <value><![CDATA[chPipeObjectInit(&pipe1, buffer, PIPE_SIZE);]]></value>
+                  </setup_code>
+                  <teardown_code>
+                    <value/>
+                  </teardown_code>
+                  <local_variables>
+                    <value></value>
+                  </local_variables>
+                </various_code>
+                <steps>
+                  <step>
+                    <description>
+                      <value>Resetting pipe.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[chPipeReset(&pipe1);
+
+test_assert((pipe1.rdptr == pipe1.buffer) &&
+            (pipe1.wrptr == pipe1.buffer) &&
+            (pipe1.cnt == 0),
+            "invalid pipe state");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Writing data, must fail.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+
+n = chPipeWriteTimeout(&pipe1, pipe_pattern, PIPE_SIZE, TIME_IMMEDIATE);
+test_assert(n == 0, "not reset");
+test_assert((pipe1.rdptr == pipe1.buffer) &&
+            (pipe1.wrptr == pipe1.buffer) &&
+            (pipe1.cnt == 0),
+            "invalid pipe state");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Reading data, must fail.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+uint8_t buf[PIPE_SIZE];
+
+n = chPipeReadTimeout(&pipe1, buf, PIPE_SIZE, TIME_IMMEDIATE);
+test_assert(n == 0, "not reset");
+test_assert((pipe1.rdptr == pipe1.buffer) &&
+            (pipe1.wrptr == pipe1.buffer) &&
+            (pipe1.cnt == 0),
+            "invalid pipe state");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Reactivating pipe.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[chPipeResume(&pipe1);
+test_assert((pipe1.rdptr == pipe1.buffer) &&
+            (pipe1.wrptr == pipe1.buffer) &&
+            (pipe1.cnt == 0),
+            "invalid pipe state");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Filling whole pipe.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+
+n = chPipeWriteTimeout(&pipe1, pipe_pattern, PIPE_SIZE, TIME_IMMEDIATE);
+test_assert(n == PIPE_SIZE, "wrong size");
+test_assert((pipe1.rdptr == pipe1.buffer) &&
+            (pipe1.wrptr == pipe1.buffer) &&
+            (pipe1.cnt == PIPE_SIZE),
+            "invalid pipe state");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Emptying pipe.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+uint8_t buf[PIPE_SIZE];
+
+n = chPipeReadTimeout(&pipe1, buf, PIPE_SIZE, TIME_IMMEDIATE);
+test_assert(n == PIPE_SIZE, "wrong size");
+test_assert((pipe1.rdptr == pipe1.buffer) &&
+            (pipe1.wrptr == pipe1.buffer) &&
+            (pipe1.cnt == 0),
+            "invalid pipe state");
+test_assert(memcmp(pipe_pattern, buf, PIPE_SIZE) == 0, "content mismatch");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Small write.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+
+n = chPipeWriteTimeout(&pipe1, pipe_pattern, 4, TIME_IMMEDIATE);
+test_assert(n == 4, "wrong size");
+test_assert((pipe1.rdptr != pipe1.wrptr) &&
+            (pipe1.rdptr == pipe1.buffer) &&
+            (pipe1.cnt == 4),
+            "invalid pipe state");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Filling remaining space.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+
+n = chPipeWriteTimeout(&pipe1, pipe_pattern, PIPE_SIZE - 4, TIME_IMMEDIATE);
+test_assert(n == PIPE_SIZE - 4, "wrong size");
+test_assert((pipe1.rdptr == pipe1.buffer) &&
+            (pipe1.wrptr == pipe1.buffer) &&
+            (pipe1.cnt == PIPE_SIZE),
+            "invalid pipe state");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Small Read.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+uint8_t buf[PIPE_SIZE];
+
+n = chPipeReadTimeout(&pipe1, buf, 4, TIME_IMMEDIATE);
+test_assert(n == 4, "wrong size");
+test_assert((pipe1.rdptr != pipe1.buffer) &&
+            (pipe1.wrptr == pipe1.buffer) &&
+            (pipe1.cnt == PIPE_SIZE - 4),
+            "invalid pipe state");
+test_assert(memcmp(pipe_pattern, buf, 4) == 0, "content mismatch");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Reading remaining data.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+uint8_t buf[PIPE_SIZE];
+
+n = chPipeReadTimeout(&pipe1, buf, PIPE_SIZE - 4, TIME_IMMEDIATE);
+test_assert(n == PIPE_SIZE - 4, "wrong size");
+test_assert((pipe1.rdptr == pipe1.buffer) &&
+            (pipe1.wrptr == pipe1.buffer) &&
+            (pipe1.cnt == 0),
+            "invalid pipe state");
+test_assert(memcmp(pipe_pattern, buf, PIPE_SIZE - 4) == 0, "content mismatch");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Small Write.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+
+n = chPipeWriteTimeout(&pipe1, pipe_pattern, 5, TIME_IMMEDIATE);
+test_assert(n == 5, "wrong size");
+test_assert((pipe1.rdptr != pipe1.wrptr) &&
+            (pipe1.rdptr == pipe1.buffer) &&
+            (pipe1.cnt == 5),
+            "invalid pipe state");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Small Read.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+uint8_t buf[PIPE_SIZE];
+
+n = chPipeReadTimeout(&pipe1, buf, 5, TIME_IMMEDIATE);
+test_assert(n == 5, "wrong size");
+test_assert((pipe1.rdptr == pipe1.wrptr) &&
+            (pipe1.wrptr != pipe1.buffer) &&
+            (pipe1.cnt == 0),
+            "invalid pipe state");
+test_assert(memcmp(pipe_pattern, buf, 5) == 0, "content mismatch");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Write wrapping buffer boundary.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+
+n = chPipeWriteTimeout(&pipe1, pipe_pattern, PIPE_SIZE, TIME_IMMEDIATE);
+test_assert(n == PIPE_SIZE, "wrong size");
+test_assert((pipe1.rdptr == pipe1.wrptr) &&
+            (pipe1.wrptr != pipe1.buffer) &&
+            (pipe1.cnt == PIPE_SIZE),
+            "invalid pipe state");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Read wrapping buffer boundary.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+uint8_t buf[PIPE_SIZE];
+
+n = chPipeReadTimeout(&pipe1, buf, PIPE_SIZE, TIME_IMMEDIATE);
+test_assert(n == PIPE_SIZE, "wrong size");
+test_assert((pipe1.rdptr == pipe1.wrptr) &&
+            (pipe1.wrptr != pipe1.buffer) &&
+            (pipe1.cnt == 0),
+            "invalid pipe state");
+test_assert(memcmp(pipe_pattern, buf, PIPE_SIZE) == 0, "content mismatch");]]></value>
+                    </code>
+                  </step>
+                </steps>
+              </case>
+              <case>
+                <brief>
+                  <value>Pipe timeouts.</value>
+                </brief>
+                <description>
+                  <value>The pipe API is tested for timeouts.</value>
+                </description>
+                <condition>
+                  <value>
+                  </value>
+                </condition>
+                <various_code>
+                  <setup_code>
+                    <value><![CDATA[chPipeObjectInit(&pipe1, buffer, PIPE_SIZE / 2);]]></value>
+                  </setup_code>
+                  <teardown_code>
+                    <value/>
+                  </teardown_code>
+                  <local_variables>
+                    <value></value>
+                  </local_variables>
+                </various_code>
+                <steps>
+                  <step>
+                    <description>
+                      <value>Reading while pipe is empty.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+uint8_t buf[PIPE_SIZE];
+
+n = chPipeReadTimeout(&pipe1, buf, PIPE_SIZE, TIME_IMMEDIATE);
+test_assert(n == 0, "wrong size");
+test_assert((pipe1.rdptr == pipe1.buffer) &&
+            (pipe1.wrptr == pipe1.buffer) &&
+            (pipe1.cnt == 0),
+            "invalid pipe state");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Writing a string larger than pipe buffer.</value>
+                    </description>
+                    <tags>
+                      <value></value>
+                    </tags>
+                    <code>
+                      <value><![CDATA[size_t n;
+
+n = chPipeWriteTimeout(&pipe1, pipe_pattern, PIPE_SIZE, TIME_IMMEDIATE);
+test_assert(n == PIPE_SIZE / 2, "wrong size");
+test_assert((pipe1.rdptr == pipe1.wrptr) &&
+            (pipe1.wrptr == pipe1.buffer) &&
+            (pipe1.cnt == PIPE_SIZE / 2),
+            "invalid pipe state");]]></value>
+                    </code>
+                  </step>
+                </steps>
+              </case>
+            </cases>
+          </sequence>
+          <sequence>
+            <type index="0">
+              <value>Internal Tests</value>
+            </type>
+            <brief>
               <value>Memory Pools.</value>
             </brief>
             <description>
-              <value>This sequence tests the ChibiOS  library functionalities related to memory pools.</value>
+              <value>This sequence tests the ChibiOS library functionalities related to memory pools.</value>
             </description>
             <condition>
               <value>CH_CFG_USE_MEMPOOLS</value>
@@ -1561,8 +1932,127 @@ test_assert(dofp == NULL, "found");]]></value>
                   </step>
                 </steps>
               </case>
+              <case>
+                <brief>
+                  <value>Dynamic Pipes Factory.</value>
+                </brief>
+                <description>
+                  <value>This test case verifies the dynamic pipes factory.</value>
+                </description>
+                <condition>
+                  <value>CH_CFG_FACTORY_PIPES == TRUE</value>
+                </condition>
+                <various_code>
+                  <setup_code>
+                    <value />
+                  </setup_code>
+                  <teardown_code>
+                    <value><![CDATA[dyn_pipe_t *dpp;
+
+dpp = chFactoryFindPipe("mypipe");
+if (dpp != NULL) {
+  while (dpp->element.refs > 0U) {
+    chFactoryReleasePipe(dpp);
+  }
+}]]></value>
+                  </teardown_code>
+                  <local_variables>
+                    <value><![CDATA[dyn_pipe_t *dpp;]]></value>
+                  </local_variables>
+                </various_code>
+                <steps>
+                  <step>
+                    <description>
+                      <value>Retrieving a dynamic pipe by name, must not exist.</value>
+                    </description>
+                    <tags>
+                      <value />
+                    </tags>
+                    <code>
+                      <value><![CDATA[dpp = chFactoryFindPipe("mypipe");
+test_assert(dpp == NULL, "found");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Creating a dynamic pipe it must not exists, must succeed.</value>
+                    </description>
+                    <tags>
+                      <value />
+                    </tags>
+                    <code>
+                      <value><![CDATA[dpp = chFactoryCreatePipe("mypipe", 16U);
+test_assert(dpp != NULL, "cannot create");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Creating a dynamic pipe with the same name, must fail.</value>
+                    </description>
+                    <tags>
+                      <value />
+                    </tags>
+                    <code>
+                      <value><![CDATA[dyn_pipe_t *dpp1;
+
+dpp1 = chFactoryCreatePipe("mypipe", 16U);
+test_assert(dpp1 == NULL, "can create");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Retrieving the dynamic pipe by name, must exist, then increasing the reference counter, finally releasing both references.</value>
+                    </description>
+                    <tags>
+                      <value />
+                    </tags>
+                    <code>
+                      <value><![CDATA[dyn_pipe_t *dpp1, *dpp2;
+
+dpp1 = chFactoryFindPipe("mypipe");
+test_assert(dpp1 != NULL, "not found");
+test_assert(dpp == dpp1, "object reference mismatch");
+test_assert(dpp1->element.refs == 2, "object reference mismatch");
+
+dpp2 = (dyn_pipe_t *)chFactoryDuplicateReference(&dpp1->element);
+test_assert(dpp1 == dpp2, "object reference mismatch");
+test_assert(dpp2->element.refs == 3, "object reference mismatch");
+
+chFactoryReleasePipe(dpp2);
+test_assert(dpp1->element.refs == 2, "references mismatch");
+
+chFactoryReleasePipe(dpp1);
+test_assert(dpp->element.refs == 1, "references mismatch");]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Releasing the first reference to the dynamic pipe must not trigger an assertion.</value>
+                    </description>
+                    <tags>
+                      <value />
+                    </tags>
+                    <code>
+                      <value><![CDATA[chFactoryReleasePipe(dpp);]]></value>
+                    </code>
+                  </step>
+                  <step>
+                    <description>
+                      <value>Retrieving the dynamic pipe by name again, must not exist.</value>
+                    </description>
+                    <tags>
+                      <value />
+                    </tags>
+                    <code>
+                      <value><![CDATA[dpp = chFactoryFindPipe("mypipe");
+test_assert(dpp == NULL, "found");]]></value>
+                    </code>
+                  </step>
+                </steps>
+              </case>
             </cases>
           </sequence>
+          
         </sequences>
       </instance>
     </instances>

@@ -32,7 +32,7 @@ CC_ALIGN(32) static uint8_t rxbuf[512];
  */
 void spi_circular_cb(SPIDriver *spip) {
 
-  if(spip->state == SPI_COMPLETE) {
+  if (spiIsBufferComplete(spip)) {
     /* 2nd half.*/
     palWriteLine(PORTAB_LINE_LED1, PORTAB_LED_OFF);
   }
@@ -144,7 +144,7 @@ int main(void) {
 
 #if SPI_SUPPORTS_CIRCULAR == TRUE
   /*
-   * Starting a continous operation for test.
+   * Starting a continuous operation for test.
    */
   spiStart(&PORTAB_SPI1, &c_spicfg);  /* Setup transfer parameters.       */
   spiSelect(&PORTAB_SPI1);            /* Slave Select assertion.          */

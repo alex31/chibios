@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2017 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@
  * File: @ref oslib_test_sequence_001.c
  *
  * <h2>Description</h2>
- * This sequence tests the ChibiOS libraryfunctionalities related to
+ * This sequence tests the ChibiOS library functionalities related to
  * mailboxes.
  *
  * <h2>Conditions</h2>
