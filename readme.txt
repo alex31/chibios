@@ -73,6 +73,25 @@
 *** Releases and Change Log                                               ***
 *****************************************************************************
 
+*** 19.1.3 ***
+- NEW: Added a "library generator" project for RT, it allows to
+       generate a library with a pre-configured RT. It also includes
+       an "header generator" able to generate an unified "ch.h" with
+       all options resolved.
+- FIX: Fixed missing bracket in MX25 flash driver (bug #1038).
+- FIX: Fixed some M7 demos compile as M4 bug #1037).
+- FIX: Fixed missing I2C4 RCC definitions for L4/L4+ (bug #1036).
+- FIX: Fixed missing delay after STM32 wait states setup (bug #1035).
+- FIX: Fixed reduced time slices in RT (bug #1034).
+- FIX: Fixed GCC scatter files alignment problem (bug #1033).
+- FIX: Fixed long intervals fail when interval type is larger than time type
+       (bug #1031).
+- FIX: Fixed Round Robin check missing when in tick-less mode (bug #1030).
+- FIX: Fixed RCC_AHB1ENR_BKPSRAMEN not present in all STMF4xx devices
+       (bug #1029).
+- FIX: Fixed MPU fix #1027 broke stack checking on Cortex-M devices without
+       MPU (bug #1028).
+
 *** 19.1.2 ***
 - NEW: Modified AES GCM function signatures.
 - NEW: updates to MFS from trunk code.
