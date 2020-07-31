@@ -51,27 +51,27 @@
 /**
  * @brief   ChibiOS version string.
  */
-#define CH_VERSION              "19.1.4"
+#define CH_VERSION              "20.3.2"
 
 /**
  * @brief   ChibiOS version release year.
  */
-#define CH_VERSION_YEAR         19
+#define CH_VERSION_YEAR         20
 
 /**
  * @brief   ChibiOS version release month.
  */
-#define CH_VERSION_MONTH        1
+#define CH_VERSION_MONTH        3
 
 /**
  * @brief   ChibiOS version patch number.
  */
-#define CH_VERSION_PATCH        4
+#define CH_VERSION_PATCH        2
 
 /**
  * @brief   ChibiOS version nickname.
  */
-#define CH_VERSION_NICKNAME     "Scala"
+#define CH_VERSION_NICKNAME     "Praiano"
 /** @} */
 
 /*===========================================================================*/
