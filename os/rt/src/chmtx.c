@@ -104,7 +104,7 @@ void chMtxObjectInit(mutex_t *mp) {
 
   chDbgCheck(mp != NULL);
 
-  ch_queue_init(&mp->queue);
+  queue_init(&mp->queue);
   mp->owner = NULL;
 #if CH_CFG_USE_MUTEXES_RECURSIVE == TRUE
   mp->cnt = (cnt_t)0;
@@ -137,7 +137,7 @@ void chMtxLock(mutex_t *mp) {
  * @sclass
  */
 void chMtxLockS(mutex_t *mp) {
-  thread_t *currtp = chThdGetSelfX();
+  thread_t *ctp = currp;
 
   chDbgCheckClassS();
   chDbgCheck(mp != NULL);
@@ -150,7 +150,7 @@ void chMtxLockS(mutex_t *mp) {
 
     /* If the mutex is already owned by this thread, the counter is increased
        and there is no need of more actions.*/
-    if (mp->owner == currtp) {
+    if (mp->owner == ctp) {
       mp->cnt++;
     }
     else {
@@ -162,16 +162,15 @@ void chMtxLockS(mutex_t *mp) {
 
       /* Does the running thread have higher priority than the mutex
          owning thread? */
-      while (tp->hdr.pqueue.prio < currtp->hdr.pqueue.prio) {
+      while (tp->prio < ctp->prio) {
         /* Make priority of thread tp match the running thread's priority.*/
-        tp->hdr.pqueue.prio = currtp->hdr.pqueue.prio;
+        tp->prio = ctp->prio;
 
         /* The following states need priority queues reordering.*/
         switch (tp->state) {
         case CH_STATE_WTMTX:
           /* Re-enqueues the mutex owner with its new priority.*/
-          ch_sch_prio_insert(ch_queue_dequeue(&tp->hdr.queue),
-                             &tp->u.wtmtxp->queue);
+          queue_prio_insert(queue_dequeue(tp), &tp->u.wtmtxp->queue);
           tp = tp->u.wtmtxp->owner;
           /*lint -e{9042} [16.1] Continues the while.*/
           continue;
@@ -191,8 +190,7 @@ void chMtxLockS(mutex_t *mp) {
         case CH_STATE_SNDMSGQ:
 #endif
           /* Re-enqueues tp with its new priority on the queue.*/
-          ch_sch_prio_insert(ch_queue_dequeue(&tp->hdr.queue),
-                             &tp->u.wtmtxp->queue);
+          queue_prio_insert(queue_dequeue(tp), &tp->u.wtmtxp->queue);
           break;
 #endif
         case CH_STATE_READY:
@@ -201,7 +199,7 @@ void chMtxLockS(mutex_t *mp) {
           tp->state = CH_STATE_CURRENT;
 #endif
           /* Re-enqueues tp with its new priority on the ready list.*/
-          (void) chSchReadyI((thread_t *)ch_queue_dequeue(&tp->hdr.queue));
+          (void) chSchReadyI(queue_dequeue(tp));
           break;
         default:
           /* Nothing to do for other states.*/
@@ -211,14 +209,14 @@ void chMtxLockS(mutex_t *mp) {
       }
 
       /* Sleep on the mutex.*/
-      ch_sch_prio_insert(&currtp->hdr.queue, &mp->queue);
-      currtp->u.wtmtxp = mp;
+      queue_prio_insert(ctp, &mp->queue);
+      ctp->u.wtmtxp = mp;
       chSchGoSleepS(CH_STATE_WTMTX);
 
       /* It is assumed that the thread performing the unlock operation assigns
          the mutex to this thread.*/
-      chDbgAssert(mp->owner == currtp, "not owner");
-      chDbgAssert(currtp->mtxlist == mp, "not owned");
+      chDbgAssert(mp->owner == ctp, "not owner");
+      chDbgAssert(ctp->mtxlist == mp, "not owned");
 #if CH_CFG_USE_MUTEXES_RECURSIVE == TRUE
       chDbgAssert(mp->cnt == (cnt_t)1, "counter is not one");
     }
@@ -231,9 +229,9 @@ void chMtxLockS(mutex_t *mp) {
     mp->cnt++;
 #endif
     /* It was not owned, inserted in the owned mutexes list.*/
-    mp->owner = currtp;
-    mp->next = currtp->mtxlist;
-    currtp->mtxlist = mp;
+    mp->owner = ctp;
+    mp->next = ctp->mtxlist;
+    ctp->mtxlist = mp;
   }
 }
 
@@ -282,7 +280,6 @@ bool chMtxTryLock(mutex_t *mp) {
  * @sclass
  */
 bool chMtxTryLockS(mutex_t *mp) {
-  thread_t *currtp = chThdGetSelfX();
 
   chDbgCheckClassS();
   chDbgCheck(mp != NULL);
@@ -292,7 +289,7 @@ bool chMtxTryLockS(mutex_t *mp) {
 
     chDbgAssert(mp->cnt >= (cnt_t)1, "counter is not positive");
 
-    if (mp->owner == currtp) {
+    if (mp->owner == currp) {
       mp->cnt++;
       return true;
     }
@@ -305,9 +302,9 @@ bool chMtxTryLockS(mutex_t *mp) {
 
   mp->cnt++;
 #endif
-  mp->owner = currtp;
-  mp->next = currtp->mtxlist;
-  currtp->mtxlist = mp;
+  mp->owner = currp;
+  mp->next = currp->mtxlist;
+  currp->mtxlist = mp;
   return true;
 }
 
@@ -324,27 +321,27 @@ bool chMtxTryLockS(mutex_t *mp) {
  * @api
  */
 void chMtxUnlock(mutex_t *mp) {
-  thread_t *currtp = chThdGetSelfX();
+  thread_t *ctp = currp;
   mutex_t *lmp;
 
   chDbgCheck(mp != NULL);
 
   chSysLock();
 
-  chDbgAssert(currtp->mtxlist != NULL, "owned mutexes list empty");
-  chDbgAssert(currtp->mtxlist->owner == currtp, "ownership failure");
+  chDbgAssert(ctp->mtxlist != NULL, "owned mutexes list empty");
+  chDbgAssert(ctp->mtxlist->owner == ctp, "ownership failure");
 #if CH_CFG_USE_MUTEXES_RECURSIVE == TRUE
   chDbgAssert(mp->cnt >= (cnt_t)1, "counter is not positive");
 
   if (--mp->cnt == (cnt_t)0) {
 #endif
 
-    chDbgAssert(currtp->mtxlist == mp, "not next in list");
+    chDbgAssert(ctp->mtxlist == mp, "not next in list");
 
     /* Removes the top mutex from the thread's owned mutexes list and marks
        it as not owned. Note, it is assumed to be the same mutex passed as
        parameter of this function.*/
-    currtp->mtxlist = mp->next;
+    ctp->mtxlist = mp->next;
 
     /* If a thread is waiting on the mutex then the fun part begins.*/
     if (chMtxQueueNotEmptyS(mp)) {
@@ -352,29 +349,29 @@ void chMtxUnlock(mutex_t *mp) {
 
       /* Recalculates the optimal thread priority by scanning the owned
          mutexes list.*/
-      tprio_t newprio = currtp->realprio;
-      lmp = currtp->mtxlist;
+      tprio_t newprio = ctp->realprio;
+      lmp = ctp->mtxlist;
       while (lmp != NULL) {
         /* If the highest priority thread waiting in the mutexes list has a
            greater priority than the current thread base priority then the
            final priority will have at least that priority.*/
         if (chMtxQueueNotEmptyS(lmp) &&
-            (((thread_t *)lmp->queue.next)->hdr.pqueue.prio > newprio)) {
-          newprio = ((thread_t *)lmp->queue.next)->hdr.pqueue.prio;
+            (lmp->queue.next->prio > newprio)) {
+          newprio = lmp->queue.next->prio;
         }
         lmp = lmp->next;
       }
 
       /* Assigns to the current thread the highest priority among all the
          waiting threads.*/
-      currtp->hdr.pqueue.prio = newprio;
+      ctp->prio = newprio;
 
       /* Awakens the highest priority thread waiting for the unlocked mutex and
          assigns the mutex to it.*/
 #if CH_CFG_USE_MUTEXES_RECURSIVE == TRUE
       mp->cnt = (cnt_t)1;
 #endif
-      tp = (thread_t *)ch_queue_fifo_remove(&mp->queue);
+      tp = queue_fifo_remove(&mp->queue);
       mp->owner = tp;
       mp->next = tp->mtxlist;
       tp->mtxlist = mp;
@@ -411,26 +408,26 @@ void chMtxUnlock(mutex_t *mp) {
  * @sclass
  */
 void chMtxUnlockS(mutex_t *mp) {
-  thread_t *currtp = chThdGetSelfX();
+  thread_t *ctp = currp;
   mutex_t *lmp;
 
   chDbgCheckClassS();
   chDbgCheck(mp != NULL);
 
-  chDbgAssert(currtp->mtxlist != NULL, "owned mutexes list empty");
-  chDbgAssert(currtp->mtxlist->owner == currtp, "ownership failure");
+  chDbgAssert(ctp->mtxlist != NULL, "owned mutexes list empty");
+  chDbgAssert(ctp->mtxlist->owner == ctp, "ownership failure");
 #if CH_CFG_USE_MUTEXES_RECURSIVE == TRUE
   chDbgAssert(mp->cnt >= (cnt_t)1, "counter is not positive");
 
   if (--mp->cnt == (cnt_t)0) {
 #endif
 
-    chDbgAssert(currtp->mtxlist == mp, "not next in list");
+    chDbgAssert(ctp->mtxlist == mp, "not next in list");
 
     /* Removes the top mutex from the thread's owned mutexes list and marks
        it as not owned. Note, it is assumed to be the same mutex passed as
        parameter of this function.*/
-    currtp->mtxlist = mp->next;
+    ctp->mtxlist = mp->next;
 
     /* If a thread is waiting on the mutex then the fun part begins.*/
     if (chMtxQueueNotEmptyS(mp)) {
@@ -438,29 +435,29 @@ void chMtxUnlockS(mutex_t *mp) {
 
       /* Recalculates the optimal thread priority by scanning the owned
          mutexes list.*/
-      tprio_t newprio = currtp->realprio;
-      lmp = currtp->mtxlist;
+      tprio_t newprio = ctp->realprio;
+      lmp = ctp->mtxlist;
       while (lmp != NULL) {
         /* If the highest priority thread waiting in the mutexes list has a
            greater priority than the current thread base priority then the
            final priority will have at least that priority.*/
         if (chMtxQueueNotEmptyS(lmp) &&
-            (((thread_t *)lmp->queue.next)->hdr.pqueue.prio > newprio)) {
-          newprio = ((thread_t *)lmp->queue.next)->hdr.pqueue.prio;
+            (lmp->queue.next->prio > newprio)) {
+          newprio = lmp->queue.next->prio;
         }
         lmp = lmp->next;
       }
 
       /* Assigns to the current thread the highest priority among all the
          waiting threads.*/
-      currtp->hdr.pqueue.prio = newprio;
+      ctp->prio = newprio;
 
       /* Awakens the highest priority thread waiting for the unlocked mutex and
          assigns the mutex to it.*/
 #if CH_CFG_USE_MUTEXES_RECURSIVE == TRUE
       mp->cnt = (cnt_t)1;
 #endif
-      tp = (thread_t *)ch_queue_fifo_remove(&mp->queue);
+      tp = queue_fifo_remove(&mp->queue);
       mp->owner = tp;
       mp->next = tp->mtxlist;
       tp->mtxlist = mp;
@@ -488,18 +485,18 @@ void chMtxUnlockS(mutex_t *mp) {
  * @sclass
  */
 void chMtxUnlockAllS(void) {
-  thread_t *currtp = chThdGetSelfX();
+  thread_t *ctp = currp;
 
-  if (currtp->mtxlist != NULL) {
+  if (ctp->mtxlist != NULL) {
     do {
-      mutex_t *mp = currtp->mtxlist;
-      currtp->mtxlist = mp->next;
+      mutex_t *mp = ctp->mtxlist;
+      ctp->mtxlist = mp->next;
       if (chMtxQueueNotEmptyS(mp)) {
         thread_t *tp;
 #if CH_CFG_USE_MUTEXES_RECURSIVE == TRUE
         mp->cnt = (cnt_t)1;
 #endif
-        tp = (thread_t *)ch_queue_fifo_remove(&mp->queue);
+        tp = queue_fifo_remove(&mp->queue);
         mp->owner   = tp;
         mp->next    = tp->mtxlist;
         tp->mtxlist = mp;
@@ -511,8 +508,8 @@ void chMtxUnlockAllS(void) {
 #endif
         mp->owner = NULL;
       }
-    } while (currtp->mtxlist != NULL);
-    currtp->hdr.pqueue.prio = currtp->realprio;
+    } while (ctp->mtxlist != NULL);
+    ctp->prio = ctp->realprio;
     chSchRescheduleS();
   }
 }

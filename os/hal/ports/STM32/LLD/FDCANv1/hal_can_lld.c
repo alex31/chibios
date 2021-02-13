@@ -521,6 +521,8 @@ void can_lld_wakeup(CANDriver *canp) {
 }
 #endif /* CAN_USE_SLEEP_MODE */
 
+#endif /* HAL_USE_CAN */
+
 /**
  * @brief   FDCAN IRQ0 service routine.
  *
@@ -560,7 +562,5 @@ void can_lld_serve_interrupt(CANDriver *canp) {
     _can_tx_empty_isr(canp, flags);
   }
 }
-
-#endif /* HAL_USE_CAN */
 
 /** @} */

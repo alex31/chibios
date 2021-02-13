@@ -84,7 +84,7 @@
 #endif
 /** @} */
 
-#if !defined(STM32_ENFORCE_H7_REV_XY)
+#if !defined(STM32_ENFORCE_H7_REV_V)
 /**
  * @name    Absolute Maximum Ratings
  * @{
@@ -212,10 +212,10 @@
 /**
  * @brief   Maximum ADC clock frequency.
  */
-#define STM32_ADCCLK_MAX                50000000
+#define STM32_ADCCLK_MAX                100000000
 /** @} */
 
-#else /* defined(STM32_ENFORCE_H7_REV_XY) */
+#else /* defined(STM32_ENFORCE_H7_REV_V) */
 
 #define STM32_SYSCLK_MAX                400000000
 #define STM32_SYSCLK_MAX_NOBOOST        400000000
@@ -243,7 +243,7 @@
 #define STM32_SPI456_MAX                100000000
 #define STM32_ADCCLK_MAX                36000000
 
-#endif /* defined(STM32_ENFORCE_H7_REV_XY) */
+#endif /* defined(STM32_ENFORCE_H7_REV_V) */
 
 /**
  * @name    Internal clock sources frequencies
@@ -1501,7 +1501,7 @@
 #else /* !STM32_LSI_ENABLED */
 #define STM32_LSI_CK            0U
 
-#if HAL_USE_RTC && (STM32_RTCSEL == STM32_RTCSEL_LSI_CK)
+#if STM32_RTCSEL == STM32_RTCSEL_LSI_CK
 #error "LSI not enabled, required by STM32_RTCSEL"
 #endif
 
@@ -2615,7 +2615,7 @@
 /**
  * @brief   LPUART1 clock.
  */
-#define STM32_LPUART1CLK            STM32_PCLK4
+#define STM32_LPUART1CLK            STM32_PCLK1
 
 #elif STM32_LPUART1SEL == STM32_LPUART1SEL_PLL2_Q_CK
 #define STM32_LPUART1CLK            STM32_PLL2_Q_CK

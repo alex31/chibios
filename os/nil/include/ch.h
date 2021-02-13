@@ -53,7 +53,7 @@
 /**
  * @brief   Kernel version string.
  */
-#define CH_KERNEL_VERSION       "4.0.1"
+#define CH_KERNEL_VERSION       "4.0.0"
 
 /**
  * @brief   Kernel version major number.
@@ -68,12 +68,11 @@
 /**
  * @brief   Kernel version patch number.
  */
-#define CH_KERNEL_PATCH         1
+#define CH_KERNEL_PATCH         0
 /** @} */
 
 /**
  * @name    Constants for configuration options
- * @{
  */
 /**
  * @brief   Generic 'false' preprocessor boolean constant.
@@ -608,7 +607,6 @@ struct nil_system {
 
 /**
  * @name    Memory alignment support macros
- * @{
  */
 /**
  * @brief   Alignment mask constant.
@@ -654,7 +652,6 @@ struct nil_system {
 
 /**
  * @name    Working Areas
- * @{
  */
 /**
  * @brief   Calculates the total Working Area size.
@@ -694,7 +691,6 @@ struct nil_system {
 
 /**
  * @name    Threads abstraction macros
- * @{
  */
 /**
  * @brief   Thread declaration macro.
@@ -706,7 +702,6 @@ struct nil_system {
 
 /**
  * @name    ISRs abstraction macros
- * @{
  */
 /**
  * @brief   Priority level validation macro.
@@ -777,7 +772,6 @@ struct nil_system {
 
 /**
  * @name    Fast ISRs abstraction macros
- * @{
  */
 /**
  * @brief   Standard fast IRQ handler declaration.
@@ -903,7 +897,6 @@ struct nil_system {
 
 /**
  * @name    Threads queues
- * @{
  */
 /**
  * @brief   Data part of a static threads queue object initializer.
@@ -921,7 +914,7 @@ struct nil_system {
  *
  * @param[in] name      the name of the threads queue variable
  */
-#define THREADS_QUEUE_DECL(name)                                            \
+#define _THREADS_QUEUE_DECL(name)                                           \
   threads_queue_t name = _THREADS_QUEUE_DATA(name)
 /** @} */
 

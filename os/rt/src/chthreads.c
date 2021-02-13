@@ -87,34 +87,34 @@
  */
 thread_t *_thread_init(thread_t *tp, const char *name, tprio_t prio) {
 
-  tp->hdr.pqueue.prio = prio;
-  tp->state           = CH_STATE_WTSTART;
-  tp->flags           = CH_FLAG_MODE_STATIC;
+  tp->prio      = prio;
+  tp->state     = CH_STATE_WTSTART;
+  tp->flags     = CH_FLAG_MODE_STATIC;
 #if CH_CFG_TIME_QUANTUM > 0
-  tp->ticks           = (tslices_t)CH_CFG_TIME_QUANTUM;
+  tp->ticks     = (tslices_t)CH_CFG_TIME_QUANTUM;
 #endif
 #if CH_CFG_USE_MUTEXES == TRUE
-  tp->realprio        = prio;
-  tp->mtxlist         = NULL;
+  tp->realprio  = prio;
+  tp->mtxlist   = NULL;
 #endif
 #if CH_CFG_USE_EVENTS == TRUE
-  tp->epending        = (eventmask_t)0;
+  tp->epending  = (eventmask_t)0;
 #endif
 #if CH_DBG_THREADS_PROFILING == TRUE
-  tp->time            = (systime_t)0;
+  tp->time      = (systime_t)0;
 #endif
 #if CH_CFG_USE_REGISTRY == TRUE
-  tp->refs            = (trefs_t)1;
-  tp->name            = name;
+  tp->refs      = (trefs_t)1;
+  tp->name      = name;
   REG_INSERT(tp);
 #else
   (void)name;
 #endif
 #if CH_CFG_USE_WAITEXIT == TRUE
-  ch_list_init(&tp->waiting);
+  list_init(&tp->waiting);
 #endif
 #if CH_CFG_USE_MESSAGES == TRUE
-  ch_queue_init(&tp->msgqueue);
+  queue_init(&tp->msgqueue);
 #endif
 #if CH_DBG_STATISTICS == TRUE
   chTMObjectInit(&tp->stats);
@@ -509,8 +509,8 @@ void chThdExitS(msg_t msg) {
 
 #if CH_CFG_USE_WAITEXIT == TRUE
   /* Waking up any waiting thread.*/
-  while (ch_list_notempty(&tp->waiting)) {
-    (void) chSchReadyI((thread_t *)ch_list_pop(&tp->waiting));
+  while (list_notempty(&tp->waiting)) {
+    (void) chSchReadyI(list_remove(&tp->waiting));
   }
 #endif
 
@@ -568,7 +568,7 @@ msg_t chThdWait(thread_t *tp) {
 #endif
 
   if (tp->state != CH_STATE_FINAL) {
-    ch_list_push(&currp->hdr.list, &tp->waiting);
+    list_insert(currp, &tp->waiting);
     chSchGoSleepS(CH_STATE_WTEXIT);
   }
   msg = tp->u.exitcode;
@@ -603,14 +603,13 @@ tprio_t chThdSetPriority(tprio_t newprio) {
   chSysLock();
 #if CH_CFG_USE_MUTEXES == TRUE
   oldprio = currp->realprio;
-  if ((currp->hdr.pqueue.prio == currp->realprio) ||
-      (newprio > currp->hdr.pqueue.prio)) {
-    currp->hdr.pqueue.prio = newprio;
+  if ((currp->prio == currp->realprio) || (newprio > currp->prio)) {
+    currp->prio = newprio;
   }
   currp->realprio = newprio;
 #else
-  oldprio = currp->hdr.pqueue.prio;
-  currp->hdr.pqueue.prio = newprio;
+  oldprio = currp->prio;
+  currp->prio = newprio;
 #endif
   chSchRescheduleS();
   chSysUnlock();
@@ -868,7 +867,7 @@ msg_t chThdEnqueueTimeoutS(threads_queue_t *tqp, sysinterval_t timeout) {
     return MSG_TIMEOUT;
   }
 
-  ch_queue_insert(&currp->hdr.queue, &tqp->queue);
+  queue_insert(currp, tqp);
 
   return chSchGoSleepTimeoutS(CH_STATE_QUEUED, timeout);
 }
@@ -884,7 +883,7 @@ msg_t chThdEnqueueTimeoutS(threads_queue_t *tqp, sysinterval_t timeout) {
  */
 void chThdDequeueNextI(threads_queue_t *tqp, msg_t msg) {
 
-  if (ch_queue_notempty(&tqp->queue)) {
+  if (queue_notempty(tqp)) {
     chThdDoDequeueNextI(tqp, msg);
   }
 }
@@ -899,7 +898,7 @@ void chThdDequeueNextI(threads_queue_t *tqp, msg_t msg) {
  */
 void chThdDequeueAllI(threads_queue_t *tqp, msg_t msg) {
 
-  while (ch_queue_notempty(&tqp->queue)) {
+  while (queue_notempty(tqp)) {
     chThdDoDequeueNextI(tqp, msg);
   }
 }

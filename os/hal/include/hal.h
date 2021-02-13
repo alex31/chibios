@@ -199,7 +199,7 @@
 /**
  * @brief   HAL version string.
  */
-#define HAL_VERSION             "7.1.4"
+#define HAL_VERSION             "7.1.2"
 
 /**
  * @brief   HAL version major number.
@@ -214,20 +214,14 @@
 /**
  * @brief   HAL version patch number.
  */
-#define CH_HAL_PATCH            4
+#define CH_HAL_PATCH            2
 /** @} */
 
 /**
  * @name    Return codes
  * @{
  */
-/**
- * @brief HAL operation success.
- */
 #define HAL_SUCCESS             false
-/**
- * @brief HAL operation failed.
- */
 #define HAL_FAILED              true
 /** @} */
 

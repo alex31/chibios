@@ -131,8 +131,7 @@ int main(void) {
     txbuf[i] = (uint8_t)i;
 
   /*
-   * Configuring SPI GPIOs. This requires S1 set to 1 in order to have
-   * the SPI PINs connected to the MCU.
+   * Configuring SPI GPIOs.
    */
   palSetLineMode(LINE_SPI1_CS, PAL_MODE_OUTPUT_PUSHPULL);
   palSetLineMode(LINE_SPI1_MISO, PAL_MODE_MULTIPLEXER(1) |

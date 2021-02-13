@@ -66,11 +66,6 @@
  */
 
 /**
- * @defgroup os_lists Lists and Queues
- * @ingroup base
- */
-
-/**
  * @defgroup scheduler Scheduler
  * @ingroup base
  */

@@ -45,7 +45,6 @@
 
 /**
  * @name    Deployment Options
- * @{
  */
 #define CH_DEPLOY_UNLIMITED                -1
 #define CH_DEPLOY_NONE                      0

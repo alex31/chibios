@@ -37,7 +37,6 @@
 
 /**
  * @name    Implementation capabilities
- * @{
  */
 /**
  * @brief   Callback support int the driver.

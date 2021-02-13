@@ -154,12 +154,11 @@ osStatus osThreadSetPriority(osThreadId thread_id, osPriority newprio) {
 
   /* Changing priority.*/
 #if CH_CFG_USE_MUTEXES
-  if ((tp->hdr.pqueue.prio == tp->realprio) ||
-      ((tprio_t)newprio > tp->hdr.pqueue.prio))
-    tp->hdr.pqueue.prio = (tprio_t)newprio;
+  if ((tp->prio == tp->realprio) || ((tprio_t)newprio > tp->prio))
+    tp->prio = (tprio_t)newprio;
   tp->realprio = (tprio_t)newprio;
 #else
-  tp->hdr.pqueue.prio = (tprio_t)newprio;
+  tp->prio = (tprio_t)newprio;
 #endif
 
   /* The following states need priority queues reordering.*/
@@ -181,8 +180,8 @@ osStatus osThreadSetPriority(osThreadId thread_id, osPriority newprio) {
   case CH_STATE_SNDMSGQ:
 #endif
     /* Re-enqueues tp with its new priority on the queue.*/
-    ch_sch_prio_insert(ch_queue_dequeue(&tp->hdr.queue),
-                       (ch_queue_t *)tp->u.wtobjp);
+    queue_prio_insert(queue_dequeue(tp),
+                      (threads_queue_t *)tp->u.wtobjp);
     break;
 #endif
   case CH_STATE_READY:
@@ -191,7 +190,7 @@ osStatus osThreadSetPriority(osThreadId thread_id, osPriority newprio) {
     tp->state = CH_STATE_CURRENT;
 #endif
     /* Re-enqueues tp with its new priority on the ready list.*/
-    chSchReadyI((thread_t *)ch_queue_dequeue(&tp->hdr.queue));
+    chSchReadyI(queue_dequeue(tp));
     break;
   }
 

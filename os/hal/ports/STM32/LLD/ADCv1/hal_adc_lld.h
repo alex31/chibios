@@ -44,7 +44,7 @@
 #define ADC_SMPR_SMP_55P5       5U  /**< @brief 68 cycles conversion time.  */
 #define ADC_SMPR_SMP_71P5       6U  /**< @brief 84 cycles conversion time.  */
 #define ADC_SMPR_SMP_239P5      7U  /**< @brief 252 cycles conversion time. */
-#elif defined(STM32L0XX)
+#elif defined(STM32L0XX) || defined(STM32G0XX)
 #define ADC_SMPR_SMP_1P5        0U  /**< @brief 14 cycles conversion time   */
 #define ADC_SMPR_SMP_3P5        1U  /**< @brief 16 cycles conversion time.  */
 #define ADC_SMPR_SMP_7P5        2U  /**< @brief 20 cycles conversion time.  */
@@ -172,11 +172,12 @@
 /*===========================================================================*/
 
 /* Supported devices checks.*/
-#if !defined(STM32F0XX) && !defined(STM32L0XX)
-#error "ADCv1 only supports F0 and L0 STM32 devices"
+#if !defined(STM32F0XX) && !defined(STM32L0XX) && !defined(STM32G0XX)
+#error "ADCv1 only supports F0, L0 and G0 STM32 devices"
 #endif
 
-#if defined(STM32L0XX) || defined(__DOXYGEN__)
+#if defined(STM32L0XX) || defined(STM32G0XX) ||                             \
+    defined(__DOXYGEN__)
 #define STM32_ADCV1_OVERSAMPLING            TRUE
 #else
 #define STM32_ADCV1_OVERSAMPLING            FALSE

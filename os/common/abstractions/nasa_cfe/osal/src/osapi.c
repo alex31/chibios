@@ -2003,9 +2003,8 @@ int32 OS_TaskSetPriority(uint32 task_id, uint32 new_priority) {
   chSysLock();
 
   /* Changing priority.*/
-  if ((tp->hdr.pqueue.prio == tp->realprio) ||
-      (rt_newprio > tp->hdr.pqueue.prio)) {
-    tp->hdr.pqueue.prio = rt_newprio;
+  if ((tp->prio == tp->realprio) || (rt_newprio > tp->prio)) {
+    tp->prio = rt_newprio;
   }
   tp->realprio = rt_newprio;
 
@@ -2022,8 +2021,8 @@ int32 OS_TaskSetPriority(uint32 task_id, uint32 new_priority) {
   case CH_STATE_SNDMSGQ:
 #endif
     /* Re-enqueues tp with its new priority on the queue.*/
-    ch_sch_prio_insert(ch_queue_dequeue(&tp->hdr.queue),
-                      (ch_queue_t *)tp->u.wtobjp);
+    queue_prio_insert(queue_dequeue(tp),
+                      (threads_queue_t *)tp->u.wtobjp);
     break;
   case CH_STATE_READY:
 #if CH_DBG_ENABLE_ASSERTS
@@ -2031,7 +2030,7 @@ int32 OS_TaskSetPriority(uint32 task_id, uint32 new_priority) {
     tp->state = CH_STATE_CURRENT;
 #endif
     /* Re-enqueues tp with its new priority on the ready list.*/
-    chSchReadyI((thread_t *)ch_queue_dequeue(&tp->hdr.queue));
+    chSchReadyI(queue_dequeue(tp));
     break;
   }
 

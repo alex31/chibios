@@ -94,14 +94,7 @@ static void wspi_lld_serve_interrupt(WSPIDriver *wspip) {
      operation. Race condition hidden here.*/
   while (dmaStreamGetTransactionSize(wspip->dma) > 0U)
     ;
-
-  /* Handling of errata: Extra data written in the FIFO at the end of a
-     read transfer.*/
-  if (wspip->state == WSPI_RECEIVE) {
-    while ((wspip->qspi->SR & QUADSPI_SR_BUSY) != 0U) {
-      (void) wspip->qspi->DR;
-    }
-  }
+  dmaStreamDisable(wspip->dma);
 }
 
 /*===========================================================================*/

@@ -807,7 +807,7 @@
 #if STM32_LSI_ENABLED
 #else /* !STM32_LSI_ENABLED */
 
-#if HAL_USE_RTC && (STM32_RTCSEL == STM32_RTCSEL_LSI)
+#if STM32_RTCSEL == STM32_RTCSEL_LSI
 #error "LSI not enabled, required by STM32_RTCSEL"
 #endif
 

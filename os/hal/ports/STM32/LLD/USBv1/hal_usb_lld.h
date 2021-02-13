@@ -108,15 +108,8 @@
 /**
  * @brief   Host wake-up procedure duration.
  */
-#if !defined(STM32_USB_HOST_WAKEUP_DURATION) || defined(__DOXYGEN__)
-#define STM32_USB_HOST_WAKEUP_DURATION      2
-#endif
-
-/**
- * @brief   Allowed deviation for the 48MHz clock.
- */
-#if !defined(STM32_USB_48MHZ_DELTA) || defined(__DOXYGEN__)
-#define STM32_USB_48MHZ_DELTA               0
+#if !defined(USB_HOST_WAKEUP_DURATION) || defined(__DOXYGEN__)
+#define USB_HOST_WAKEUP_DURATION            2
 #endif
 
 /*===========================================================================*/
@@ -142,6 +135,10 @@
 #error "Invalid IRQ priority assigned to USB LP"
 #endif
 
+#if STM32_USBCLK != 48000000
+#error "the USB driver requires a 48MHz clock"
+#endif
+
 #if !defined(STM32_USB1_HP_HANDLER)
 #error "STM32_USB1_HP_HANDLER not defined"
 #endif
@@ -158,17 +155,8 @@
 #error "STM32_USB1_LP_NUMBER not defined"
 #endif
 
-#if (STM32_USB_HOST_WAKEUP_DURATION < 2) || (STM32_USB_HOST_WAKEUP_DURATION > 15)
-#error "invalid STM32_USB_HOST_WAKEUP_DURATION setting, it must be between 2 and 15"
-#endif
-
-#if (STM32_USB_48MHZ_DELTA < 0) || (STM32_USB_48MHZ_DELTA > 250000)
-#error "invalid STM32_USB_48MHZ_DELTA setting, it must not exceed 250000"
-#endif
-
-#if (STM32_USBCLK < (48000000 - STM32_USB_48MHZ_DELTA)) ||                  \
-    (STM32_USBCLK > (48000000 + STM32_USB_48MHZ_DELTA))
-#error "the USB driver requires a 48MHz clock"
+#if (USB_HOST_WAKEUP_DURATION < 2) || (USB_HOST_WAKEUP_DURATION > 15)
+#error "invalid USB_HOST_WAKEUP_DURATION setting, it must be between 2 and 15"
 #endif
 
 /*===========================================================================*/
@@ -479,7 +467,7 @@ struct USBDriver {
 #define usb_lld_wakeup_host(usbp)                                           \
   do {                                                                      \
     STM32_USB->CNTR |= USB_CNTR_RESUME;                                     \
-    osalThreadSleepMilliseconds(STM32_USB_HOST_WAKEUP_DURATION);            \
+    osalThreadSleepMilliseconds(USB_HOST_WAKEUP_DURATION);                  \
     STM32_USB->CNTR &= ~USB_CNTR_RESUME;                                    \
   } while (false)
 

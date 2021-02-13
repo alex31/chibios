@@ -236,21 +236,21 @@ bool chSysIntegrityCheckI(unsigned testmask) {
 
   /* Ready List integrity check.*/
   if ((testmask & CH_INTEGRITY_RLIST) != 0U) {
-    ch_priority_queue_t *pqp;
+    thread_t *tp;
 
     /* Scanning the ready list forward.*/
     n = (cnt_t)0;
-    pqp = ch.rlist.pqueue.next;
-    while (pqp != &ch.rlist.pqueue) {
+    tp = ch.rlist.queue.next;
+    while (tp != (thread_t *)&ch.rlist.queue) {
       n++;
-      pqp = pqp->next;
+      tp = tp->queue.next;
     }
 
     /* Scanning the ready list backward.*/
-    pqp = ch.rlist.pqueue.prev;
-    while (pqp != &ch.rlist.pqueue) {
+    tp = ch.rlist.queue.prev;
+    while (tp != (thread_t *)&ch.rlist.queue) {
       n--;
-      pqp = pqp->prev;
+      tp = tp->queue.prev;
     }
 
     /* The number of elements must match.*/
@@ -261,21 +261,21 @@ bool chSysIntegrityCheckI(unsigned testmask) {
 
   /* Timers list integrity check.*/
   if ((testmask & CH_INTEGRITY_VTLIST) != 0U) {
-    delta_list_t *dlp;
+    virtual_timer_t * vtp;
 
     /* Scanning the timers list forward.*/
     n = (cnt_t)0;
-    dlp = ch.vtlist.dlist.next;
-    while (dlp != &ch.vtlist.dlist) {
+    vtp = ch.vtlist.next;
+    while (vtp != (virtual_timer_t *)&ch.vtlist) {
       n++;
-      dlp = dlp->next;
+      vtp = vtp->next;
     }
 
     /* Scanning the timers list backward.*/
-    dlp = ch.vtlist.dlist.prev;
-    while (dlp != &ch.vtlist.dlist) {
+    vtp = ch.vtlist.prev;
+    while (vtp != (virtual_timer_t *)&ch.vtlist) {
       n--;
-      dlp = dlp->prev;
+      vtp = vtp->prev;
     }
 
     /* The number of elements must match.*/
