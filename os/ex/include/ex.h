@@ -36,12 +36,12 @@
 /**
  * @brief   ChibiOS/EX identification macro.
  */
-#define _CHIBIOS_EX_
+#define __CHIBIOS_EX__
 
 /**
  * @brief   Stable release flag.
  */
-#define CH_EX_STABLE            1
+#define CH_EX_STABLE            0
 
 /**
  * @name    ChibiOS/EX version identification
