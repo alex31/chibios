@@ -68,7 +68,7 @@ typedef struct ch_semaphore {
  * @param[in] n         the counter initial value, this value must be
  *                      non-negative
  */
-#define _SEMAPHORE_DATA(name, n) {_CH_QUEUE_DATA(name.queue), n}
+#define __SEMAPHORE_DATA(name, n) {__CH_QUEUE_DATA(name.queue), n}
 
 /**
  * @brief   Static semaphore initializer.
@@ -79,7 +79,7 @@ typedef struct ch_semaphore {
  * @param[in] n         the counter initial value, this value must be
  *                      non-negative
  */
-#define SEMAPHORE_DECL(name, n) semaphore_t name = _SEMAPHORE_DATA(name, n)
+#define SEMAPHORE_DECL(name, n) semaphore_t name = __SEMAPHORE_DATA(name, n)
 
 /*===========================================================================*/
 /* External declarations.                                                    */

@@ -102,7 +102,7 @@ typedef void (*evhandler_t)(eventid_t id);
  *          source that is part of a bigger structure.
  * @param name          the name of the event source variable
  */
-#define _EVENTSOURCE_DATA(name) {(event_listener_t *)(&name)}
+#define __EVENTSOURCE_DATA(name) {(event_listener_t *)(&name)}
 
 /**
  * @brief   Static event source initializer.
@@ -111,7 +111,7 @@ typedef void (*evhandler_t)(eventid_t id);
  *
  * @param name          the name of the event source variable
  */
-#define EVENTSOURCE_DECL(name) event_source_t name = _EVENTSOURCE_DATA(name)
+#define EVENTSOURCE_DECL(name) event_source_t name = __EVENTSOURCE_DATA(name)
 
 /*===========================================================================*/
 /* External declarations.                                                    */
@@ -120,6 +120,10 @@ typedef void (*evhandler_t)(eventid_t id);
 #ifdef __cplusplus
 extern "C" {
 #endif
+  void chEvtRegisterMaskWithFlagsI(event_source_t *esp,
+                                   event_listener_t *elp,
+                                   eventmask_t events,
+                                   eventflags_t wflags);
   void chEvtRegisterMaskWithFlags(event_source_t *esp,
                                   event_listener_t *elp,
                                   eventmask_t events,
@@ -128,8 +132,8 @@ extern "C" {
   eventmask_t chEvtGetAndClearEventsI(eventmask_t events);
   eventmask_t chEvtGetAndClearEvents(eventmask_t events);
   eventmask_t chEvtAddEvents(eventmask_t events);
-  eventflags_t chEvtGetAndClearFlags(event_listener_t *elp);
   eventflags_t chEvtGetAndClearFlagsI(event_listener_t *elp);
+  eventflags_t chEvtGetAndClearFlags(event_listener_t *elp);
   void chEvtSignal(thread_t *tp, eventmask_t events);
   void chEvtSignalI(thread_t *tp, eventmask_t events);
   void chEvtBroadcastFlags(event_source_t *esp, eventflags_t flags);
@@ -268,7 +272,7 @@ static inline void chEvtBroadcastI(event_source_t *esp) {
  */
 static inline eventmask_t chEvtAddEventsI(eventmask_t events) {
 
-  return currp->epending |= events;
+  return __sch_get_currthread()->epending |= events;
 }
 
 /**
@@ -281,7 +285,7 @@ static inline eventmask_t chEvtAddEventsI(eventmask_t events) {
  */
 static inline eventmask_t chEvtGetEventsX(void) {
 
-  return currp->epending;
+  return __sch_get_currthread()->epending;
 }
 
 #endif /* CH_CFG_USE_EVENTS == TRUE */

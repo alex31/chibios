@@ -173,7 +173,7 @@ void adc_lld_init(void) {
   rccEnableADC1(true);
 
   /* CCR setup.*/
-  ADC->CCR = STM32_ADC_PRESC << 18;
+  ADC1_COMMON->CCR = STM32_ADC_PRESC << 18;
 
   /* Regulator enabled and stabilized before calibration.*/
   adc_lld_vreg_on(ADC1);
@@ -241,7 +241,7 @@ void adc_lld_stop(ADCDriver *adcp) {
     adcp->dmastp = NULL;
 
     /* Restoring CCR default.*/
-    ADC->CCR = STM32_ADC_PRESC << 18;
+    ADC1_COMMON->CCR = STM32_ADC_PRESC << 18;
 
     /* Disabling ADC.*/
     if (adcp->adc->CR & ADC_CR_ADEN) {
@@ -344,25 +344,29 @@ void adc_lld_serve_interrupt(ADCDriver *adcp) {
   /* It could be a spurious interrupt caused by overflows after DMA disabling,
      just ignore it in this case.*/
   if (adcp->grpp != NULL) {
+    adcerror_t emask = 0U;
+
     /* Note, an overflow may occur after the conversion ended before the driver
-       is able to stop the ADC, this is why the DMA channel is checked too.*/
-    if ((isr & ADC_ISR_OVR) &&
-        (dmaStreamGetTransactionSize(adcp->dmastp) > 0)) {
+       is able to stop the ADC, this is why the state is checked too.*/
+    if ((isr & ADC_ISR_OVR) && (adcp->state == ADC_ACTIVE)) {
       /* ADC overflow condition, this could happen only if the DMA is unable
          to read data fast enough.*/
-      _adc_isr_error_code(adcp, ADC_ERR_OVERFLOW);
+      emask |= ADC_ERR_OVERFLOW;
     }
     if (isr & ADC_ISR_AWD1) {
       /* Analog watchdog 1 error.*/
-      _adc_isr_error_code(adcp, ADC_ERR_AWD1);
+      emask |= ADC_ERR_AWD1;
     }
     if (isr & ADC_ISR_AWD2) {
       /* Analog watchdog 2 error.*/
-      _adc_isr_error_code(adcp, ADC_ERR_AWD2);
+      emask |= ADC_ERR_AWD2;
     }
     if (isr & ADC_ISR_AWD3) {
       /* Analog watchdog 3 error.*/
-      _adc_isr_error_code(adcp, ADC_ERR_AWD3);
+      emask |= ADC_ERR_AWD3;
+    }
+    if (emask != 0U) {
+      _adc_isr_error_code(adcp, emask);
     }
   }
 }
@@ -381,7 +385,7 @@ void adcSTM32EnableVREF(ADCDriver *adcp) {
 
   (void)adcp;
 
-  ADC->CCR |= ADC_CCR_VREFEN;
+  ADC1_COMMON->CCR |= ADC_CCR_VREFEN;
 }
 
 /**
@@ -398,7 +402,7 @@ void adcSTM32DisableVREF(ADCDriver *adcp) {
 
   (void)adcp;
 
-  ADC->CCR &= ~ADC_CCR_VREFEN;
+  ADC1_COMMON->CCR &= ~ADC_CCR_VREFEN;
 }
 
 /**
@@ -415,7 +419,7 @@ void adcSTM32EnableTS(ADCDriver *adcp) {
 
   (void)adcp;
 
-  ADC->CCR |= ADC_CCR_TSEN;
+  ADC1_COMMON->CCR |= ADC_CCR_TSEN;
 }
 
 /**
@@ -432,7 +436,7 @@ void adcSTM32DisableTS(ADCDriver *adcp) {
 
   (void)adcp;
 
-  ADC->CCR &= ~ADC_CCR_TSEN;
+  ADC1_COMMON->CCR &= ~ADC_CCR_TSEN;
 }
 
 #if defined(ADC_CCR_VBATEN) || defined(__DOXYGEN__)
@@ -450,7 +454,7 @@ void adcSTM32EnableVBAT(ADCDriver *adcp) {
 
   (void)adcp;
 
-  ADC->CCR |= ADC_CCR_VBATEN;
+  ADC1_COMMON->CCR |= ADC_CCR_VBATEN;
 }
 
 /**
@@ -467,7 +471,7 @@ void adcSTM32DisableVBAT(ADCDriver *adcp) {
 
   (void)adcp;
 
-  ADC->CCR &= ~ADC_CCR_VBATEN;
+  ADC1_COMMON->CCR &= ~ADC_CCR_VBATEN;
 }
 #endif /* defined(ADC_CCR_VBATEN) */
 

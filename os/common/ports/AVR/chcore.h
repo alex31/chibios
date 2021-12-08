@@ -82,7 +82,12 @@ extern bool __avr_in_isr;
 /**
  * @brief   Name of the implemented architecture.
  */
-#define PORT_ARCHITECTURE_NAME          "MegaAVR"
+#define PORT_ARCHITECTURE_NAME          "AVR"
+
+/**
+ * @brief   Name of the architecture variant.
+ */
+#define PORT_CORE_VARIANT_NAME          "MegaAVR"
 
 /**
  * @brief   Compiler name and version.
@@ -121,16 +126,6 @@ extern bool __avr_in_isr;
  */
 #if !defined(PORT_INT_REQUIRED_STACK) || defined(__DOXYGEN__)
 #define PORT_INT_REQUIRED_STACK         32
-#endif
-
-/**
- * @brief   Enables an alternative timer implementation.
- * @details Usually the port uses a timer interface defined in the file
- *          @p chcore_timer.h, if this option is enabled then the file
- *          @p chcore_timer_alt.h is included instead.
- */
-#if !defined(PORT_USE_ALT_TIMER) || defined(__DOXYGEN__)
-#define PORT_USE_ALT_TIMER              FALSE
 #endif
 
 /**
@@ -318,10 +313,10 @@ struct port_context {
  */
 #define PORT_IRQ_EPILOGUE() {                                               \
   __avr_in_isr = false;                                                     \
-  _dbg_check_lock();                                                        \
+  __dbg_check_lock();                                                       \
   if (chSchIsPreemptionRequired())                                          \
-    chSchDoReschedule();                                                    \
-  _dbg_check_unlock();                                                      \
+    chSchDoPreemption();                                                    \
+  __dbg_check_unlock();                                                     \
 }
 
 /**
@@ -358,7 +353,7 @@ struct port_context {
  * @brief   Port-related initialization code.
  * @note    This function is empty in this port.
  */
-#define port_init() {                                                       \
+#define port_init(oip) {                                                    \
   __avr_in_isr = true;                                                      \
 }
 
@@ -523,16 +518,10 @@ static inline rtcnt_t port_rt_get_counter_value(void) {
 /* Module late inclusions.                                                   */
 /*===========================================================================*/
 
-/* The following code is not processed when the file is included from an
-   asm module.*/
 #if !defined(_FROM_ASM_)
 
 #if CH_CFG_ST_TIMEDELTA > 0
-#if !PORT_USE_ALT_TIMER
 #include "chcore_timer.h"
-#else /* PORT_USE_ALT_TIMER */
-#include "chcore_timer_alt.h"
-#endif /* PORT_USE_ALT_TIMER */
 #endif /* CH_CFG_ST_TIMEDELTA > 0 */
 
 #endif /* !defined(_FROM_ASM_) */

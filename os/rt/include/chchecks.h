@@ -44,8 +44,13 @@
 #error "invalid configuration file"
 #endif
 
-#if !defined(_CHIBIOS_RT_CONF_VER_6_1_)
+#if !defined(_CHIBIOS_RT_CONF_VER_7_0_)
 #error "obsolete or unknown configuration file"
+#endif
+
+/* System checks.*/
+#if !defined(CH_CFG_SMP_MODE)
+#error "CH_CFG_SMP_MODE not defined in chconf.h"
 #endif
 
 /* System timers checks.*/
@@ -90,6 +95,10 @@
 /* Subsystem options checks.*/
 #if !defined(CH_CFG_USE_TM)
 #error "CH_CFG_USE_TM not defined in chconf.h"
+#endif
+
+#if !defined(CH_CFG_USE_TIMESTAMP)
+#error "CH_CFG_USE_TIMESTAMP not defined in chconf.h"
 #endif
 
 #if !defined(CH_CFG_USE_REGISTRY)
@@ -182,12 +191,20 @@
 #endif
 
 /* System hooks checks.*/
+#if !defined(CH_CFG_SYSTEM_EXTRA_FIELDS)
+#error "CH_CFG_SYSTEM_EXTRA_FIELDS not defined in chconf.h"
+#endif
+
 #if !defined(CH_CFG_SYSTEM_INIT_HOOK)
 #error "CH_CFG_SYSTEM_INIT_HOOK not defined in chconf.h"
 #endif
 
-#if !defined(CH_CFG_SYSTEM_EXTRA_FIELDS)
-#error "CH_CFG_SYSTEM_EXTRA_FIELDS not defined in chconf.h"
+#if !defined(CH_CFG_OS_INSTANCE_INIT_HOOK)
+#error "CH_CFG_OS_INSTANCE_INIT_HOOK not defined in chconf.h"
+#endif
+
+#if !defined(CH_CFG_OS_INSTANCE_EXTRA_FIELDS)
+#error "CH_CFG_OS_INSTANCE_EXTRA_FIELDS not defined in chconf.h"
 #endif
 
 #if !defined(CH_CFG_THREAD_EXTRA_FIELDS)
@@ -236,6 +253,10 @@
 
 #if !defined(CH_CFG_TRACE_HOOK)
 #error "CH_CFG_TRACE_HOOK not defined in chconf.h"
+#endif
+
+#if !defined(CH_CFG_RUNTIME_FAULTS_HOOK)
+#error "CH_CFG_RUNTIME_FAULTS_HOOK not defined in chconf.h"
 #endif
 
 /*===========================================================================*/

@@ -56,8 +56,10 @@
  */
 #if defined(_CHIBIOS_RT_CONF_)
 #define CONTEXT_OFFSET  12
+
 #elif defined(_CHIBIOS_NIL_CONF_)
 #define CONTEXT_OFFSET  0
+
 #else
 #error "invalid chconf.h"
 #endif
@@ -80,8 +82,8 @@ _port_switch:
         se_stw      r0, 0(r1)
         e_stmw      r14, 4(r1)
 
-        se_stw      r1, 12(r4)
-        se_lwz      r1, 12(r3)
+        se_stw      r1, CONTEXT_OFFSET(r4)
+        se_lwz      r1, CONTEXT_OFFSET(r3)
 
         e_lmw       r14, 4(r1)
         se_lwz      r0, 0(r1)

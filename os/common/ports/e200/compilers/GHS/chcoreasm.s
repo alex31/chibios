@@ -53,8 +53,10 @@
  */
 #if defined(_CHIBIOS_RT_CONF_)
 #define CONTEXT_OFFSET  12
+
 #elif defined(_CHIBIOS_NIL_CONF_)
 #define CONTEXT_OFFSET  0
+
 #else
 #error "invalid chconf.h"
 #endif

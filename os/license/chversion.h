@@ -37,7 +37,7 @@
 /**
  * @brief   ChibiOS product identification macro.
  */
-#define _CHIBIOS_
+#define __CHIBIOS__
 
 /**
  * @brief   Stable release flag.
@@ -51,27 +51,27 @@
 /**
  * @brief   ChibiOS version string.
  */
-#define CH_VERSION              "20.3.4"
+#define CH_VERSION              "2021.11.1"
 
 /**
  * @brief   ChibiOS version release year.
  */
-#define CH_VERSION_YEAR         20
+#define CH_VERSION_YEAR         21
 
 /**
  * @brief   ChibiOS version release month.
  */
-#define CH_VERSION_MONTH        3
+#define CH_VERSION_MONTH        11
 
 /**
  * @brief   ChibiOS version patch number.
  */
-#define CH_VERSION_PATCH        4
+#define CH_VERSION_PATCH        1
 
 /**
  * @brief   ChibiOS version nickname.
  */
-#define CH_VERSION_NICKNAME     "Conca"
+#define CH_VERSION_NICKNAME     "Nocelle"
 /** @} */
 
 /*===========================================================================*/
@@ -81,6 +81,12 @@
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
+
+/**
+ * @brief   Current version date in numeric form (yyyymm).
+ */
+#define CH_VERSION_DATE                                                     \
+  (((CH_VERSION_YEAR + 2000) * 100) + CH_VERSION_MONTH)
 
 /*===========================================================================*/
 /* Module data structures and types.                                         */

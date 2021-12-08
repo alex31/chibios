@@ -24,10 +24,11 @@
 #include "chprintf.h"
 #include "shell.h"
 
+#include "ff.h"
+
 #include "lwipthread.h"
 #include "lwip/apps/httpd.h"
-
-#include "ff.h"
+#include "httpd_fatfs.h"
 
 #include "portab.h"
 #include "usbcfg.h"
@@ -61,8 +62,11 @@ static event_source_t inserted_event, removed_event;
  *
  * @notapi
  */
-static void tmrfunc(void *p) {
+static void tmrfunc(virtual_timer_t *vtp,
+                    void *p) {
   BaseBlockDevice *bbdp = p;
+
+  (void)vtp;
 
   chSysLockFromISR();
   if (cnt > 0) {
@@ -205,7 +209,7 @@ static void InsertHandler(eventid_t id) {
    * On insertion SDC initialization and FS mount.
    */
 #if HAL_USE_SDC
-  if (sdcConnect(&SDCD1))
+  if (sdcConnect(&PORTAB_SDC1))
 #else
   if (mmcConnect(&MMCD1))
 #endif
@@ -214,7 +218,7 @@ static void InsertHandler(eventid_t id) {
   err = f_mount(&SDC_FS, "/", 1);
   if (err != FR_OK) {
 #if HAL_USE_SDC
-    sdcDisconnect(&SDCD1);
+    sdcDisconnect(&PORTAB_SDC1);
 #else
     mmcDisconnect(&MMCD1);
 #endif
@@ -230,7 +234,7 @@ static void RemoveHandler(eventid_t id) {
 
   (void)id;
 #if HAL_USE_SDC
-    sdcDisconnect(&SDCD1);
+    sdcDisconnect(&PORTAB_SDC1);
 #else
     mmcDisconnect(&MMCD1);
 #endif
@@ -317,12 +321,12 @@ int main(void) {
    * Activates the  SDC driver 1 using default configuration.
    */
 
-  sdcStart(&SDCD1, NULL);
+  sdcStart(&PORTAB_SDC1, NULL);
 
   /*
    * Activates the card insertion monitor.
    */
-  tmr_init(&SDCD1);
+  tmr_init(&PORTAB_SDC1);
 #else
   /*
    * Initializes the MMC driver to work with SPI3.
@@ -345,6 +349,7 @@ int main(void) {
   /*
    * Starts the HTTP server.
    */
+  httpd_fatfs_init();
   httpd_init();
 
   /*

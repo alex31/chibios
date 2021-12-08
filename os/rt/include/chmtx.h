@@ -78,9 +78,9 @@ struct ch_mutex {
  * @param[in] name      the name of the mutex variable
  */
 #if (CH_CFG_USE_MUTEXES_RECURSIVE == TRUE) || defined(__DOXYGEN__)
-#define _MUTEX_DATA(name) {_CH_QUEUE_DATA(name.queue), NULL, NULL, 0}
+#define __MUTEX_DATA(name) {__CH_QUEUE_DATA(name.queue), NULL, NULL, 0}
 #else
-#define _MUTEX_DATA(name) {_CH_QUEUE_DATA(name.queue), NULL, NULL}
+#define __MUTEX_DATA(name) {__CH_QUEUE_DATA(name.queue), NULL, NULL}
 #endif
 
 /**
@@ -90,7 +90,7 @@ struct ch_mutex {
  *
  * @param[in] name      the name of the mutex variable
  */
-#define MUTEX_DECL(name) mutex_t name = _MUTEX_DATA(name)
+#define MUTEX_DECL(name) mutex_t name = __MUTEX_DATA(name)
 
 /*===========================================================================*/
 /* External declarations.                                                    */

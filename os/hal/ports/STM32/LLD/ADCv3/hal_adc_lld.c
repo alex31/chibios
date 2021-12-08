@@ -295,25 +295,29 @@ static void adc_lld_serve_interrupt(ADCDriver *adcp, uint32_t isr) {
   /* It could be a spurious interrupt caused by overflows after DMA disabling,
      just ignore it in this case.*/
   if (adcp->grpp != NULL) {
+    adcerror_t emask = 0U;
+
     /* Note, an overflow may occur after the conversion ended before the driver
-       is able to stop the ADC, this is why the DMA channel is checked too.*/
-    if ((isr & ADC_ISR_OVR) &&
-        (dmaStreamGetTransactionSize(adcp->dmastp) > 0)) {
+       is able to stop the ADC, this is why the state is checked too.*/
+    if ((isr & ADC_ISR_OVR) && (adcp->state == ADC_ACTIVE)) {
       /* ADC overflow condition, this could happen only if the DMA is unable
          to read data fast enough.*/
-      _adc_isr_error_code(adcp, ADC_ERR_OVERFLOW);
+      emask |= ADC_ERR_OVERFLOW;
     }
     if (isr & ADC_ISR_AWD1) {
-      /* Analog watchdog error.*/
-      _adc_isr_error_code(adcp, ADC_ERR_AWD1);
+      /* Analog watchdog 1 error.*/
+      emask |= ADC_ERR_AWD1;
     }
     if (isr & ADC_ISR_AWD2) {
-      /* Analog watchdog error.*/
-      _adc_isr_error_code(adcp, ADC_ERR_AWD2);
+      /* Analog watchdog 2 error.*/
+      emask |= ADC_ERR_AWD2;
     }
     if (isr & ADC_ISR_AWD3) {
-      /* Analog watchdog error.*/
-      _adc_isr_error_code(adcp, ADC_ERR_AWD3);
+      /* Analog watchdog 3 error.*/
+      emask |= ADC_ERR_AWD3;
+    }
+    if (emask != 0U) {
+      _adc_isr_error_code(adcp, emask);
     }
   }
 }
@@ -531,7 +535,11 @@ void adc_lld_init(void) {
 
   /* IRQs setup.*/
 #if STM32_ADC_USE_ADC1 || STM32_ADC_USE_ADC2
+#if defined(STM32_ADC_ADC1_IRQ_PRIORITY)
+  nvicEnableVector(STM32_ADC1_NUMBER, STM32_ADC_ADC1_IRQ_PRIORITY);
+#elif defined(STM32_ADC_ADC12_IRQ_PRIORITY)
   nvicEnableVector(STM32_ADC1_NUMBER, STM32_ADC_ADC12_IRQ_PRIORITY);
+#endif
 #endif
 #if STM32_ADC_USE_ADC3
   nvicEnableVector(STM32_ADC3_NUMBER, STM32_ADC_ADC3_IRQ_PRIORITY);
@@ -573,12 +581,13 @@ void adc_lld_init(void) {
   rccResetADC123();
 #if defined(ADC1_2_COMMON)
   ADC1_2_COMMON->CCR = STM32_ADC_ADC123_PRESC | STM32_ADC_ADC123_CLOCK_MODE | ADC_DMA_MDMA;
+#elif defined(ADC12_COMMON)
+  ADC12_COMMON->CCR = STM32_ADC_ADC123_PRESC | STM32_ADC_ADC123_CLOCK_MODE | ADC_DMA_MDMA;
 #elif defined(ADC123_COMMON)
   ADC123_COMMON->CCR = STM32_ADC_ADC123_PRESC | STM32_ADC_ADC123_CLOCK_MODE | ADC_DMA_MDMA;
 #else
   ADC1_COMMON->CCR   = STM32_ADC_ADC123_PRESC | STM32_ADC_ADC123_CLOCK_MODE | ADC_DMA_MDMA;
 #endif
-
   rccDisableADC123();
 #endif
 
@@ -594,6 +603,15 @@ void adc_lld_init(void) {
   rccResetADC345();
   ADC345_COMMON->CCR = STM32_ADC_ADC345_PRESC | STM32_ADC_ADC345_CLOCK_MODE | ADC_DMA_MDMA;
   rccDisableADC345();
+#endif
+#endif
+
+#if defined(STM32WBXX)
+#if STM32_ADC_USE_ADC1
+  rccEnableADC1(true);
+  rccResetADC1();
+  ADC1_COMMON->CCR = STM32_ADC_ADC1_PRESC | STM32_ADC_ADC1_CLOCK_MODE;
+  rccDisableADC1();
 #endif
 #endif
 }
@@ -616,6 +634,10 @@ void adc_lld_start(ADCDriver *adcp) {
   if (adcp->state == ADC_STOP) {
 #if STM32_ADC_USE_ADC1
     if (&ADCD1 == adcp) {
+
+      osalDbgAssert(STM32_ADC1_CLOCK <= STM32_ADCCLK_MAX,
+                    "invalid clock frequency");
+
       adcp->dmastp = dmaStreamAllocI(STM32_ADC_ADC1_DMA_STREAM,
                                      STM32_ADC_ADC1_DMA_IRQ_PRIORITY,
                                      (stm32_dmaisr_t)adc_lld_serve_dma_interrupt,
@@ -629,6 +651,9 @@ void adc_lld_start(ADCDriver *adcp) {
 #if defined(STM32L4XX) || defined(STM32L4XXP)
       rccEnableADC123(true);
 #endif
+#if defined(STM32WBXX)
+      rccEnableADC1(true);
+#endif
 #if STM32_DMA_SUPPORTS_DMAMUX
       dmaSetRequestSource(adcp->dmastp, STM32_DMAMUX1_ADC1);
 #endif
@@ -637,6 +662,10 @@ void adc_lld_start(ADCDriver *adcp) {
 
 #if STM32_ADC_USE_ADC2
     if (&ADCD2 == adcp) {
+
+      osalDbgAssert(STM32_ADC2_CLOCK <= STM32_ADCCLK_MAX,
+                    "invalid clock frequency");
+
       adcp->dmastp = dmaStreamAllocI(STM32_ADC_ADC2_DMA_STREAM,
                                      STM32_ADC_ADC2_DMA_IRQ_PRIORITY,
                                      (stm32_dmaisr_t)adc_lld_serve_dma_interrupt,
@@ -658,6 +687,10 @@ void adc_lld_start(ADCDriver *adcp) {
 
 #if STM32_ADC_USE_ADC3
     if (&ADCD3 == adcp) {
+
+      osalDbgAssert(STM32_ADC3_CLOCK <= STM32_ADCCLK_MAX,
+                    "invalid clock frequency");
+
       adcp->dmastp = dmaStreamAllocI(STM32_ADC_ADC3_DMA_STREAM,
                                      STM32_ADC_ADC3_DMA_IRQ_PRIORITY,
                                      (stm32_dmaisr_t)adc_lld_serve_dma_interrupt,
@@ -682,6 +715,10 @@ void adc_lld_start(ADCDriver *adcp) {
 
 #if STM32_ADC_USE_ADC4
     if (&ADCD4 == adcp) {
+
+      osalDbgAssert(STM32_ADC4_CLOCK <= STM32_ADCCLK_MAX,
+                    "invalid clock frequency");
+
       adcp->dmastp = dmaStreamAllocI(STM32_ADC_ADC4_DMA_STREAM,
                                      STM32_ADC_ADC4_DMA_IRQ_PRIORITY,
                                      (stm32_dmaisr_t)adc_lld_serve_dma_interrupt,
@@ -793,6 +830,12 @@ void adc_lld_stop(ADCDriver *adcp) {
 #if defined(STM32L4XX) || defined(STM32L4XXP)
     if ((clkmask & 0x7) == 0) {
       rccDisableADC123();
+    }
+#endif
+
+#if defined(STM32WBXX)
+    if ((clkmask & 0x1) == 0) {
+      rccDisableADC1();
     }
 #endif
 

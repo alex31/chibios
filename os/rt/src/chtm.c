@@ -34,13 +34,6 @@
 /* Module local definitions.                                                 */
 /*===========================================================================*/
 
-/**
- * @brief   Number of iterations in the calibration loop.
- * @note    This is required in order to assess the best result in
- *          architectures with instruction cache.
- */
-#define TM_CALIBRATION_LOOP             4U
-
 /*===========================================================================*/
 /* Module exported variables.                                                */
 /*===========================================================================*/
@@ -75,29 +68,6 @@ static inline void tm_stop(time_measurement_t *tmp,
 /*===========================================================================*/
 /* Module exported functions.                                                */
 /*===========================================================================*/
-
-/**
- * @brief   Initializes the time measurement unit.
- *
- * @init
- */
-void _tm_init(void) {
-  time_measurement_t tm;
-  unsigned i;
-
-  /* Time Measurement subsystem calibration, it does a null measurement
-     and calculates the call overhead which is subtracted to real
-     measurements.*/
-  ch.tm.offset = (rtcnt_t)0;
-  chTMObjectInit(&tm);
-  i = TM_CALIBRATION_LOOP;
-  do {
-    chTMStartMeasurementX(&tm);
-    chTMStopMeasurementX(&tm);
-    i--;
-  } while (i > 0U);
-  ch.tm.offset = tm.best;
-}
 
 /**
  * @brief   Initializes a @p TimeMeasurement object.
@@ -138,7 +108,7 @@ NOINLINE void chTMStartMeasurementX(time_measurement_t *tmp) {
  */
 NOINLINE void chTMStopMeasurementX(time_measurement_t *tmp) {
 
-  tm_stop(tmp, chSysGetRealtimeCounterX(), ch.tm.offset);
+  tm_stop(tmp, chSysGetRealtimeCounterX(), ch_system.tmc.offset);
 }
 
 /**

@@ -38,7 +38,7 @@
 /**
  * @brief   System data structures.
  */
-nil_system_t nil;
+os_instance_t nil;
 
 /*===========================================================================*/
 /* Module local variables.                                                   */
@@ -117,7 +117,7 @@ cnt_t nil_ready_all(void *p, cnt_t cnt, msg_t msg) {
  *
  * @notapi
  */
-void _dbg_check_disable(void) {
+void __dbg_check_disable(void) {
 
   if ((nil.isr_cnt != (cnt_t)0) || (nil.lock_cnt != (cnt_t)0)) {
     chSysHalt("SV#1");
@@ -129,7 +129,7 @@ void _dbg_check_disable(void) {
  *
  * @notapi
  */
-void _dbg_check_suspend(void) {
+void __dbg_check_suspend(void) {
 
   if ((nil.isr_cnt != (cnt_t)0) || (nil.lock_cnt != (cnt_t)0)) {
     chSysHalt("SV#2");
@@ -141,7 +141,7 @@ void _dbg_check_suspend(void) {
  *
  * @notapi
  */
-void _dbg_check_enable(void) {
+void __dbg_check_enable(void) {
 
   if ((nil.isr_cnt != (cnt_t)0) || (nil.lock_cnt != (cnt_t)0)) {
     chSysHalt("SV#3");
@@ -153,12 +153,12 @@ void _dbg_check_enable(void) {
  *
  * @notapi
  */
-void _dbg_check_lock(void) {
+void __dbg_check_lock(void) {
 
   if ((nil.isr_cnt != (cnt_t)0) || (nil.lock_cnt != (cnt_t)0)) {
     chSysHalt("SV#4");
   }
-  _dbg_enter_lock();
+  __dbg_enter_lock();
 }
 
 /**
@@ -166,12 +166,12 @@ void _dbg_check_lock(void) {
  *
  * @notapi
  */
-void _dbg_check_unlock(void) {
+void __dbg_check_unlock(void) {
 
   if ((nil.isr_cnt != (cnt_t)0) || (nil.lock_cnt <= (cnt_t)0)) {
     chSysHalt("SV#5");
   }
-  _dbg_leave_lock();
+  __dbg_leave_lock();
 }
 
 /**
@@ -179,12 +179,12 @@ void _dbg_check_unlock(void) {
  *
  * @notapi
  */
-void _dbg_check_lock_from_isr(void) {
+void __dbg_check_lock_from_isr(void) {
 
   if ((nil.isr_cnt <= (cnt_t)0) || (nil.lock_cnt != (cnt_t)0)) {
     chSysHalt("SV#6");
   }
-  _dbg_enter_lock();
+  __dbg_enter_lock();
 }
 
 /**
@@ -192,12 +192,12 @@ void _dbg_check_lock_from_isr(void) {
  *
  * @notapi
  */
-void _dbg_check_unlock_from_isr(void) {
+void __dbg_check_unlock_from_isr(void) {
 
   if ((nil.isr_cnt <= (cnt_t)0) || (nil.lock_cnt <= (cnt_t)0)) {
     chSysHalt("SV#7");
   }
-  _dbg_leave_lock();
+  __dbg_leave_lock();
 }
 
 /**
@@ -205,7 +205,7 @@ void _dbg_check_unlock_from_isr(void) {
  *
  * @notapi
  */
-void _dbg_check_enter_isr(void) {
+void __dbg_check_enter_isr(void) {
 
   port_lock_from_isr();
   if ((nil.isr_cnt < (cnt_t)0) || (nil.lock_cnt != (cnt_t)0)) {
@@ -220,7 +220,7 @@ void _dbg_check_enter_isr(void) {
  *
  * @notapi
  */
-void _dbg_check_leave_isr(void) {
+void __dbg_check_leave_isr(void) {
 
   port_lock_from_isr();
   if ((nil.isr_cnt <= (cnt_t)0) || (nil.lock_cnt != (cnt_t)0)) {
@@ -276,10 +276,10 @@ void chSysInit(void) {
   const thread_descriptor_t *tdp;
 
   /* Optional library modules.*/
-  _oslib_init();
+  __oslib_init();
 
   /* Architecture layer initialization.*/
-  port_init();
+  port_init(&nil);
 
   /* System initialization hook.*/
   CH_CFG_SYSTEM_INIT_HOOK();
@@ -619,7 +619,7 @@ bool chSchIsPreemptionRequired(void) {
  *
  * @special
  */
-void chSchDoReschedule(void) {
+void chSchDoPreemption(void) {
   thread_t *otp = nil.current;
 
   nil.current = nil.next;
@@ -639,7 +639,7 @@ void chSchRescheduleS(void) {
   chDbgCheckClassS();
 
   if (chSchIsRescRequiredI()) {
-    chSchDoReschedule();
+    chSchDoPreemption();
   }
 }
 
