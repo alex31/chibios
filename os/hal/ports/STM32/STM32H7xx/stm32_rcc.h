@@ -54,6 +54,78 @@
 /* Driver macros.                                                            */
 /*===========================================================================*/
 
+__STATIC_INLINE void __rccResetAPB1L(uint32_t mask) {
+
+  /* Resetting the peripherals.*/
+  RCC->APB1LRSTR |= mask;
+  RCC->APB1LRSTR &= ~mask;
+  (void)RCC->APB1LRSTR;
+}
+
+__STATIC_INLINE void __rccResetAPB1H(uint32_t mask) {
+
+  /* Resetting the peripherals.*/
+  RCC->APB1HRSTR |= mask;
+  RCC->APB1HRSTR &= ~mask;
+  (void)RCC->APB1HRSTR;
+}
+
+__STATIC_INLINE void __rccResetAPB2(uint32_t mask) {
+
+  /* Resetting the peripherals.*/
+  RCC->APB2RSTR |= mask;
+  RCC->APB2RSTR &= ~mask;
+  (void)RCC->APB2RSTR;
+}
+
+__STATIC_INLINE void __rccResetAPB3(uint32_t mask) {
+
+  /* Resetting the peripherals.*/
+  RCC->APB3RSTR |= mask;
+  RCC->APB3RSTR &= ~mask;
+  (void)RCC->APB3RSTR;
+}
+
+__STATIC_INLINE void __rccResetAPB4(uint32_t mask) {
+
+  /* Resetting the peripherals.*/
+  RCC->APB4RSTR |= mask;
+  RCC->APB4RSTR &= ~mask;
+  (void)RCC->APB4RSTR;
+}
+
+__STATIC_INLINE void __rccResetAHB1(uint32_t mask) {
+
+  /* Resetting the peripherals.*/
+  RCC->AHB1RSTR |= mask;
+  RCC->AHB1RSTR &= ~mask;
+  (void)RCC->AHB1RSTR;
+}
+
+__STATIC_INLINE void __rccResetAHB2(uint32_t mask) {
+
+  /* Resetting the peripherals.*/
+  RCC->AHB2RSTR |= mask;
+  RCC->AHB2RSTR &= ~mask;
+  (void)RCC->AHB2RSTR;
+}
+
+__STATIC_INLINE void __rccResetAHB3(uint32_t mask) {
+
+  /* Resetting the peripherals.*/
+  RCC->AHB3RSTR |= mask;
+  RCC->AHB3RSTR &= ~mask;
+  (void)RCC->AHB3RSTR;
+}
+
+__STATIC_INLINE void __rccResetAHB4(uint32_t mask) {
+
+  /* Resetting the peripherals.*/
+  RCC->AHB4RSTR |= mask;
+  RCC->AHB4RSTR &= ~mask;
+  (void)RCC->AHB4RSTR;
+}
+
 /**
  * @name    Generic RCC operations
  * @{
@@ -144,10 +216,7 @@ __STATIC_INLINE void rccResetAPB1L(uint32_t mask) {
 #endif
 #endif
 
-  /* Resetting the peripherals.*/
-  RCC->APB1LRSTR |= mask;
-  RCC->APB1LRSTR &= ~mask;
-  (void)RCC->APB1LRSTR;
+  __rccResetAPB1L(mask);
 }
 
 /**
@@ -236,11 +305,9 @@ __STATIC_INLINE void rccResetAPB1H(uint32_t mask) {
 #endif
 #endif
 
-  /* Resetting the peripherals.*/
-  RCC->APB1HRSTR |= mask;
-  RCC->APB1HRSTR &= ~mask;
-  (void)RCC->APB1HRSTR;
+  __rccResetAPB1H(mask);
 }
+
 /**
  * @brief   Enables peripherals on APB2.
  *
@@ -327,10 +394,7 @@ __STATIC_INLINE void rccResetAPB2(uint32_t mask) {
 #endif
 #endif
 
-  /* Resetting the peripherals.*/
-  RCC->APB2RSTR |= mask;
-  RCC->APB2RSTR &= ~mask;
-  (void)RCC->APB2RSTR;
+  __rccResetAPB2(mask);
 }
 
 /**
@@ -419,10 +483,7 @@ __STATIC_INLINE void rccResetAPB3(uint32_t mask) {
 #endif
 #endif
 
-  /* Resetting the peripherals.*/
-  RCC->APB3RSTR |= mask;
-  RCC->APB3RSTR &= ~mask;
-  (void)RCC->APB3RSTR;
+  __rccResetAPB3(mask);
 }
 
 /**
@@ -511,10 +572,7 @@ __STATIC_INLINE void rccResetAPB4(uint32_t mask) {
 #endif
 #endif
 
-  /* Resetting the peripherals.*/
-  RCC->APB4RSTR |= mask;
-  RCC->APB4RSTR &= ~mask;
-  (void)RCC->APB4RSTR;
+  __rccResetAPB4(mask);
 }
 
 /**
@@ -603,10 +661,7 @@ __STATIC_INLINE void rccResetAHB1(uint32_t mask) {
 #endif
 #endif
 
-  /* Resetting the peripherals.*/
-  RCC->AHB1RSTR |= mask;
-  RCC->AHB1RSTR &= ~mask;
-  (void)RCC->AHB1RSTR;
+  __rccResetAHB1(mask);
 }
 
 /**
@@ -695,10 +750,7 @@ __STATIC_INLINE void rccResetAHB2(uint32_t mask) {
 #endif
 #endif
 
-  /* Resetting the peripherals.*/
-  RCC->AHB2RSTR |= mask;
-  RCC->AHB2RSTR &= ~mask;
-  (void)RCC->AHB2RSTR;
+  __rccResetAHB2(mask);
 }
 
 /**
@@ -787,10 +839,7 @@ __STATIC_INLINE void rccResetAHB3(uint32_t mask) {
 #endif
 #endif
 
-  /* Resetting the peripherals.*/
-  RCC->AHB3RSTR |= mask;
-  RCC->AHB3RSTR &= ~mask;
-  (void)RCC->AHB3RSTR;
+  __rccResetAHB3(mask);
 }
 
 /**
@@ -879,10 +928,7 @@ __STATIC_INLINE void rccResetAHB4(uint32_t mask) {
 #endif
 #endif
 
-  /* Resetting the peripherals.*/
-  RCC->AHB4RSTR |= mask;
-  RCC->AHB4RSTR &= ~mask;
-  (void)RCC->AHB4RSTR;
+  __rccResetAHB4(mask);
 }
 /** @} */
 
@@ -1173,14 +1219,22 @@ __STATIC_INLINE void rccResetAHB4(uint32_t mask) {
  *
  * @api
  */
+#if defined(RCC_AHB2ENR_AHBSRAM1EN)
+#define rccEnableSRAM1(lp) rccEnableAHB2(RCC_AHB2ENR_AHBSRAM1EN, lp)
+#else
 #define rccEnableSRAM1(lp) rccEnableAHB2(RCC_AHB2ENR_D2SRAM1EN, lp)
+#endif
 
 /**
  * @brief   Disables the SRAM1 clock.
  *
  * @api
  */
+#if defined(RCC_AHB2ENR_AHBSRAM1EN)
+#define rccDisableSRAM1() rccDisableAHB2(RCC_AHB2ENR_AHBSRAM1EN)
+#else
 #define rccDisableSRAM1() rccDisableAHB2(RCC_AHB2ENR_D2SRAM1EN)
+#endif
 
 /**
  * @brief   Enables the SRAM2 clock.
@@ -1189,14 +1243,22 @@ __STATIC_INLINE void rccResetAHB4(uint32_t mask) {
  *
  * @api
  */
+#if defined(RCC_AHB2ENR_AHBSRAM2EN)
+#define rccEnableSRAM2(lp) rccEnableAHB2(RCC_AHB2ENR_AHBSRAM2EN, lp)
+#else
 #define rccEnableSRAM2(lp) rccEnableAHB2(RCC_AHB2ENR_D2SRAM2EN, lp)
+#endif
 
 /**
  * @brief   Disables the SRAM2 clock.
  *
  * @api
  */
+#if defined(RCC_AHB2ENR_AHBSRAM2EN)
+#define rccDisableSRAM2() rccDisableAHB2(RCC_AHB2ENR_AHBSRAM2EN)
+#else
 #define rccDisableSRAM2() rccDisableAHB2(RCC_AHB2ENR_D2SRAM2EN)
+#endif
 
 /**
  * @brief   Enables the SRAM3 clock.
@@ -1481,6 +1543,85 @@ __STATIC_INLINE void rccResetAHB4(uint32_t mask) {
  * @api
  */
 #define rccResetQUADSPI1() rccResetAHB3(RCC_AHB3RSTR_QSPIRST)
+/** @} */
+
+/**
+ * @name    OCTOSPI peripherals specific RCC operations
+ * @{
+ */
+/**
+ * @brief   Enables the OCTOSPI1 peripheral clock.
+ *
+ * @param[in] lp        low power enable flag
+ *
+ * @api
+ */
+#define rccEnableOCTOSPI1(lp) rccEnableAHB3(RCC_AHB3ENR_OSPI1EN, lp)
+
+/**
+ * @brief   Disables the OCTOSPI1 peripheral clock.
+ *
+ * @api
+ */
+#define rccDisableOCTOSPI1() rccDisableAHB3(RCC_AHB3ENR_OSPI1EN)
+
+/**
+ * @brief   Resets the OCTOSPI1 peripheral.
+ *
+ * @api
+ */
+#define rccResetOCTOSPI1() rccResetAHB3(RCC_AHB3RSTR_OSPI1RST)
+
+/**
+ * @brief   Enables the OCTOSPI2 peripheral clock.
+ *
+ * @param[in] lp        low power enable flag
+ *
+ * @api
+ */
+#define rccEnableOCTOSPI2(lp) rccEnableAHB3(RCC_AHB3ENR_OSPI2EN, lp)
+
+/**
+ * @brief   Disables the OCTOSPI2 peripheral clock.
+ *
+ * @api
+ */
+#define rccDisableOCTOSPI2() rccDisableAHB3(RCC_AHB3ENR_OSPI2EN)
+
+/**
+ * @brief   Resets the OCTOSPI2 peripheral.
+ *
+ * @api
+ */
+#define rccResetOCTOSPI2() rccResetAHB3(RCC_AHB3RSTR_OSPI2RST)
+/** @} */
+
+/**
+ * @name    OCTOSPIM peripheral specific RCC operations
+ * @{
+ */
+/**
+ * @brief   Enables the OCTOSPIM peripheral clock.
+ *
+ * @param[in] lp        low power enable flag
+ *
+ * @api
+ */
+#define rccEnableOCTOSPIM(lp) rccEnableAHB3(RCC_AHB3ENR_IOMNGREN, lp)
+
+/**
+ * @brief   Disables the OCTOSPIM peripheral clock.
+ *
+ * @api
+ */
+#define rccDisableOCTOSPIM() rccDisableAHB3(RCC_AHB3ENR_IOMNGREN)
+
+/**
+ * @brief   Resets the OCTOSPIM peripheral.
+ *
+ * @api
+ */
+#define rccResetOCTOSPIM() rccResetAHB3(RCC_AHB3RSTR_IOMNGRRST)
 /** @} */
 
 /**
@@ -2219,6 +2360,52 @@ __STATIC_INLINE void rccResetAHB4(uint32_t mask) {
  * @api
  */
 #define rccResetUART8() rccResetAPB1L(RCC_APB1LRSTR_UART8RST)
+
+/**
+ * @brief   Enables the UART9 peripheral clock.
+ *
+ * @param[in] lp        low power enable flag
+ *
+ * @api
+ */
+#define rccEnableUART9(lp) rccEnableAPB2(RCC_APB2ENR_UART9EN, lp)
+
+/**
+ * @brief   Disables the UART9 peripheral clock.
+ *
+ * @api
+ */
+#define rccDisableUART9() rccDisableAPB2(RCC_APB2ENR_UART9EN)
+
+/**
+ * @brief   Resets the UART9 peripheral.
+ *
+ * @api
+ */
+#define rccResetUART9() rccResetAPB2(RCC_APB2RSTR_UART9RST)
+
+/**
+ * @brief   Enables the USART10 peripheral clock.
+ *
+ * @param[in] lp        low power enable flag
+ *
+ * @api
+ */
+#define rccEnableUSART10(lp) rccEnableAPB2(RCC_APB2ENR_USART10EN, lp)
+
+/**
+ * @brief   Disables the USART10 peripheral clock.
+ *
+ * @api
+ */
+#define rccDisableUSART10() rccDisableAPB2(RCC_APB2ENR_USART10EN)
+
+/**
+ * @brief   Resets the USART10 peripheral.
+ *
+ * @api
+ */
+#define rccResetUSART10() rccResetAPB2(RCC_APB2RSTR_USART10RST)
 
 /**
  * @brief   Enables the LPUART1 peripheral clock.

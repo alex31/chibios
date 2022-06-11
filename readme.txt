@@ -73,6 +73,64 @@
 *** Releases and Change Log                                               ***
 *****************************************************************************
 
+*** 21.11.2 ***
+- NEW: Added dubby cycles support for SNOR using the normal SPI driver.
+- NEW: Disabled priority check on STM32 EXTI interrupts when the default
+       ISR is disabled. This allows for fast interrupts.
+- NEW: Added support for UART9 and USART10 on STM32H7.
+- NEW: Improved MFS to use explicitly non-cacheable buffers for potentially
+       DMA-accessible I/O areas.
+- NEW: FatFS now functional on STM32H7xx, added a target to the VFS demo.
+- NEW: Improved cache settings in STM32H7xx mcuconf.h.
+- NEW: Modified SDMMCv2 to allow for uncached buffers, tested on STM32H7xx.
+- NEW: Added OCTOSPIv2 driver using MDMA for STM32H7xx.
+- NEW: Added demos for STM32H723ZG Nucleo144 and STM32H735ZI Discovery boards.
+- NEW: Added support for STM32H723/25/33/35/A3/B3/A3Q/B3Q.
+- NEW: Updated ST Cube headers for STM32H7xx.
+- NEW: Improved HAL flash interface with mutual exclusion methods, improved
+       EFL and SNOR drivers to use it.
+- NEW: Added EFL driver implementation for STM32G4xx.
+- NEW: STM32G0B1 USBv2 driver.
+- NEW: USBv1 driver optimization and removal of a potential race condition
+       (not demonstrated).
+- NEW: Added elfAcquireBus()/eflReleaseBus() functions to EFL driver.
+- NEW: Added option to copy vectors in RAM on GCC startup for ARMv6-M,
+       ARMv7-M and ARMv8-M-ML.
+- NEW: On STM32WBxx added a check on STM32_LSI_ENABLE required by IWDG.
+- NEW: Added SPIv2 support also to STM32WB and STM32WL.
+- FIX: Re-opened and fixed bug #1100.
+- FIX: Fixed wrong buffers toggling in STM32 USBv1 isochronous mode (bug #1232).
+- FIX: Fixed STM32 RTCv2 registers synchronization errata (bug #1231).
+- FIX: Fixed STM32 ADCv1 and ADCv5 do not allow prescaler divide value of 1
+       (bug #1230).
+- FIX: Fixed missing check on STM32 SPIv2 DMA settings for SPI1 (bug #1229).
+- FIX: Fixed ARMv6-M port Keil compiler fail (bug #1228).
+- FIX: Fixed invalid handling of lwIP NETIF_FLAG_LINK_UP flag (bug #1227).
+- FIX: Fixed missing TIM16/17 errata handling for STM32G0xx (bug #1226).
+- FIX: Fixed missing ADC errata handling for STM32G0xx (bug #1225).
+- FIX: Fixed problem in the HAL I2C fallback driver (bug #1224).
+- FIX: Fixed GPIOH clock not enabled on STM32L432 (bug #1223).
+- FIX: Fixed invalid cumulative time stat in RT (bug #1222).
+- FIX: Fixed incorrect type cast in TIME_I2US() (bug #1221).
+- FIX: Fixed missing clock disable for STM32 OCTOSPI2 (bug #1220).
+- FIX: Fixed wrong condition in STM32 sio_lld_read() function (bug #1219).
+- FIX: Fixed STM32 Ethernet driver causes system hang after 2^31 packets
+       sent/received (bug #1218).
+- FIX: Fixed clock re-initialization problem in STM32 USARTv2 and USARTv3
+       drivers (bug #1217).
+- FIX: Fixed assertion on initialization of STM32H7xx (bug #1216).
+- FIX: Fixed Virtual Timers failure in a specific condition (bug #1215).
+- FIX: Fixed invalid STM32_OTG_STEPPING for STM32F40_41xxx (bug #1214).
+- FIX: Fixed SPIv2 driver compile fails when SPI_USE_SYNCHRONIZATION is FALSE
+       (bug #1213).
+- FIX: Fixed invalid state transition in SNOR flash driver (bug #1212).
+- FIX: Fixed missing exit condition in sioSynchronizeRX() and
+       sioSynchronizeTX() (bug #1211).
+- FIX: Some MISRA-related fixes.
+- FIX: Fixed missing check in chobjcaches.h (bug #1210).
+- FIX: Fixed misspelled chTraceSuspendI() function name (bug #1209).
+- FIX: Fixed RT testbuild application broken (bug #1208).
+
 *** 21.11.1 ***
 - NEW: Added EFL driver implementation for STM32G4xx.
 - NEW: STM32G0B1 USBv2 driver.

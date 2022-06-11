@@ -53,7 +53,7 @@
 /**
  * @brief   Kernel version string.
  */
-#define CH_KERNEL_VERSION       "4.1.1"
+#define CH_KERNEL_VERSION       "4.1.2"
 
 /**
  * @brief   Kernel version major number.
@@ -68,7 +68,7 @@
 /**
  * @brief   Kernel version patch number.
  */
-#define CH_KERNEL_PATCH         1
+#define CH_KERNEL_PATCH         2
 /** @} */
 
 /**
@@ -945,7 +945,7 @@ struct nil_os_instance {
  * @api
  */
 #define TIME_I2US(interval)                                                 \
-    (time_msecs_t)((((time_conv_t)(interval) * (time_conv_t)1000000) +      \
+    (time_usecs_t)((((time_conv_t)(interval) * (time_conv_t)1000000) +      \
                     (time_conv_t)CH_CFG_ST_FREQUENCY - (time_conv_t)1) /    \
                    (time_conv_t)CH_CFG_ST_FREQUENCY)
 /** @} */

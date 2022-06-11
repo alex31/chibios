@@ -24,8 +24,6 @@
 #define LINE_SPI1_SCK               PAL_LINE(GP0, 1U)
 #define LINE_SPI1_CS                PAL_LINE(GP0, 3U)
 
-#define cls(chp)                    chprintf(chp, "\033[2J\033[1;1H")
-
 /*===========================================================================*/
 /* ADXL355 related.                                                          */
 /*===========================================================================*/
@@ -47,21 +45,21 @@ static char axisID[ADXL355_ACC_NUMBER_OF_AXES] = {'X', 'Y', 'Z'};
 static uint32_t i;
 
 static const SPIConfig spicfg = {
-  NULL,
-  LINE_SPI1_CS,
-  0,
-  ADUCM_SPI_DIV_2
+  .end_cb           = NULL,
+  .ssline           = LINE_SPI1_CS,
+  .con              = 0,
+  .div              = ADUCM_SPI_DIV_2
 };
 
 static ADXL355Config adxl355cfg = {
-  &SPID1,
-  &spicfg,
-  NULL,
-  NULL,
-  ADXL355_ACC_FS_2G,
-  ADXL355_ACC_ODR_125HZ,
+  .spip             = &SPID1,
+  .spicfg           = &spicfg,
+  .accsensitivity   = NULL,
+  .accbias          = NULL,
+  .accfullscale     = ADXL355_ACC_FS_2G,
+  .accodr           = ADXL355_ACC_ODR_125HZ,
 #if ADXL355_USE_ADVANCED
-  ADXL355_ACC_HP_LEV_3
+  .acchighpass      = ADXL355_ACC_HP_LEV_3
 #endif
 };
 
@@ -145,7 +143,6 @@ int main(void) {
       chprintf(chp, "%c-axis: %.3f\r\n", axisID[i], acccooked[i]);
     }
     chThdSleepMilliseconds(100);
-    cls(chp);
   }
   adxl355Stop(&ADXL355D1);
 }

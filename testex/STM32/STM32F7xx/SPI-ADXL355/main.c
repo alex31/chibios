@@ -20,8 +20,6 @@
 #include "adxl355.h"
 #include "ccportab.h"
 
-#define cls(chp)  chprintf(chp, "\033[2J\033[1;1H")
-
 /*===========================================================================*/
 /* ADXL355 related.                                                          */
 /*===========================================================================*/
@@ -43,22 +41,24 @@ static char axisID[ADXL355_ACC_NUMBER_OF_AXES] = {'X', 'Y', 'Z'};
 static uint32_t i;
 
 static const SPIConfig spicfg = {
-  FALSE,
-  NULL,
-  LINE_ARD_D9,
-  SPI_CR1_BR_1,
-  SPI_CR2_DS_0 | SPI_CR2_DS_1 | SPI_CR2_DS_2
+  .circular         = false,
+  .slave            = false,
+  .data_cb          = NULL,
+  .error_cb         = NULL,
+  .ssline           = LINE_ARD_D9,
+  .cr1              = SPI_CR1_BR_1,
+  .cr2              = SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0
 };
 
 static ADXL355Config adxl355cfg = {
-  &SPID2,
-  &spicfg,
-  NULL,
-  NULL,
-  ADXL355_ACC_FS_2G,
-  ADXL355_ACC_ODR_125HZ,
+  .spip             = &SPID2,
+  .spicfg           = &spicfg,
+  .accsensitivity   = NULL,
+  .accbias          = NULL,
+  .accfullscale     = ADXL355_ACC_FS_2G,
+  .accodr           = ADXL355_ACC_ODR_125HZ,
 #if ADXL355_USE_ADVANCED
-  ADXL355_ACC_HP_LEV_3
+  .acchighpass      = ADXL355_ACC_HP_LEV_3
 #endif
 };
 
@@ -110,7 +110,6 @@ int main(void) {
       chprintf(chp, "%c-axis: %.3f\r\n", axisID[i], acccooked[i]);
     }
     chThdSleepMilliseconds(100);
-    cls(chp);
   }
   adxl355Stop(&ADXL355D1);
 }

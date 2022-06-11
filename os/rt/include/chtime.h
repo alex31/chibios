@@ -271,7 +271,7 @@ typedef uint32_t time_conv_t;
  * @api
  */
 #define TIME_I2US(interval)                                                 \
-  (time_msecs_t)((((time_conv_t)(interval) * (time_conv_t)1000000) +        \
+  (time_usecs_t)((((time_conv_t)(interval) * (time_conv_t)1000000) +        \
                   (time_conv_t)CH_CFG_ST_FREQUENCY - (time_conv_t)1) /      \
                  (time_conv_t)CH_CFG_ST_FREQUENCY)
 /** @} */
@@ -521,8 +521,11 @@ static inline sysinterval_t chTimeStampDiffX(systimestamp_t start,
   /* Time difference as a wide time stamp.*/
   diff = end - start;
 
+  /*lint -save -e685 [14.3] This condition becomes always true when both
+    types have the same width, it is fine, this is an assertion.*/
   chDbgAssert(diff <= (systimestamp_t)((sysinterval_t)-1),
               "conversion overflow");
+  /*lint -restore*/
 
   /*lint -save -e9033 [10.8] This cast is required by the operation, it is
     known that the destination type can be wider.*/
