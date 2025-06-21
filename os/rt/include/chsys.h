@@ -1,12 +1,12 @@
 /*
-    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+              2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
     ChibiOS is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 3 of the License, or
-    (at your option) any later version.
+    the Free Software Foundation version 3 of the License.
 
     ChibiOS is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -368,11 +368,11 @@ static inline void chSysUnlock(void) {
   _stats_stop_measure_crit_thd();
 
   /* The following condition can be triggered by the use of i-class functions
-     in a critical section not followed by a chSchResceduleS(), this means
+     in a critical section not followed by a chSchRescheduleS(), this means
      that the current thread has a lower priority than the next thread in
      the ready list.*/
-  chDbgAssert((ch.rlist.queue.next == (thread_t *)&ch.rlist.queue) ||
-              (ch.rlist.current->prio >= ch.rlist.queue.next->prio),
+  chDbgAssert((ch.rlist.pqueue.next == &ch.rlist.pqueue) ||
+              (ch.rlist.current->hdr.pqueue.prio >= ch.rlist.pqueue.next->prio),
               "priority order violation");
 
   port_unlock();
@@ -460,7 +460,7 @@ static inline void chSysUnconditionalUnlock(void) {
  */
 static inline thread_t *chSysGetIdleThreadX(void) {
 
-  return ch.rlist.queue.prev;
+  return (thread_t *)ch.rlist.pqueue.prev;
 }
 #endif /* CH_CFG_NO_IDLE_THREAD == FALSE */
 

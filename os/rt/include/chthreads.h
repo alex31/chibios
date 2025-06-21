@@ -1,12 +1,12 @@
 /*
-    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+              2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
     ChibiOS is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 3 of the License, or
-    (at your option) any later version.
+    the Free Software Foundation version 3 of the License.
 
     ChibiOS is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -95,7 +95,7 @@ typedef struct {
  *
  * @param[in] name      the name of the threads queue variable
  */
-#define _THREADS_QUEUE_DATA(name) {(thread_t *)&name, (thread_t *)&name}
+#define _THREADS_QUEUE_DATA(name) {_CH_QUEUE_DATA(name)}
 
 /**
  * @brief   Static threads queue object initializer.
@@ -104,7 +104,7 @@ typedef struct {
  *
  * @param[in] name      the name of the threads queue variable
  */
-#define _THREADS_QUEUE_DECL(name)                                           \
+#define THREADS_QUEUE_DECL(name)                                            \
   threads_queue_t name = _THREADS_QUEUE_DATA(name)
 /** @} */
 
@@ -284,7 +284,7 @@ static inline thread_t *chThdGetSelfX(void) {
  */
 static inline tprio_t chThdGetPriorityX(void) {
 
-  return chThdGetSelfX()->prio;
+  return chThdGetSelfX()->hdr.pqueue.prio;
 }
 
 /**
@@ -391,7 +391,7 @@ static inline void chThdSleepS(sysinterval_t ticks) {
  */
 static inline void chThdQueueObjectInit(threads_queue_t *tqp) {
 
-  queue_init(tqp);
+  ch_queue_init(&tqp->queue);
 }
 
 /**
@@ -408,7 +408,7 @@ static inline bool chThdQueueIsEmptyI(threads_queue_t *tqp) {
 
   chDbgCheckClassI();
 
-  return queue_isempty(tqp);
+  return ch_queue_isempty(&tqp->queue);
 }
 
 /**
@@ -425,9 +425,9 @@ static inline bool chThdQueueIsEmptyI(threads_queue_t *tqp) {
 static inline void chThdDoDequeueNextI(threads_queue_t *tqp, msg_t msg) {
   thread_t *tp;
 
-  chDbgAssert(queue_notempty(tqp), "empty queue");
+  chDbgAssert(ch_queue_notempty(&tqp->queue), "empty queue");
 
-  tp = queue_fifo_remove(tqp);
+  tp = (thread_t *)ch_queue_fifo_remove(&tqp->queue);
 
   chDbgAssert(tp->state == CH_STATE_QUEUED, "invalid state");
 

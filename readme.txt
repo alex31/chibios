@@ -73,6 +73,47 @@
 *** Releases and Change Log                                               ***
 *****************************************************************************
 
+*** 19.1.5 ***
+- FIX: Fixed invalid STM32 TIM21/TIM22 debug freeze setting (bug #1164).
+- FIX: Fixed warning in STM32 ADCv4 (bug #1158).
+- FIX: Fixed wrong checks related to PLLSAI2 on L4 and L4+ (bug #1156).
+- FIX: Fixed errors in STM32L4xx registry (bug #1154).
+- FIX: Fixed QUADSPI errata fix applied to all platforms (bug #1153).
+- FIX: Fixed wrong behavior in Serial-USB driver (bug #1151).
+- FIX: Fixed L0x2 series DAC not allocated in registry (bug #1150).
+- FIX: Fixed missing STM32F765 from registry (bug #1145).
+- FIX: Fixed wrong macro check on STM32 SPIv3 (bug #1144).
+- FIX: Fixed FAT time problem in RTC driver (bug #1142).
+- FIX: Fixed Heap allocation of aligned FIFO objects in chFactory (bug #1141).
+- FIX: Fixed GCC 10 causes warning in factory module (bug #1139).
+- FIX: Fixed C strict aliasing rules violation causes test cases to fail
+       (bug #1138).
+- FIX: Fixed GCC 10 causes warning in factory module (bug #1139).
+- FIX: Fixed OTG_FS error on STM32H7 (bug #1135).
+- FIX: Fixed wrong check on LSI on all STM32 platforms (bug #1131).
+- FIX: Fixed OSAL does not allow 64 bits resolution values (bug #1128).
+- FIX: Fixed wrong SDMMC RCC macros for STM32H7xx (bug #1127).
+- FIX: Fixed STM32 ADCv3 hanging on initialization (bug #1126).
+- FIX: Fixed I2S-related problems in STM32F4xx registry (bug #1124).
+- FIX: Fixed STM32 EXTIv1 driver unable to enable/disable fixed lines
+       (bug #1123).
+- FIX: Fixed incorrect STM32 iWDG initialization in windowed mode (bug #1122).
+- FIX: Fixed ADCv1 compile problem (bug #1118).
+- FIX: Fixed missing STM32_I2C_BDMA_REQUIRED definition in I2Cv3 driver
+       (bug #1109).
+- FIX: Fixed wrong definitions in SPC563M board files (bug #1108).
+- FIX: Fixed cortex-M vectors table alignment problem (bug #1107).
+- FIX: Fixed extra condition in MAC driver macWaitTransmitDescriptor() function
+       (bug #1106).
+- FIX: Fixed schedule anomaly when CH_CFG_TIME_QUANTUM is greater than zero
+       (bug #1105).
+- FIX: Fixed Virtual Timers corner case (bug #1104).
+- FIX: Fixed GCC6 problem breaks Cortex-M0 port (bug #985).
+- FIX: Fixed failure in chSemReset() function when counter is equal to MAXINT
+       (bug #1093).
+- FIX: Fixed swapped definition in ST_STM32F746G_DISCOVERY board files
+       (bug #1092).
+
 *** 19.1.4 ***
 - NEW: Updated debug tools to be independent from the toolchain position:
        they now rely on the environment variable CHIBISTUDIO.

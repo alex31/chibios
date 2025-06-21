@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2020 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -490,6 +490,62 @@
 /** @} */
 
 /**
+ * @name    CRYP peripheral specific RCC operations
+ * @{
+ */
+/**
+ * @brief   Enables the CRYP peripheral clock.
+ *
+ * @param[in] lp        low power enable flag
+ *
+ * @api
+ */
+#define rccEnableCRYP(lp) rccEnableAHB2(RCC_AHB2ENR_CRYPEN, lp)
+
+/**
+ * @brief   Disables the CRYP peripheral clock.
+ *
+ * @api
+ */
+#define rccDisableCRYP() rccDisableAHB2(RCC_AHB2ENR_CRYPEN)
+
+/**
+ * @brief   Resets the CRYP peripheral.
+ *
+ * @api
+ */
+#define rccResetCRYP() rccResetAHB2(RCC_AHB2RSTR_CRYPRST)
+/** @} */
+
+/**
+ * @name    HASH peripheral specific RCC operations
+ * @{
+ */
+/**
+ * @brief   Enables the HASH peripheral clock.
+ *
+ * @param[in] lp        low power enable flag
+ *
+ * @api
+ */
+#define rccEnableHASH(lp) rccEnableAHB2(RCC_AHB2ENR_HASHEN, lp)
+
+/**
+ * @brief   Disables the HASH peripheral clock.
+ *
+ * @api
+ */
+#define rccDisableHASH() rccDisableAHB2(RCC_AHB2ENR_HASHEN)
+
+/**
+ * @brief   Resets the HASH peripheral.
+ *
+ * @api
+ */
+#define rccResetHASH() rccResetAHB2(RCC_AHB2RSTR_HASHRST)
+/** @} */
+
+/**
  * @name    DAC peripheral specific RCC operations
  * @{
  */
@@ -589,6 +645,29 @@
  * @api
  */
 #define rccResetDMA2() rccResetAHB1(RCC_AHB1RSTR_DMA2RST)
+
+/**
+ * @brief   Enables the MDMA peripheral clock.
+ *
+ * @param[in] lp        low power enable flag
+ *
+ * @api
+ */
+#define rccEnableMDMA(lp) rccEnableAHB3(RCC_AHB3ENR_MDMAEN, lp)
+
+/**
+ * @brief   Disables the MDMA peripheral clock.
+ *
+ * @api
+ */
+#define rccDisableMDMA() rccDisableAHB3(RCC_AHB3ENR_MDMAEN)
+
+/**
+ * @brief   Resets the MDMA peripheral.
+ *
+ * @api
+ */
+#define rccResetMDMA() rccResetAHB3(RCC_AHB3ENR_MDMARST)
 /** @} */
 
 /**
@@ -671,25 +750,53 @@
  *
  * @api
  */
-#define rccEnableETH(lp) rccEnableAHB1(RCC_AHB1ENR_ETHMACEN |               \
-                                       RCC_AHB1ENR_ETHMACTXEN |             \
-                                       RCC_AHB1ENR_ETHMACRXEN, lp)
+#define rccEnableETH(lp) rccEnableAHB1(RCC_AHB1ENR_ETH1MACEN |               \
+                                       RCC_AHB1ENR_ETH1TXEN |             \
+                                       RCC_AHB1ENR_ETH1RXEN, lp)
 
 /**
  * @brief   Disables the ETH peripheral clock.
  *
  * @api
  */
-#define rccDisableETH() rccDisableAHB1(RCC_AHB1ENR_ETHMACEN |            \
-                                          RCC_AHB1ENR_ETHMACTXEN |          \
-                                          RCC_AHB1ENR_ETHMACRXEN)
+#define rccDisableETH() rccDisableAHB1(RCC_AHB1ENR_ETH1MACEN |            \
+                                          RCC_AHB1ENR_ETH1TXEN |          \
+                                          RCC_AHB1ENR_ETH1RXEN)
 
 /**
  * @brief   Resets the ETH peripheral.
  *
  * @api
  */
-#define rccResetETH() rccResetAHB1(RCC_AHB1RSTR_ETHMACRST)
+#define rccResetETH() rccResetAHB1(RCC_AHB1RSTR_ETH1MACRST)
+/** @} */
+
+/**
+ * @name    FDCAN peripherals specific RCC operations
+ * @{
+ */
+/**
+ * @brief   Enables the FDCAN peripheral clock.
+ *
+ * @param[in] lp        low power enable flag
+ *
+ * @api
+ */
+#define rccEnableFDCAN(lp) rccEnableAPB1H(RCC_APB1HENR_FDCANEN, lp)
+
+/**
+ * @brief   Disables the FDCAN peripheral clock.
+ *
+ * @api
+ */
+#define rccDisableFDCAN() rccDisableAPB1H(RCC_APB1HENR_FDCANEN)
+
+/**
+ * @brief   Resets the FDCAN peripheral.
+ *
+ * @api
+ */
+#define rccResetFDCAN() rccResetAPB1H(RCC_APB1HRSTR_FDCANRST)
 /** @} */
 
 /**
@@ -794,27 +901,27 @@
  * @{
  */
 /**
- * @brief   Enables the USB1_OTG_HS peripheral clock.
+ * @brief   Enables the USB1_OTG_FS peripheral clock.
  *
  * @param[in] lp        low power enable flag
  *
  * @api
  */
-#define rccEnableUSB1_OTG_HS(lp) rccEnableAHB1(RCC_AHB1ENR_USB1OTGHSEN, lp)
+#define rccEnableUSB1_OTG_FS(lp) rccEnableAHB1(RCC_AHB1ENR_USB2OTGFSEN, lp)
 
 /**
- * @brief   Disables the USB1_OTG_HS peripheral clock.
+ * @brief   Disables the USB1_OTG_FS peripheral clock.
  *
  * @api
  */
-#define rccDisableUSB1_OTG_HS() rccDisableAHB1(RCC_AHB1ENR_USB1OTGHSEN)
+#define rccDisableUSB1_OTG_FS() rccDisableAHB1(RCC_AHB1ENR_USB2OTGFSEN)
 
 /**
- * @brief   Resets the USB1_OTG_HS peripheral.
+ * @brief   Resets the USB1_OTG_FS peripheral.
  *
  * @api
  */
-#define rccResetUSB1_OTG_HS() rccResetAHB1(RCC_AHB1RSTR_USB1OTGHSRST)
+#define rccResetUSB1_OTG_FS() rccResetAHB1(RCC_AHB1RSTR_USB2OTGFSRST)
 
 /**
  * @brief   Enables the USB2_OTG_HS peripheral clock.
@@ -901,6 +1008,34 @@
 /** @} */
 
 /**
+ * @name    RNG peripherals specific RCC operations
+ * @{
+ */
+/**
+ * @brief   Enables the RNG peripheral clock.
+ *
+ * @param[in] lp        low power enable flag
+ *
+ * @api
+ */
+#define rccEnableRNG(lp) rccEnableAHB2(RCC_AHB2ENR_RNGEN, lp)
+
+/**
+ * @brief   Disables the RNG peripheral clock.
+ *
+ * @api
+ */
+#define rccDisableRNG() rccDisableAHB2(RCC_AHB2ENR_RNGEN)
+
+/**
+ * @brief   Resets the RNG peripheral.
+ *
+ * @api
+ */
+#define rccResetRNG() rccResetAHB2(RCC_AHB2RSTR_RNGRST)
+/** @} */
+
+/**
  * @name    SDMMC peripheral specific RCC operations
  * @{
  */
@@ -934,21 +1069,21 @@
  *
  * @api
  */
-#define rccEnableSDMMC2(lp) rccEnableAHB3(RCC_AHB3ENR_SDMMC2EN, lp)
+#define rccEnableSDMMC2(lp) rccEnableAHB2(RCC_AHB2ENR_SDMMC2EN, lp)
 
 /**
  * @brief   Disables the SDMMC2 peripheral clock.
  *
  * @api
  */
-#define rccDisableSDMMC2() rccDisableAHB3(RCC_AHB3ENR_SDMMC2EN)
+#define rccDisableSDMMC2() rccDisableAHB2(RCC_AHB2ENR_SDMMC2EN)
 
 /**
  * @brief   Resets the SDMMC2 peripheral.
  *
  * @api
  */
-#define rccResetSDMMC2() rccResetAHB3(RCC_AHB3RSTR_SDMMC2RST)
+#define rccResetSDMMC2() rccResetAHB2(RCC_AHB2RSTR_SDMMC2RST)
 /** @} */
 
 /**

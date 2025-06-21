@@ -1,12 +1,12 @@
 /*
-    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+              2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
     ChibiOS is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 3 of the License, or
-    (at your option) any later version.
+    the Free Software Foundation version 3 of the License.
 
     ChibiOS is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -128,9 +128,14 @@
 
 /* Handling a GCC problem impacting ARMv6-M.*/
 #if defined(__GNUC__) && !defined(PORT_IGNORE_GCC_VERSION_CHECK)
-#if __GNUC__ > 5
-#warning "This compiler has a know problem with Cortex-M0, see bugs: 88167, 88656."
-#warning "*** Use GCC version 5 or below ***"
+#if ( __GNUC__ > 5 ) && ( __GNUC__ < 10 )
+#define GCC_VERSION ( __GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__ )
+#if ( __GNUC__ == 7 ) && ( GCC_VERSION >= 70500 )
+#elif ( __GNUC__ == 8 ) && ( GCC_VERSION >= 80400 )
+#elif ( __GNUC__ == 9 ) && ( GCC_VERSION >= 90300 )
+#else
+#warning "This compiler has a know problem with Cortex-M0, see GCC bugs: 88167, 88656."
+#endif
 #endif
 #endif
 
