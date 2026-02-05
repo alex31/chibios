@@ -141,7 +141,7 @@ static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf) {
      in which the next received packet will be stored, so we need to
      read the counter of the OTHER buffer, which is where the last
      received packet was stored.*/
-  if (EPR_EP_TYPE_IS_ISO(epr) && !(epr & EPR_DTOG_RX))
+  if (EPR_EP_TYPE_IS_ISO(epr) && ((epr & EPR_DTOG_RX) != 0U))
     n = (size_t)udp->RXCOUNT1 & RXCOUNT_COUNT_MASK;
   else
     n = (size_t)udp->RXCOUNT0 & RXCOUNT_COUNT_MASK;
@@ -625,11 +625,13 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
     uint16_t nblocks;
 
     /* Endpoint size and address initialization.*/
-    if (epcp->out_maxsize > 62)
-      nblocks = (((((epcp->out_maxsize - 1) | 0x1f) + 1) / 32) << 10) |
-                0x8000;
-    else
-      nblocks = ((((epcp->out_maxsize - 1) | 1) + 1) / 2) << 10;
+    if (epcp->out_maxsize > 62) {
+      nblocks = (((((uint32_t)epcp->out_maxsize - 1U) | 0x1FU) / 32U) << 10) |
+                0x8000U;
+    }
+    else {
+      nblocks = ((((uint32_t)(epcp->out_maxsize - 1U) | 1U) + 1U) / 2U) << 10;
+    }
     dp->RXCOUNT0 = nblocks;
     dp->RXADDR0  = usb_pm_alloc(usbp, epcp->out_maxsize);
 

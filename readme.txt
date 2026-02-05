@@ -73,6 +73,70 @@
 *** Releases and Change Log                                               ***
 *****************************************************************************
 
+*** 20.3.6 ***
+- FIX: Fixed problem with CH_PORT_SUPPORTS_RECURSIVE_LOCKS in NIL (bug #1298).
+
+*** 20.3.5 ***
+- NEW: Recursive locks in RT and NIL made optional, only enabled if the
+       underlying port supports the capability.
+- FIX: Fixed DMA2 not firing on STM32G431 (bug 1295).
+- FIX: Fixed wrong STM32 ADCv2 stop method (bug 1294).
+- FIX: Fixed STM32 OTGv1 driver does not re-enables endpoints on wakeup
+       (bug 1293).
+- FIX: Fixed missing assertion in OSLIB factory module (bug 1292).
+- FIX: Fixed problem in recursive locks functions (bug #1288).
+- FIX: Fixed race condition caused by chGuardedPoolAllocI() (bug #1277).
+- FIX: Fixed avoid shadowing with build-in pow10 function in chprintf.c
+       (bug #1274).
+- FIX: Fixed STM32/LLD/RTCv2/hal_rtc_lld.c does not compile with
+       STM32_RTC_HAS_SUBSECONDS = FALSE (bug #1269).
+- FIX: Fixed unnecessary code in SNOR device drivers (bug #1265).
+- FIX: Fixed channel 0 corruption on STM32 BDMAv1 (bug #1263).
+- FIX: Fixed missing cache management during Cortex-M RAM initializations
+       (bug #1261)(backported to 20.3.5)(backported to 21.11.4).
+- FIX: Fixed unwanted reset of cache on STM32H7xx (bug #1258).
+- FIX: Fixed incorrect RTC initialization on STM32G4 (bug #1256).
+- FIX: Fixed invalid checks on PLLP/R/Q dividers on STM32H7 (bug #1253).
+- FIX: Fixed remote wakeup failure in STM32 OTGv1 driver (bug #1252).
+- FIX: Fixed wrong use of hooks in RT/NIL (bug #1251).
+- FIX: Fixed wrong initialization in STM32L1xx ADC driver (bug #1247).
+- FIX: Fixed wrong HSI48 support on STM32L0xx (bug #1246).
+- FIX: Fixed wrong DMA definitions for STM32L0xx I2C3 peripheral (bug #1245).
+- FIX: Fixed wrong path in STM32L053 ADC demo makefile (bug #1244).
+- FIX: Fixed missing semicolon in STM32 OTGv1 driver (bug #1243).
+- FIX: Fixed HSI48 not enabled for STM32L496/​4A6 (bug #1242).
+- FIX: Fixed problem in STM32 gpt_lld_polled_delay() implementation (bug #1241).
+- FIX: Fixed invalid delay loop in STM32G0/WL ADCv5 driver (bug #1240).
+- FIX: Fixed missing clock enables for some GPIOS on some STM32L4s (bug #1237).
+- FIX: Fixed old bugs in serial driver header (bug #1236).
+- FIX: Fixed virtual timers lockup uder rare conditions (bug #1235).
+- FIX: Fixed STM32 RTCv2 locks for a second (bug #1234).
+- FIX: Some MISRA-related fixes.
+- FIX: Re-opened and fixed bug #1100.
+- FIX: Fixed wrong buffers toggling in STM32 USBv1 isochronous mode (bug #1232).
+- FIX: Fixed STM32 RTCv2 registers synchronization errata (bug #1231).
+- FIX: Fixed STM32 ADCv1 and ADCv5 do not allow prescaler divide value of 1
+       (bug #1230).
+- FIX: Fixed missing check on STM32 SPIv2 DMA settings for SPI1 (bug #1229).
+- FIX: Fixed invalid handling of lwIP NETIF_FLAG_LINK_UP flag (bug #1227).
+- FIX: Fixed missing TIM16/17 errata handling for STM32G0xx (bug #1226).
+- FIX: Fixed missing ADC errata handling for STM32G0xx (bug #1225).
+- FIX: Fixed problem in the HAL I2C fallback driver (bug #1224).
+- FIX: Fixed GPIOH clock not enabled on STM32L432 (bug #1223).
+- FIX: Fixed incorrect type cast in TIME_I2US() (bug #1221).
+- FIX: Fixed missing clock disable for STM32 OCTOSPI2 (bug #1220).
+- FIX: Fixed STM32 Ethernet driver causes system hang after 2^31 packets
+       sent/received (bug #1218).
+- FIX: Fixed Virtual Timers failure in a specific condition (bug #1215).
+- FIX: Fixed invalid state transition in SNOR flash driver (bug #1212).
+- FIX: Fixed missing check in chobjcaches.h (bug #1210).
+- FIX: Fixed RT testbuild application broken (bug #1208).
+- FIX: Fixed USB not enabled on STM32F103x6 (bug #1206).
+- FIX: Fixed wrong number of CAN filters for STM32L496/9A6 (bug #1204).
+- FIX: Fixed DMA stream not disabled in STM32 QUADSPIv1 driver (bug #1203).
+- FIX: Fixed I2C4 DMA streams for STM32L496 (bug #1202).
+- FIX: Fixed STM32_SDMMC2_NUMBER on STM32H7 (bug #1201).
+
 *** 20.3.4 ***
 - NEW: Made STM32H7 non-cacheable memory option also shareable.
 - NEW: STM32 improved ADCv4 driver (H7) back-ported from trunk.

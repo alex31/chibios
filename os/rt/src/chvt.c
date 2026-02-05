@@ -75,65 +75,6 @@ static inline bool vt_is_empty(delta_list_t *dlhp) {
 }
 
 /**
- * @brief   Last timer in the list check.
- *
- * @param[in] dlhp      pointer to the delta list header
- * @param[in] dlp       pointer to the delta list element
- *
- * @notapi
- */
-static inline bool vt_is_last(delta_list_t *dlhp, delta_list_t *dlp) {
-
-  return (bool)(dlp->next == dlhp);
-}
-
-/**
- * @brief   Fist timer in the list check.
- *
- * @param[in] dlhp      pointer to the delta list header
- * @param[in] dlp       pointer to the delta list element
- *
- * @notapi
- */
-static inline bool vt_is_first(delta_list_t *dlhp, delta_list_t *dlp) {
-
-  return (bool)(dlhp->next == dlp);
-}
-
-/**
- * @brief   Timer check.
- *
- * @param[in] dlhp      pointer to the delta list header
- * @param[in] dlp       pointer to the delta list element
- *
- * @notapi
- */
-static inline bool vt_is_timer(delta_list_t *dlhp, delta_list_t *dlp) {
-
-  return (bool)(dlp != dlhp);
-}
-
-/**
- * @brief   Inserts an element after another header element.
- *
- * @param[in] dlhp      pointer to the delta list header element
- * @param[in] dlp       element to be inserted after the header element
- * @param[in] delta     delta of the element to be inserted
- *
- * @notapi
- */
-static inline void vt_insert_after(delta_list_t *dlhp,
-                                   delta_list_t *dlp,
-                                   sysinterval_t delta) {
-
-  dlp->delta      = delta;
-  dlp->prev       = dlhp;
-  dlp->next       = dlp->prev->next;
-  dlp->next->prev = dlp;
-  dlhp->next      = dlp;
-}
-
-/**
  * @brief   Inserts an element before another header element.
  *
  * @param[in] dlhp      pointer to the delta list header element
@@ -193,22 +134,6 @@ static inline void vt_insert(delta_list_t *dlhp,
 /**
  * @brief   Dequeues an element from the delta list.
  *
- * @param[in] dlhp      pointer to the delta list header
- *
- * @notapi
- */
-static inline delta_list_t *vt_remove_first(delta_list_t *dlhp) {
-  delta_list_t *dlp = dlhp->next;
-
-  dlhp->next       = dlp->next;
-  dlhp->next->prev = dlhp;
-
-  return dlp;
-}
-
-/**
- * @brief   Dequeues an element from the delta list.
- *
  * @param[in] dlp       pointer to the delta list element
  *
  * @notapi
@@ -222,6 +147,81 @@ static inline delta_list_t *vt_dequeue(delta_list_t *dlp) {
 }
 
 #if (CH_CFG_ST_TIMEDELTA > 0) || defined(__DOXYGEN__)
+/**
+ * @brief   Inserts an element after another header element.
+ *
+ * @param[in] dlhp      pointer to the delta list header element
+ * @param[in] dlp       element to be inserted after the header element
+ * @param[in] delta     delta of the element to be inserted
+ *
+ * @notapi
+ */
+static inline void vt_insert_after(delta_list_t *dlhp,
+                                   delta_list_t *dlp,
+                                   sysinterval_t delta) {
+
+  dlp->delta      = delta;
+  dlp->prev       = dlhp;
+  dlp->next       = dlp->prev->next;
+  dlp->next->prev = dlp;
+  dlhp->next      = dlp;
+}
+
+/**
+ * @brief   Last timer in the list check.
+ *
+ * @param[in] dlhp      pointer to the delta list header
+ * @param[in] dlp       pointer to the delta list element
+ *
+ * @notapi
+ */
+static inline bool vt_is_last(delta_list_t *dlhp, delta_list_t *dlp) {
+
+  return (bool)(dlp->next == dlhp);
+}
+
+/**
+ * @brief   Fist timer in the list check.
+ *
+ * @param[in] dlhp      pointer to the delta list header
+ * @param[in] dlp       pointer to the delta list element
+ *
+ * @notapi
+ */
+static inline bool vt_is_first(delta_list_t *dlhp, delta_list_t *dlp) {
+
+  return (bool)(dlhp->next == dlp);
+}
+
+/**
+ * @brief   Timer check.
+ *
+ * @param[in] dlhp      pointer to the delta list header
+ * @param[in] dlp       pointer to the delta list element
+ *
+ * @notapi
+ */
+static inline bool vt_is_timer(delta_list_t *dlhp, delta_list_t *dlp) {
+
+  return (bool)(dlp != dlhp);
+}
+
+/**
+ * @brief   Dequeues an element from the delta list.
+ *
+ * @param[in] dlhp      pointer to the delta list header
+ *
+ * @notapi
+ */
+static inline delta_list_t *vt_remove_first(delta_list_t *dlhp) {
+  delta_list_t *dlp = dlhp->next;
+
+  dlhp->next       = dlp->next;
+  dlhp->next->prev = dlhp;
+
+  return dlp;
+}
+
 /**
  * @brief   Alarm time setup.
  * @note    An RFCU fault is registered if the system time skips past
@@ -338,6 +338,10 @@ static void vt_insert_first(virtual_timers_list_t *vtlp,
 
     /* Setting up the alarm on the next deadline.*/
     port_timer_set_alarm(chTimeAddX(now, currdelta));
+
+    /* Current time becomes the new "base" time.*/
+    now = newnow;
+    delay = currdelta;
   }
 
   chDbgAssert(currdelta <= CH_CFG_ST_TIMEDELTA, "insufficient delta");
@@ -612,7 +616,7 @@ void chVTDoTickI(void) {
   }
 #else /* CH_CFG_ST_TIMEDELTA > 0 */
   virtual_timer_t *vtp;
-  sysinterval_t delta, nowdelta;
+  sysinterval_t nowdelta;
   systime_t now;
 
   /* Looping through timers consuming all timers with deltas lower or equal
@@ -663,11 +667,13 @@ void chVTDoTickI(void) {
     return;
   }
 
-  /* Calculating the delta to the next alarm time.*/
-  delta = vtp->dlist.delta - nowdelta;
+  /* The "unprocessed nowdelta" time slice is added to "last time"
+     and subtracted to next timer's delta.*/
+  vtlp->lasttime += nowdelta;
+  vtp->dlist.delta -= nowdelta;
 
   /* Update alarm time to next timer.*/
-  vt_set_alarm(now, delta);
+  vt_set_alarm(now, vtp->dlist.delta);
 #endif /* CH_CFG_ST_TIMEDELTA > 0 */
 }
 

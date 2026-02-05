@@ -53,7 +53,7 @@
 /**
  * @brief   Kernel version string.
  */
-#define CH_KERNEL_VERSION       "4.0.2"
+#define CH_KERNEL_VERSION       "4.0.3"
 
 /**
  * @brief   Kernel version major number.
@@ -68,7 +68,7 @@
 /**
  * @brief   Kernel version patch number.
  */
-#define CH_KERNEL_PATCH         2
+#define CH_KERNEL_PATCH         3
 /** @} */
 
 /**
@@ -439,6 +439,13 @@ typedef threads_queue_t semaphore_t;
 
 /* Late inclusion of port core layer.*/
 #include "chcore.h"
+
+/* Recursive locks port capability assessed.*/
+#if defined(port_get_lock_status) && defined(port_is_locked)
+#define CH_PORT_SUPPORTS_RECURSIVE_LOCKS    TRUE
+#else
+#define CH_PORT_SUPPORTS_RECURSIVE_LOCKS    FALSE
+#endif
 
 /**
  * @brief   Structure representing a queue of threads.
@@ -896,7 +903,7 @@ struct nil_system {
  * @api
  */
 #define TIME_I2US(interval)                                                 \
-    (time_msecs_t)((((time_conv_t)(interval) * (time_conv_t)1000000) +      \
+    (time_usecs_t)((((time_conv_t)(interval) * (time_conv_t)1000000) +      \
                     (time_conv_t)CH_CFG_ST_FREQUENCY - (time_conv_t)1) /    \
                    (time_conv_t)CH_CFG_ST_FREQUENCY)
 /** @} */

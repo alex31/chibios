@@ -145,7 +145,8 @@
 #define STM32_HAS_GPIOK                     FALSE
 #define STM32_GPIO_EN_MASK                  (RCC_AHB2ENR_GPIOAEN |          \
                                              RCC_AHB2ENR_GPIOBEN |          \
-                                             RCC_AHB2ENR_GPIOCEN)
+                                             RCC_AHB2ENR_GPIOCEN |          \
+                                             RCC_AHB2ENR_GPIOHEN)
 
 /* I2C attributes.*/
 #define STM32_HAS_I2C1                      TRUE
@@ -222,7 +223,7 @@
 
 #define STM32_HAS_TIM16                     TRUE
 #define STM32_TIM16_IS_32BITS               FALSE
-#define STM32_TIM16_CHANNELS                2
+#define STM32_TIM16_CHANNELS                1
 
 #define STM32_HAS_TIM3                      FALSE
 #define STM32_HAS_TIM4                      FALSE
@@ -462,7 +463,7 @@
 
 #define STM32_HAS_TIM16                     TRUE
 #define STM32_TIM16_IS_32BITS               FALSE
-#define STM32_TIM16_CHANNELS                2
+#define STM32_TIM16_CHANNELS                1
 
 #define STM32_HAS_TIM3                      FALSE
 #define STM32_HAS_TIM4                      FALSE
@@ -701,7 +702,7 @@
 
 #define STM32_HAS_TIM16                     TRUE
 #define STM32_TIM16_IS_32BITS               FALSE
-#define STM32_TIM16_CHANNELS                2
+#define STM32_TIM16_CHANNELS                1
 
 #define STM32_HAS_TIM4                      FALSE
 #define STM32_HAS_TIM5                      FALSE
@@ -977,11 +978,11 @@
 
 #define STM32_HAS_TIM16                     TRUE
 #define STM32_TIM16_IS_32BITS               FALSE
-#define STM32_TIM16_CHANNELS                2
+#define STM32_TIM16_CHANNELS                1
 
 #define STM32_HAS_TIM17                     TRUE
 #define STM32_TIM17_IS_32BITS               FALSE
-#define STM32_TIM17_CHANNELS                2
+#define STM32_TIM17_CHANNELS                1
 
 #define STM32_HAS_TIM9                      FALSE
 #define STM32_HAS_TIM10                     FALSE
@@ -1069,7 +1070,7 @@
 #if defined(STM32L496xx) || defined(STM32L4A6xx)
 
 /* Clock attributes.*/
-#define STM32_CLOCK_HAS_HSI48               FALSE
+#define STM32_CLOCK_HAS_HSI48               TRUE
 
 /* ADC attributes.*/
 #define STM32_HAS_ADC1                      TRUE
@@ -1090,7 +1091,7 @@
 #define STM32_HAS_ADC4                      FALSE
 
 /* CAN attributes.*/
-#define STM32_CAN_MAX_FILTERS               14
+#define STM32_CAN_MAX_FILTERS               28
 #define STM32_HAS_CAN1                      TRUE
 #define STM32_HAS_CAN2                      TRUE
 #define STM32_HAS_CAN3                      FALSE
@@ -1149,7 +1150,8 @@
                                              RCC_AHB2ENR_GPIOEEN |          \
                                              RCC_AHB2ENR_GPIOFEN |          \
                                              RCC_AHB2ENR_GPIOGEN |          \
-                                             RCC_AHB2ENR_GPIOHEN)
+                                             RCC_AHB2ENR_GPIOHEN |          \
+                                             RCC_AHB2ENR_GPIOIEN)
 
 /* I2C attributes.*/
 #define STM32_HAS_I2C1                      TRUE
@@ -1173,9 +1175,9 @@
 #define STM32_I2C3_TX_DMA_CHN               0x00000030
 
 #define STM32_HAS_I2C4                      TRUE
-#define STM32_I2C4_RX_DMA_MSK               (STM32_DMA_STREAM_ID_MSK(2, 2))
+#define STM32_I2C4_RX_DMA_MSK               (STM32_DMA_STREAM_ID_MSK(2, 1))
 #define STM32_I2C4_RX_DMA_CHN               0x00000000
-#define STM32_I2C4_TX_DMA_MSK               (STM32_DMA_STREAM_ID_MSK(2, 1))
+#define STM32_I2C4_TX_DMA_MSK               (STM32_DMA_STREAM_ID_MSK(2, 2))
 #define STM32_I2C4_TX_DMA_CHN               0x00000000
 
 /* QUADSPI attributes.*/
@@ -1260,9 +1262,11 @@
 
 #define STM32_HAS_TIM16                     TRUE
 #define STM32_TIM16_IS_32BITS               FALSE
+#define STM32_TIM16_CHANNELS                1
 
 #define STM32_HAS_TIM17                     TRUE
 #define STM32_TIM17_IS_32BITS               FALSE
+#define STM32_TIM17_CHANNELS                1
 
 #define STM32_HAS_TIM9                      FALSE
 #define STM32_HAS_TIM10                     FALSE
