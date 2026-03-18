@@ -492,19 +492,19 @@ extern "C" {
   void spiUnselect(SPIDriver *spip);
   msg_t spiStartIgnoreI(SPIDriver *spip, size_t n);
   msg_t spiStartIgnore(SPIDriver *spip, size_t n);
-  __attribute__((access (read_only, 3, 2), access (write_only, 4, 2)))
+  OSAL_ACCESS_RO(3, 2) OSAL_ACCESS_WO(4, 2)
   msg_t spiStartExchangeI(SPIDriver *spip, size_t n,
                           const void *txbuf, void *rxbuf);
-  __attribute__((access (read_only, 3, 2), access (write_only, 4, 2)))
+  OSAL_ACCESS_RO(3, 2) OSAL_ACCESS_WO(4, 2)
   msg_t spiStartExchange(SPIDriver *spip, size_t n,
                          const void *txbuf, void *rxbuf);
-  __attribute__((access (read_only, 3, 2)))
+  OSAL_ACCESS_RO(3, 2)
   msg_t spiStartSendI(SPIDriver *spip, size_t n, const void *txbuf);
-  __attribute__((access (read_only, 3, 2)))
+  OSAL_ACCESS_RO(3, 2)
   msg_t spiStartSend(SPIDriver *spip, size_t n, const void *txbuf);
-  __attribute__((access (write_only, 3, 2)))
+  OSAL_ACCESS_WO(3, 2)
   msg_t spiStartReceiveI(SPIDriver *spip, size_t n, void *rxbuf);
-  __attribute__((access (write_only, 3, 2)))
+  OSAL_ACCESS_WO(3, 2)
   msg_t spiStartReceive(SPIDriver *spip, size_t n, void *rxbuf);
   msg_t spiStopTransferI(SPIDriver *spip, size_t *sizep);
   msg_t spiStopTransfer(SPIDriver *spip, size_t *sizep);
@@ -512,11 +512,11 @@ extern "C" {
   msg_t spiSynchronizeS(SPIDriver *spip, sysinterval_t timeout);
   msg_t spiSynchronize(SPIDriver *spip, sysinterval_t timeout);
   msg_t spiIgnore(SPIDriver *spip, size_t n);
-  __attribute__((access (read_only, 3, 2), access (write_only, 4, 2)))
+  OSAL_ACCESS_RO(3, 2) OSAL_ACCESS_WO(4, 2)
   msg_t spiExchange(SPIDriver *spip, size_t n, const void *txbuf, void *rxbuf);
-  __attribute__((access (read_only, 3, 2)))
+  OSAL_ACCESS_RO(3, 2)
   msg_t spiSend(SPIDriver *spip, size_t n, const void *txbuf);
-  __attribute__((access (write_only, 3, 2)))
+  OSAL_ACCESS_WO(3, 2)
   msg_t spiReceive(SPIDriver *spip, size_t n, void *rxbuf);
 #endif
 #if SPI_USE_MUTUAL_EXCLUSION == TRUE

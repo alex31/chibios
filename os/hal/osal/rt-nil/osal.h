@@ -291,6 +291,21 @@ typedef struct {
  * @note    Not implemented in this simplified OSAL.
  */
 #define osalDbgCheckClassS() chDbgCheckClassS()
+
+/**
+ * @name    Compiler-assisted buffer overflow protection
+ * @{
+ */
+#if defined(__GNUC__) && !defined(__DOXYGEN__)
+#define OSAL_ACCESS_RO(ptr, size) __attribute__((access (read_only, ptr, size)))
+#define OSAL_ACCESS_WO(ptr, size) __attribute__((access (write_only, ptr, size)))
+#define OSAL_ACCESS_RW(ptr, size) __attribute__((access (read_write, ptr, size)))
+#else
+#define OSAL_ACCESS_RO(ptr, size)
+#define OSAL_ACCESS_WO(ptr, size)
+#define OSAL_ACCESS_RW(ptr, size)
+#endif
+/** @} */
 /** @} */
 
 /**

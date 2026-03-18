@@ -180,7 +180,7 @@ extern "C" {
   i2cflags_t i2cGetErrors(I2CDriver *i2cp);
   
   [[nodiscard]]
-  __attribute__((access (write_only, 5, 6), access (read_only,  3, 4)))
+  OSAL_ACCESS_WO(5, 6) OSAL_ACCESS_RO(3, 4)
   msg_t i2cMasterTransmitTimeout(I2CDriver *i2cp,
                                  i2caddr_t addr,
                                  const void *txbuf, size_t txbytes,
@@ -188,7 +188,7 @@ extern "C" {
                                  sysinterval_t timeout);
 
   [[nodiscard]]
-  __attribute__((access (write_only, 3, 4)))
+  OSAL_ACCESS_WO(3, 4)
   msg_t i2cMasterReceiveTimeout(I2CDriver *i2cp,
                                 i2caddr_t addr,
                                 void *rxbuf, size_t rxbytes,
@@ -202,11 +202,11 @@ extern "C" {
   [[nodiscard]]
   msg_t i2cSlaveMatchAddress(I2CDriver *i2cp, i2caddr_t  i2cadr);
   [[nodiscard]]
-  __attribute__((access (write_only, 3, 4)))
+  OSAL_ACCESS_WO(3, 4)
   msg_t i2cSlaveReceiveTimeout(I2CDriver *i2cp, void *rxbuf,
                                size_t rxbytes, sysinterval_t timeout);
   [[nodiscard]]
-  __attribute__((access (read_only, 3, 4)))
+  OSAL_ACCESS_RO(3, 4)
   msg_t i2cSlaveTransmitTimeout(I2CDriver *i2cp, const void *txbuf,
                                 size_t txbytes, sysinterval_t timeout);
 #endif

@@ -396,10 +396,12 @@ extern "C" {
   void adcObjectInit(ADCDriver *adcp);
   msg_t adcStart(ADCDriver *adcp, const ADCConfig *config);
   void adcStop(ADCDriver *adcp);
+  OSAL_ACCESS_WO(3, 4)
   void adcStartConversion(ADCDriver *adcp,
                           const ADCConversionGroup *grpp,
                           adcsample_t *samples,
                           size_t depth);
+  OSAL_ACCESS_WO(3, 4)
   void adcStartConversionI(ADCDriver *adcp,
                            const ADCConversionGroup *grpp,
                            adcsample_t *samples,
@@ -407,6 +409,7 @@ extern "C" {
   void adcStopConversion(ADCDriver *adcp);
   void adcStopConversionI(ADCDriver *adcp);
 #if ADC_USE_WAIT == TRUE
+  OSAL_ACCESS_WO(3, 4)
   msg_t adcConvert(ADCDriver *adcp,
                    const ADCConversionGroup *grpp,
                    adcsample_t *samples,
