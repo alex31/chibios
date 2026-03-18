@@ -68,6 +68,7 @@ static void __idle_thread(void *p) {
     port_wait_for_interrupt();
     /*lint -restore*/
     CH_CFG_IDLE_LOOP_HOOK();
+    asm volatile ("nop");
   }
 }
 #endif /* CH_CFG_NO_IDLE_THREAD == FALSE */

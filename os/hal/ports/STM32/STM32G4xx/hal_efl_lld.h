@@ -114,6 +114,8 @@ extern "C" {
                              size_t n, uint8_t *rp);
   flash_error_t efl_lld_program(void *instance, flash_offset_t offset,
                                 size_t n, const uint8_t *pp);
+  flash_error_t efl_lld_fast_row_program(void *instance, flash_offset_t offset,
+					 size_t n, const uint32_t *pp);
   flash_error_t efl_lld_start_erase_all(void *instance);
   flash_error_t efl_lld_start_erase_sector(void *instance,
                                            flash_sector_t sector);

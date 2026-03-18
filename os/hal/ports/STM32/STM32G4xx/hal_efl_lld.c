@@ -22,9 +22,17 @@
  * @{
  */
 
+
 #include <string.h>
 
 #include "hal.h"
+
+#define EXPAND(x) x
+#ifdef HAL_EFL_SECTION_HOOK
+#define HAL_EFL_SECTION EXPAND(HAL_EFL_SECTION_HOOK)
+#else
+#define HAL_EFL_SECTION 
+#endif
 
 #if (HAL_USE_EFL == TRUE) || defined(__DOXYGEN__)
 
@@ -90,6 +98,11 @@ static inline void stm32_flash_enable_pgm(EFlashDriver *eflp) {
   eflp->flash->CR |= FLASH_CR_PG;
 }
 
+static inline void stm32_flash_enable_fast_pgm(EFlashDriver *eflp) {
+
+  eflp->flash->CR |= FLASH_CR_FSTPG;
+}
+
 static inline void stm32_flash_disable_pgm(EFlashDriver *eflp) {
 
   eflp->flash->CR &= ~FLASH_CR_PG;
@@ -116,6 +129,7 @@ static inline bool stm32_flash_dual_bank(EFlashDriver *eflp) {
 #if STM32_FLASH_NUMBER_OF_BANKS > 1
   return ((eflp->flash->OPTR & (FLASH_OPTR_DBANK)) != 0U);
 #endif
+  (void) eflp;
   return false;
 }
 
@@ -241,8 +255,10 @@ flash_error_t efl_lld_read(void *instance, flash_offset_t offset,
   stm32_flash_clear_status(devp);
 
   /* Actual read implementation.*/
-  memcpy((void *)rp, (const void *)efl_lld_get_descriptor(instance)->address
-                                   + offset, n);
+  memcpy((void *)rp,
+	 (const void *) ((uint32_t) efl_lld_get_descriptor(instance)->address
+			 + offset),
+	 n);
 
   /* Checking for errors after reading.*/
   if ((devp->flash->SR & FLASH_SR_RDERR) != 0U) {
@@ -273,6 +289,7 @@ flash_error_t efl_lld_read(void *instance, flash_offset_t offset,
  *
  * @notapi
  */
+HAL_EFL_SECTION
 flash_error_t efl_lld_program(void *instance, flash_offset_t offset,
                               size_t n, const uint8_t *pp) {
   EFlashDriver *devp = (EFlashDriver *)instance;
@@ -298,6 +315,9 @@ flash_error_t efl_lld_program(void *instance, flash_offset_t offset,
   /* Enabling PGM mode in the controller.*/
   stm32_flash_enable_pgm(devp);
 
+#ifdef HAL_EFL_SECTION_HOOK
+  chSysLock();
+#endif
   /* Actual program implementation.*/
   while (n > 0U) {
     volatile uint32_t *address;
@@ -333,6 +353,9 @@ flash_error_t efl_lld_program(void *instance, flash_offset_t offset,
       break;
     }
   }
+#ifdef HAL_EFL_SECTION_HOOK
+  chSysUnlock();
+#endif
 
   /* Disabling PGM mode in the controller.*/
   stm32_flash_disable_pgm(devp);
@@ -340,6 +363,86 @@ flash_error_t efl_lld_program(void *instance, flash_offset_t offset,
   /* Ready state again.*/
   devp->state = FLASH_READY;
 
+  return err;
+}
+
+/**
+ * @brief   Program operation in fast mode by chunk of 256 bytes.
+ * @note    The device supports ECC. It is only possible to write erased
+ *          pages once except when writing all zeroes to a location.
+ *          this function is only meant to be call from a program that enterely
+ *          run from ram and has issued a previous mass_erase
+ * @param[in] ip                    pointer to a @p EFlashDriver instance
+ * @param[in] offset                offset within full flash address space
+ * @param[in] n                     number of bytes to be programmed
+ * @param[in] pp                    pointer to the data buffer
+ * @return                          An error code.
+ * @retval FLASH_NO_ERROR           if there is no erase operation in progress.
+ * @retval FLASH_BUSY_ERASING       if there is an erase operation in progress.
+ * @retval FLASH_ERROR_PROGRAM      if the program operation failed.
+ * @retval FLASH_ERROR_HW_FAILURE   if access to the memory failed.
+ *
+ * @notapi
+ */
+flash_error_t efl_lld_fast_row_program(void *instance, flash_offset_t offset,
+                              size_t n, const uint32_t *pp) {
+  EFlashDriver *devp = (EFlashDriver *)instance;
+  const flash_descriptor_t *bank = efl_lld_get_descriptor(instance);
+  flash_error_t err = FLASH_NO_ERROR;
+
+  osalDbgCheck((instance != NULL) && (pp != NULL) && (n > 0U));
+  osalDbgCheck((size_t)offset + n <= (size_t)bank->size);
+  osalDbgAssert((offset % 256) == 0, "invalid alignment");
+  osalDbgAssert((n % 256) == 0, "invalid row size");
+  osalDbgAssert((devp->state == FLASH_READY) || (devp->state == FLASH_ERASE),
+                "invalid state");
+
+  /* No programming while erasing.*/
+  if (devp->state == FLASH_ERASE) {
+    return FLASH_BUSY_ERASING;
+  }
+
+  /* FLASH_PGM state while the operation is performed.*/
+  devp->state = FLASH_PGM;
+
+  /* Clearing error status bits.*/
+  stm32_flash_clear_status(devp);
+
+  /* Enabling PGM mode in the controller.*/
+  stm32_flash_enable_fast_pgm(devp);
+
+  /* Actual program implementation.*/
+  while (n >= 256) {
+    for (size_t wi = 0; wi < 64; wi++) {
+      volatile uint32_t *address = (volatile uint32_t *)(bank->address +
+							 (offset & ~STM32_FLASH_LINE_MASK));
+      
+      /* Programming 32 doubleword lines in a row */
+      address[wi] = pp[wi];
+    }
+    stm32_flash_wait_busy(devp);
+    err = stm32_flash_check_errors(devp);
+    if (err != FLASH_NO_ERROR) {
+      goto exit;
+    }
+    offset += 256U;
+    pp += 64U;
+    n -= 256U;
+  }
+
+ exit:
+  /* Disabling PGM mode in the controller.*/
+  stm32_flash_disable_pgm(devp);
+  
+  /* Ready state again.*/
+  devp->state = FLASH_READY;
+
+  /* if n is not multiple of 256, end the flash program with
+     classical doubleword write  */
+  if ((err == FLASH_NO_ERROR) && (n != 0)) {
+    return efl_lld_program(instance, offset, n, (uint8_t *) pp);
+  }
+  
   return err;
 }
 
@@ -357,6 +460,7 @@ flash_error_t efl_lld_program(void *instance, flash_offset_t offset,
  *
  * @notapi
  */
+
 flash_error_t efl_lld_start_erase_all(void *instance) {
   EFlashDriver *devp = (EFlashDriver *)instance;
 
@@ -403,6 +507,7 @@ flash_error_t efl_lld_start_erase_all(void *instance) {
  *
  * @notapi
  */
+
 flash_error_t efl_lld_start_erase_sector(void *instance,
                                          flash_sector_t sector) {
   EFlashDriver *devp = (EFlashDriver *)instance;

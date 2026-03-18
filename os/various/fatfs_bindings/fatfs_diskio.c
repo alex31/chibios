@@ -5,6 +5,7 @@
 /* disk I/O modules and attach it to FatFs module with common interface. */
 /*-----------------------------------------------------------------------*/
 
+#include "ch.h"
 #include "hal.h"
 #include "ffconf.h"
 #include "ff.h"
@@ -92,6 +93,15 @@ DRESULT disk_read (
     UINT count        /* Number of sectors to read (1..255) */
 )
 {
+#if (defined STM32H7XX) && CH_DBG_ENABLE_ASSERTS
+  extern const uint32_t __ram0nc_base__;
+  extern const uint32_t __ram0nc_size__;
+  const uint32_t ram0nc_base = (uint32_t) &__ram0nc_base__;
+  const uint32_t ram0nc_size = (uint32_t) &__ram0nc_size__;
+
+  chDbgAssert(((uint32_t) buff >= ram0nc_base) && ((uint32_t) buff <= (ram0nc_base + ram0nc_size)),
+	      "memory section mismatch");
+#endif
   switch (pdrv) {
   case 0:
     if (blkGetDriverState(&FATFS_HAL_DEVICE) != BLK_READY)
@@ -116,6 +126,15 @@ DRESULT disk_write (
     UINT count        /* Number of sectors to write (1..255) */
 )
 {
+#if (defined STM32H7XX) && CH_DBG_ENABLE_ASSERTS
+  extern const uint32_t __ram0nc_base__;
+  extern const uint32_t __ram0nc_size__;
+  const uint32_t ram0nc_base = (uint32_t) &__ram0nc_base__;
+  const uint32_t ram0nc_size = (uint32_t) &__ram0nc_size__;
+
+  chDbgAssert(((uint32_t) buff >= ram0nc_base) && ((uint32_t) buff <= (ram0nc_base + ram0nc_size)),
+	      "memory section mismatch");
+#endif
   switch (pdrv) {
   case 0:
     if (blkGetDriverState(&FATFS_HAL_DEVICE) != BLK_READY)

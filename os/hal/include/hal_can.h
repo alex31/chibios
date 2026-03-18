@@ -55,6 +55,10 @@
  * @brief   Overflow in receive queue.
  */
 #define CAN_OVERFLOW_ERROR          16U
+/**
+ * @brief   bus off condition
+ */
+#define CAN_BUSOFF_ERROR	        32U
 /** @} */
 
 /**
