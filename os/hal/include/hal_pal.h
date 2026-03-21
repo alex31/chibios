@@ -701,6 +701,22 @@ typedef struct {
 #endif
 
 /**
+ * @brief   Compile-time line identifier check.
+ * @note    The check is performed only if the low level driver provides a
+ *          validation macro and only for values known at compile time.
+ */
+#if defined(PAL_LINE_IS_VALID) && !defined(__DOXYGEN__) &&                  \
+    (defined(__GNUC__) || defined(__clang__)) && !defined(__cplusplus)
+int __attribute__((error("invalid PAL line constant: expected PAL_LINE(GPIOx, n) or LINE_*")))
+__pal_invalid_line_constant(void);
+#define palDbgCheckLineX(line)                                              \
+  ((void)((__builtin_constant_p(line) && !PAL_LINE_IS_VALID(line)) ?        \
+          __pal_invalid_line_constant() : 0))
+#else
+#define palDbgCheckLineX(line) ((void)0)
+#endif
+
+/**
  * @brief   Reads an input line logic state.
  * @note    The function can be called from any context.
  *
@@ -712,9 +728,11 @@ typedef struct {
  * @special
  */
 #if !defined(pal_lld_readline) || defined(__DOXYGEN__)
-#define palReadLine(line) palReadPad(PAL_PORT(line), PAL_PAD(line))
+#define palReadLine(line)                                                   \
+  (palDbgCheckLineX(line), palReadPad(PAL_PORT(line), PAL_PAD(line)))
 #else
-#define palReadLine(line) pal_lld_readline(line)
+#define palReadLine(line)                                                   \
+  (palDbgCheckLineX(line), pal_lld_readline(line))
 #endif
 
 /**
@@ -732,9 +750,17 @@ typedef struct {
  * @special
  */
 #if !defined(pal_lld_writeline) || defined(__DOXYGEN__)
-#define palWriteLine(line, bit) palWritePad(PAL_PORT(line), PAL_PAD(line), bit)
+#define palWriteLine(line, bit)                                             \
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    palWritePad(PAL_PORT(line), PAL_PAD(line), bit);                        \
+  } while (false)
 #else
-#define palWriteLine(line, bit) pal_lld_writeline(line, bit)
+#define palWriteLine(line, bit)                                             \
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    pal_lld_writeline(line, bit);                                           \
+  } while (false)
 #endif
 
 /**
@@ -750,9 +776,17 @@ typedef struct {
  * @special
  */
 #if !defined(pal_lld_setline) || defined(__DOXYGEN__)
-#define palSetLine(line) palSetPad(PAL_PORT(line), PAL_PAD(line))
+#define palSetLine(line)                                                    \
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    palSetPad(PAL_PORT(line), PAL_PAD(line));                               \
+  } while (false)
 #else
-#define palSetLine(line) pal_lld_setline(line)
+#define palSetLine(line)                                                    \
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    pal_lld_setline(line);                                                  \
+  } while (false)
 #endif
 
 /**
@@ -768,9 +802,17 @@ typedef struct {
  * @special
  */
 #if !defined(pal_lld_clearline) || defined(__DOXYGEN__)
-#define palClearLine(line) palClearPad(PAL_PORT(line), PAL_PAD(line))
+#define palClearLine(line)                                                  \
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    palClearPad(PAL_PORT(line), PAL_PAD(line));                             \
+  } while (false)
 #else
-#define palClearLine(line) pal_lld_clearline(line)
+#define palClearLine(line)                                                  \
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    pal_lld_clearline(line);                                                \
+  } while (false)
 #endif
 
 /**
@@ -786,9 +828,17 @@ typedef struct {
  * @special
  */
 #if !defined(pal_lld_toggleline) || defined(__DOXYGEN__)
-#define palToggleLine(line) palTogglePad(PAL_PORT(line), PAL_PAD(line))
+#define palToggleLine(line)                                                 \
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    palTogglePad(PAL_PORT(line), PAL_PAD(line));                            \
+  } while (false)
 #else
-#define palToggleLine(line) pal_lld_toggleline(line)
+#define palToggleLine(line)                                                 \
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    pal_lld_toggleline(line);                                               \
+  } while (false)
 #endif
 
 /**
@@ -806,9 +856,16 @@ typedef struct {
  */
 #if !defined(pal_lld_setlinemode) || defined(__DOXYGEN__)
 #define palSetLineMode(line, mode)                                          \
-  palSetPadMode(PAL_PORT(line), PAL_PAD(line), mode)
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    palSetPadMode(PAL_PORT(line), PAL_PAD(line), mode);                     \
+  } while (false)
 #else
-#define palSetLineMode(line, mode) pal_lld_setlinemode(line, mode)
+#define palSetLineMode(line, mode)                                          \
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    pal_lld_setlinemode(line, mode);                                        \
+  } while (false)
 #endif
 
 #if (PAL_USE_CALLBACKS == TRUE) || (PAL_USE_WAIT == TRUE) ||                \
@@ -890,10 +947,16 @@ typedef struct {
  */
 #if !defined(pal_lld_enablelineevent) || defined(__DOXYGEN__)
 #define palEnableLineEventI(line, mode)                                     \
-  palEnablePadEventI(PAL_PORT(line), PAL_PAD(line), mode)
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    palEnablePadEventI(PAL_PORT(line), PAL_PAD(line), mode);                \
+  } while (false)
 #else
 #define palEnableLineEventI(line, mode)                                     \
-    pal_lld_enablelineevent(line, mode)
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    pal_lld_enablelineevent(line, mode);                                    \
+  } while (false)
 #endif
 
 /**
@@ -906,9 +969,16 @@ typedef struct {
  */
 #if !defined(pal_lld_disablelineevent) || defined(__DOXYGEN__)
 #define palDisableLineEventI(line)                                          \
-  palDisablePadEventI(PAL_PORT(line), PAL_PAD(line))
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    palDisablePadEventI(PAL_PORT(line), PAL_PAD(line));                     \
+  } while (false)
 #else
-#define palDisableLineEventI(line) pal_lld_disablelineevent(line)
+#define palDisableLineEventI(line)                                          \
+  do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
+    pal_lld_disablelineevent(line);                                         \
+  } while (false)
 #endif
 
 /**
@@ -972,10 +1042,11 @@ typedef struct {
  */
 #if !defined(pal_lld_islineeventenabled) || defined(__DOXYGEN__)
 #define palIsLineEventEnabledX(line)                                        \
-  pal_lld_ispadeventenabled(PAL_PORT(line), PAL_PAD(line))
+  (palDbgCheckLineX(line),                                                  \
+   pal_lld_ispadeventenabled(PAL_PORT(line), PAL_PAD(line)))
 #else
 #define palIsLineEventEnabledX(line)                                        \
-  pal_lld_islineeventenabled(line)
+  (palDbgCheckLineX(line), pal_lld_islineeventenabled(line))
 #endif
 
 #endif /* PAL_USE_CALLBACKS || PAL_USE_WAIT */
@@ -1009,6 +1080,7 @@ typedef struct {
  */
 #define palSetLineCallback(line, cb, arg)                                   \
   do {                                                                      \
+    palDbgCheckLineX(line);                                                 \
     osalSysLock();                                                          \
     palSetLineCallbackI(line, cb, arg);                                     \
     osalSysUnlock();                                                        \

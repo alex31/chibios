@@ -147,6 +147,7 @@ void palSetPadCallbackI(ioportid_t port, iopadid_t pad,
  */
 void palSetLineCallbackI(ioline_t line, palcallback_t cb, void *arg) {
 
+  palDbgCheckLineX(line);
   palevent_t *pep = pal_lld_get_line_event(line);
   pep->cb = cb;
   pep->arg = arg;
@@ -223,6 +224,7 @@ msg_t palWaitPadTimeout(ioportid_t port,
 msg_t palWaitLineTimeoutS(ioline_t line,
                           sysinterval_t timeout) {
 
+  palDbgCheckLineX(line);
   palevent_t *pep = pal_lld_get_line_event(line);
   return osalThreadEnqueueTimeoutS(&pep->threads, timeout);
 }
