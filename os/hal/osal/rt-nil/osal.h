@@ -296,7 +296,8 @@ typedef struct {
  * @name    Compiler-assisted buffer overflow protection
  * @{
  */
-#if defined(__GNUC__) && !defined(__DOXYGEN__)
+#if defined(__GNUC__) && !defined(__clang__) && !defined(__DOXYGEN__) &&    \
+    (__GNUC__ >= 10)
 #define OSAL_ACCESS_RO(ptr, size) __attribute__((access (read_only, ptr, size)))
 #define OSAL_ACCESS_WO(ptr, size) __attribute__((access (write_only, ptr, size)))
 #define OSAL_ACCESS_RW(ptr, size) __attribute__((access (read_write, ptr, size)))

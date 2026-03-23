@@ -706,7 +706,7 @@ typedef struct {
  *          validation macro and only for values known at compile time.
  */
 #if defined(PAL_LINE_IS_VALID) && !defined(__DOXYGEN__) &&                  \
-    (defined(__GNUC__) || defined(__clang__)) && !defined(__cplusplus)
+    defined(__GNUC__) && !defined(__clang__) && !defined(__cplusplus)
 int __attribute__((error("invalid PAL line constant: expected PAL_LINE(GPIOx, n) or LINE_*")))
 __pal_invalid_line_constant(void);
 #define palDbgCheckLineX(line)                                              \
