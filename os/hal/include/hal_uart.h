@@ -403,7 +403,7 @@ extern "C" {
                         const void *txbuf, sysinterval_t timeout);
   msg_t uartSendFullTimeout(UARTDriver *uartp, size_t *np,
                             const void *txbuf, sysinterval_t timeout);
-  OSAL_ACCESS_WO(3, 2)
+  OSAL_ACCESS_WO_PTR(3)
   msg_t uartReceiveTimeout(UARTDriver *uartp, size_t *np,
                            void *rxbuf, sysinterval_t timeout);
 #endif
