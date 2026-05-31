@@ -1,0 +1,6 @@
+[submodule "ext"]
+	path = ext
+	url = git@github.com:chibios-upstream/chibios-ext.git
+[submodule "tools/ftl"]
+	path = tools/ftl
+	url = git@github.com:chibios-upstream/chibios-ftl.git
