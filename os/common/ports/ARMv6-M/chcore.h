@@ -371,19 +371,43 @@ struct port_context {
                          ((size_t)(n)) + ((size_t)(PORT_INT_REQUIRED_STACK)))
 
 /**
+ * @brief   Debug check for the IRQ priority reservation.
+ * @details Under the alternate (@p PendSV based) switch the priority level
+ *          @p CORTEX_PRIORITY_PENDSV is reserved to @p PendSV. An IRQ
+ *          running below @p CORTEX_MAX_KERNEL_PRIORITY would tie with
+ *          @p PendSV and break the context switch atomicity. The running
+ *          vector is taken from the @p IPSR, covering external interrupts
+ *          and the settable system handlers (@p SysTick, @p SVCall).
+ * @note    Effective only with assertions enabled and the alternate switch;
+ *          compiled out otherwise. On failure the panic reports the
+ *          offending handler name through @p chDbgAssert().
+ */
+#if (CORTEX_ALTERNATE_SWITCH == TRUE) || defined(__DOXYGEN__)
+#define PORT_CHECK_IRQ_PRIORITY()                                           \
+  chDbgAssert(NVIC_GetPriority((IRQn_Type)((int32_t)__get_IPSR() - 16)) >=  \
+              (uint32_t)CORTEX_MAX_KERNEL_PRIORITY,                         \
+              "IRQ priority reserved to PendSV")
+#else
+#define PORT_CHECK_IRQ_PRIORITY()
+#endif
+
+/**
  * @brief   IRQ prologue code.
  * @details This macro must be inserted at the start of all IRQ handlers
  *          enabled to invoke system APIs.
  */
 #if defined(__GNUC__) || defined(__DOXYGEN__)
   #define PORT_IRQ_PROLOGUE()                                               \
-    uint32_t _saved_lr = (uint32_t)__builtin_return_address(0)
+    uint32_t _saved_lr = (uint32_t)__builtin_return_address(0);             \
+    PORT_CHECK_IRQ_PRIORITY()
 #elif defined(__ICCARM__)
   #define PORT_IRQ_PROLOGUE()                                               \
-    uint32_t _saved_lr = (uint32_t)__get_LR()
+    uint32_t _saved_lr = (uint32_t)__get_LR();                              \
+    PORT_CHECK_IRQ_PRIORITY()
 #elif defined(__CC_ARM)
   #define PORT_IRQ_PROLOGUE()                                               \
-    uint32_t _saved_lr = (uint32_t)__return_address()
+    uint32_t _saved_lr = (uint32_t)__return_address();                      \
+    PORT_CHECK_IRQ_PRIORITY()
 #endif
 
 /**
