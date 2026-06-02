@@ -70,18 +70,12 @@ typedef struct ch_system_debug {
 #if (CH_DBG_SYSTEM_STATE_CHECK == TRUE) || defined(__DOXYGEN__)
   /**
    * @brief   ISR nesting level.
-   * @note    Updated in thread context and read from ISR context, so it is
-   *          declared volatile to keep its accesses ordered and never
-   *          optimized out around the critical-section primitives.
    */
-  volatile cnt_t        isr_cnt;
+  cnt_t                 isr_cnt;
   /**
    * @brief   Lock nesting level.
-   * @note    Updated in thread context and read from ISR context, so it is
-   *          declared volatile to keep its accesses ordered and never
-   *          optimized out around the critical-section primitives.
    */
-  volatile cnt_t        lock_cnt;
+  cnt_t                 lock_cnt;
 #endif
 } system_debug_t;
 
