@@ -42,7 +42,11 @@ xhal:
       - 'os/xhal/**'
       - 'testxhal/**'
 
-# ── STM32 port families ──────────────────────────────────────────────────────
+# ── Port families ─────────────────────────────────────────────────────────────
+# Labels are kept at port-family granularity (one label per architecture/vendor
+# port), not per STM32 sub-family: sub-family labels were inconsistent to group
+# and add a new label + glob for every new silicon family. A single port/STM32
+# is enough for triage.
 port/STM32:
   - changed-files:
     - any-glob-to-any-file:
@@ -50,96 +54,6 @@ port/STM32:
       - 'demos/STM32/**'
       - 'testhal/STM32/**'
 
-port/STM32F0:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32F0xx/**'
-      - 'os/hal/ports/STM32/STM32C0xx/**'
-      - 'testhal/STM32/STM32F0xx/**'
-
-port/STM32F1:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32F1xx/**'
-      - 'testhal/STM32/STM32F1xx/**'
-
-port/STM32F3:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32F3xx/**'
-      - 'os/hal/ports/STM32/STM32F37x/**'
-      - 'testhal/STM32/STM32F3xx/**'
-      - 'testhal/STM32/STM32F37x/**'
-
-port/STM32F4:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32F4xx/**'
-      - 'testhal/STM32/STM32F4xx/**'
-
-port/STM32F7:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32F7xx/**'
-      - 'testhal/STM32/STM32F7xx/**'
-
-port/STM32G0:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32G0xx/**'
-      - 'testhal/STM32/STM32G0xx/**'
-
-port/STM32G4:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32G4xx/**'
-      - 'testhal/STM32/STM32G4xx/**'
-
-port/STM32H5:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32H5xx/**'
-
-port/STM32H7:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32H7xx/**'
-      - 'testhal/STM32/STM32H7xx/**'
-
-port/STM32L0:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32L0xx/**'
-
-port/STM32L1:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32L1xx/**'
-      - 'testhal/STM32/STM32L1xx/**'
-
-port/STM32L4:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32L4xx/**'
-      - 'os/hal/ports/STM32/STM32L4xx+/**'
-      - 'os/hal/ports/STM32/STM32L5xx/**'
-      - 'testhal/STM32/STM32L4xx/**'
-
-port/STM32U:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32U0xx/**'
-      - 'os/hal/ports/STM32/STM32U3xx/**'
-      - 'os/hal/ports/STM32/STM32U5xx/**'
-
-port/STM32WB-WL:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'os/hal/ports/STM32/STM32WBxx/**'
-      - 'os/hal/ports/STM32/STM32WLxx/**'
-      - 'testhal/STM32/STM32WLxx/**'
-
-# ── Other port families ──────────────────────────────────────────────────────
 port/AVR:
   - changed-files:
     - any-glob-to-any-file:

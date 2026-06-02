@@ -31,24 +31,8 @@ jobs:
           gh label create "hal"    --color "0e8a16" --description "HAL component"       --force --repo "$GITHUB_REPOSITORY"
           gh label create "xhal"   --color "0e8a16" --description "XHAL component"      --force --repo "$GITHUB_REPOSITORY"
 
-          # ── STM32 port families (purple) ──────────────────────────────────
-          gh label create "port/STM32"       --color "5319e7" --description "Any STM32 port"      --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32F0"     --color "5319e7" --description "STM32F0/C0 family"   --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32F1"     --color "5319e7" --description "STM32F1 family"      --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32F3"     --color "5319e7" --description "STM32F3/F37x family" --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32F4"     --color "5319e7" --description "STM32F4 family"      --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32F7"     --color "5319e7" --description "STM32F7 family"      --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32G0"     --color "5319e7" --description "STM32G0 family"      --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32G4"     --color "5319e7" --description "STM32G4 family"      --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32H5"     --color "5319e7" --description "STM32H5 family"      --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32H7"     --color "5319e7" --description "STM32H7 family"      --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32L0"     --color "5319e7" --description "STM32L0 family"      --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32L1"     --color "5319e7" --description "STM32L1 family"      --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32L4"     --color "5319e7" --description "STM32L4/L5 family"   --force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32U"      --color "5319e7" --description "STM32U0/U3/U5 family"--force --repo "$GITHUB_REPOSITORY"
-          gh label create "port/STM32WB-WL"  --color "5319e7" --description "STM32WB/WL family"   --force --repo "$GITHUB_REPOSITORY"
-
-          # ── Other port families (teal) ─────────────────────────────────────
+          # ── Port families (purple/teal) ───────────────────────────────────
+          gh label create "port/STM32" --color "5319e7" --description "STM32 port"  --force --repo "$GITHUB_REPOSITORY"
           gh label create "port/AVR"   --color "006b75" --description "AVR port"    --force --repo "$GITHUB_REPOSITORY"
           gh label create "port/RP"    --color "006b75" --description "RP2xxx port" --force --repo "$GITHUB_REPOSITORY"
           gh label create "port/SPC5"  --color "006b75" --description "SPC5 port"   --force --repo "$GITHUB_REPOSITORY"
