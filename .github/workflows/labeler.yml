@@ -25,7 +25,7 @@ jobs:
           # ── RTOS cores (blue) ──────────────────────────────────────────────
           gh label create "rt"     --color "0075ca" --description "RT RTOS core"        --force --repo "$GITHUB_REPOSITORY"
           gh label create "nil"    --color "0075ca" --description "NIL RTOS core"       --force --repo "$GITHUB_REPOSITORY"
-          gh label create "oslib"  --color "0075ca" --description "OSLIB shared modules"--force --repo "$GITHUB_REPOSITORY"
+          gh label create "oslib"  --color "0075ca" --description "OSLIB shared modules" --force --repo "$GITHUB_REPOSITORY"
 
           # ── HAL (green) ───────────────────────────────────────────────────
           gh label create "hal"    --color "0e8a16" --description "HAL component"       --force --repo "$GITHUB_REPOSITORY"
