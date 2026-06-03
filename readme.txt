@@ -81,10 +81,13 @@ See .devcontainer/README.md for included tools and usage.
 *****************************************************************************
 
 *** Next ***
+- FIX: RT: Fixed chThdCreateFromMemoryPool() rejects valid fixed memory pools
+       due to overly strict alignment assertion (bug github #3)
+       (backported to 21.11.6).
 - FIX: RT: Fixed lign aheap-created thread working area size (bug #1307)
-  (backportted to 21.11.6).
+       (backported to 21.11.6).
 - FIX; NIL: Fixed wrong alignment check in chThdCreateI() (bug #1306)
-  (backportted to 21.11.6).
+       (backported to 21.11.6).
 - FIX: DACv1 trigger mask sized for 3 or 4 bit trigger source identifier
 - NEW: Thread mode for EP0 handling in USB HAL driver.
 - NEW: ADC driver in XHAL.

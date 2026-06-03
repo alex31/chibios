@@ -395,10 +395,13 @@ struct port_context {
  * @brief   IRQ prologue code.
  * @details This macro must be inserted at the start of all IRQ handlers
  *          enabled to invoke system APIs.
+ * @note    On GCC/Clang/armclang the @p EXC_RETURN value (entry @p LR) is no
+ *          longer captured here: it is delivered as the @p _saved_lr argument
+ *          of the handler body by the trampoline emitted in
+ *          @p PORT_IRQ_HANDLER(). See that macro for the rationale.
  */
 #if defined(__GNUC__) || defined(__DOXYGEN__)
   #define PORT_IRQ_PROLOGUE()                                               \
-    uint32_t _saved_lr = (uint32_t)__builtin_return_address(0);             \
     PORT_CHECK_IRQ_PRIORITY()
 #elif defined(__ICCARM__)
   #define PORT_IRQ_PROLOGUE()                                               \
@@ -421,11 +424,56 @@ struct port_context {
  * @brief   IRQ handler function declaration.
  * @note    @p id can be a function name or a vector number depending on the
  *          port implementation.
+ * @details On GCC/Clang/armclang the vector is emitted as a tiny @p naked
+ *          trampoline that captures the @p EXC_RETURN value from @p LR into
+ *          the first argument and tail-branches (via @p BX, which leaves
+ *          @p LR untouched) to the actual handler body. The body receives
+ *          @p EXC_RETURN as the @p _saved_lr argument used by
+ *          @p PORT_IRQ_EPILOGUE().
+ *          @n@n
+ *          Capturing @p LR in the very first instruction of the vector, in a
+ *          dedicated non-foldable trampoline, makes the @p EXC_RETURN value
+ *          immune to @p -fipa-icf (identical-code folding, on at @p -O2 /
+ *          @p -Os). ICF can fold two byte-identical handler bodies and turn
+ *          one vector into a @p "push @p {lr}; @p bl @p body; @p pop @p {pc}"
+ *          thunk; the previous @p __builtin_return_address(0) capture then
+ *          read an @p LR already clobbered by that @p bl, corrupting the
+ *          outermost-ISR test in @p __port_irq_epilogue() and dropping a
+ *          required reschedule on nested interrupts. The trampoline never
+ *          uses @p bl and reads @p LR before anything can clobber it, so the
+ *          captured value is correct even if the body (or the trampoline
+ *          itself) is folded.
+ *          @n@n
+ *          The body is reached with @p "ldr/bx" rather than a plain @p b
+ *          because, with @p -ffunction-sections, the linker may place the
+ *          body outside the @p +/-2KB range of the only unconditional Thumb
+ *          branch available on ARMv6-M.
  */
-#ifdef __cplusplus
-  #define PORT_IRQ_HANDLER(id) extern "C" void id(void)
-#else
-  #define PORT_IRQ_HANDLER(id) void id(void)
+#if defined(__GNUC__) || defined(__DOXYGEN__)
+  #ifdef __cplusplus
+    #define PORT_IRQ_HANDLER_LINKAGE extern "C"
+  #else
+    #define PORT_IRQ_HANDLER_LINKAGE
+  #endif
+  #define PORT_IRQ_HANDLER(id)                                              \
+    static __attribute__((used)) void id##_isr(uint32_t _saved_lr);        \
+    PORT_IRQ_HANDLER_LINKAGE __attribute__((naked, used))                  \
+    void id(void) {                                                        \
+      __asm volatile ("mov   r0, lr            \n\t"                       \
+                      "ldr   r1, =" #id "_isr  \n\t"                       \
+                      "bx    r1                \n\t");                     \
+    }                                                                      \
+    static __attribute__((used)) void id##_isr(uint32_t _saved_lr)
+#else /* IAR (__ICCARM__) / ARMCC5 (__CC_ARM): EXC_RETURN captured in the
+         prologue via a compiler intrinsic; no trampoline.
+         TODO: verify whether these toolchains' duplicate-function merging
+         can produce the same EXC_RETURN hazard and, if so, add an
+         equivalent trampoline. */
+  #ifdef __cplusplus
+    #define PORT_IRQ_HANDLER(id) extern "C" void id(void)
+  #else
+    #define PORT_IRQ_HANDLER(id) void id(void)
+  #endif
 #endif
 
 /**

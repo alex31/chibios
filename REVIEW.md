@@ -54,5 +54,26 @@ It also serves as the review-guidance file for any automated reviewer.
   findings.
 - Summarize to the maintainer; **the human decides the merge.**
 
+## Review output template
+Post the review as one summary block (plus inline comments on specific lines where useful),
+using this shape:
+
+```
+🤖 chibios-sheriff — first-layer review (advisory)   ← automated reviews MUST open with this AI-disclosure line
+
+Scope: <what changed, target branch — one line>
+
+Blocking:    <correctness/safety/API-break/build or style failures — or omit if none>
+Should-fix:  <convention/quality items — or omit>
+Notes:       <non-blocking nits/observations — or omit>
+
+Mechanical gates: <style + build result, or what wasn't run this pass>
+
+Verdict: request changes | comment | advisory-LGTM  (+ any condition)
+```
+
+Human reviewers use the same structure, minus the `🤖` disclosure line (that line is required
+for automated reviewers, which can't carry GitHub's native `[bot]` badge).
+
 ## Cadence
 - Pull-based: a maintainer brings a PR to a review session.
