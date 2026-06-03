@@ -178,7 +178,7 @@ extern "C" {
   msg_t i2cStart(I2CDriver *i2cp, const I2CConfig *config);
   void i2cStop(I2CDriver *i2cp);
   i2cflags_t i2cGetErrors(I2CDriver *i2cp);
-  
+
   [[nodiscard]]
   OSAL_ACCESS_WO(5, 6) OSAL_ACCESS_RO(3, 4)
   msg_t i2cMasterTransmitTimeout(I2CDriver *i2cp,

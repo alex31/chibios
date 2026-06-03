@@ -31,7 +31,7 @@
 #ifdef HAL_EFL_SECTION_HOOK
 #define HAL_EFL_SECTION EXPAND(HAL_EFL_SECTION_HOOK)
 #else
-#define HAL_EFL_SECTION 
+#define HAL_EFL_SECTION
 #endif
 
 #if (HAL_USE_EFL == TRUE) || defined(__DOXYGEN__)
@@ -416,7 +416,7 @@ flash_error_t efl_lld_fast_row_program(void *instance, flash_offset_t offset,
     for (size_t wi = 0; wi < 64; wi++) {
       volatile uint32_t *address = (volatile uint32_t *)(bank->address +
 							 (offset & ~STM32_FLASH_LINE_MASK));
-      
+
       /* Programming 32 doubleword lines in a row */
       address[wi] = pp[wi];
     }
@@ -433,7 +433,7 @@ flash_error_t efl_lld_fast_row_program(void *instance, flash_offset_t offset,
  exit:
   /* Disabling PGM mode in the controller.*/
   stm32_flash_disable_pgm(devp);
-  
+
   /* Ready state again.*/
   devp->state = FLASH_READY;
 
@@ -442,7 +442,7 @@ flash_error_t efl_lld_fast_row_program(void *instance, flash_offset_t offset,
   if ((err == FLASH_NO_ERROR) && (n != 0)) {
     return efl_lld_program(instance, offset, n, (uint8_t *) pp);
   }
-  
+
   return err;
 }
 

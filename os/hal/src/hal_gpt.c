@@ -183,7 +183,7 @@ void gptStartContinuous(GPTDriver *gptp, gptcnt_t interval) {
 void gptStartContinuousI(GPTDriver *gptp, gptcnt_t interval) {
 
   osalDbgCheckClassI();
-  osalDbgCheck(gptp != NULL); 
+  osalDbgCheck(gptp != NULL);
   osalDbgAssert(interval > 1, "interval must be > 1");
   osalDbgAssert(gptp->state == GPT_READY,
                 "invalid state");

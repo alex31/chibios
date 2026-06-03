@@ -20,7 +20,7 @@ This document explains the differences between the clean upstream branch and our
 *   **Rationale:** Ensures that Backup RAM and RTC remain accessible and powered correctly after reset.
 
 ### 3. Infinite Loop "nop" for GCC Analyzer
-*   **Files:** 
+*   **Files:**
     *   `os/common/startup/ARMCMx/compilers/GCC/crt1.c`
     *   `os/rt/src/chsys.c`
     *   `os/rt/src/chinstances.c`
