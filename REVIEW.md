@@ -37,6 +37,11 @@ deep-review effort on code that is about to change anyway.
 Intake (§0) findings have no stage of their own: they are reported together with the
 Stage A pass.
 
+**Re-review passes:** start from the previously posted findings — explicitly verify
+each open item against the new head (resolved / still open / fix ineffective) before
+looking at anything new. A fix round is judged by whether it closes the loop, not by
+whether it changed code; carried findings are restated, not silently dropped.
+
 - **Stage A — build (objective):** the POSIX simulator (host gcc) plus the most
   relevant ARM target(s) for the touched port(s). Failure → **request changes**,
   stop here.
