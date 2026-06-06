@@ -114,6 +114,9 @@ Stage C dimensions (deep):
   reproduction hint so the author can self-check before pushing:
   `python3 tools/style/stylecheck.py <file>` (findings are printed as `style:`/
   `error:` lines; the tool always exits 0 — read the output, not the exit code).
+  Note: the local tool reports the WHOLE file; CI enforces only findings on lines
+  changed by the PR (pre-existing findings in legacy files are printed for
+  context but do not fail the gate).
 - Summarize to the maintainer; **the human decides the merge.**
 
 ## 6. Backports (stable-*)
