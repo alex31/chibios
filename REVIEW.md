@@ -110,6 +110,12 @@ Stage C dimensions (deep):
   comments — handle those through separate channels. If CI is red for a reason not
   caused by the PR, say only that it is a known project-side issue being addressed;
   no details about the unrelated problem.
+- **Question authors only on their own changes:** findings are raised against what
+  the PR adds or modifies. Pre-existing anomalies in surrounding code discovered
+  during the review are NOT the author's burden — record them for the maintainer
+  (issue, knowledge base, separate fix) and leave the author out of it. The same
+  principle the CI applies to style (changed lines only) applies to judgment
+  findings.
 - **Make findings reproducible:** when reporting style findings, include the local
   reproduction hint so the author can self-check before pushing:
   `python3 tools/style/stylecheck.py <file>` (findings are printed as `style:`/
