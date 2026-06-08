@@ -16,5 +16,7 @@
 - Clean projects after test builds unless otherwise specified.
 
 ## Repository
-- Repository is subversion, ignore .svn directory, do not use git commands.
+- Repository is Git-based. Giovanni Sirio uses GitHub, and this local checkout relies on the user's own GitHub fork.
+- Use the Git/GitHub workflow for repository operations.
+- Do not search for legacy repository metadata or assume the old workflow unless explicitly requested.
 - Ask for confirmation before touching non-versioned files.
