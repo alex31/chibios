@@ -633,7 +633,7 @@ extern "C" {
   void usbInitEndpointI(USBDriver *usbp, usbep_t ep,
                         const USBEndpointConfig *epcp);
   void usbDisableEndpointsI(USBDriver *usbp);
-  OSAL_ACCESS_WO(3, 8) /* Setup is always 8 bytes */
+  OSAL_ACCESS_WO_PTR(3) /* Setup is always 8 bytes */
   void usbReadSetupI(USBDriver *usbp, usbep_t ep, uint8_t *buf);
   OSAL_ACCESS_WO(3, 4)
   void usbStartReceiveI(USBDriver *usbp, usbep_t ep,
