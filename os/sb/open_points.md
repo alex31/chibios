@@ -12,11 +12,20 @@ remaining technical points across the SB subsystems.
 
 ## Host
 
-- Re-review syscall return and VRQ paths in `host/sbsyscall.c` and `host/sbvrq.c`, especially around restart/teardown windows and late producers.
+- Re-review syscall return and VRQ paths in `host/sbsyscall.c` and `host/sbvrq.c`, especially around restart/teardown windows, late producers, and the `vrq.isr`/`SB_VRQ_ISR_DISABLED` masking atomicity across the entry -> dispatch -> return sequence.
 - Decide whether sandbox memory-range violations in host services should keep returning `CH_RET_EFAULT` or escalate to a sandbox fault/termination policy.
 - Add more host-side validation tests for multi-image bring-up, because incorrect flashing order can produce misleading startup failures during debug.
 - Evaluate whether a host-side integration demo/test should be added for the working host + SB1 + SB2 configuration used during VETH/lwIP bring-up.
 - Evaluate the SVC/MPU context switch optimizations and the planned shared-memory region API analyzed in [note_svc_mpu_optimizations.md](note_svc_mpu_optimizations.md).
+
+## Host isolation / escape resistance
+
+Full assessment in [note_sb_isolation_security.md](note_sb_isolation_security.md).
+
+- Define a copy-in-once contract for any syscall buffer backed by shared or DMA-capable memory (validate and use a private privileged copy, never re-dereference guest memory after the check). This is a prerequisite for the planned shared-memory region API, which is what activates the TOCTOU/double-fetch risk.
+- Move the syscall number out of guest code memory (R12 instead of the `ldrb` of the SVC immediate); removes a privileged read at a guest-influenced address and is also a perf win.
+- Add a compile-time/debug assertion enforcing that syscall handlers do not change FPCA state, instead of relying on review (corrupt FPCA -> wrong return frame shape -> supervisor crash).
+- Confirm the guard MPU region covers the privileged stack base (`SB_CFG_PRIVILEGED_STACK_SIZE`) for every sandbox config on v7-M (no PSPLIM there); deep host call chains under a syscall are the realistic overflow consumers.
 
 ## Host VIO
 

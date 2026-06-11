@@ -88,6 +88,13 @@ at post/enable/mask time reduces the hot path to one load + branch.
 
 ## Shared-memory API interaction (planned)
 
+Security note: a shared-memory region is the feature that activates the
+TOCTOU / double-fetch risk described in
+[note_sb_isolation_security.md](note_sb_isolation_security.md) point 1.
+The API contract must require copy-in-once for any buffer backed by shared
+memory (validate and use a private privileged copy, never re-dereference
+guest memory after the check).
+
 A future API adding a shared-memory MPU region must update both the
 stored settings and, conditionally, the live registers:
 
