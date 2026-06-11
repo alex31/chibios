@@ -16,6 +16,7 @@ remaining technical points across the SB subsystems.
 - Decide whether sandbox memory-range violations in host services should keep returning `CH_RET_EFAULT` or escalate to a sandbox fault/termination policy.
 - Add more host-side validation tests for multi-image bring-up, because incorrect flashing order can produce misleading startup failures during debug.
 - Evaluate whether a host-side integration demo/test should be added for the working host + SB1 + SB2 configuration used during VETH/lwIP bring-up.
+- Evaluate the SVC/MPU context switch optimizations and the planned shared-memory region API analyzed in [note_svc_mpu_optimizations.md](note_svc_mpu_optimizations.md).
 
 ## Host VIO
 
