@@ -235,9 +235,118 @@ exactly where deterministic state is wanted.
 are few and slow-path; a single precomputed "deliverable" word maintained
 at post/enable/mask time reduces the hot path to one load + branch.
 
+## 5. Fastcalls as RTOS interrupts (IRQ-like fastcalls)
+
+Design decision (2026-06-11). Fastcall handlers are currently restricted
+to "no RTOS interaction" (X-class only), which applies the fast-band rule
+by priority. The entry context already guarantees the property that rule
+protects:
+
+**Invariant: a fastcall SVC is always entered from unprivileged thread
+mode at BASEPRI=0.** The guest cannot hold a kernel lock (it cannot touch
+BASEPRI), so a fastcall handler — unlike a genuine fast-band ISR — never
+preempts a kernel lock zone on its own core. From the RTOS's point of
+view the context is equivalent to a kernel ISR that provably did not
+interrupt locked code, so **I-class is legal there**.
+
+A second, independent leg: `svc` is synchronous and guest-facing entries
+come only from thread mode, so a fastcall SVC **never nests over another
+exception and never preempts the kernel itself** — unlike an
+asynchronous IRQ, which can fire at any instant including over other
+ISRs. The fastcall context is therefore always the *outermost* "ISR":
+the epilogue's nested-ISR branch (defer reschedule to the outer exit) is
+statically dead on this path, the reschedule check always runs and is
+always valid, and the ISR-nesting bookkeeping goes 0 -> 1 -> 0 by
+construction. The context is strictly tamer than a kernel ISR, not just
+equivalent to one.
+
+**Shape: per-handler, not central — the dispatcher stays untouched.**
+An IRQ-like fastcall handler is written exactly like an ISR body:
+
+```
+CH_IRQ_PROLOGUE();
+chSysLockFromISR();
+...I-class...
+chSysUnlockFromISR();
+CH_IRQ_EPILOGUE();
+```
+
+A trivial fastcall (VRQ mask ops, peripheral pokes) is written exactly
+like today, zero added cost — not even a flag check in the dispatcher.
+No table changes, no number-space bits, no ABI classification: the two
+kinds differ only by what the handler's own code does.
+
+**The contract is machine-enforced in debug, in both directions.** With
+`CH_DBG_SYSTEM_STATE_CHECK`: an I-class call outside lock/unlock asserts
+instantly (a "simple" handler drifting into RTOS territory self-reveals);
+and `chSysLockFromISR` runs `dbg_check_lock_from_isr`, which requires the
+checker to be in ISR context — established only by `CH_IRQ_PROLOGUE`
+(`dbg_check_enter_isr`). The prologue is therefore load-bearing, not
+decorative: skipping it makes the very first lock attempt assert. No
+central policing needed.
+
+**Rescheduling on exit** goes through the standard epilogue mechanism
+(pend PendSV): a fastcall that wakes a higher-priority thread pays the
+return-to-guest -> PendSV -> re-stack bounce (~25 cycles), paid only when
+a preemption actually occurs and small against the switch it accompanies.
+If profiling ever shows it mattering, a dispatcher exit-flag check
+(~3 cycles on every fastcall) can buy it back — a measured later
+micro-optimization, not a design default. Exit ordering: handler ->
+VRQ-pending check (may push a guest frame) -> standard epilogue.
+
+**SVC priority placement — two options:**
+
+- *Keep SVC above the kernel mask (current placement, chosen start
+  point).* I-class is legal by the invariant above, and existing fastcall
+  handlers keep their **implicit atomicity** (nothing kernel-side can
+  preempt them), so the current lock-free manipulation of `sbp->vrq`
+  stays correct with no audit. Latency note: a fastcall handler's
+  duration delays the kernel band — same discipline as any ISR, keep
+  handlers short.
+- *After the point 1 split, drop SVC into the kernel band.* Purer
+  (fastcalls become literally kernel-band interrupts, configurable
+  priority) but every existing handler loses the implicit atomicity and
+  must grow lock/unlock pairs — a mandatory, easy-to-miss audit (e.g. a
+  kernel ISR calling `sbVRQTriggerI` mid-update of the VRQ masks).
+  Later refinement, not the starting point.
+
+**What it unlocks:** any "post work + wake somebody" operation currently
+needs a full syscall (two SVC exceptions + privileged dispatcher round
+trip) purely because waking requires I-class. As IRQ-like fastcalls these
+become single-exception calls: VIO doorbells, event/semaphore signals,
+and the async-VFS submit/status/cancel path
+([note_sb_async_vfs.md](note_sb_async_vfs.md)). The resulting semantic
+split is clean: **fastcall = guest-raised interrupt, syscall =
+guest-invoked thread-level service, VRQ = completion interrupt**.
+
+**Bounds / caveats:**
+
+- I-class only — handlers must never block (S-class impossible in
+  handler mode; the state checker catches it in debug).
+- Guest-visible semantic change to document: a fastcall may now
+  deschedule the guest mid-call (correct preemption behavior, but breaks
+  any "fastcalls never deschedule me" guest assumption).
+- Guest-controlled "interrupt" load is bounded exactly as today: paid
+  from the SB's own timeslice, cannot recurse.
+- Security: handler bugs now corrupt scheduler state at ISR level —
+  validation discipline unchanged, blast radius grows (recorded in the
+  isolation note).
+- Prologue/epilogue behavior is defined at port level and the portable
+  RTOS is priority-agnostic, so SVC's priority is not a design concern:
+  the pend-PendSV mechanism works identically from any active exception
+  (PendSV fires when execution priority drops past it, i.e. on return to
+  thread mode), and the epilogue's required serialization holds in both
+  placements (above the mask: kernel ISRs cannot preempt; kernel band:
+  the epilogue's own `port_lock_from_isr`). If any ALT-port epilogue
+  detail turns out to care, the adaptation is local to the port (a
+  dedicated prologue/epilogue variant), invisible to handlers and to the
+  portable layer.
+
 ## Deliberately left alone
 
-- Fastcall path: already minimal (handler mode, one table lookup).
+- Fastcall dispatch path: already minimal (handler mode, one table
+  lookup); the IRQ-like fastcall design in point 5 deliberately keeps
+  the dispatcher untouched.
 - Two-exception syscall design (entry SVC -> privileged dispatcher ->
   exit SVC): ~4 hardware mode transitions of floor cost, but it is what
   makes syscalls preemptable/blockable. A thread-mode return (manual

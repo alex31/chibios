@@ -156,6 +156,14 @@ Security effects of the designs decided in
 - **R12 syscall-number ABI (its point 2)**: removes the privileged read
   at a guest-influenced address (point 3 above) but requires the explicit
   clamp before table indexing, also point 3 above.
+- **IRQ-like fastcalls (its point 5)**: fastcall handlers gain I-class
+  capability (sound: a fastcall is always entered from unprivileged
+  thread mode at BASEPRI=0, so it never preempts a kernel lock zone).
+  Argument-validation discipline is unchanged, but the blast radius of a
+  handler bug grows from corrupted SB state to corrupted scheduler state
+  at ISR level. The prologue/lock/unlock/epilogue contract is enforced by
+  the state checker in debug, in both directions (I-class without lock
+  asserts; lock without prologue asserts).
 
 ## Bottom line
 

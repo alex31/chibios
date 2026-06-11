@@ -61,6 +61,33 @@ carrier.
 - VFS becomes, in effect, another virtual peripheral, unifying its model
   with VIO.
 
+### Submission as an IRQ-like fastcall
+
+With the IRQ-like fastcall design
+([note_svc_mpu_optimizations.md](note_svc_mpu_optimizations.md) point 5),
+submit does not even need to be a syscall: validate the slot, range-check
+the buffer, copy the metadata, enqueue, `chThdResumeI(worker)` — exactly
+ISR-shaped, never blocks, single exception. Status reads and cancellation
+are trivial fastcalls too (cancel = I-class flag set + worker poke). The
+hot I/O path then never enters the privileged dispatcher at all:
+**fastcall = submit/status/cancel, worker = execution, VRQ = completion**.
+
+- **Priority interplay gives both service models for free**: worker above
+  the SB thread -> submit preempts into the worker immediately (doorbell
+  with synchronous service); worker at the SB's priority (the default
+  above) -> the guest keeps running, submits several slots, the worker
+  drains when the SB yields or blocks — batching emerges naturally with
+  no batching API. A per-SB tuning knob, not a design decision.
+- **Backpressure**: slot table full -> the submit fastcall returns a
+  try-again status immediately (I-class never blocks); the guest runtime
+  yields on the completion VRQ.
+- **Bounded copy-in caveat**: the control-plane copy happens inside the
+  fastcall handler at SVC priority, so it must be small and bounded. For
+  `read`/`write` it is nothing (pointer + length validation; data plane
+  is DMA-semantics). For `open` the pathname copy is the cost — bounded
+  by a config max (64-128 bytes, ~100 cycles) it is acceptable;
+  otherwise path-heavy operations stay on the syscall path.
+
 ### Guest side
 
 Libc wrappers keep the POSIX face: submit, yield to the sub-scheduler,
