@@ -128,10 +128,19 @@
 #endif
 
 /**
- * @brief   Number of MPU regions to be saved/restored during context switch.
+ * @brief   Number of MPU regions to be switched during context switch.
  * @note    The first region is always region zero.
- * @note    The use of this option has an overhead of 8 bytes for each
- *          region for each thread.
+ * @note    Each thread context holds a pointer to a regions table of
+ *          RBAR/RLAR values, tables are shared among threads of a same
+ *          protection domain. The MPU is reprogrammed only when switching
+ *          between threads pointing at different tables; threads with no
+ *          specific protection domain share a default table with all
+ *          switched regions disabled.
+ * @note    The switched regions are owned by the context switch machinery;
+ *          the default table honors the @p PORT_MPU_RBARx_INIT and
+ *          @p PORT_MPU_RLARx_INIT settings, so the static configuration
+ *          of the switched regions is preserved across protection-domain
+ *          crossings.
  * @note    Allowed values are 0..8, zero means none.
  */
 #if !defined(PORT_SWITCHED_REGIONS_NUMBER) || defined(__DOXYGEN__)
@@ -852,7 +861,16 @@ struct port_context {
   struct port_extctx    *sp;
   struct port_intctx    regs;
 #if (PORT_SWITCHED_REGIONS_NUMBER > 0) || defined(__DOXYGEN__)
-  port_mpureg_t         regions[PORT_SWITCHED_REGIONS_NUMBER];
+  /**
+   * @brief   Pointer to the MPU regions table of this thread.
+   * @note    Threads of a same protection domain share the same table,
+   *          the context switch code only reprograms the MPU when the
+   *          table pointers differ, the table is never written back.
+   * @note    The pointed table must persist for the whole life of the
+   *          thread and any change to a table which is currently loaded
+   *          must also be written to the MPU registers by the writer.
+   */
+  const port_mpureg_t   *regions;
 #endif
 };
 
@@ -898,162 +916,6 @@ struct port_context {
     #define CORTEX_EXC_RETURN       0xFFFFFFBCU
   #endif
 #endif
-
-/**
- * @brief   Initialization of CONTROL part of thread context.
- */
-#if (PORT_SAVE_CONTROL == TRUE) || defined(__DOXYGEN__)
-  #if (CORTEX_USE_FPU == TRUE) || defined(__DOXYGEN__)
-    #define __PORT_SETUP_CONTEXT_CONTROL(tp)                                \
-      (tp)->ctx.regs.control          = CONTROL_FPCA_Msk
-  #else
-    #define __PORT_SETUP_CONTEXT_CONTROL(tp)                                \
-      (tp)->ctx.regs.control          = 0U
-  #endif
-#else
-  #define __PORT_SETUP_CONTEXT_CONTROL(tp)
-#endif
-
-/**
- * @brief   Initialization of stack check part of thread context.
- */
-#define __PORT_SETUP_CONTEXT_SPLIM(tp, wbase)                               \
-    (tp)->ctx.regs.splim = (uint32_t)(wbase)
-
-/**
- * @brief   Initialization of FPU part of thread context.
- * @note    The value of FPDSCR is used, it is meant to be the default.
- */
-#if (CORTEX_USE_FPU == TRUE) || defined(__DOXYGEN__)
-  #define __PORT_SETUP_CONTEXT_FPU(tp)                                      \
-    (tp)->ctx.sp->fpscr               = FPU->FPDSCR
-#else
-  #define __PORT_SETUP_CONTEXT_FPU(tp)
-#endif
-
-/**
- * @brief   Initialization of MPU part of thread context.
- */
-#if (PORT_SWITCHED_REGIONS_NUMBER == 0) || defined(__DOXYGEN__)
-  #define __PORT_SETUP_CONTEXT_MPU(tp)
-
-#elif (PORT_SWITCHED_REGIONS_NUMBER == 1) || defined(__DOXYGEN__)
-  #define __PORT_SETUP_CONTEXT_MPU(tp)                                      \
-    (tp)->ctx.regions[0].rbar   = 0U;                                       \
-    (tp)->ctx.regions[0].rlar   = 0U
-
-#elif (PORT_SWITCHED_REGIONS_NUMBER == 2) || defined(__DOXYGEN__)
-  #define __PORT_SETUP_CONTEXT_MPU(tp)                                      \
-    (tp)->ctx.regions[0].rbar   = 0U;                                       \
-    (tp)->ctx.regions[0].rlar   = 0U;                                       \
-    (tp)->ctx.regions[1].rbar   = 0U;                                       \
-    (tp)->ctx.regions[1].rlar   = 0U
-
-#elif (PORT_SWITCHED_REGIONS_NUMBER == 3) || defined(__DOXYGEN__)
-  #define __PORT_SETUP_CONTEXT_MPU(tp)                                      \
-    (tp)->ctx.regions[0].rbar   = 0U;                                       \
-    (tp)->ctx.regions[0].rlar   = 0U;                                       \
-    (tp)->ctx.regions[1].rbar   = 0U;                                       \
-    (tp)->ctx.regions[1].rlar   = 0U;                                       \
-    (tp)->ctx.regions[2].rbar   = 0U;                                       \
-    (tp)->ctx.regions[2].rlar   = 0U
-
-#elif (PORT_SWITCHED_REGIONS_NUMBER == 4) || defined(__DOXYGEN__)
-  #define __PORT_SETUP_CONTEXT_MPU(tp)                                      \
-    (tp)->ctx.regions[0].rbar   = 0U;                                       \
-    (tp)->ctx.regions[0].rlar   = 0U;                                       \
-    (tp)->ctx.regions[1].rbar   = 0U;                                       \
-    (tp)->ctx.regions[1].rlar   = 0U;                                       \
-    (tp)->ctx.regions[2].rbar   = 0U;                                       \
-    (tp)->ctx.regions[2].rlar   = 0U;                                       \
-    (tp)->ctx.regions[3].rbar   = 0U;                                       \
-    (tp)->ctx.regions[3].rlar   = 0U
-
-#elif (PORT_SWITCHED_REGIONS_NUMBER == 5) || defined(__DOXYGEN__)
-  #define __PORT_SETUP_CONTEXT_MPU(tp)                                      \
-    (tp)->ctx.regions[0].rbar   = 0U;                                       \
-    (tp)->ctx.regions[0].rlar   = 0U;                                       \
-    (tp)->ctx.regions[1].rbar   = 0U;                                       \
-    (tp)->ctx.regions[1].rlar   = 0U;                                       \
-    (tp)->ctx.regions[2].rbar   = 0U;                                       \
-    (tp)->ctx.regions[2].rlar   = 0U;                                       \
-    (tp)->ctx.regions[3].rbar   = 0U;                                       \
-    (tp)->ctx.regions[3].rlar   = 0U;                                       \
-    (tp)->ctx.regions[4].rbar   = 0U;                                       \
-    (tp)->ctx.regions[4].rlar   = 0U
-
-#elif (PORT_SWITCHED_REGIONS_NUMBER == 6) || defined(__DOXYGEN__)
-  #define __PORT_SETUP_CONTEXT_MPU(tp)                                      \
-    (tp)->ctx.regions[0].rbar   = 0U;                                       \
-    (tp)->ctx.regions[0].rlar   = 0U;                                       \
-    (tp)->ctx.regions[1].rbar   = 0U;                                       \
-    (tp)->ctx.regions[1].rlar   = 0U;                                       \
-    (tp)->ctx.regions[2].rbar   = 0U;                                       \
-    (tp)->ctx.regions[2].rlar   = 0U;                                       \
-    (tp)->ctx.regions[3].rbar   = 0U;                                       \
-    (tp)->ctx.regions[3].rlar   = 0U;                                       \
-    (tp)->ctx.regions[4].rbar   = 0U;                                       \
-    (tp)->ctx.regions[4].rlar   = 0U;                                       \
-    (tp)->ctx.regions[5].rbar   = 0U;                                       \
-    (tp)->ctx.regions[5].rlar   = 0U
-
-#elif (PORT_SWITCHED_REGIONS_NUMBER == 7) || defined(__DOXYGEN__)
-  #define __PORT_SETUP_CONTEXT_MPU(tp)                                      \
-    (tp)->ctx.regions[0].rbar   = 0U;                                       \
-    (tp)->ctx.regions[0].rlar   = 0U;                                       \
-    (tp)->ctx.regions[1].rbar   = 0U;                                       \
-    (tp)->ctx.regions[1].rlar   = 0U;                                       \
-    (tp)->ctx.regions[2].rbar   = 0U;                                       \
-    (tp)->ctx.regions[2].rlar   = 0U;                                       \
-    (tp)->ctx.regions[3].rbar   = 0U;                                       \
-    (tp)->ctx.regions[3].rlar   = 0U;                                       \
-    (tp)->ctx.regions[4].rbar   = 0U;                                       \
-    (tp)->ctx.regions[4].rlar   = 0U;                                       \
-    (tp)->ctx.regions[5].rbar   = 0U;                                       \
-    (tp)->ctx.regions[5].rlar   = 0U;                                       \
-    (tp)->ctx.regions[6].rbar   = 0U;                                       \
-    (tp)->ctx.regions[6].rlar   = 0U
-
-#elif (PORT_SWITCHED_REGIONS_NUMBER == 8) || defined(__DOXYGEN__)
-  #define __PORT_SETUP_CONTEXT_MPU(tp)                                      \
-    (tp)->ctx.regions[0].rbar   = 0U;                                       \
-    (tp)->ctx.regions[0].rlar   = 0U;                                       \
-    (tp)->ctx.regions[1].rbar   = 0U;                                       \
-    (tp)->ctx.regions[1].rlar   = 0U;                                       \
-    (tp)->ctx.regions[2].rbar   = 0U;                                       \
-    (tp)->ctx.regions[2].rlar   = 0U;                                       \
-    (tp)->ctx.regions[3].rbar   = 0U;                                       \
-    (tp)->ctx.regions[3].rlar   = 0U;                                       \
-    (tp)->ctx.regions[4].rbar   = 0U;                                       \
-    (tp)->ctx.regions[4].rlar   = 0U;                                       \
-    (tp)->ctx.regions[5].rbar   = 0U;                                       \
-    (tp)->ctx.regions[5].rlar   = 0U;                                       \
-    (tp)->ctx.regions[6].rbar   = 0U;                                       \
-    (tp)->ctx.regions[6].rlar   = 0U;                                       \
-    (tp)->ctx.regions[7].rbar   = 0U;                                       \
-    (tp)->ctx.regions[7].rlar   = 0U
-
-#else
-  /* Note, checked above.*/
-#endif
-
-/**
- * @brief   Platform dependent part of the thread creation API.
- */
-#define PORT_SETUP_CONTEXT(tp, wbase, wtop, pf, arg) do {                   \
-  (tp)->ctx.sp = (struct port_extctx *)(void *)                             \
-                 ((uint8_t *)(wtop) - sizeof (struct port_extctx));         \
-  (tp)->ctx.regs.basepri    = CORTEX_BASEPRI_KERNEL;                        \
-  (tp)->ctx.regs.r4         = (uint32_t)(pf);                               \
-  (tp)->ctx.regs.r5         = (uint32_t)(arg);                              \
-  (tp)->ctx.regs.lr_exc     = (uint32_t)CORTEX_EXC_RETURN;                  \
-  (tp)->ctx.sp->pc          = (uint32_t)__port_thread_start;                \
-  (tp)->ctx.sp->xpsr        = (uint32_t)0x01000000;                         \
-  __PORT_SETUP_CONTEXT_SPLIM(tp, wbase);                                    \
-  __PORT_SETUP_CONTEXT_CONTROL(tp);                                         \
-  __PORT_SETUP_CONTEXT_FPU(tp);                                             \
-  __PORT_SETUP_CONTEXT_MPU(tp);                                             \
-} while (false)
 
 /**
  * @brief   Context switch area size.
@@ -1161,6 +1023,9 @@ struct port_context {
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+#if (PORT_SWITCHED_REGIONS_NUMBER > 0) || defined(__DOXYGEN__)
+  extern const port_mpureg_t port_mpu_default_regions[PORT_SWITCHED_REGIONS_NUMBER];
 #endif
   void port_init(os_instance_t *oip);
   void __port_thread_start(void);
@@ -1305,6 +1170,72 @@ __STATIC_FORCEINLINE void port_wait_for_interrupt(void) {
 #if PORT_ENABLE_WFI_IDLE == TRUE
   __WFI();
 #endif
+}
+
+/**
+ * @brief   Initialization of the base part of a thread context.
+ * @details This function initializes those context fields which must be
+ *          valid also for thread objects representing already-running
+ *          execution flows (the boot thread of each instance), which do
+ *          not go through the full creation path. Only fields which are
+ *          read before being ever written by a context switch belong
+ *          here.
+ * @note    It is also invoked by @p port_setup_context() as part of the
+ *          full context initialization.
+ *
+ * @param[out] ctxp     pointer to the port-dependent context structure
+ */
+static inline void port_setup_context_base(struct port_context *ctxp) {
+
+#if PORT_SWITCHED_REGIONS_NUMBER > 0
+  /* Pointing to the default regions table, all switched regions are
+     disabled there.*/
+  ctxp->regions = port_mpu_default_regions;
+#else
+  (void)ctxp;
+#endif
+}
+
+/**
+ * @brief   Platform dependent thread context setup.
+ * @details This function is invoked by the thread creation APIs in order
+ *          to initialize the port-dependent part of the thread context.
+ *
+ * @param[out] ctxp     pointer to the port-dependent context structure
+ * @param[in] wbase     working area base address
+ * @param[in] wtop      working area top address
+ * @param[in] pf        thread function pointer
+ * @param[in] arg       thread function argument
+ */
+static inline void port_setup_context(struct port_context *ctxp,
+                                      void *wbase, void *wtop,
+                                      void (*pf)(void *), void *arg) {
+
+  port_setup_context_base(ctxp);
+
+  ctxp->sp = (struct port_extctx *)(void *)((uint8_t *)wtop -
+                                            sizeof (struct port_extctx));
+  ctxp->regs.basepri  = CORTEX_BASEPRI_KERNEL;
+  ctxp->regs.r4       = (uint32_t)pf;
+  ctxp->regs.r5       = (uint32_t)arg;
+  ctxp->regs.lr_exc   = (uint32_t)CORTEX_EXC_RETURN;
+  ctxp->regs.splim    = (uint32_t)wbase;
+  ctxp->sp->pc        = (uint32_t)__port_thread_start;
+  ctxp->sp->xpsr      = (uint32_t)0x01000000;
+
+#if PORT_SAVE_CONTROL == TRUE
+#if CORTEX_USE_FPU == TRUE
+  ctxp->regs.control  = CONTROL_FPCA_Msk;
+#else
+  ctxp->regs.control  = 0U;
+#endif
+#endif
+
+#if CORTEX_USE_FPU == TRUE
+  /* The initial FPSCR value is taken from FPDSCR, it is the default.*/
+  ctxp->sp->fpscr     = FPU->FPDSCR;
+#endif
+
 }
 
 #if !defined(port_rt_get_counter_value)

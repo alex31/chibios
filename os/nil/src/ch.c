@@ -287,6 +287,11 @@ void chSysInit(void) {
   nil.next = nil.current = &nil.threads[CH_CFG_MAX_THREADS];
   nil.current->state = NIL_STATE_READY;
 
+  /* Initialization of the port-dependent context fields which must be
+     valid also for the thread object representing this already-running
+     execution flow, never going through the full creation path.*/
+  port_setup_context_base(&nil.current->ctx);
+
 #if CH_DBG_ENABLE_STACK_CHECK == TRUE
   /* The idle thread is a special case because its stack is set up by the
      runtime environment.*/
@@ -784,7 +789,7 @@ thread_t *chThdCreateI(const thread_descriptor_t *tdp) {
 #endif
 
   /* Port dependent thread initialization.*/
-  PORT_SETUP_CONTEXT(tp, tdp->wbase, tdp->wend, tdp->funcp, tdp->arg);
+  port_setup_context(&tp->ctx, tdp->wbase, tdp->wend, tdp->funcp, tdp->arg);
 
   /* Initialization hook.*/
   CH_CFG_THREAD_EXT_INIT_HOOK(tp);

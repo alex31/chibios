@@ -122,6 +122,11 @@ thread_t *chThdObjectInit(thread_t *tp,
   tp->wabase = (void *)tdp->wbase;
   tp->waend  = (void *)tdp->wend;
 
+  /* Initialization of the port-dependent context fields which must be
+     valid also for thread objects representing already-running execution
+     flows, never going through the full creation path.*/
+  port_setup_context_base(&tp->ctx);
+
   /* Thread-related fields.*/
   tp->hdr.pqueue.prio   = tdp->prio;
   tp->state             = CH_STATE_WTSTART;
@@ -261,7 +266,7 @@ thread_t *chThdSpawnSuspendedI(thread_t *tp,
   tp = chThdObjectInit(tp, tdp);
 
   /* Setting up the port-dependent part of the working area.*/
-  PORT_SETUP_CONTEXT(tp, tp->wabase, tp->waend, tdp->funcp, tdp->arg);
+  port_setup_context(&tp->ctx, tp->wabase, tp->waend, tdp->funcp, tdp->arg);
 
   /* Registry-related fields.*/
 #if CH_CFG_USE_REGISTRY == TRUE
@@ -406,7 +411,7 @@ thread_t *chThdCreateSuspendedI(const thread_descriptor_t *tdp) {
   tp = chThdObjectInit(threadref(stktop), tdp);
 
   /* Setting up the port-dependent part of the working area.*/
-  PORT_SETUP_CONTEXT(tp, stkbase, tp, tdp->funcp, tdp->arg);
+  port_setup_context(&tp->ctx, stkbase, tp, tdp->funcp, tdp->arg);
 
 #if CH_CFG_USE_REGISTRY == TRUE
   REG_INSERT(tp->owner, tp);
@@ -569,7 +574,7 @@ thread_t *chThdCreateStatic(stkline_t *wbase, size_t wsize,
   tp = chThdObjectInit(threadref(stktop), &desc);
 
   /* Setting up the port-dependent part of the working area.*/
-  PORT_SETUP_CONTEXT(tp, wbase, tp, func, arg);
+  port_setup_context(&tp->ctx, wbase, tp, func, arg);
 
   chSysLock();
 
