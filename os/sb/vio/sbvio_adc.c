@@ -160,58 +160,37 @@ void sb_sysc_vio_adc(sb_class_t *sbp, struct port_extctx *ectxp) {
         ectxp->r0 = (uint32_t)HAL_RET_SUCCESS;
         break;
       }
-    case SB_VADC_START_LINEAR:
-    case SB_VADC_START_CIRCULAR:
+    default:
+      ectxp->r0 = (uint32_t)CH_RET_ENOSYS;
+      break;
+    }
+  }
+}
+
+void sb_fastc_vio_adc(sb_class_t *sbp, struct port_extctx *ectxp) {
+  uint32_t sub  = VIO_CALL_SUBCODE(ectxp->r0);
+  uint32_t unit = VIO_CALL_UNIT(ectxp->r0);
+
+  /* VIO not associated.*/
+  if ((sbp->vioconf == NULL) || (sbp->vioconf->adcs == NULL)) {
+    ectxp->r0 = (uint32_t)HAL_RET_NO_RESOURCE;
+    return;
+  }
+
+  if (unit >= sbp->vioconf->adcs->n) {
+    ectxp->r0 = (uint32_t)HAL_RET_NO_RESOURCE;
+    return;
+  }
+
+  /* API processing.*/
+  {
+    const vio_adc_unit_t *unitp = &sbp->vioconf->adcs->units[unit];
+
+    switch (sub) {
+    case SB_VADC_GCERR:
       {
-        const adc_conversion_group_t *grpp;
-        adcsample_t *samples = (adcsample_t *)ectxp->r2;
-        size_t depth = (size_t)ectxp->r3;
-        size_t size;
-        msg_t msg;
-        unsigned grpnum = (unsigned)ectxp->r1;
-
-        if ((drvGetStateX(unitp->adcp) != HAL_DRV_STATE_READY) &&
-            (drvGetStateX(unitp->adcp) != HAL_DRV_STATE_ERROR)) {
-          ectxp->r0 = (uint32_t)HAL_RET_INV_STATE;
-          break;
-        }
-
-        if (!vadc_get_group(unitp->adcp, grpnum, &grpp)) {
-          ectxp->r0 = (uint32_t)HAL_RET_CONFIG_ERROR;
-          break;
-        }
-
-        if (!vadc_get_buffer_size(grpp, depth, &size)) {
-          ectxp->r0 = (uint32_t)CH_RET_EINVAL;
-          break;
-        }
-
-        if (!sb_is_valid_write_range(sbp, samples, size)) {
-          ectxp->r0 = (uint32_t)CH_RET_EFAULT;
-          break;
-        }
-
-        if (sub == SB_VADC_START_LINEAR) {
-          msg = adcStartConversionLinear(unitp->adcp, grpnum, samples, depth);
-        }
-        else {
-          msg = adcStartConversionCircular(unitp->adcp, grpnum, samples, depth);
-        }
-        ectxp->r0 = (uint32_t)msg;
-        break;
-      }
-    case SB_VADC_STOP:
-      {
-        if (drvGetStateX(unitp->adcp) == HAL_DRV_STATE_STOP) {
-          ectxp->r0 = (uint32_t)HAL_RET_INV_STATE;
-          break;
-        }
-
-        if (drvGetStateX(unitp->adcp) != HAL_DRV_STATE_READY) {
-          adcStopConversion(unitp->adcp);
-        }
-
-        ectxp->r0 = (uint32_t)HAL_RET_SUCCESS;
+        ectxp->r0 = (uint32_t)adcGetAndClearErrorsX(unitp->adcp,
+                                                    (adcerror_t)-1);
         break;
       }
     case SB_VADC_SELCFG:
@@ -246,7 +225,8 @@ void sb_sysc_vio_adc(sb_class_t *sbp, struct port_extctx *ectxp) {
           break;
         }
 
-        /* Specified VADC configuration.*/
+        /* Function drvSetCfgX() is X-class, callable directly from this
+           fastcall.*/
         confp = &sbp->vioconf->adcconfs->cfgs[cfgnum];
         msg = drvSetCfgX(unitp->adcp, confp);
 
@@ -264,37 +244,69 @@ void sb_sysc_vio_adc(sb_class_t *sbp, struct port_extctx *ectxp) {
 
         break;
       }
-    default:
-      ectxp->r0 = (uint32_t)CH_RET_ENOSYS;
-      break;
-    }
-  }
-}
-
-void sb_fastc_vio_adc(sb_class_t *sbp, struct port_extctx *ectxp) {
-  uint32_t sub  = VIO_CALL_SUBCODE(ectxp->r0);
-  uint32_t unit = VIO_CALL_UNIT(ectxp->r0);
-
-  /* VIO not associated.*/
-  if ((sbp->vioconf == NULL) || (sbp->vioconf->adcs == NULL)) {
-    ectxp->r0 = (uint32_t)HAL_RET_NO_RESOURCE;
-    return;
-  }
-
-  if (unit >= sbp->vioconf->adcs->n) {
-    ectxp->r0 = (uint32_t)HAL_RET_NO_RESOURCE;
-    return;
-  }
-
-  /* API processing.*/
-  {
-    const vio_adc_unit_t *unitp = &sbp->vioconf->adcs->units[unit];
-
-    switch (sub) {
-    case SB_VADC_GCERR:
+    case SB_VADC_START_LINEAR:
+    case SB_VADC_START_CIRCULAR:
       {
-        ectxp->r0 = (uint32_t)adcGetAndClearErrorsX(unitp->adcp,
-                                                    (adcerror_t)-1);
+        const adc_conversion_group_t *grpp;
+        adcsample_t *samples = (adcsample_t *)ectxp->r2;
+        size_t depth = (size_t)ectxp->r3;
+        size_t size;
+        msg_t msg;
+        unsigned grpnum = (unsigned)ectxp->r1;
+
+        if ((drvGetStateX(unitp->adcp) != HAL_DRV_STATE_READY) &&
+            (drvGetStateX(unitp->adcp) != HAL_DRV_STATE_ERROR)) {
+          ectxp->r0 = (uint32_t)HAL_RET_INV_STATE;
+          break;
+        }
+
+        if (!vadc_get_group(unitp->adcp, grpnum, &grpp)) {
+          ectxp->r0 = (uint32_t)HAL_RET_CONFIG_ERROR;
+          break;
+        }
+
+        if (!vadc_get_buffer_size(grpp, depth, &size)) {
+          ectxp->r0 = (uint32_t)CH_RET_EINVAL;
+          break;
+        }
+
+        if (!sb_is_valid_write_range(sbp, samples, size)) {
+          ectxp->r0 = (uint32_t)CH_RET_EFAULT;
+          break;
+        }
+
+        /* IRQ-like fastcall: the conversion start is an I-class async kick,
+           completion is delivered later via VRQ from vadc_cb().*/
+        OSAL_IRQ_PROLOGUE();
+        osalSysLockFromISR();
+        if (sub == SB_VADC_START_LINEAR) {
+          msg = adcStartConversionLinearI(unitp->adcp, grpnum, samples, depth);
+        }
+        else {
+          msg = adcStartConversionCircularI(unitp->adcp, grpnum, samples, depth);
+        }
+        osalSysUnlockFromISR();
+        OSAL_IRQ_EPILOGUE();
+
+        ectxp->r0 = (uint32_t)msg;
+        break;
+      }
+    case SB_VADC_STOP:
+      {
+        if (drvGetStateX(unitp->adcp) == HAL_DRV_STATE_STOP) {
+          ectxp->r0 = (uint32_t)HAL_RET_INV_STATE;
+          break;
+        }
+
+        OSAL_IRQ_PROLOGUE();
+        osalSysLockFromISR();
+        if (drvGetStateX(unitp->adcp) != HAL_DRV_STATE_READY) {
+          adcStopConversionI(unitp->adcp);
+        }
+        osalSysUnlockFromISR();
+        OSAL_IRQ_EPILOGUE();
+
+        ectxp->r0 = (uint32_t)HAL_RET_SUCCESS;
         break;
       }
     default:

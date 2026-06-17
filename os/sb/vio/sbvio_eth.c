@@ -130,6 +130,33 @@ void sb_sysc_vio_eth(sb_class_t *sbp, struct port_extctx *ectxp) {
         ectxp->r0 = (uint32_t)HAL_RET_SUCCESS;
         break;
       }
+    default:
+      ectxp->r0 = (uint32_t)CH_RET_ENOSYS;
+      break;
+    }
+  }
+}
+
+void sb_fastc_vio_eth(sb_class_t *sbp, struct port_extctx *ectxp) {
+  uint32_t sub  = VIO_CALL_SUBCODE(ectxp->r0);
+  uint32_t unit = VIO_CALL_UNIT(ectxp->r0);
+
+  /* VIO not associated.*/
+  if ((sbp->vioconf == NULL) || (sbp->vioconf->eths == NULL)) {
+    ectxp->r0 = (uint32_t)HAL_RET_NO_RESOURCE;
+    return;
+  }
+
+  if (unit >= sbp->vioconf->eths->n) {
+    ectxp->r0 = (uint32_t)HAL_RET_NO_RESOURCE;
+    return;
+  }
+
+  /* API processing.*/
+  {
+    const vio_eth_unit_t *unitp = &sbp->vioconf->eths->units[unit];
+
+    switch (sub) {
     case SB_VETH_SELCFG:
       {
         uint32_t cfgnum = ectxp->r1;
@@ -160,6 +187,8 @@ void sb_sysc_vio_eth(sb_class_t *sbp, struct port_extctx *ectxp) {
           break;
         }
 
+        /* Function drvSetCfgX() is X-class, callable directly from this
+           fastcall.*/
         confp = &sbp->vioconf->ethconfs->cfgs[cfgnum];
         msg = drvSetCfgX(unitp->ethp, confp);
         if (msg != HAL_RET_SUCCESS) {
@@ -181,7 +210,7 @@ void sb_sysc_vio_eth(sb_class_t *sbp, struct port_extctx *ectxp) {
       }
     case SB_VETH_LINK:
       {
-        ectxp->r0 = (uint32_t)ethPollLinkStatus(unitp->ethp);
+        ectxp->r0 = (uint32_t)ethPollLinkStatusX(unitp->ethp);
         break;
       }
     case SB_VETH_RXREAD:
@@ -205,7 +234,7 @@ void sb_sysc_vio_eth(sb_class_t *sbp, struct port_extctx *ectxp) {
           break;
         }
 
-        ectxp->r0 = (uint32_t)ethReadReceiveHandle(unitp->ethp, rxh,
+        ectxp->r0 = (uint32_t)ethReadReceiveHandleX(unitp->ethp, rxh,
                                                    buffer, n);
         break;
       }
@@ -230,7 +259,7 @@ void sb_sysc_vio_eth(sb_class_t *sbp, struct port_extctx *ectxp) {
           break;
         }
 
-        ectxp->r0 = (uint32_t)ethWriteTransmitHandle(unitp->ethp, txh,
+        ectxp->r0 = (uint32_t)ethWriteTransmitHandleX(unitp->ethp, txh,
                                                      buffer, n);
         break;
       }
@@ -248,7 +277,7 @@ void sb_sysc_vio_eth(sb_class_t *sbp, struct port_extctx *ectxp) {
           break;
         }
 
-        ethReleaseReceiveHandle(unitp->ethp, rxh);
+        ethReleaseReceiveHandleX(unitp->ethp, rxh);
         ectxp->r0 = (uint32_t)HAL_RET_SUCCESS;
         break;
       }
@@ -266,37 +295,10 @@ void sb_sysc_vio_eth(sb_class_t *sbp, struct port_extctx *ectxp) {
           break;
         }
 
-        ethReleaseTransmitHandle(unitp->ethp, txh);
+        ethReleaseTransmitHandleX(unitp->ethp, txh);
         ectxp->r0 = (uint32_t)HAL_RET_SUCCESS;
         break;
       }
-    default:
-      ectxp->r0 = (uint32_t)CH_RET_ENOSYS;
-      break;
-    }
-  }
-}
-
-void sb_fastc_vio_eth(sb_class_t *sbp, struct port_extctx *ectxp) {
-  uint32_t sub  = VIO_CALL_SUBCODE(ectxp->r0);
-  uint32_t unit = VIO_CALL_UNIT(ectxp->r0);
-
-  /* VIO not associated.*/
-  if ((sbp->vioconf == NULL) || (sbp->vioconf->eths == NULL)) {
-    ectxp->r0 = (uint32_t)HAL_RET_NO_RESOURCE;
-    return;
-  }
-
-  if (unit >= sbp->vioconf->eths->n) {
-    ectxp->r0 = (uint32_t)HAL_RET_NO_RESOURCE;
-    return;
-  }
-
-  /* API processing.*/
-  {
-    const vio_eth_unit_t *unitp = &sbp->vioconf->eths->units[unit];
-
-    switch (sub) {
     case SB_VETH_RXGET:
       {
         if (drvGetStateX(unitp->ethp) != HAL_DRV_STATE_READY) {

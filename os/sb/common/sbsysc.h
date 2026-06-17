@@ -110,6 +110,9 @@
 
 /**
  * @name    Virtual GPT syscall sub-codes
+ * @note    INIT/DEINIT are handled by the syscall handler (SVC 229); all the
+ *          other sub-codes are handled by the fastcall handler (SVC 101) and
+ *          therefore share a single numbering space.
  * @{
  */
 #define SB_VGPT_INIT            0
@@ -120,9 +123,9 @@
 #define SB_VGPT_CHGI            5
 #define SB_VGPT_SETCB           6
 #define SB_VGPT_SELCFG          7
-#define SB_VGPT_GETI            0
-#define SB_VGPT_GETC            1
-#define SB_VGPT_GETFREQ         2
+#define SB_VGPT_GETI            8
+#define SB_VGPT_GETC            9
+#define SB_VGPT_GETFREQ         10
 #define SB_VGPT_CONTINUOUS      0
 #define SB_VGPT_ONESHOT         1
 /** @} */
@@ -184,18 +187,21 @@
 
 /**
  * @name    Virtual SPI syscall sub-codes
+ * @note    INIT/DEINIT are handled by the syscall handler (SVC 226); all the
+ *          other sub-codes are handled by the fastcall handler (SVC 98) and
+ *          therefore share a single numbering space.
  * @{
  */
 #define SB_VSPI_INIT            0
 #define SB_VSPI_DEINIT          1
-#define SB_VSPI_PULSES          2
-#define SB_VSPI_RECEIVE         3
-#define SB_VSPI_SEND            4
-#define SB_VSPI_EXCHANGE        5
-#define SB_VSPI_STOP            6
-#define SB_VSPI_SELCFG          0
-#define SB_VSPI_SELECT          1
-#define SB_VSPI_UNSELECT        2
+#define SB_VSPI_SELCFG          2
+#define SB_VSPI_SELECT          3
+#define SB_VSPI_UNSELECT        4
+#define SB_VSPI_PULSES          5
+#define SB_VSPI_RECEIVE         6
+#define SB_VSPI_SEND            7
+#define SB_VSPI_EXCHANGE        8
+#define SB_VSPI_STOP            9
 /** @} */
 
 /**
