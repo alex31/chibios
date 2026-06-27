@@ -1,0 +1,13 @@
+# Current clock macros use the runtime getter for dynamic points.
+ABSENT:Current clock point values
+#define TST_LOWOSC_CLOCK                 TST_LOWOSC_FREQ
+#define TST_SYSCLK_CLOCK                 hal_lld_get_clock_point(TCLK_SYSCLK)
+TST_CFG_SERIAL_SEL == SERIALSEL_PCLK
+#define TST_SERIAL_CLOCK                  TST_PCLK_CLOCK
+TST_CFG_SERIAL_SEL == SERIALSEL_SYSCLK
+#define TST_SERIAL_CLOCK                  TST_SYSCLK_CLOCK
+TST_CFG_SERIAL_SEL == SERIALSEL_INTOSC
+#define TST_SERIAL_CLOCK                  TST_INTOSC_CLOCK
+TST_CFG_SERIAL_SEL == SERIALSEL_LOWOSC
+#define TST_SERIAL_CLOCK                  TST_LOWOSC_CLOCK
+ABSENT:#define TST_SERIAL_CLOCK                  TST_SERIAL_FREQ
