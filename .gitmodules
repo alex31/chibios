@@ -1,6 +1,0 @@
-[submodule "ext"]
-	path = ext
-	url = ../chibios-ext.git
-[submodule "tools/ftl"]
-	path = tools/ftl
-	url = ../chibios-ftl.git
