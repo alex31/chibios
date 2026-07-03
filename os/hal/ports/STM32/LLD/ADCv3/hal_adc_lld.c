@@ -925,12 +925,13 @@ void adc_lld_stop(ADCDriver *adcp) {
 /**
  * @brief   Starts an ADC conversion.
  *
- * @param[in] adcp      pointer to the @p ADCDriver object
+ * @param[in] adcp      pointer to the @p ADCDriver object.
+ * @param[in] fmac      route ADC DMA writes to FMAC->WDATA when true.
  *
  * @notapi
  */
-void adc_lld_start_conversion(ADCDriver *adcp) {
-  uint32_t dmamode, cfgr;
+static void adc_lld_start_conversion_common(ADCDriver *adcp, bool fmac) {
+  uint32_t dmamode, cfgr, transaction_size;
   const ADCConversionGroup *grpp = adcp->grpp;
 #if STM32_ADC_DUAL_MODE
   uint32_t ccr = grpp->ccr & ~(ADC_CCR_CKMODE_MASK | ADC_CCR_MDMA_MASK);
@@ -939,9 +940,25 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
   osalDbgAssert(!STM32_ADC_DUAL_MODE || ((grpp->num_channels & 1) == 0),
                 "odd number of channels in dual mode");
 
+#if STM32_ADC_SUPPORTS_FMAC
+  osalDbgAssert(!fmac ||
+                (!STM32_ADC_DUAL_MODE && !grpp->circular &&
+                 (grpp->num_channels == 1U)),
+                "invalid ADC-to-FMAC group");
+#else
+  (void)fmac;
+#endif
+
   /* Calculating control registers values.*/
   dmamode = adcp->dmamode;
   cfgr    = grpp->cfgr | ADC_CFGR_DMAEN;
+#if STM32_ADC_SUPPORTS_FMAC
+  if (fmac) {
+    dmamode &= ~(STM32_DMA_CR_MINC | STM32_DMA_CR_SIZE_MASK);
+    dmamode |= STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_WORD;
+  }
+  else
+#endif
   if (grpp->circular) {
     dmamode |= STM32_DMA_CR_CIRC;
 #if STM32_ADC_DUAL_MODE
@@ -957,14 +974,32 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
   }
 
   /* DMA setup.*/
-  dmaStreamSetMemory0(adcp->dmastp, adcp->samples);
-#if STM32_ADC_DUAL_MODE
-  dmaStreamSetTransactionSize(adcp->dmastp, ((uint32_t)grpp->num_channels/2) *
-                                            (uint32_t)adcp->depth);
-#else
-  dmaStreamSetTransactionSize(adcp->dmastp, (uint32_t)grpp->num_channels *
-                                            (uint32_t)adcp->depth);
+#if STM32_ADC_SUPPORTS_FMAC
+  if (fmac) {
+    dmaStreamSetMemory0(adcp->dmastp, &FMAC->WDATA);
+  }
+  else
 #endif
+  {
+    dmaStreamSetMemory0(adcp->dmastp, adcp->samples);
+  }
+
+#if STM32_ADC_SUPPORTS_FMAC
+  if (fmac) {
+    transaction_size = (uint32_t)adcp->depth;
+  }
+  else
+#endif
+  {
+#if STM32_ADC_DUAL_MODE
+    transaction_size = ((uint32_t)grpp->num_channels / 2U) *
+                       (uint32_t)adcp->depth;
+#else
+    transaction_size = (uint32_t)grpp->num_channels *
+                       (uint32_t)adcp->depth;
+#endif
+  }
+  dmaStreamSetTransactionSize(adcp->dmastp, transaction_size);
   dmaStreamSetMode(adcp->dmastp, dmamode);
   dmaStreamEnable(adcp->dmastp);
 
@@ -1021,6 +1056,35 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
   /* Starting conversion.*/
   adcp->adcm->CR   |= ADC_CR_ADSTART;
 }
+
+/**
+ * @brief   Starts an ADC conversion.
+ *
+ * @param[in] adcp      pointer to the @p ADCDriver object
+ *
+ * @notapi
+ */
+void adc_lld_start_conversion(ADCDriver *adcp) {
+
+  adc_lld_start_conversion_common(adcp, false);
+}
+
+#if STM32_ADC_SUPPORTS_FMAC || defined(__DOXYGEN__)
+/**
+ * @brief   Starts an ADC-to-FMAC conversion.
+ * @details The DMA controller is still programmed in peripheral-to-memory
+ *          mode. The memory address is the fixed memory-mapped
+ *          @p FMAC->WDATA register and memory increment is disabled.
+ *
+ * @param[in] adcp      pointer to the @p ADCDriver object
+ *
+ * @notapi
+ */
+void adc_lld_start_conversion_fmac(ADCDriver *adcp) {
+
+  adc_lld_start_conversion_common(adcp, true);
+}
+#endif
 
 /**
  * @brief   Stops an ongoing conversion.

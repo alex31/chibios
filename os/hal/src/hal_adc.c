@@ -208,6 +208,59 @@ void adcStartConversionI(ADCDriver *adcp,
   adc_lld_start_conversion(adcp);
 }
 
+#if STM32_ADC_SUPPORTS_FMAC || defined(__DOXYGEN__)
+/**
+ * @brief   Starts an ADC-to-FMAC conversion.
+ * @details Starts an asynchronous conversion operation where ADC regular
+ *          samples are transferred by DMA to the fixed @p FMAC->WDATA
+ *          memory-mapped register. The FMAC peripheral must be configured and
+ *          ready to consume exactly @p depth samples before this call.
+ *
+ * @param[in] adcp      pointer to the @p ADCDriver object
+ * @param[in] grpp      pointer to a @p ADCConversionGroup object
+ * @param[in] depth     number of ADC samples transferred to FMAC
+ *
+ * @api
+ */
+void adcStartConversionFmac(ADCDriver *adcp,
+                            const ADCConversionGroup *grpp,
+                            size_t depth) {
+
+  osalSysLock();
+  adcStartConversionFmacI(adcp, grpp, depth);
+  osalSysUnlock();
+}
+
+/**
+ * @brief   Starts an ADC-to-FMAC conversion.
+ * @details This is the I-Class variant of @p adcStartConversionFmac().
+ *
+ * @param[in] adcp      pointer to the @p ADCDriver object
+ * @param[in] grpp      pointer to a @p ADCConversionGroup object
+ * @param[in] depth     number of ADC samples transferred to FMAC
+ *
+ * @iclass
+ */
+void adcStartConversionFmacI(ADCDriver *adcp,
+                             const ADCConversionGroup *grpp,
+                             size_t depth) {
+
+  osalDbgCheckClassI();
+  osalDbgCheck((adcp != NULL) && (grpp != NULL) &&
+               (grpp->num_channels == 1U) && !grpp->circular &&
+               (depth > 0U) && ((depth == 1U) || ((depth & 1U) == 0U)));
+  osalDbgAssert((adcp->state == ADC_READY) ||
+                (adcp->state == ADC_ERROR),
+                "not ready");
+
+  adcp->samples  = NULL;
+  adcp->depth    = depth;
+  adcp->grpp     = grpp;
+  adcp->state    = ADC_ACTIVE;
+  adc_lld_start_conversion_fmac(adcp);
+}
+#endif
+
 /**
  * @brief   Stops an ongoing conversion.
  * @details This function stops the currently ongoing conversion and returns
@@ -300,6 +353,40 @@ msg_t adcConvert(ADCDriver *adcp,
   osalSysUnlock();
   return msg;
 }
+
+#if STM32_ADC_SUPPORTS_FMAC || defined(__DOXYGEN__)
+/**
+ * @brief   Performs an ADC-to-FMAC conversion.
+ * @details Performs a synchronous conversion where ADC regular samples are
+ *          transferred by DMA to the fixed @p FMAC->WDATA memory-mapped
+ *          register. Completion means that the ADC DMA write stream finished;
+ *          the FMAC output stream is owned and synchronized by the FMAC
+ *          driver.
+ *
+ * @param[in] adcp      pointer to the @p ADCDriver object
+ * @param[in] grpp      pointer to a @p ADCConversionGroup object
+ * @param[in] depth     number of ADC samples transferred to FMAC
+ * @return              The operation result.
+ * @retval MSG_OK       Conversion finished.
+ * @retval MSG_RESET    The conversion has been stopped.
+ * @retval MSG_TIMEOUT  The conversion has been stopped because an hardware
+ *                      error.
+ *
+ * @api
+ */
+msg_t adcConvertFmac(ADCDriver *adcp,
+                     const ADCConversionGroup *grpp,
+                     size_t depth) {
+  msg_t msg;
+
+  osalSysLock();
+  osalDbgAssert(adcp->thread == NULL, "already waiting");
+  adcStartConversionFmacI(adcp, grpp, depth);
+  msg = osalThreadSuspendS(&adcp->thread);
+  osalSysUnlock();
+  return msg;
+}
+#endif
 #endif /* ADC_USE_WAIT == TRUE */
 
 #if (ADC_USE_MUTUAL_EXCLUSION == TRUE) || defined(__DOXYGEN__)

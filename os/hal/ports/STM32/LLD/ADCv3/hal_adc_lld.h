@@ -32,6 +32,19 @@
 /*===========================================================================*/
 
 /**
+ * @brief   ADC-to-FMAC DMA extension availability.
+ * @details The extension is only exposed for STM32 families currently handled
+ *          by this LLD path and whose CMSIS device header declares the plain
+ *          memory-mapped FMAC instance.
+ */
+#if ((defined(STM32G4XX) || defined(STM32H7XX)) && defined(FMAC)) ||        \
+    defined(__DOXYGEN__)
+#define STM32_ADC_SUPPORTS_FMAC          TRUE
+#else
+#define STM32_ADC_SUPPORTS_FMAC          FALSE
+#endif
+
+/**
  * @name    Possible ADC errors mask bits.
  * @{
  */
@@ -1146,6 +1159,9 @@ extern "C" {
   void adc_lld_start(ADCDriver *adcp);
   void adc_lld_stop(ADCDriver *adcp);
   void adc_lld_start_conversion(ADCDriver *adcp);
+#if STM32_ADC_SUPPORTS_FMAC || defined(__DOXYGEN__)
+  void adc_lld_start_conversion_fmac(ADCDriver *adcp);
+#endif
   void adc_lld_stop_conversion(ADCDriver *adcp);
   void adcSTM32EnableVREF(ADCDriver *adcp);
   void adcSTM32DisableVREF(ADCDriver *adcp);

@@ -406,6 +406,14 @@ extern "C" {
                            const ADCConversionGroup *grpp,
                            adcsample_t *samples,
                            size_t depth);
+#if STM32_ADC_SUPPORTS_FMAC || defined(__DOXYGEN__)
+  void adcStartConversionFmac(ADCDriver *adcp,
+                              const ADCConversionGroup *grpp,
+                              size_t depth);
+  void adcStartConversionFmacI(ADCDriver *adcp,
+                               const ADCConversionGroup *grpp,
+                               size_t depth);
+#endif
   void adcStopConversion(ADCDriver *adcp);
   void adcStopConversionI(ADCDriver *adcp);
 #if ADC_USE_WAIT == TRUE
@@ -414,6 +422,11 @@ extern "C" {
                    const ADCConversionGroup *grpp,
                    adcsample_t *samples,
                    size_t depth);
+#if STM32_ADC_SUPPORTS_FMAC || defined(__DOXYGEN__)
+  msg_t adcConvertFmac(ADCDriver *adcp,
+                       const ADCConversionGroup *grpp,
+                       size_t depth);
+#endif
 #endif
 #if ADC_USE_MUTUAL_EXCLUSION == TRUE
   void adcAcquireBus(ADCDriver *adcp);
