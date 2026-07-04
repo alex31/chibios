@@ -640,12 +640,22 @@ void adc_lld_stop(ADCDriver *adcp) {
  * @brief   Starts an ADC conversion.
  *
  * @param[in] adcp      pointer to the @p ADCDriver object
+ * @param[in] fmac      route ADC DMA writes to FMAC->WDATA when true.
  *
  * @notapi
  */
-void adc_lld_start_conversion(ADCDriver *adcp) {
-  uint32_t dmamode, cfgr = 0U;
+static void adc_lld_start_conversion_common(ADCDriver *adcp, bool fmac) {
+  uint32_t dmamode, cfgr = 0U, transaction_size;
   const ADCConversionGroup *grpp = adcp->grpp;
+
+#if STM32_ADC_SUPPORTS_FMAC
+  osalDbgAssert(!fmac ||
+                (!STM32_ADC_DUAL_MODE && !grpp->circular &&
+                 (grpp->num_channels == 1U)),
+                "invalid ADC-to-FMAC group");
+#else
+  (void)fmac;
+#endif
 
 #if STM32_ADC_USE_ADC12 == TRUE
 #if STM32_ADC_DUAL_MODE
@@ -660,6 +670,14 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
 
     /* Calculating control registers values.*/
     dmamode = adcp->dmamode;
+#if STM32_ADC_SUPPORTS_FMAC
+    if (fmac) {
+      dmamode &= ~(STM32_DMA_CR_MINC | STM32_DMA_CR_SIZE_MASK);
+      dmamode |= STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_WORD;
+      cfgr = grpp->cfgr | ADC_CFGR_DMNGT_ONESHOT;
+    }
+    else
+#endif
     if (grpp->circular) {
       dmamode |= STM32_DMA_CR_CIRC;
       cfgr = grpp->cfgr | ADC_CFGR_DMNGT_CIRCULAR;
@@ -674,14 +692,24 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
     }
 
     /* DMA setup.*/
-    dmaStreamSetMemory0(adcp->data.dma, adcp->samples);
-#if STM32_ADC_DUAL_MODE
-    dmaStreamSetTransactionSize(adcp->data.dma, ((uint32_t)grpp->num_channels / 2U) *
-                                                (uint32_t)adcp->depth);
-#else
-    dmaStreamSetTransactionSize(adcp->data.dma, (uint32_t)grpp->num_channels *
-                                                (uint32_t)adcp->depth);
+#if STM32_ADC_SUPPORTS_FMAC
+    if (fmac) {
+      dmaStreamSetMemory0(adcp->data.dma, &FMAC->WDATA);
+      transaction_size = (uint32_t)adcp->depth;
+    }
+    else
 #endif
+    {
+      dmaStreamSetMemory0(adcp->data.dma, adcp->samples);
+#if STM32_ADC_DUAL_MODE
+      transaction_size = ((uint32_t)grpp->num_channels / 2U) *
+                         (uint32_t)adcp->depth;
+#else
+      transaction_size = (uint32_t)grpp->num_channels *
+                         (uint32_t)adcp->depth;
+#endif
+    }
+    dmaStreamSetTransactionSize(adcp->data.dma, transaction_size);
     dmaStreamSetMode(adcp->data.dma, dmamode);
     dmaStreamEnable(adcp->data.dma);
   }
@@ -692,6 +720,14 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
     dmamode = adcp->dmamode;
 #if STM32_ADC_ADC3_USE_BDMA == TRUE
     /* Calculating control registers values.*/
+#if STM32_ADC_SUPPORTS_FMAC
+    if (fmac) {
+      dmamode &= ~(STM32_BDMA_CR_MINC | STM32_BDMA_CR_SIZE_MASK);
+      dmamode |= STM32_BDMA_CR_PSIZE_HWORD | STM32_BDMA_CR_MSIZE_WORD;
+      cfgr = grpp->cfgr | ADC_CFGR_DMNGT_ONESHOT;
+    }
+    else
+#endif
     if (grpp->circular) {
       dmamode |= STM32_BDMA_CR_CIRC;
       cfgr = grpp->cfgr | ADC_CFGR_DMNGT_CIRCULAR;
@@ -706,13 +742,31 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
     }
 
     /* DMA setup.*/
-    bdmaStreamSetMemory(adcp->data.bdma, adcp->samples);
-    bdmaStreamSetTransactionSize(adcp->data.bdma, (uint32_t)grpp->num_channels *
-                                                (uint32_t)adcp->depth);
+#if STM32_ADC_SUPPORTS_FMAC
+    if (fmac) {
+      bdmaStreamSetMemory(adcp->data.bdma, &FMAC->WDATA);
+      transaction_size = (uint32_t)adcp->depth;
+    }
+    else
+#endif
+    {
+      bdmaStreamSetMemory(adcp->data.bdma, adcp->samples);
+      transaction_size = (uint32_t)grpp->num_channels *
+                         (uint32_t)adcp->depth;
+    }
+    bdmaStreamSetTransactionSize(adcp->data.bdma, transaction_size);
     bdmaStreamSetMode(adcp->data.bdma, dmamode);
     bdmaStreamEnable(adcp->data.bdma);
 #else
     /* Calculating control registers values.*/
+#if STM32_ADC_SUPPORTS_FMAC
+    if (fmac) {
+      dmamode &= ~(STM32_DMA_CR_MINC | STM32_DMA_CR_SIZE_MASK);
+      dmamode |= STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_WORD;
+      cfgr = grpp->cfgr | ADC_CFGR_DMNGT_ONESHOT;
+    }
+    else
+#endif
     if (grpp->circular) {
       dmamode |= STM32_DMA_CR_CIRC;
       cfgr = grpp->cfgr | ADC_CFGR_DMNGT_CIRCULAR;
@@ -726,9 +780,19 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
       cfgr = grpp->cfgr | ADC_CFGR_DMNGT_ONESHOT;
     }
     /* DMA setup.*/
-    dmaStreamSetMemory0(adcp->data.dma, adcp->samples);
-    dmaStreamSetTransactionSize(adcp->data.dma, (uint32_t)grpp->num_channels *
-                                                (uint32_t)adcp->depth);
+#if STM32_ADC_SUPPORTS_FMAC
+    if (fmac) {
+      dmaStreamSetMemory0(adcp->data.dma, &FMAC->WDATA);
+      transaction_size = (uint32_t)adcp->depth;
+    }
+    else
+#endif
+    {
+      dmaStreamSetMemory0(adcp->data.dma, adcp->samples);
+      transaction_size = (uint32_t)grpp->num_channels *
+                         (uint32_t)adcp->depth;
+    }
+    dmaStreamSetTransactionSize(adcp->data.dma, transaction_size);
     dmaStreamSetMode(adcp->data.dma, dmamode);
     dmaStreamEnable(adcp->data.dma);
 #endif /* STM32_ADC_ADC3_USE_BDMA */
@@ -848,6 +912,35 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
   /* Starting conversion.*/
   adcp->adcm->CR   |= ADC_CR_ADSTART;
 }
+
+/**
+ * @brief   Starts an ADC conversion.
+ *
+ * @param[in] adcp      pointer to the @p ADCDriver object
+ *
+ * @notapi
+ */
+void adc_lld_start_conversion(ADCDriver *adcp) {
+
+  adc_lld_start_conversion_common(adcp, false);
+}
+
+#if STM32_ADC_SUPPORTS_FMAC || defined(__DOXYGEN__)
+/**
+ * @brief   Starts an ADC-to-FMAC conversion.
+ * @details The DMA controller is still programmed in peripheral-to-memory
+ *          mode. The memory address is the fixed memory-mapped
+ *          @p FMAC->WDATA register and memory increment is disabled.
+ *
+ * @param[in] adcp      pointer to the @p ADCDriver object
+ *
+ * @notapi
+ */
+void adc_lld_start_conversion_fmac(ADCDriver *adcp) {
+
+  adc_lld_start_conversion_common(adcp, true);
+}
+#endif
 
 /**
  * @brief   Stops an ongoing conversion.
