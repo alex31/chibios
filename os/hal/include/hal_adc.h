@@ -100,6 +100,11 @@ typedef struct hal_adc_configuration_group ADCConversionGroup;
    for completing types.*/
 #include "hal_adc_lld.h"
 
+/* For compatibility, LLDs without ADC-to-FMAC support may not export this.*/
+#if !defined(STM32_ADC_SUPPORTS_FMAC)
+#define STM32_ADC_SUPPORTS_FMAC          FALSE
+#endif
+
 /**
  * @brief   Type of an ADC notification callback.
  * @details The callback is invoked from ISR context.

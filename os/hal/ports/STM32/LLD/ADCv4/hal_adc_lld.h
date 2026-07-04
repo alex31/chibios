@@ -34,6 +34,17 @@
 #define ADC_LLD_ENHANCED_API
 
 /**
+ * @brief   ADC-to-FMAC DMA extension availability.
+ * @details The extension is only exposed for STM32H7 devices whose CMSIS
+ *          device header declares the plain memory-mapped FMAC instance.
+ */
+#if defined(FMAC) || defined(__DOXYGEN__)
+#define STM32_ADC_SUPPORTS_FMAC          TRUE
+#else
+#define STM32_ADC_SUPPORTS_FMAC          FALSE
+#endif
+
+/**
  * @name    Possible ADC errors mask bits.
  * @{
  */
@@ -729,6 +740,9 @@ extern "C" {
   msg_t adc_lld_start(ADCDriver *adcp);
   void adc_lld_stop(ADCDriver *adcp);
   void adc_lld_start_conversion(ADCDriver *adcp);
+#if STM32_ADC_SUPPORTS_FMAC || defined(__DOXYGEN__)
+  void adc_lld_start_conversion_fmac(ADCDriver *adcp);
+#endif
   void adc_lld_stop_conversion(ADCDriver *adcp);
   void adcSTM32EnableVREF(ADCDriver *adcp);
   void adcSTM32DisableVREF(ADCDriver *adcp);
