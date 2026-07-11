@@ -36,6 +36,7 @@ else
 
 # picotool not available, targets explicitly requiring the .uf2 image fail
 # with a clear message.
+.PHONY: $(BUILDDIR)/$(PROJECT).uf2
 $(BUILDDIR)/$(PROJECT).uf2:
 	$(error picotool not found. Download it from https://github.com/raspberrypi/picotool and either install it in $$PATH or set the PICOTOOL variable to its location)
 
