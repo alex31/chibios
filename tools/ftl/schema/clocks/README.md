@@ -37,6 +37,9 @@ jar.
 - Generic configurations currently support `bool`, `value`, `set`, and `raw`
   types. `bool`, constrained `value`, and `set` configurations emit generated
   compile-time checks.
+- `settings/asserts/assert` provides cross-configuration compile-time
+  assertions for constraints that involve multiple settings, such as valid
+  oscillator reference/frequency combinations.
 - Semantic generator settings are marked by `role`; `CLOCK_DYNAMIC` is a
   generic boolean config name with role `dynamic_mode`, emitted using the
   configured configuration prefix.
@@ -142,6 +145,31 @@ over an externally supplied array of clock point values. Full reconstruction of
 clock point values from RCC register state stays in `hal_lld.c` for now because
 it depends on device-specific decoding and initialization semantics that are not
 fully modeled in the XML.
+
+## Variant Support
+
+Some STM32 families need one generated `clocktree.h` to support multiple device
+parts whose RCC fields and peripherals differ. A clock tree can declare
+top-level variant feature groups and associate schema elements with those groups
+using an optional `variants="..."` attribute. Missing `variants` means the
+element applies to all parts.
+
+Variant handling is compile-time in the generated header, not a generator
+filter. The header derives generated `STM32_CLOCKTREE_VARIANT_<NAME>` flags
+from the variant conditions and emits `#error` if no variant or more than one
+variant matches. This preserves a single generated header for the whole family.
+
+Absent variant-specific clocks and sinks should still emit inert definitions
+instead of disappearing. A sink outside the active variant should demand
+`FALSE`; a clock outside the active variant should emit disabled state, zero
+bits, and zero frequency/current-clock macros. This keeps auto-propagation
+expressions stable and avoids undefined generated clock symbols.
+
+The same variant guards are applied to variant-specific support definitions,
+settings, derived configurations, assertions, selector constants and register
+bit expressions. This is intended for optional RCC register fields that do not
+exist on smaller parts. Existing G4, U3, U5, and C5 XMLs still need a review
+pass to assign concrete variants where the family data requires it.
 
 ## Dynamic Reconfiguration Contract
 
