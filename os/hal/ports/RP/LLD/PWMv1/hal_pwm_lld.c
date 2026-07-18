@@ -173,73 +173,85 @@ OSAL_IRQ_HANDLER(RP_PWM_IRQ_WRAP_0_HANDLER) {
   PWM->INTR = ints;
 
 #if RP_PWM_USE_PWM0 == TRUE
-  if (((ints & PWM_INTS_CH(0)) != 0) && (PWMD0.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(0)) != 0) && (PWMD0.config != NULL) &&
+      (PWMD0.config->callback != NULL)) {
     PWMD0.config->callback(&PWMD0);
   }
 #endif
 
 #if RP_PWM_USE_PWM1 == TRUE
-  if (((ints & PWM_INTS_CH(1)) != 0) && (PWMD1.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(1)) != 0) && (PWMD1.config != NULL) &&
+      (PWMD1.config->callback != NULL)) {
     PWMD1.config->callback(&PWMD1);
   }
 #endif
 
 #if RP_PWM_USE_PWM2 == TRUE
-  if (((ints & PWM_INTS_CH(2)) != 0) && (PWMD2.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(2)) != 0) && (PWMD2.config != NULL) &&
+      (PWMD2.config->callback != NULL)) {
     PWMD2.config->callback(&PWMD2);
   }
 #endif
 
 #if RP_PWM_USE_PWM3 == TRUE
-  if (((ints & PWM_INTS_CH(3)) != 0) && (PWMD3.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(3)) != 0) && (PWMD3.config != NULL) &&
+      (PWMD3.config->callback != NULL)) {
     PWMD3.config->callback(&PWMD3);
   }
 #endif
 
 #if RP_PWM_USE_PWM4 == TRUE
-  if (((ints & PWM_INTS_CH(4)) != 0) && (PWMD4.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(4)) != 0) && (PWMD4.config != NULL) &&
+      (PWMD4.config->callback != NULL)) {
     PWMD4.config->callback(&PWMD4);
   }
 #endif
 
 #if RP_PWM_USE_PWM5 == TRUE
-  if (((ints & PWM_INTS_CH(5)) != 0) && (PWMD5.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(5)) != 0) && (PWMD5.config != NULL) &&
+      (PWMD5.config->callback != NULL)) {
     PWMD5.config->callback(&PWMD5);
   }
 #endif
 
 #if RP_PWM_USE_PWM6 == TRUE
-  if (((ints & PWM_INTS_CH(6)) != 0) && (PWMD6.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(6)) != 0) && (PWMD6.config != NULL) &&
+      (PWMD6.config->callback != NULL)) {
     PWMD6.config->callback(&PWMD6);
   }
 #endif
 
 #if RP_PWM_USE_PWM7 == TRUE
-  if (((ints & PWM_INTS_CH(7)) != 0) && (PWMD7.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(7)) != 0) && (PWMD7.config != NULL) &&
+      (PWMD7.config->callback != NULL)) {
     PWMD7.config->callback(&PWMD7);
   }
 #endif
 
 #if RP_PWM_USE_PWM8 == TRUE
-  if (((ints & PWM_INTS_CH(8)) != 0) && (PWMD8.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(8)) != 0) && (PWMD8.config != NULL) &&
+      (PWMD8.config->callback != NULL)) {
     PWMD8.config->callback(&PWMD8);
   }
 #endif
 
 #if RP_PWM_USE_PWM9 == TRUE
-  if (((ints & PWM_INTS_CH(9)) != 0) && (PWMD9.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(9)) != 0) && (PWMD9.config != NULL) &&
+      (PWMD9.config->callback != NULL)) {
     PWMD9.config->callback(&PWMD9);
   }
 #endif
 
 #if RP_PWM_USE_PWM10 == TRUE
-  if (((ints & PWM_INTS_CH(10)) != 0) && (PWMD10.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(10)) != 0) && (PWMD10.config != NULL) &&
+      (PWMD10.config->callback != NULL)) {
     PWMD10.config->callback(&PWMD10);
   }
 #endif
 
 #if RP_PWM_USE_PWM11 == TRUE
-  if (((ints & PWM_INTS_CH(11)) != 0) && (PWMD11.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(11)) != 0) && (PWMD11.config != NULL) &&
+      (PWMD11.config->callback != NULL)) {
     PWMD11.config->callback(&PWMD11);
   }
 #endif
@@ -426,11 +438,19 @@ void pwm_lld_stop(PWMDriver *pwmp) {
 
   /* If in ready state then disables the PWM clock. */
   if (pwmp->state == PWM_READY) {
+    /* Disabling this slice wrap interrupt first, the vector is shared
+       among all slices and must not be able to fire for a stopped
+       driver. */
+    p->IRQ0_INTE &= ~PWM_INTE_CH(pwmp->timer_id);
+
     p->CH[pwmp->timer_id].CSR = 0U;
     p->CH[pwmp->timer_id].CTR = 0U;
     p->CH[pwmp->timer_id].CC  = 0U;
     p->CH[pwmp->timer_id].DIV = 1U;
     p->CH[pwmp->timer_id].TOP = 0xFFFF;
+
+    /* Clearing any interrupt request still latched for this slice. */
+    p->INTR = PWM_INTR_CH(pwmp->timer_id);
   }
 
   /* If all timers are disabled, disable the interrupt and reset
