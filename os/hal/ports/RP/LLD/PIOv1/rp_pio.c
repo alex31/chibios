@@ -437,9 +437,12 @@ void pioSmFreeI(const rp_pio_sm_t *smp) {
   pio.blocks[b].sm[smp->smidx].func  = NULL;
   pio.blocks[b].sm[smp->smidx].param = NULL;
 
-  /* Reset PIO block if no state machines remain.*/
-  if ((pio.blocks[b].c0_allocated_mask |
-       pio.blocks[b].c1_allocated_mask) == 0U) {
+  /* Reset PIO block only if no state machines remain allocated and no
+     programs are loaded, resetting while instruction memory is allocated
+     would wipe loaded programs behind the bookkeeping's back.*/
+  if (((pio.blocks[b].c0_allocated_mask |
+        pio.blocks[b].c1_allocated_mask) == 0U) &&
+      (pio.blocks[b].imem_allocated == 0U)) {
     rp_peripheral_reset(smp->block->resets_mask);
   }
 }
@@ -507,6 +510,15 @@ int32_t pioProgramLoadI(const rp_pio_block_t *block,
     }
   }
 
+  /* If the block is fully idle (no state machines allocated by either core
+     and no programs loaded) it is still held in reset, it must be taken out
+     of reset before instruction memory can be written.*/
+  if (((pio.blocks[b].c0_allocated_mask |
+        pio.blocks[b].c1_allocated_mask) == 0U) &&
+      (pio.blocks[b].imem_allocated == 0U)) {
+    rp_peripheral_unreset(block->resets_mask);
+  }
+
   /* Write the instructions to memory, JMP instructions (major opcode 000,
      bits 15:13) carry an absolute instruction memory address in bits 4:0
      while pioasm emits program-relative targets, so all JMP targets are
@@ -557,6 +569,14 @@ void pioProgramUnloadI(const rp_pio_block_t *block,
 
   /* Free slots.*/
   pio.blocks[b].imem_allocated &= ~mask;
+
+  /* Reset PIO block if it became fully idle, no state machines allocated
+     by either core and no programs loaded.*/
+  if (((pio.blocks[b].c0_allocated_mask |
+        pio.blocks[b].c1_allocated_mask) == 0U) &&
+      (pio.blocks[b].imem_allocated == 0U)) {
+    rp_peripheral_reset(block->resets_mask);
+  }
 }
 
 /**
