@@ -167,6 +167,12 @@ static void test_start_recovery(void) {
     return;
   }
 
+  /* Warm-up conversion: the temperature sensor needs to settle after
+     TS_EN is first set, the initial conversion can flag ERR. Result and
+     status are intentionally ignored.*/
+  (void) adcConvert(&ADCD1, &tempgrp, samples, 1U);
+  chThdSleepMilliseconds(1);
+
   samples[0] = 0U;
   msg = adcConvert(&ADCD1, &tempgrp, samples, 1U);
   chprintf(chp, "  adcConvert() returned %d, sample 0x%03X\r\n",
