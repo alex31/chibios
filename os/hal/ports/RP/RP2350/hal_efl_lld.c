@@ -386,6 +386,18 @@ RAMFUNC static bool rp_flash_exit_xip(EFlashDriver *eflp) {
   /* Default non XIP SPI configuration */
   qmi->DIRECT_CSR = QMI_DIRECT_CSR_EN | QMI_DIRECT_CSR_CLKDIV(6U);
 
+  /* Wait for the direct-mode interface to settle after enabling it,
+     an XIP access may still be draining through the serial interface. */
+  if (!rp_flash_direct_wait_idle(qmi)) {
+    return false;
+  }
+
+  /* Drain any stale data left in the RX FIFO so subsequent transfers
+     observe only their own responses. */
+  while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_RXEMPTY) == 0U) {
+    (void)qmi->DIRECT_RX;
+  }
+
   /*
    * Exit continuous read / QPI mode sequence:
    * 1. CS high 32 clocks with IO pulled down
