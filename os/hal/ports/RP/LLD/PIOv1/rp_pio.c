@@ -92,6 +92,23 @@ static struct {
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
+/**
+ * @brief   Computes an instruction memory allocation mask.
+ * @details Returns a mask with @p length consecutive bits set starting at
+ *          bit @p offset.
+ * @note    The computation is performed with a 64-bit intermediate because
+ *          a program can span all @p RP_PIO_NUM_INSTR_MEM (32) slots and
+ *          <tt>1U << 32</tt> is undefined behavior on a 32-bit target.
+ *
+ * @param[in] length    number of consecutive slots, 1..32
+ * @param[in] offset    first slot index
+ * @return              The allocation mask.
+ */
+static uint32_t pio_imem_mask(uint32_t length, uint32_t offset) {
+
+  return (uint32_t)(((1ULL << length) - 1ULL) << offset);
+}
+
 static void serve_pio_irq(uint32_t blockidx, __I uint32_t *ints_reg) {
   uint32_t ints;
 
@@ -469,7 +486,7 @@ int32_t pioProgramLoadI(const rp_pio_block_t *block,
     offset = (uint32_t)program->origin;
     osalDbgCheck(offset + length <= RP_PIO_NUM_INSTR_MEM);
 
-    mask = ((1U << length) - 1U) << offset;
+    mask = pio_imem_mask(length, offset);
     if ((pio.blocks[b].imem_allocated & mask) != 0U) {
       return -1;
     }
@@ -479,7 +496,7 @@ int32_t pioProgramLoadI(const rp_pio_block_t *block,
     uint32_t found = 0U;
 
     for (offset = 0U; offset <= RP_PIO_NUM_INSTR_MEM - length; offset++) {
-      mask = ((1U << length) - 1U) << offset;
+      mask = pio_imem_mask(length, offset);
       if ((pio.blocks[b].imem_allocated & mask) == 0U) {
         found = 1U;
         break;
@@ -496,7 +513,7 @@ int32_t pioProgramLoadI(const rp_pio_block_t *block,
   }
 
   /* Mark slots as used.*/
-  pio.blocks[b].imem_allocated |= ((1U << length) - 1U) << offset;
+  pio.blocks[b].imem_allocated |= pio_imem_mask(length, offset);
 
   return (int32_t)offset;
 }
@@ -520,7 +537,7 @@ void pioProgramUnloadI(const rp_pio_block_t *block,
   osalDbgCheck(((uint32_t)offset + length) <= RP_PIO_NUM_INSTR_MEM);
 
   b = block->pioidx;
-  mask = ((1U << length) - 1U) << (uint32_t)offset;
+  mask = pio_imem_mask(length, (uint32_t)offset);
 
   osalDbgAssert((pio.blocks[b].imem_allocated & mask) == mask,
                 "not allocated");
