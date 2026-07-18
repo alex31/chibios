@@ -396,6 +396,16 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 
   ints = USB->INTS;
 
+  /* Bus reset must be handled before BUFF_STATUS and SETUP_REQ: the
+   * pre-reset completions belong to transfers that died with the bus and
+   * usb_lld_reset() discards them, and processing SETUP first would queue
+   * a response that _usb_reset() destroys. */
+  if (ints & USB_INTS_BUS_RESET) {
+    USB->CLR.SIESTATUS = USB_SIE_STATUS_BUS_RESET;
+
+    _usb_reset(usbp);
+  }
+
   /* Endpoint events handling. */
   if (ints & USB_INTS_BUFF_STATUS) {
     uint32_t buf_status = USB->BUFSTATUS;
@@ -411,14 +421,6 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
       }
       bit <<= 1U;
     }
-  }
-
-  /* Bus reset must be handled before SETUP_REQ: when both are pending,
-   * processing SETUP first queues a response that _usb_reset() destroys. */
-  if (ints & USB_INTS_BUS_RESET) {
-    USB->CLR.SIESTATUS = USB_SIE_STATUS_BUS_RESET;
-
-    _usb_reset(usbp);
   }
 
   /* USB setup packet handling. */
@@ -624,6 +626,10 @@ void usb_lld_reset(USBDriver *usbp) {
         EP_CTRL(ep).OUT  = 0U;
         BUF_CTRL(ep).OUT = 0U;
     }
+
+    /* Discard all pending buffer completions, they belong to transfers
+       that were aborted by the bus reset. */
+    USB->CLR.BUFSTATUS = 0xFFFFFFFFU;
 }
 
 /**
