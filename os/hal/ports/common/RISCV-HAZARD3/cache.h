@@ -74,7 +74,7 @@
   (void)(saddr);                                                            \
   (void)(n);                                                                \
   __asm__ volatile ("fence iorw, iorw" : : : "memory");                     \
-} while (false)
+} while (0)
 
 /**
  * @brief   Flushes the data cache lines overlapping a memory buffer.
@@ -88,7 +88,7 @@
   (void)(saddr);                                                            \
   (void)(n);                                                                \
   __asm__ volatile ("fence iorw, iorw" : : : "memory");                     \
-} while (false)
+} while (0)
 
 /*===========================================================================*/
 /* External declarations.                                                    */
