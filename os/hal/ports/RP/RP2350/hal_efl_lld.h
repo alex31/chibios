@@ -104,6 +104,12 @@
 #define RP_FLASH_SIZE                       (4U * 1024U * 1024U)
 #endif
 
+/* The driver issues 24-bit (3-byte) JEDEC addresses; larger devices
+   would silently wrap around and corrupt low flash. */
+#if RP_FLASH_SIZE > (16U * 1024U * 1024U)
+#error "RP_FLASH_SIZE exceeds 24-bit flash addressing"
+#endif
+
 /**
  * @brief   Suggested wait time during erase operations polling.
  */
