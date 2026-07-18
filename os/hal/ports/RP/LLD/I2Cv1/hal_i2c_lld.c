@@ -155,9 +155,18 @@ static msg_t i2c_lld_abort_transmissionS(I2CDriver *i2cp) {
  */
 static void i2c_lld_handle_errors(I2CDriver *i2cp) {
   I2C_TypeDef *dp = i2cp->i2c;
+  uint32_t abort_source = dp->TXABRTSOURCE;
 
-  if (dp->TXABRTSOURCE & I2C_IC_TX_ABRT_SOURCE_ARB_LOST) {
+  if (abort_source & I2C_IC_TX_ABRT_SOURCE_ARB_LOST) {
     i2cp->errors |= I2C_ARBITRATION_LOST;
+  }
+
+  if (abort_source & (I2C_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK |
+                      I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR1_NOACK |
+                      I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR2_NOACK |
+                      I2C_IC_TX_ABRT_SOURCE_ABRT_GCALL_NOACK   |
+                      I2C_IC_TX_ABRT_SOURCE_ABRT_TXDATA_NOACK)) {
+    i2cp->errors |= I2C_ACK_FAILURE;
   }
 
   if (dp->RAWINTRSTAT & I2C_OVERRUN_ERRORS) {
