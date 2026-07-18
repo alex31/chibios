@@ -102,6 +102,54 @@ __STATIC_INLINE void uart_enable_tx_irq(SIODriver *siop) {
   }
 }
 
+#if (defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)) ||       \
+    defined(__DOXYGEN__)
+/**
+ * @brief   TX-end polling timer callback.
+ * @details The PL011 has no transmission-complete interrupt, the only way
+ *          to observe the physical end of transmission is by polling the
+ *          BUSY bit in UARTFR.  This callback re-arms itself while the
+ *          transmitter is busy and wakes up the TX-end waiter when the
+ *          wire is finally idle.
+ * @note    Virtual timer callbacks are invoked in ISR context outside the
+ *          kernel critical section, a critical section is established
+ *          where required.
+ *
+ * @param[in] vtp       pointer to the virtual timer
+ * @param[in] p         pointer to a @p SIODriver object
+ */
+static void uart_txend_timer_cb(virtual_timer_t *vtp, void *p) {
+  SIODriver *siop = (SIODriver *)p;
+
+  if (sio_lld_is_tx_ongoing(siop)) {
+    /* Transmission still in progress, polling again later.*/
+    chSysLockFromISR();
+    chVTSetI(vtp, siop->txend_step, uart_txend_timer_cb, p);
+    chSysUnlockFromISR();
+  }
+  else {
+    /* Transmission finished, waking up the TX-end waiter, if any.  The
+       macro establishes its own critical section.*/
+    __sio_wakeup_txend(siop);
+  }
+}
+
+/**
+ * @brief   Arms or re-arms the TX-end polling timer.
+ * @note    Callable from any context.
+ *
+ * @param[in] siop      pointer to a @p SIODriver object
+ */
+static void uart_txend_timer_arm(SIODriver *siop) {
+  syssts_t sts;
+
+  sts = chSysGetStatusAndLockX();
+  chVTSetI(&siop->txend_vt, siop->txend_step,
+           uart_txend_timer_cb, (void *)siop);
+  chSysRestoreStatusX(sts);
+}
+#endif /* defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE) */
+
 /**
  * @brief   UART initialization.
  * @details This function must be invoked with interrupts disabled.
@@ -176,11 +224,17 @@ void sio_lld_init(void) {
 #if RP_SIO_USE_UART0 == TRUE
   sioObjectInit(&SIOD0);
   SIOD0.uart = UART0;
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+  chVTObjectInit(&SIOD0.txend_vt);
+#endif
   rp_peripheral_reset(RESETS_ALLREG_UART0);
 #endif
 #if RP_SIO_USE_UART1 == TRUE
   sioObjectInit(&SIOD1);
   SIOD1.uart = UART1;
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+  chVTObjectInit(&SIOD1.txend_vt);
+#endif
   rp_peripheral_reset(RESETS_ALLREG_UART1);
 #endif
 }
@@ -194,6 +248,7 @@ void sio_lld_init(void) {
  * @notapi
  */
 msg_t sio_lld_start(SIODriver *siop) {
+  msg_t msg;
 
   /* Using the default configuration if the application passed a
      NULL pointer.*/
@@ -224,7 +279,20 @@ msg_t sio_lld_start(SIODriver *siop) {
   }
 
   /* Configures the peripheral.*/
-  return uart_init(siop);
+  msg = uart_init(siop);
+
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+  if (msg == HAL_RET_SUCCESS) {
+    /* TX-end polling interval, about 4 character times assuming 10 bits
+       per frame, never less than one tick.*/
+    siop->txend_step = OSAL_US2I((4U * 10U * 1000000U) / siop->config->baud);
+    if (siop->txend_step < (sysinterval_t)1) {
+      siop->txend_step = (sysinterval_t)1;
+    }
+  }
+#endif
+
+  return msg;
 }
 
 /**
@@ -237,6 +305,13 @@ msg_t sio_lld_start(SIODriver *siop) {
 void sio_lld_stop(SIODriver *siop) {
 
   if (siop->state == SIO_READY) {
+
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+    /* Stopping the TX-end polling timer.  This function is called within
+       a critical section, the I-class API is used.*/
+    chVTResetI(&siop->txend_vt);
+#endif
+
     /* Resets the peripheral.*/
 
     /* Disables the peripheral.*/
@@ -444,8 +519,13 @@ size_t sio_lld_write(SIODriver *siop, const uint8_t *buffer, size_t n) {
     wr++;
   }
 
-  /* The transmit complete interrupt is always re-enabled on write.*/
-  /* none */
+  /* There is no transmission-complete interrupt on the PL011, TX-end
+     detection is delegated to a polling virtual timer.*/
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+  if (wr > 0U) {
+    uart_txend_timer_arm(siop);
+  }
+#endif
 
   return wr;
 }
@@ -490,8 +570,11 @@ void sio_lld_put(SIODriver *siop, uint_fast16_t data) {
     uart_enable_tx_irq(siop);
   }
 
-  /* The transmit complete interrupt is always re-enabled on write.*/
-  /* none */
+  /* There is no transmission-complete interrupt on the PL011, TX-end
+     detection is delegated to a polling virtual timer.*/
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+  uart_txend_timer_arm(siop);
+#endif
 }
 
 /**
@@ -600,6 +683,15 @@ void sio_lld_serve_interrupt(SIODriver *siop) {
 
       /* Waiting thread woken, if any.*/
       __sio_wakeup_tx(siop);
+
+      /* Opportunistic TX-end detection.  The PL011 has no transmission
+         complete interrupt so the physical end of transmission is only
+         observable through the flags register: TX FIFO empty and the
+         shift register no longer busy.*/
+      if ((u->UARTFR & (UART_UARTFR_TXFE | UART_UARTFR_BUSY)) ==
+          UART_UARTFR_TXFE) {
+        __sio_wakeup_txend(siop);
+      }
     }
 
     /* Updating IMSC, some sources could have been disabled.*/

@@ -109,10 +109,27 @@
 
 /**
  * @brief   Low level fields of the SIO driver structure.
+ * @note    The PL011 has no transmission-complete interrupt, the end of
+ *          transmission is only observable by polling UARTFR.BUSY.  On
+ *          the RT kernel a virtual timer is used to poll for TX-end and
+ *          wake up threads suspended in @p sioSynchronizeTXEnd().
+ *          Without the RT kernel only the opportunistic detection
+ *          performed in the interrupt handler is available.
  */
+#if (defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)) ||       \
+    defined(__DOXYGEN__)
+#define sio_lld_driver_fields                                               \
+  /* Pointer to the USARTx registers block.*/                               \
+  UART_TypeDef             *uart;                                           \
+  /* TX-end polling virtual timer.*/                                        \
+  virtual_timer_t           txend_vt;                                       \
+  /* TX-end polling interval.*/                                             \
+  sysinterval_t             txend_step;
+#else
 #define sio_lld_driver_fields                                               \
   /* Pointer to the USARTx registers block.*/                               \
   UART_TypeDef             *uart;
+#endif
 
 /**
  * @brief   Low level fields of the SIO configuration structure.
