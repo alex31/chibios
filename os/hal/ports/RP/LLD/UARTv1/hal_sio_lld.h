@@ -156,6 +156,9 @@
  * @brief   Determines if RX has pending error events to be read and cleared.
  * @note    Only error and protocol errors are handled, data events are not
  *          considered.
+ * @note    The raw status register is used because the ISR masks handled
+ *          error sources in UARTIMSC while the condition is still pending,
+ *          reading the masked status would hide those errors.
  *
  * @param[in] siop      pointer to the @p SIODriver object
  * @return              The RX error events.
@@ -165,7 +168,7 @@
  * @notapi
  */
 #define sio_lld_has_rx_errors(siop)                                         \
-  (bool)(((siop)->uart->UARTMIS & SIO_LLD_ISR_RX_ERRORS) != 0U)
+  (bool)(((siop)->uart->UARTRIS & SIO_LLD_ISR_RX_ERRORS) != 0U)
 
 /**
  * @brief   Determines the state of the TX FIFO.
