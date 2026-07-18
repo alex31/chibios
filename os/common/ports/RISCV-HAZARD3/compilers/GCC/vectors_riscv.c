@@ -59,6 +59,7 @@
 __attribute__((weak))
 void _unhandled_irq(void) {
 
+  __asm__ volatile ("csrci mstatus, 0x8" : : : "memory");
   while (true) {
   }
 }

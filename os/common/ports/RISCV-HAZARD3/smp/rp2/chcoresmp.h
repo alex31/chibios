@@ -127,12 +127,11 @@
 
 /**
  * @brief   Panic notification.
- * @note    It is sent without polling for FIFO space because the other side
- *          could be unable to empty the FIFO after a catastrophic error.
+ * @note    The notification is durable even if the FIFO is full. It never
+ *          polls because the other side could be unable to empty the FIFO
+ *          after a catastrophic error.
  */
-#define PORT_SYSTEM_HALT_HOOK() do {                                       \
-    SIO->FIFO_WR = PORT_FIFO_PANIC_MESSAGE;                                \
-  } while (false)
+#define PORT_SYSTEM_HALT_HOOK() __port_smp_notify_panic()
 
 /**
  * @brief   SMP-related port initialization.
@@ -151,6 +150,7 @@
 extern "C" {
 #endif
   void __port_smp_init(os_instance_t *oip);
+  void __port_smp_notify_panic(void);
   void __port_spinlock_take(void);
   void __port_spinlock_release(void);
 #ifdef __cplusplus

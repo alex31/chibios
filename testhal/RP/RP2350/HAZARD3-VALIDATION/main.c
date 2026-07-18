@@ -147,13 +147,28 @@ static void test_timer_rollover_preinit(void) {
   port_timer_stop_alarm();
 }
 
-static void timer_callback(virtual_timer_t *vtp, void *arg) {
+typedef struct {
   semaphore_t *sp;
+  volatile bool early_fired;
+  volatile bool late_fired;
+} timer_reprogram_context_t;
 
-  sp = (semaphore_t *)arg;
+static void timer_reprogram_early_callback(virtual_timer_t *vtp, void *arg) {
+  timer_reprogram_context_t *ctxp;
+
+  ctxp = (timer_reprogram_context_t *)arg;
+  ctxp->early_fired = true;
   chSysLockFromISR();
-  chSemSignalI(sp);
+  chSemSignalI(ctxp->sp);
   chSysUnlockFromISR();
+  (void)vtp;
+}
+
+static void timer_reprogram_late_callback(virtual_timer_t *vtp, void *arg) {
+  timer_reprogram_context_t *ctxp;
+
+  ctxp = (timer_reprogram_context_t *)arg;
+  ctxp->late_fired = true;
   (void)vtp;
 }
 
@@ -209,27 +224,54 @@ static void test_pmp_guard(void) {
 }
 
 static void test_timer_reprogramming(void) {
-  virtual_timer_t vt;
+  virtual_timer_t early_vt;
+  virtual_timer_t late_vt;
   semaphore_t sem;
+  timer_reprogram_context_t ctx;
   msg_t msg;
   unsigned i;
+  bool early_fired;
+  bool late_fired;
   bool passed;
 
-  chVTObjectInit(&vt);
+  chVTObjectInit(&early_vt);
+  chVTObjectInit(&late_vt);
   chSemObjectInit(&sem, (cnt_t)0);
+  ctx.sp = &sem;
   passed = true;
 
   for (i = 0U; i < 200U; i++) {
-    chVTSet(&vt, TIME_US2I(200U), timer_callback, &sem);
-    chVTSet(&vt, TIME_US2I(40U + (i & 31U)), timer_callback, &sem);
+    chSysLock();
+    chSemResetI(&sem, (cnt_t)0);
+    ctx.early_fired = false;
+    ctx.late_fired = false;
+    chVTSetI(&late_vt, TIME_US2I(1000U),
+             timer_reprogram_late_callback, &ctx);
+    chVTSetI(&early_vt, TIME_US2I(40U + (i & 31U)),
+             timer_reprogram_early_callback, &ctx);
+    chSysUnlock();
+
     msg = chSemWaitTimeout(&sem, TIME_MS2I(10U));
-    if (msg != MSG_OK) {
+
+    chSysLock();
+    chVTResetI(&early_vt);
+    chVTResetI(&late_vt);
+    early_fired = ctx.early_fired;
+    late_fired = ctx.late_fired;
+    chSemResetI(&sem, (cnt_t)0);
+    chSysUnlock();
+
+    if ((msg != MSG_OK) || !early_fired || late_fired) {
       passed = false;
       break;
     }
   }
 
-  chVTReset(&vt);
+  chSysLock();
+  chVTResetI(&early_vt);
+  chVTResetI(&late_vt);
+  chSemResetI(&sem, (cnt_t)0);
+  chSysUnlock();
   report("tickless alarm reprogramming stress", passed);
 }
 

@@ -43,9 +43,23 @@
 /* Module local variables.                                                   */
 /*===========================================================================*/
 
+/* This shared latch is zeroed once by the primary startup. It is deliberately
+   not cleared during per-core initialization because doing so could erase a
+   panic raised while the target core is starting. */
+static uint32_t port_panic_pending[PORT_CORES_NUMBER];
+
 /*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
+
+static bool port_is_panic_pending(void) {
+  core_id_t core_id;
+
+  core_id = port_get_core_id();
+
+  return __atomic_load_n(&port_panic_pending[core_id],
+                         __ATOMIC_ACQUIRE) != 0U;
+}
 
 static void port_local_halt(void) {
   const char *reason = "remote panic";
@@ -76,6 +90,15 @@ CH_IRQ_HANDLER(VectorA4) {
 
   CH_IRQ_PROLOGUE();
 
+  /* A startup-time latched panic can force this local source after the ROM
+     has consumed its FIFO hint. Do not leave that forced level asserted. */
+  hazard3_irq_force_clear(SIO_IRQ_FIFOn);
+
+  /* The latch is authoritative; the FIFO message is only a wakeup hint. */
+  if (port_is_panic_pending()) {
+    port_local_halt();
+  }
+
   SIO->FIFO_ST = SIO_FIFO_ST_ROE | SIO_FIFO_ST_WOF;
 
   while ((SIO->FIFO_ST & SIO_FIFO_ST_VLD) != 0U) {
@@ -101,6 +124,14 @@ CH_IRQ_HANDLER(VectorA4) {
 #endif
   }
 
+  /* Order the FIFO drain before the second latch observation. This closes the
+     race where the sender observed a full FIFO just before this core freed a
+     slot and therefore could not enqueue the panic hint. */
+  __asm__ volatile ("fence io, rw" : : : "memory");
+  if (port_is_panic_pending()) {
+    port_local_halt();
+  }
+
   __SEV();
 
   CH_IRQ_EPILOGUE();
@@ -109,6 +140,25 @@ CH_IRQ_HANDLER(VectorA4) {
 /*===========================================================================*/
 /* Module exported functions.                                                */
 /*===========================================================================*/
+
+/**
+ * @brief   Notifies the other core about a local panic.
+ * @note    The shared latch is authoritative. The FIFO write is a best-effort
+ *          wakeup and is never allowed to block the panic path.
+ */
+void __port_smp_notify_panic(void) {
+  core_id_t target;
+
+  target = port_get_core_id() ^ 1U;
+
+  /* Publish the durable indication before interacting with the FIFO. */
+  __atomic_store_n(&port_panic_pending[target], 1U, __ATOMIC_RELEASE);
+  __asm__ volatile ("fence rw, io" : : : "memory");
+
+  if ((SIO->FIFO_ST & SIO_FIFO_ST_RDY) != 0U) {
+    SIO->FIFO_WR = PORT_FIFO_PANIC_MESSAGE;
+  }
+}
 
 /**
  * @brief   SMP-related port initialization.
@@ -126,6 +176,9 @@ void __port_smp_init(os_instance_t *oip) {
   SIO->FIFO_ST = SIO_FIFO_ST_ROE | SIO_FIFO_ST_WOF;
   hazard3_irq_set_priority(SIO_IRQ_FIFOn, PORT_FIFO_IRQ_PRIORITY);
   hazard3_irq_enable(SIO_IRQ_FIFOn);
+  if (port_is_panic_pending()) {
+    hazard3_irq_force(SIO_IRQ_FIFOn);
+  }
 #endif
 
   (void)oip;
