@@ -171,12 +171,20 @@ static flash_error_t program_page(uint32_t block, unsigned sector_idx,
 static bool test_unique_id(void) {
   uint8_t uid0[RP_FLASH_UNIQUE_ID_SIZE];
   uint8_t uid1[RP_FLASH_UNIQUE_ID_SIZE];
+  flash_error_t err0, err1;
   bool all_zero = true;
   bool all_ff = true;
   unsigned i;
 
-  efl_lld_read_unique_id(&EFLD1, uid0);
-  efl_lld_read_unique_id(&EFLD1, uid1);
+  err0 = efl_lld_read_unique_id(&EFLD1, uid0);
+  err1 = efl_lld_read_unique_id(&EFLD1, uid1);
+
+  /* On a failed read the buffers are not valid, skip the consistency
+     and blank comparisons. */
+  if ((err0 != FLASH_NO_ERROR) || (err1 != FLASH_NO_ERROR)) {
+    chprintf(chp, "    UID read failed (%d, %d)\r\n", (int)err0, (int)err1);
+    return false;
+  }
 
   chprintf(chp, "    UID: ");
   for (i = 0U; i < RP_FLASH_UNIQUE_ID_SIZE; i++) {

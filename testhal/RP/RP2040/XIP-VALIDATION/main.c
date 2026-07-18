@@ -58,6 +58,7 @@ typedef struct {
   uint32_t ssi_spi_ctrlr0;
   uint32_t ssi_rx_sample_dly;
   uint32_t ssi_txd_drive_edge;
+  uint32_t pads_qspi_sd[4];
 } xip_snapshot_t;
 
 static void xip_snapshot_capture(xip_snapshot_t *s) {
@@ -69,6 +70,10 @@ static void xip_snapshot_capture(xip_snapshot_t *s) {
   s->ssi_spi_ctrlr0    = XIP_SSI->SPI_CTRLR0;
   s->ssi_rx_sample_dly = XIP_SSI->RX_SAMPLE_DLY;
   s->ssi_txd_drive_edge = XIP_SSI->TXD_DRIVE_EDGE;
+  s->pads_qspi_sd[0]   = PADS_QSPI->GPIO_QSPI_SD0;
+  s->pads_qspi_sd[1]   = PADS_QSPI->GPIO_QSPI_SD1;
+  s->pads_qspi_sd[2]   = PADS_QSPI->GPIO_QSPI_SD2;
+  s->pads_qspi_sd[3]   = PADS_QSPI->GPIO_QSPI_SD3;
 }
 
 static bool xip_snapshot_compare(const xip_snapshot_t *a,
@@ -86,6 +91,10 @@ static void xip_snapshot_dump(const xip_snapshot_t *s) {
   chprintf(chp, "    SPI_CTRLR0    = 0x%08X\r\n", s->ssi_spi_ctrlr0);
   chprintf(chp, "    RX_SAMPLE_DLY = 0x%08X\r\n", s->ssi_rx_sample_dly);
   chprintf(chp, "    TXD_DRV_EDGE  = 0x%08X\r\n", s->ssi_txd_drive_edge);
+  chprintf(chp, "    PADS SD0      = 0x%08X\r\n", s->pads_qspi_sd[0]);
+  chprintf(chp, "    PADS SD1      = 0x%08X\r\n", s->pads_qspi_sd[1]);
+  chprintf(chp, "    PADS SD2      = 0x%08X\r\n", s->pads_qspi_sd[2]);
+  chprintf(chp, "    PADS SD3      = 0x%08X\r\n", s->pads_qspi_sd[3]);
 }
 
 /*===========================================================================*/
@@ -149,12 +158,20 @@ static flash_error_t program_page(uint32_t block, unsigned sector_idx,
 static bool test_unique_id(void) {
   uint8_t uid0[RP_FLASH_UNIQUE_ID_SIZE];
   uint8_t uid1[RP_FLASH_UNIQUE_ID_SIZE];
+  flash_error_t err0, err1;
   bool all_zero = true;
   bool all_ff = true;
   unsigned i;
 
-  efl_lld_read_unique_id(&EFLD1, uid0);
-  efl_lld_read_unique_id(&EFLD1, uid1);
+  err0 = efl_lld_read_unique_id(&EFLD1, uid0);
+  err1 = efl_lld_read_unique_id(&EFLD1, uid1);
+
+  /* On a failed read the buffers are not valid, skip the consistency
+     and blank comparisons. */
+  if ((err0 != FLASH_NO_ERROR) || (err1 != FLASH_NO_ERROR)) {
+    chprintf(chp, "    UID read failed (%d, %d)\r\n", (int)err0, (int)err1);
+    return false;
+  }
 
   chprintf(chp, "    UID: ");
   for (i = 0U; i < RP_FLASH_UNIQUE_ID_SIZE; i++) {

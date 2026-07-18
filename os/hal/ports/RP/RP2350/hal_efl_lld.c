@@ -262,33 +262,47 @@ RAMFUNC static bool rp_flash_do_cmd(EFlashDriver *eflp, uint8_t cmd,
 /**
  * @brief   Wait for flash to become ready.
  * @note    This function MUST be in RAM.
+ * @note    Neither a timeout nor a communication failure aborts the wait:
+ *          XIP cannot be restored while the device may still be busy,
+ *          fetches would return garbage and fault. Errors are recorded
+ *          and the polling continues until a successful status read
+ *          reports the device idle; a device or controller which never
+ *          recovers leaves the system spinning here, which is a
+ *          watchdog's job to catch.
  *
  * @param[in] eflp        pointer to the EFlashDriver object
  * @param[in] timeout_us  operation timeout in microseconds
- * @return                true on success, false on timeout or
- *                        communication failure.
+ * @param[in] timeout_err error reported when the operation exceeded the
+ *                        timeout (operation-specific category)
+ * @return                An error code, @p FLASH_ERROR_HW_FAILURE on
+ *                        communication failures.
  */
-RAMFUNC static bool rp_flash_wait_ready(EFlashDriver *eflp,
-                                        uint32_t timeout_us) {
+RAMFUNC static flash_error_t rp_flash_wait_ready(EFlashDriver *eflp,
+                                                 uint32_t timeout_us,
+                                                 flash_error_t timeout_err) {
   uint32_t start = TIMER0->TIMERAWL;
   bool timed_out = false;
+  bool comm_fail = false;
   uint8_t status;
 
   do {
     if (!rp_flash_do_cmd(eflp, FLASHCMD_READ_STATUS, NULL, &status, 1U)) {
-      return false;
+      comm_fail = true;
+      status = FLASH_STATUS_BUSY;
     }
-    /* On timeout the error is recorded but the wait continues: XIP cannot
-       be restored while the device is still busy, fetches would return
-       garbage and fault. A device which never recovers leaves the system
-       spinning here, which is a watchdog's job to catch.*/
     if (((status & FLASH_STATUS_BUSY) != 0U) &&
         rp_flash_timeout(start, timeout_us)) {
       timed_out = true;
     }
   } while ((status & FLASH_STATUS_BUSY) != 0U);
 
-  return !timed_out;
+  if (comm_fail) {
+    return FLASH_ERROR_HW_FAILURE;
+  }
+  if (timed_out) {
+    return timeout_err;
+  }
+  return FLASH_NO_ERROR;
 }
 
 /**
@@ -391,16 +405,24 @@ RAMFUNC static bool rp_flash_exit_xip(EFlashDriver *eflp) {
   /* Default non XIP SPI configuration */
   qmi->DIRECT_CSR = QMI_DIRECT_CSR_EN | QMI_DIRECT_CSR_CLKDIV(6U);
 
-  /* Wait for the direct-mode interface to settle after enabling it,
-     an XIP access may still be draining through the serial interface. */
-  if (!rp_flash_direct_wait_idle(qmi)) {
-    return false;
-  }
+  /* Wait for the direct-mode interface to settle after enabling it
+     while draining stale RX data: a full RX FIFO can itself stall the
+     serial engine and hold BUSY high, so the drain must happen inside
+     the wait (matches the bootrom's entry sequence). */
+  {
+    uint32_t start = TIMER0->TIMERAWL;
 
-  /* Drain any stale data left in the RX FIFO so subsequent transfers
-     observe only their own responses. */
-  while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_RXEMPTY) == 0U) {
-    (void)qmi->DIRECT_RX;
+    while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_BUSY) != 0U) {
+      if ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_RXEMPTY) == 0U) {
+        (void)qmi->DIRECT_RX;
+      }
+      if (rp_flash_timeout(start, RP_FLASH_QMI_TIMEOUT_US)) {
+        return false;
+      }
+    }
+    while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_RXEMPTY) == 0U) {
+      (void)qmi->DIRECT_RX;
+    }
   }
 
   /*
@@ -475,7 +497,14 @@ RAMFUNC static bool rp_flash_exit_xip(EFlashDriver *eflp) {
    *    this command to leave QPI mode (e.g. some Winbond, ISSI parts).
    *    PSRAM on CS1 is unaffected — its CS is not asserted here and its
    *    QPI state is preserved across the flash operation via M1
-   *    save/restore. */
+   *    save/restore.
+   *
+   *    CS is still asserted from phase 2; a real deassert/reassert edge
+   *    is required so F5h starts a fresh transaction (the bootrom does
+   *    the same). */
+  rp_flash_cs_force(eflp, true);
+  for (delay = 0U; delay < 64U; delay++) {
+  }
   rp_flash_cs_force(eflp, false);
   qmi->DIRECT_TX = 0xF5U | QMI_DIRECT_TX_IWIDTH(QMI_DIRECT_TX_IWIDTH_Q) |
                    QMI_DIRECT_TX_OE | QMI_DIRECT_TX_NOPUSH;
@@ -527,13 +556,17 @@ RAMFUNC static bool rp_flash_exit_xip(EFlashDriver *eflp) {
  *          (e.g. QSPI fast read).
  *
  * @param[in] eflp      pointer to the EFlashDriver object
+ * @return              @p true on success, @p false when the final idle
+ *                      wait timed out (the restore still proceeds, XIP
+ *                      must come back no matter what).
  */
-RAMFUNC static void rp_flash_enter_xip(EFlashDriver *eflp) {
+RAMFUNC static bool rp_flash_enter_xip(EFlashDriver *eflp) {
   QMI_TypeDef *qmi = eflp->qmi;
+  bool ok;
 
   /* Wait for transfers to complete.  On timeout the restore proceeds
      anyway, XIP must come back no matter what. */
-  (void)rp_flash_direct_wait_idle(qmi);
+  ok = rp_flash_direct_wait_idle(qmi);
 
   /* Disable direct mode and restore saved XIP configuration (CS0 and CS1). */
   qmi->DIRECT_CSR = 0U;
@@ -547,6 +580,8 @@ RAMFUNC static void rp_flash_enter_xip(EFlashDriver *eflp) {
   qmi->M1_WCMD    = eflp->xip_m1_wcmd;
 
   rp_flash_flush_cache(eflp);
+
+  return ok;
 }
 
 /**
@@ -560,15 +595,18 @@ RAMFUNC static void rp_flash_enter_xip(EFlashDriver *eflp) {
  * @return              true on success, false on timeout or
  *                      communication failure.
  */
-RAMFUNC static bool rp_flash_program_page(EFlashDriver *eflp, uint32_t offset,
-                                          const uint8_t *data, size_t len) {
+RAMFUNC static flash_error_t rp_flash_program_page(EFlashDriver *eflp,
+                                                   uint32_t offset,
+                                                   const uint8_t *data,
+                                                   size_t len) {
   QMI_TypeDef *qmi = eflp->qmi;
+  flash_error_t ready_err;
   uint8_t addr[3];
   bool ok;
 
-  /* Send write enable. */
+  /* Send write enable; nothing was launched on failure. */
   if (!rp_flash_write_enable(eflp)) {
-    return false;
+    return FLASH_ERROR_HW_FAILURE;
   }
 
   /* Prepare 24-bit address (big-endian). */
@@ -595,12 +633,16 @@ RAMFUNC static bool rp_flash_program_page(EFlashDriver *eflp, uint32_t offset,
   /* Deassert CS, also on failed transfers. */
   rp_flash_cs_force(eflp, true);
 
-  /* Wait for program to complete. */
-  if (ok) {
-    ok = rp_flash_wait_ready(eflp, RP_FLASH_PROGRAM_TIMEOUT_US);
-  }
+  /* The CS edge may have launched the program even after a partial
+     transfer; the device must be drained to idle in every case before
+     XIP can come back. */
+  ready_err = rp_flash_wait_ready(eflp, RP_FLASH_PROGRAM_TIMEOUT_US,
+                                  FLASH_ERROR_PROGRAM);
 
-  return ok;
+  if (!ok) {
+    return FLASH_ERROR_HW_FAILURE;
+  }
+  return ready_err;
 }
 
 /**
@@ -613,13 +655,16 @@ RAMFUNC static bool rp_flash_program_page(EFlashDriver *eflp, uint32_t offset,
  * @return              true on success, false on timeout or
  *                      communication failure.
  */
-RAMFUNC static bool rp_flash_erase_cmd(EFlashDriver *eflp, uint8_t cmd,
-                                       uint32_t offset) {
+RAMFUNC static flash_error_t rp_flash_erase_cmd(EFlashDriver *eflp,
+                                                uint8_t cmd,
+                                                uint32_t offset) {
+  flash_error_t ready_err;
   uint8_t addr[3];
+  bool ok;
 
-  /* Send write enable. */
+  /* Send write enable; nothing was launched on failure. */
   if (!rp_flash_write_enable(eflp)) {
-    return false;
+    return FLASH_ERROR_HW_FAILURE;
   }
 
   /* Prepare 24-bit address (big-endian). */
@@ -628,7 +673,18 @@ RAMFUNC static bool rp_flash_erase_cmd(EFlashDriver *eflp, uint8_t cmd,
   addr[2] = (uint8_t)offset;
 
   /* Send erase command with address. */
-  return rp_flash_do_cmd(eflp, cmd, addr, NULL, 3U);
+  ok = rp_flash_do_cmd(eflp, cmd, addr, NULL, 3U);
+
+  /* The CS edge may have launched the erase even after a partial
+     transfer; the device must be drained to idle in every case before
+     XIP can come back. */
+  ready_err = rp_flash_wait_ready(eflp, RP_FLASH_ERASE_TIMEOUT_US,
+                                  FLASH_ERROR_ERASE);
+
+  if (!ok) {
+    return FLASH_ERROR_HW_FAILURE;
+  }
+  return ready_err;
 }
 
 /**
@@ -652,14 +708,15 @@ RAMFUNC static flash_error_t rp_flash_erase_full(EFlashDriver *eflp,
     err = FLASH_ERROR_HW_FAILURE;
   }
   /* Send erase command and wait for erase to complete. */
-  else if (!rp_flash_erase_cmd(eflp, cmd, offset) ||
-           !rp_flash_wait_ready(eflp, RP_FLASH_ERASE_TIMEOUT_US)) {
-    err = FLASH_ERROR_ERASE;
+  else {
+    err = rp_flash_erase_cmd(eflp, cmd, offset);
   }
 
   /* Re-enter XIP mode unconditionally, the system cannot continue
      without XIP restored. */
-  rp_flash_enter_xip(eflp);
+  if (!rp_flash_enter_xip(eflp) && (err == FLASH_NO_ERROR)) {
+    err = FLASH_ERROR_HW_FAILURE;
+  }
 
   return err;
 }
@@ -687,13 +744,15 @@ RAMFUNC static flash_error_t rp_flash_program_page_full(EFlashDriver *eflp,
     err = FLASH_ERROR_HW_FAILURE;
   }
   /* Program the page. */
-  else if (!rp_flash_program_page(eflp, offset, data, len)) {
-    err = FLASH_ERROR_PROGRAM;
+  else {
+    err = rp_flash_program_page(eflp, offset, data, len);
   }
 
   /* Re-enter XIP mode unconditionally, the system cannot continue
      without XIP restored. */
-  rp_flash_enter_xip(eflp);
+  if (!rp_flash_enter_xip(eflp) && (err == FLASH_NO_ERROR)) {
+    err = FLASH_ERROR_HW_FAILURE;
+  }
 
   return err;
 }
@@ -725,7 +784,9 @@ RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
 
   /* Re-enter XIP mode unconditionally, the system cannot continue
      without XIP restored. */
-  rp_flash_enter_xip(eflp);
+  if (!rp_flash_enter_xip(eflp) && (err == FLASH_NO_ERROR)) {
+    err = FLASH_ERROR_HW_FAILURE;
+  }
 
   return err;
 }
@@ -750,13 +811,15 @@ RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
  *                      outside the mapped size of its 4 MiB window.
  */
 static bool rp_flash_translate(QMI_TypeDef *qmi, uint32_t offset,
-                               uint32_t *physp) {
+                               uint32_t length, uint32_t *physp) {
   uint32_t at    = qmi->ATRANS[(offset >> 22) & 7U];
   uint32_t base  = ((at & QMI_ATRANS_BASE_Msk) >> QMI_ATRANS_BASE_Pos) << 12;
   uint32_t size  = ((at & QMI_ATRANS_SIZE_Msk) >> QMI_ATRANS_SIZE_Pos) << 12;
   uint32_t off4m = offset & 0x3FFFFFU;
 
-  if (off4m >= size) {
+  /* The whole extent must lie inside the window's mapped size, the
+     SIZE granularity (4 KiB) is finer than the large erase units. */
+  if ((off4m >= size) || ((size - off4m) < length)) {
     return false;
   }
   *physp = base + off4m;
@@ -789,10 +852,9 @@ flash_error_t rp_efl_lld_program_page_full(EFlashDriver *eflp,
                                            size_t len) {
   uint32_t phys;
 
-  /* Translate through ATRANS while XIP still works.  A page cannot
-     straddle a 4 MiB translation window because pages are aligned to
-     their (much smaller) size. */
-  if (!rp_flash_translate(eflp->qmi, offset, &phys)) {
+  /* Translate through ATRANS while XIP still works, validating the
+     whole page extent. */
+  if (!rp_flash_translate(eflp->qmi, offset, (uint32_t)len, &phys)) {
     return FLASH_ERROR_HW_FAILURE;
   }
 
@@ -803,12 +865,32 @@ flash_error_t rp_efl_lld_erase_full(EFlashDriver *eflp,
                                     uint8_t cmd,
                                     uint32_t offset) {
   uint32_t phys;
+  uint32_t esize;
 
-  /* Translate through ATRANS while XIP still works.  Erase units
-     (4 KiB, 32 KiB, 64 KiB) all divide 4 MiB and are aligned to
-     their size, so an erase unit cannot straddle two translation
-     windows. */
-  if (!rp_flash_translate(eflp->qmi, offset, &phys)) {
+  /* Erase extent per command byte. */
+  switch (cmd) {
+  case FLASHCMD_BLOCK_ERASE_64K:
+    esize = RP_FLASH_BLOCK_64K_SIZE;
+    break;
+  case FLASHCMD_BLOCK_ERASE_32K:
+    esize = RP_FLASH_BLOCK_32K_SIZE;
+    break;
+  default:
+    esize = RP_FLASH_SECTOR_SIZE;
+    break;
+  }
+
+  /* Translate through ATRANS while XIP still works, validating the
+     whole erase extent: the SIZE field is 4 KiB-granular so a large
+     erase can start inside a window yet overrun its mapped tail. */
+  if (!rp_flash_translate(eflp->qmi, offset, esize, &phys)) {
+    return FLASH_ERROR_HW_FAILURE;
+  }
+
+  /* The device aligns erase commands down to the erase unit; a BASE
+     that is not aligned to the unit would silently erase physical data
+     outside the translated extent. */
+  if ((phys & (esize - 1U)) != 0U) {
     return FLASH_ERROR_HW_FAILURE;
   }
 

@@ -105,6 +105,14 @@ EFlashDriver EFLD1 = {
  */
 CC_ALIGN_DATA(4) static uint8_t rp_boot2[252];
 
+/**
+ * @brief   PADS_QSPI SD0..SD3 values saved before the flash operation.
+ * @details rp_flash_connect_internal() hard-resets PADS_QSPI, so the
+ *          pre-operation values must be captured before that reset and
+ *          re-applied after boot2 has reconfigured the pads for XIP.
+ */
+static uint32_t rp_pads_save[4];
+
 /*===========================================================================*/
 /* Driver local functions.                                                   */
 /*===========================================================================*/
@@ -247,33 +255,47 @@ RAMFUNC static bool rp_flash_do_cmd(EFlashDriver *eflp, uint8_t cmd,
 /**
  * @brief   Wait for flash to become ready.
  * @note    This function MUST be in RAM.
+ * @note    Neither a timeout nor a communication failure aborts the wait:
+ *          XIP cannot be restored while the device may still be busy,
+ *          fetches would return garbage and fault. Errors are recorded
+ *          and the polling continues until a successful status read
+ *          reports the device idle; a device or controller which never
+ *          recovers leaves the system spinning here, which is a
+ *          watchdog's job to catch.
  *
  * @param[in] eflp        pointer to the EFlashDriver object
  * @param[in] timeout_us  operation timeout in microseconds
- * @return                true on success, false on timeout or
- *                        communication failure.
+ * @param[in] timeout_err error reported when the operation exceeded the
+ *                        timeout (operation-specific category)
+ * @return                An error code, @p FLASH_ERROR_HW_FAILURE on
+ *                        communication failures.
  */
-RAMFUNC static bool rp_flash_wait_ready(EFlashDriver *eflp,
-                                        uint32_t timeout_us) {
+RAMFUNC static flash_error_t rp_flash_wait_ready(EFlashDriver *eflp,
+                                                 uint32_t timeout_us,
+                                                 flash_error_t timeout_err) {
   uint32_t start = TIMER0->TIMERAWL;
   bool timed_out = false;
+  bool comm_fail = false;
   uint8_t status;
 
   do {
     if (!rp_flash_do_cmd(eflp, FLASHCMD_READ_STATUS, NULL, &status, 1U)) {
-      return false;
+      comm_fail = true;
+      status = FLASH_STATUS_BUSY;
     }
-    /* On timeout the error is recorded but the wait continues: XIP cannot
-       be restored while the device is still busy, fetches would return
-       garbage and fault. A device which never recovers leaves the system
-       spinning here, which is a watchdog's job to catch.*/
     if (((status & FLASH_STATUS_BUSY) != 0U) &&
         rp_flash_timeout(start, timeout_us)) {
       timed_out = true;
     }
   } while ((status & FLASH_STATUS_BUSY) != 0U);
 
-  return !timed_out;
+  if (comm_fail) {
+    return FLASH_ERROR_HW_FAILURE;
+  }
+  if (timed_out) {
+    return timeout_err;
+  }
+  return FLASH_NO_ERROR;
 }
 
 /**
@@ -327,8 +349,17 @@ RAMFUNC static void rp_flash_flush_cache(void) {
  */
 RAMFUNC static bool rp_flash_connect_internal(void) {
   uint32_t bits = RESETS_ALLREG_IO_QSPI | RESETS_ALLREG_PADS_QSPI;
+  PADS_QSPI_TypeDef *pads_qspi = PADS_QSPI;
   uint32_t start;
   unsigned i;
+
+  /* Save the data pad controls before the hard reset below wipes them,
+     rp_flash_enter_xip() restores them verbatim once boot2 has brought
+     XIP back. */
+  rp_pads_save[0] = pads_qspi->GPIO_QSPI_SD0;
+  rp_pads_save[1] = pads_qspi->GPIO_QSPI_SD1;
+  rp_pads_save[2] = pads_qspi->GPIO_QSPI_SD2;
+  rp_pads_save[3] = pads_qspi->GPIO_QSPI_SD3;
 
   /* Hard-reset IO_QSPI and PADS_QSPI. */
   RESETS->SET.RESET = bits;
@@ -496,8 +527,13 @@ RAMFUNC static bool rp_flash_exit_xip(EFlashDriver *eflp) {
  *          convention will not work with this driver.
  *
  * @param[in] eflp      pointer to the EFlashDriver object
+ * @return              @p true on success, @p false on failure (the
+ *                      restore still proceeds, XIP must come back no
+ *                      matter what).
  */
-RAMFUNC static void rp_flash_enter_xip(EFlashDriver *eflp) {
+RAMFUNC static bool rp_flash_enter_xip(EFlashDriver *eflp) {
+  PADS_QSPI_TypeDef *pads_qspi = PADS_QSPI;
+  bool ok = true;
   (void)eflp;
 
   /* Reset CS control to normal. */
@@ -511,7 +547,17 @@ RAMFUNC static void rp_flash_enter_xip(EFlashDriver *eflp) {
    * with 1 sets the Thumb bit required by BX on ARMv6-M. */
   ((void (*)(void))((uintptr_t)rp_boot2 | 1U))();
 
+  /* Boot2 reconfigures the pads for XIP; re-applying the values saved
+     in rp_flash_connect_internal() restores any board/application-
+     specific pad tuning that existed before the operation. */
+  pads_qspi->GPIO_QSPI_SD0 = rp_pads_save[0];
+  pads_qspi->GPIO_QSPI_SD1 = rp_pads_save[1];
+  pads_qspi->GPIO_QSPI_SD2 = rp_pads_save[2];
+  pads_qspi->GPIO_QSPI_SD3 = rp_pads_save[3];
+
   rp_flash_flush_cache();
+
+  return ok;
 }
 
 /**
@@ -522,18 +568,20 @@ RAMFUNC static void rp_flash_enter_xip(EFlashDriver *eflp) {
  * @param[in] offset    flash offset (must be page-aligned or within page)
  * @param[in] data      data to program
  * @param[in] len       number of bytes (must not cross page boundary)
- * @return              true on success, false on timeout or
- *                      communication failure.
+ * @return              An error code.
  */
-RAMFUNC static bool rp_flash_program_page(EFlashDriver *eflp, uint32_t offset,
-                                          const uint8_t *data, size_t len) {
+RAMFUNC static flash_error_t rp_flash_program_page(EFlashDriver *eflp,
+                                                   uint32_t offset,
+                                                   const uint8_t *data,
+                                                   size_t len) {
   SSI_TypeDef *ssi = eflp->ssi;
+  flash_error_t ready_err;
   uint8_t addr[3];
   bool ok;
 
-  /* Send write enable. */
+  /* Send write enable; nothing was launched on failure. */
   if (!rp_flash_write_enable(eflp)) {
-    return false;
+    return FLASH_ERROR_HW_FAILURE;
   }
 
   /* Prepare 24-bit address (big-endian). */
@@ -560,12 +608,16 @@ RAMFUNC static bool rp_flash_program_page(EFlashDriver *eflp, uint32_t offset,
   /* Deassert CS, also on failed transfers. */
   rp_flash_cs_force(eflp, true);
 
-  /* Wait for program to complete. */
-  if (ok) {
-    ok = rp_flash_wait_ready(eflp, RP_FLASH_PROGRAM_TIMEOUT_US);
-  }
+  /* The CS edge may have launched the program even after a partial
+     transfer; the device must be drained to idle in every case before
+     XIP can come back. */
+  ready_err = rp_flash_wait_ready(eflp, RP_FLASH_PROGRAM_TIMEOUT_US,
+                                  FLASH_ERROR_PROGRAM);
 
-  return ok;
+  if (!ok) {
+    return FLASH_ERROR_HW_FAILURE;
+  }
+  return ready_err;
 }
 
 /**
@@ -575,16 +627,18 @@ RAMFUNC static bool rp_flash_program_page(EFlashDriver *eflp, uint32_t offset,
  * @param[in] eflp      pointer to the EFlashDriver object
  * @param[in] cmd       JEDEC erase command byte
  * @param[in] offset    flash offset (must be aligned to erase unit)
- * @return              true on success, false on timeout or
- *                      communication failure.
+ * @return              An error code.
  */
-RAMFUNC static bool rp_flash_erase_cmd(EFlashDriver *eflp, uint8_t cmd,
-                                       uint32_t offset) {
+RAMFUNC static flash_error_t rp_flash_erase_cmd(EFlashDriver *eflp,
+                                                uint8_t cmd,
+                                                uint32_t offset) {
+  flash_error_t ready_err;
   uint8_t addr[3];
+  bool ok;
 
-  /* Send write enable. */
+  /* Send write enable; nothing was launched on failure. */
   if (!rp_flash_write_enable(eflp)) {
-    return false;
+    return FLASH_ERROR_HW_FAILURE;
   }
 
   /* Prepare 24-bit address (big-endian). */
@@ -593,7 +647,18 @@ RAMFUNC static bool rp_flash_erase_cmd(EFlashDriver *eflp, uint8_t cmd,
   addr[2] = (uint8_t)offset;
 
   /* Send erase command with address. */
-  return rp_flash_do_cmd(eflp, cmd, addr, NULL, 3U);
+  ok = rp_flash_do_cmd(eflp, cmd, addr, NULL, 3U);
+
+  /* The CS edge may have launched the erase even after a partial
+     transfer; the device must be drained to idle in every case before
+     XIP can come back. */
+  ready_err = rp_flash_wait_ready(eflp, RP_FLASH_ERASE_TIMEOUT_US,
+                                  FLASH_ERROR_ERASE);
+
+  if (!ok) {
+    return FLASH_ERROR_HW_FAILURE;
+  }
+  return ready_err;
 }
 
 /**
@@ -617,14 +682,15 @@ RAMFUNC static flash_error_t rp_flash_erase_full(EFlashDriver *eflp,
     err = FLASH_ERROR_HW_FAILURE;
   }
   /* Send erase command and wait for erase to complete. */
-  else if (!rp_flash_erase_cmd(eflp, cmd, offset) ||
-           !rp_flash_wait_ready(eflp, RP_FLASH_ERASE_TIMEOUT_US)) {
-    err = FLASH_ERROR_ERASE;
+  else {
+    err = rp_flash_erase_cmd(eflp, cmd, offset);
   }
 
   /* Re-enter XIP mode unconditionally, the system cannot continue
      without XIP restored. */
-  rp_flash_enter_xip(eflp);
+  if (!rp_flash_enter_xip(eflp) && (err == FLASH_NO_ERROR)) {
+    err = FLASH_ERROR_HW_FAILURE;
+  }
 
   return err;
 }
@@ -652,13 +718,15 @@ RAMFUNC static flash_error_t rp_flash_program_page_full(EFlashDriver *eflp,
     err = FLASH_ERROR_HW_FAILURE;
   }
   /* Program the page. */
-  else if (!rp_flash_program_page(eflp, offset, data, len)) {
-    err = FLASH_ERROR_PROGRAM;
+  else {
+    err = rp_flash_program_page(eflp, offset, data, len);
   }
 
   /* Re-enter XIP mode unconditionally, the system cannot continue
      without XIP restored. */
-  rp_flash_enter_xip(eflp);
+  if (!rp_flash_enter_xip(eflp) && (err == FLASH_NO_ERROR)) {
+    err = FLASH_ERROR_HW_FAILURE;
+  }
 
   return err;
 }
@@ -690,7 +758,9 @@ RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
 
   /* Re-enter XIP mode unconditionally, the system cannot continue
      without XIP restored. */
-  rp_flash_enter_xip(eflp);
+  if (!rp_flash_enter_xip(eflp) && (err == FLASH_NO_ERROR)) {
+    err = FLASH_ERROR_HW_FAILURE;
+  }
 
   return err;
 }
