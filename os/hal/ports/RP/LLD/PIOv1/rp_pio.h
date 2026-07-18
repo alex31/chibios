@@ -267,6 +267,9 @@ extern "C" {
                           const rp_pio_program_t *program);
   void pioProgramUnload(const rp_pio_block_t *block,
                          int32_t offset, uint32_t length);
+#if (RP_PIO_HAS_GPIOBASE == TRUE) || defined(__DOXYGEN__)
+  void pioSetGpioBase(const rp_pio_block_t *block, uint32_t base);
+#endif
 #ifdef __cplusplus
 }
 #endif
@@ -594,9 +597,14 @@ __STATIC_INLINE uint32_t pioSmGet(const rp_pio_sm_t *smp) {
  * @brief   Routes a GPIO pin to the PIO block that owns this state machine.
  * @details Sets IO_BANK0 FUNCSEL for the given pin to PIO0, PIO1, or PIO2
  *          based on the block index of the state machine.
+ * @note    The @p gpio parameter is an absolute GPIO number. On devices
+ *          with the @p RP_PIO_HAS_GPIOBASE capability (RP2350) the pin
+ *          fields written into PINCTRL/EXECCTRL are instead relative to
+ *          the window selected with @p pioSetGpioBase(), see
+ *          @p pioGpioToRel().
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
- * @param[in] gpio      GPIO pin number
+ * @param[in] gpio      absolute GPIO pin number
  *
  * @special
  */
@@ -610,7 +618,44 @@ __STATIC_INLINE void pioSmSetPinFunctionX(const rp_pio_sm_t *smp,
 #endif
   };
 
+  osalDbgCheck(gpio < RP_GPIO_NUM_LINES);
+
   IO_BANK0->GPIO[gpio].CTRL = funcsel[smp->block->pioidx];
+}
+
+/**
+ * @brief   Converts an absolute GPIO number to a block-relative pin number.
+ * @details The 5-bit pin fields in the PINCTRL and EXECCTRL registers are
+ *          relative to the GPIO window selected with @p pioSetGpioBase()
+ *          on devices with the @p RP_PIO_HAS_GPIOBASE capability (RP2350).
+ *          On devices without the capability (RP2040) pin numbers are
+ *          absolute and this function is an identity mapping.
+ *
+ * @param[in] block     pointer to the PIO block descriptor
+ * @param[in] gpio      absolute GPIO pin number, must fall within the
+ *                      currently selected 32-pin window of the block
+ * @return              The window-relative pin number to be used in the
+ *                      PINCTRL/EXECCTRL pin fields.
+ *
+ * @special
+ */
+__STATIC_INLINE uint32_t pioGpioToRel(const rp_pio_block_t *block,
+                                       uint32_t gpio) {
+#if (RP_PIO_HAS_GPIOBASE == TRUE) || defined(__DOXYGEN__)
+  uint32_t base = block->pio->GPIOBASE;
+
+  /* The result must fit the 5-bit pin fields, i.e. the GPIO must be in
+     the [base, base + 31] window.*/
+  osalDbgCheck((gpio >= base) && ((gpio - base) < 32U));
+
+  return gpio - base;
+#else
+  (void)block;
+
+  osalDbgCheck(gpio < RP_GPIO_NUM_LINES);
+
+  return gpio;
+#endif
 }
 
 /**

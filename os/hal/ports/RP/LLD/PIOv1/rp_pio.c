@@ -653,6 +653,65 @@ void pioProgramUnload(const rp_pio_block_t *block,
   osalSysUnlock();
 }
 
+#if (RP_PIO_HAS_GPIOBASE == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   Selects the GPIO window of a PIO block.
+ * @details On devices with more than 32 GPIO lines (RP2350) each PIO block
+ *          accesses a 32-pin window of the pads. With @p base set to 0 the
+ *          block drives GPIO0..31, with @p base set to 16 it drives
+ *          GPIO16..47 (RP2350B). The 5-bit pin fields written into the
+ *          PINCTRL and EXECCTRL registers are relative to this window,
+ *          see @p pioGpioToRel().
+ * @pre     The block must be completely idle: no state machines allocated
+ *          on either core and no program loaded. Moving the pin window
+ *          under running state machines is invalid.
+ * @post    The block is taken out of reset and intentionally left out of
+ *          reset so the setting persists across the following
+ *          @p pioSmAllocI() calls (whose internal unreset is idempotent).
+ * @note    Releasing the last state machine of the block puts the block
+ *          back in reset which clears GPIOBASE to zero, the window must be
+ *          configured again before the next allocation cycle if a
+ *          non-default base is required.
+ * @note    This function only exists on devices with the
+ *          @p RP_PIO_HAS_GPIOBASE capability; on RP2040 all pads are
+ *          directly accessible and no window selection is available.
+ *
+ * @param[in] block     pointer to the PIO block descriptor
+ * @param[in] base      first GPIO accessible by the block, must be 0 or 16
+ *
+ * @api
+ */
+void pioSetGpioBase(const rp_pio_block_t *block, uint32_t base) {
+  uint32_t b;
+
+  osalDbgCheck(block != NULL);
+  osalDbgCheck((base == 0U) || (base == 16U));
+
+  b = block->pioidx;
+
+  osalSysLock();
+
+  /* The pin window can only be moved while the block is completely
+     idle.*/
+  osalDbgAssert((pio.blocks[b].c0_allocated_mask |
+                 pio.blocks[b].c1_allocated_mask) == 0U,
+                "state machines allocated");
+  osalDbgAssert(pio.blocks[b].imem_allocated == 0U, "program loaded");
+
+  /* An idle block is held in reset, it must be released for the GPIOBASE
+     write to take effect. Resetting it back would clear the register so
+     the block is left out of reset.*/
+  rp_peripheral_unreset(block->resets_mask);
+
+  block->pio->GPIOBASE = base;
+
+  /* Read-back check, catches read-only register definitions.*/
+  osalDbgAssert(block->pio->GPIOBASE == base, "GPIOBASE not written");
+
+  osalSysUnlock();
+}
+#endif /* RP_PIO_HAS_GPIOBASE == TRUE */
+
 #endif /* RP_PIO_REQUIRED */
 
 /** @} */
