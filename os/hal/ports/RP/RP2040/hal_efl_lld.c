@@ -256,19 +256,24 @@ RAMFUNC static bool rp_flash_do_cmd(EFlashDriver *eflp, uint8_t cmd,
 RAMFUNC static bool rp_flash_wait_ready(EFlashDriver *eflp,
                                         uint32_t timeout_us) {
   uint32_t start = TIMER0->TIMERAWL;
+  bool timed_out = false;
   uint8_t status;
 
   do {
     if (!rp_flash_do_cmd(eflp, FLASHCMD_READ_STATUS, NULL, &status, 1U)) {
       return false;
     }
+    /* On timeout the error is recorded but the wait continues: XIP cannot
+       be restored while the device is still busy, fetches would return
+       garbage and fault. A device which never recovers leaves the system
+       spinning here, which is a watchdog's job to catch.*/
     if (((status & FLASH_STATUS_BUSY) != 0U) &&
         rp_flash_timeout(start, timeout_us)) {
-      return false;
+      timed_out = true;
     }
   } while ((status & FLASH_STATUS_BUSY) != 0U);
 
-  return true;
+  return !timed_out;
 }
 
 /**
