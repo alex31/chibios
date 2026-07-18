@@ -128,6 +128,16 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
+#
+# Timeout-injection variant: build with an absurdly small erase timeout
+# to exercise the EFL driver error paths at runtime (erases fail with an
+# error while XIP is still restored, so the failure is reported instead
+# of hanging):
+#   make UDEFS=-DRP_FLASH_ERASE_TIMEOUT_US=1
+# Note that UDEFS on the command line replaces the default below; add
+# -DCRT0_VTOR_INIT=1 as well if the image is expected to boot:
+#   make UDEFS="-DCRT0_VTOR_INIT=1 -DRP_FLASH_ERASE_TIMEOUT_US=1"
+# This is intentionally not the default because it fails at runtime.
 UDEFS = -DCRT0_VTOR_INIT=1
 
 # Define ASM defines here

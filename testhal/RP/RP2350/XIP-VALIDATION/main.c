@@ -451,6 +451,92 @@ static bool test_full_block_write_verify(uint32_t block) {
   return true;
 }
 
+/*
+ * Test: ATRANS-aware program offset translation.
+ *
+ * Programs QMI ATRANS window 1 (logical 0x400000-0x7FFFFF) to alias
+ * physical 0-4MiB (BASE=0, SIZE=0x400 in 4KiB units), then programs
+ * a pattern through the aliased logical offset of the physical last
+ * sector and verifies via a window-0 read at the original offset
+ * that the physical last sector changed.  Also verifies that an
+ * offset outside the mapped window size is rejected.  Only touches
+ * the sacrificial last sector; ATRANS[1] is saved and restored.
+ */
+static bool test_atrans_translation(void) {
+  flash_offset_t last_off = TEST_BLOCK * RP_FLASH_BLOCK_64K_SIZE +
+                            (SECTORS_PER_BLK - 1U) * RP_FLASH_SECTOR_SIZE;
+  uint32_t alias_off = 0x400000U + (uint32_t)last_off;
+  uint32_t atrans1_save = QMI->ATRANS[1];
+  flash_error_t err;
+  syssts_t sts;
+  unsigned i;
+  bool ok = true;
+
+  /* Start from an erased last sector (window 0, identity mapping). */
+  if (erase_sector(TEST_BLOCK, SECTORS_PER_BLK - 1U) != FLASH_NO_ERROR)
+    return false;
+
+  /* Alias window 1 to physical 0..4MiB. */
+  QMI->ATRANS[1] = (0x0U << QMI_ATRANS_BASE_Pos) |
+                   (0x400U << QMI_ATRANS_SIZE_Pos);
+
+  /* Program a pattern through the aliased offset.  The engine-level
+     API bounds offsets to the flash descriptor, so the per-chip entry
+     point is called directly under the same syslock bracket the
+     engine uses. */
+  memset(page_buf, 0xC3, RP_FLASH_PAGE_SIZE);
+  sts = osalSysGetStatusAndLockX();
+  err = rp_efl_lld_program_page_full(&EFLD1, alias_off, page_buf,
+                                     RP_FLASH_PAGE_SIZE);
+  osalSysRestoreStatusX(sts);
+  if (err != FLASH_NO_ERROR) {
+    chprintf(chp, "    Aliased program failed (%d)\r\n", (int)err);
+    ok = false;
+  }
+
+  /* Verify at the original window-0 offset that the physical last
+     sector changed. */
+  if (ok &&
+      (flashRead(bfp, last_off, RP_FLASH_PAGE_SIZE,
+                 page_buf) != FLASH_NO_ERROR)) {
+    ok = false;
+  }
+  if (ok) {
+    for (i = 0U; i < RP_FLASH_PAGE_SIZE; i++) {
+      if (page_buf[i] != 0xC3U) {
+        chprintf(chp, "    Byte %u: expected 0xC3 got 0x%02X\r\n",
+                 i, page_buf[i]);
+        ok = false;
+        break;
+      }
+    }
+  }
+
+  /* An offset beyond the mapped window size must be rejected while
+     XIP is still enabled. */
+  if (ok) {
+    QMI->ATRANS[1] = (0x0U << QMI_ATRANS_BASE_Pos) |
+                     (0x0U << QMI_ATRANS_SIZE_Pos);
+    sts = osalSysGetStatusAndLockX();
+    err = rp_efl_lld_program_page_full(&EFLD1, alias_off, page_buf,
+                                       RP_FLASH_PAGE_SIZE);
+    osalSysRestoreStatusX(sts);
+    if (err != FLASH_ERROR_HW_FAILURE) {
+      chprintf(chp, "    Unmapped offset not rejected (%d)\r\n", (int)err);
+      ok = false;
+    }
+  }
+
+  /* Restore the boot ATRANS window. */
+  QMI->ATRANS[1] = atrans1_save;
+
+  /* Leave the sector erased. */
+  if (erase_sector(TEST_BLOCK, SECTORS_PER_BLK - 1U) != FLASH_NO_ERROR)
+    ok = false;
+
+  return ok;
+}
+
 /*===========================================================================*/
 /* Blinker thread.                                                           */
 /*===========================================================================*/
@@ -565,6 +651,11 @@ int main(void) {
   chprintf(chp, "\r\n  Full 64KB write + XIP verify...\r\n");
   ok = test_full_block_write_verify(TEST_BLOCK);
   report("Full 64KB block write and XIP readback", ok);
+
+  /* Test 14: ATRANS translation. */
+  chprintf(chp, "\r\n  ATRANS translation...\r\n");
+  ok = test_atrans_translation();
+  report("atrans translation", ok);
 
   /* Cleanup. */
   chprintf(chp, "\r\n  Cleanup block erase...\r\n");

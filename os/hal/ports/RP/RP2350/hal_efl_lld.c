@@ -725,6 +725,40 @@ RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
   return err;
 }
 
+/**
+ * @brief   Translates a logical XIP offset through the QMI address
+ *          translation registers.
+ * @details Program and erase commands are issued with physical flash
+ *          addresses while XIP reads go through the ATRANS windows.
+ *          With a non-identity mapping (e.g. bootrom-packaged images,
+ *          A/B partitions) the logical offset must be translated
+ *          before it is sent to the device.  The boot default is an
+ *          identity mapping, so behavior is unchanged on stock
+ *          systems.
+ * @note    Runs from flash while XIP is still enabled, must be called
+ *          before the RAM-resident sequence.
+ *
+ * @param[in] qmi       pointer to the QMI registers
+ * @param[in] offset    logical offset within the XIP address space
+ * @param[out] physp    translated physical flash offset
+ * @return              true on success, false if the offset falls
+ *                      outside the mapped size of its 4 MiB window.
+ */
+static bool rp_flash_translate(QMI_TypeDef *qmi, uint32_t offset,
+                               uint32_t *physp) {
+  uint32_t at    = qmi->ATRANS[(offset >> 22) & 7U];
+  uint32_t base  = ((at & QMI_ATRANS_BASE_Msk) >> QMI_ATRANS_BASE_Pos) << 12;
+  uint32_t size  = ((at & QMI_ATRANS_SIZE_Msk) >> QMI_ATRANS_SIZE_Pos) << 12;
+  uint32_t off4m = offset & 0x3FFFFFU;
+
+  if (off4m >= size) {
+    return false;
+  }
+  *physp = base + off4m;
+
+  return true;
+}
+
 /*===========================================================================*/
 /* Driver interrupt handlers.                                                */
 /*===========================================================================*/
@@ -748,15 +782,32 @@ flash_error_t rp_efl_lld_program_page_full(EFlashDriver *eflp,
                                            uint32_t offset,
                                            const uint8_t *data,
                                            size_t len) {
+  uint32_t phys;
 
-  return rp_flash_program_page_full(eflp, offset, data, len);
+  /* Translate through ATRANS while XIP still works.  A page cannot
+     straddle a 4 MiB translation window because pages are aligned to
+     their (much smaller) size. */
+  if (!rp_flash_translate(eflp->qmi, offset, &phys)) {
+    return FLASH_ERROR_HW_FAILURE;
+  }
+
+  return rp_flash_program_page_full(eflp, phys, data, len);
 }
 
 flash_error_t rp_efl_lld_erase_full(EFlashDriver *eflp,
                                     uint8_t cmd,
                                     uint32_t offset) {
+  uint32_t phys;
 
-  return rp_flash_erase_full(eflp, cmd, offset);
+  /* Translate through ATRANS while XIP still works.  Erase units
+     (4 KiB, 32 KiB, 64 KiB) all divide 4 MiB and are aligned to
+     their size, so an erase unit cannot straddle two translation
+     windows. */
+  if (!rp_flash_translate(eflp->qmi, offset, &phys)) {
+    return FLASH_ERROR_HW_FAILURE;
+  }
+
+  return rp_flash_erase_full(eflp, cmd, phys);
 }
 
 flash_error_t rp_efl_lld_read_uid_full(EFlashDriver *eflp,
