@@ -284,8 +284,9 @@ static void i2c_lld_transmit_data(I2CDriver *i2cp) {
   while (i2cp->txbytes > 0U && dp->STATUS & I2C_IC_STATUS_TFNF) {
     data = (uint32_t)*i2cp->txptr;
 
-    /* Send STOP after last byte. */
-    if (i2cp->txbytes == 1U) {
+    /* Send STOP after the last byte of a pure write. If a read phase
+       follows, the transfer continues with a repeated START instead. */
+    if ((i2cp->txbytes == 1U) && (i2cp->rxbytes == 0U)) {
       data |= I2C_IC_DATA_CMD_STOP;
     }
     dp->DATACMD = data;
@@ -294,9 +295,20 @@ static void i2c_lld_transmit_data(I2CDriver *i2cp) {
     i2cp->txbytes--;
   }
 
-  /* Nothing more to send, disable TX FIFO empty interrupt. */
   if (i2cp->txbytes == 0U) {
-    dp->CLR.INTRMASK = I2C_IC_INTR_MASK_M_TX_EMPTY;
+    if (i2cp->rxbytes > 0U) {
+      /* All write commands are queued and a read phase follows. Switch to
+         the RX state now, the first read command will carry the RESTART
+         flag producing a repeated START on the wire. The TX_EMPTY
+         interrupt is kept enabled, with TX_EMPTY_CTRL set it fires again
+         only when the last write byte has completed on the wire and the
+         ISR then queues the read commands via i2c_lld_request_data(). */
+      i2cp->state = I2C_ACTIVE_RX;
+      i2cp->send_restart = true;
+    } else {
+      /* Nothing more to send, disable TX FIFO empty interrupt. */
+      dp->CLR.INTRMASK = I2C_IC_INTR_MASK_M_TX_EMPTY;
+    }
   }
 }
 
@@ -343,18 +355,9 @@ static void i2c_lld_serve_interrupt(I2CDriver *i2cp) {
   }
 
   if (intr & I2C_IC_INTR_STAT_R_STOP_DET) {
-    /* Clear irq flag. */
+    /* Clear irq flag. A STOP is only ever generated with the last command
+       of a transfer, so a STOP detection always means completion. */
     (void)dp->CLRSTOPDET;
-    if (i2cp->state == I2C_ACTIVE_TX && i2cp->rxbytes > 0U) {
-      /* State change to RX. */
-      i2cp->state = I2C_ACTIVE_RX;
-      /* Restart communication. */
-      i2cp->send_restart = true;
-
-      /* Enable TX FIFO empty IRQ to request more data to be received. */
-      dp->SET.INTRMASK = I2C_IC_INTR_STAT_R_TX_EMPTY;
-      return;
-    }
   }
 
   /* Transmission complete, disable and clear all interrupts. */
