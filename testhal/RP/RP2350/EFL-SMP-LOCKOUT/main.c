@@ -113,7 +113,17 @@ uint32_t flash_cycle(uint8_t pattern) {
   if (err != FLASH_NO_ERROR) {
     return 1U;
   }
-  while (flashQueryErase(bfp, NULL) == FLASH_BUSY_ERASING) {
+  {
+    uint32_t polls = 0U;
+
+    while ((err = flashQueryErase(bfp, NULL)) == FLASH_BUSY_ERASING) {
+      if (++polls > 5000000U) {
+        return 1U;
+      }
+    }
+    if (err != FLASH_NO_ERROR) {
+      return 1U;
+    }
   }
 
   for (page = 0U; page < TEST_PAGES; page++) {
@@ -214,18 +224,25 @@ int main(void) {
 
   /*
    * Phase B: mirrored, core 0 flashes while core 1 executes from flash.
+   * Skipped if phase A never completed, core 1 could still be inside
+   * flash_cycle().
    */
-  chprintf(chp, "--- Phase B: core 0 flashing, core 1 on flash\r\n");
-  c1hb_before = c1_heartbeat;
-  fi_before = fastirq_count;
-  my_errors = 0U;
-  for (i = 0U; i < C0_FLASH_CYCLES; i++) {
-    my_errors += flash_cycle((uint8_t)(0xA0U + i));
-  }
+  if (c1_done != 0U) {
+    chprintf(chp, "--- Phase B: core 0 flashing, core 1 on flash\r\n");
+    c1hb_before = c1_heartbeat;
+    fi_before = fastirq_count;
+    my_errors = 0U;
+    for (i = 0U; i < C0_FLASH_CYCLES; i++) {
+      my_errors += flash_cycle((uint8_t)(0xA0U + i));
+    }
 
-  report("core 0 flash cycles clean", my_errors == 0U);
-  report("core 1 heartbeat advanced", c1_heartbeat != c1hb_before);
-  report("fast IRQ serviced", fastirq_count != fi_before);
+    report("core 0 flash cycles clean", my_errors == 0U);
+    report("core 1 heartbeat advanced", c1_heartbeat != c1hb_before);
+    report("fast IRQ serviced", fastirq_count != fi_before);
+  }
+  else {
+    report("phase B skipped, phase A incomplete", false);
+  }
 
   chprintf(chp, "\r\nResults: %u pass, %u fail\r\n", pass_count, fail_count);
   if (fail_count == 0U) {

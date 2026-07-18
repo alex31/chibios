@@ -140,6 +140,11 @@
 #endif
 #endif
 
+#if (RP_EFL_XIP_SAFETY != RP_EFL_XIP_SAFETY_NONE) &&                        \
+    (RP_EFL_XIP_SAFETY != RP_EFL_XIP_SAFETY_LOCKOUT)
+#error "invalid RP_EFL_XIP_SAFETY value"
+#endif
+
 /**
  * @brief   Suggested wait time during erase operations polling.
  */

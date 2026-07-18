@@ -131,6 +131,9 @@ static bool port_lockout_handshake(uint32_t token) {
   uint32_t start = TIMER0->TIMERAWL;
 
   while ((SIO->FIFO_ST & SIO_FIFO_ST_RDY) == 0U) {
+    if ((TIMER0->TIMERAWL - start) > PORT_LOCKOUT_TIMEOUT_US) {
+      return false;
+    }
   }
   SIO->FIFO_WR = token;
   __SEV();
