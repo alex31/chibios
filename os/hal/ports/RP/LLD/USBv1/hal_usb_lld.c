@@ -720,10 +720,19 @@ void usb_lld_disable_endpoints(USBDriver *usbp) {
   /* Reset the packet memory allocator. */
   usbp->noffset = 0U;
 
+  /* Fully tear down all non control endpoints, mirroring the reset path:
+     clearing only USB_EP_EN would leave stale buffer controls (AVAILABLE,
+     STALL, PIDs) behind for the next configuration. */
   for (uint8_t ep = 1; ep <= USB_MAX_ENDPOINTS; ep++) {
-    EP_CTRL(ep).IN &= ~USB_EP_EN;
-    EP_CTRL(ep).OUT &= ~USB_EP_EN;
+    EP_CTRL(ep).IN   = 0U;
+    BUF_CTRL(ep).IN  = 0U;
+    EP_CTRL(ep).OUT  = 0U;
+    BUF_CTRL(ep).OUT = 0U;
   }
+
+  /* Discard pending buffer completions of the torn down endpoints, EP0
+     (bits 0 and 1) is left untouched. */
+  USB->CLR.BUFSTATUS = 0xFFFFFFFCU;
 }
 
 /**
