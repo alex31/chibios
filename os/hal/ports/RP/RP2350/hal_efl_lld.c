@@ -106,6 +106,63 @@ EFlashDriver EFLD1 = {
 /*===========================================================================*/
 
 /**
+ * @brief   Checks elapsed time against the free-running 1 MHz timer.
+ * @note    This function MUST be in RAM.  TIMER0 is an APB peripheral
+ *          and remains readable while XIP is disabled; TIMERAWL has no
+ *          read side effects.
+ *
+ * @param[in] start       TIMERAWL value sampled when the wait started
+ * @param[in] timeout_us  allowed time in microseconds
+ * @return                true if the timeout expired.
+ */
+RAMFUNC static bool rp_flash_timeout(uint32_t start, uint32_t timeout_us) {
+
+  return (uint32_t)(TIMER0->TIMERAWL - start) > timeout_us;
+}
+
+/**
+ * @brief   Waits for the QMI direct-mode interface to become idle.
+ * @note    This function MUST be in RAM.
+ *
+ * @param[in] qmi       pointer to the QMI registers
+ * @return              true on success, false on timeout.
+ */
+RAMFUNC static bool rp_flash_direct_wait_idle(QMI_TypeDef *qmi) {
+  uint32_t start = TIMER0->TIMERAWL;
+
+  while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_BUSY) != 0U) {
+    if (rp_flash_timeout(start, RP_FLASH_QMI_TIMEOUT_US)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * @brief   Clocks one direct-mode TX word and discards the RX byte.
+ * @note    This function MUST be in RAM.
+ *
+ * @param[in] qmi       pointer to the QMI registers
+ * @param[in] data      DIRECT_TX value (data byte plus control bits)
+ * @return              true on success, false on timeout.
+ */
+RAMFUNC static bool rp_flash_direct_tx8(QMI_TypeDef *qmi, uint32_t data) {
+  uint32_t start;
+
+  qmi->DIRECT_TX = data;
+  start = TIMER0->TIMERAWL;
+  while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_RXEMPTY) != 0U) {
+    if (rp_flash_timeout(start, RP_FLASH_QMI_TIMEOUT_US)) {
+      return false;
+    }
+  }
+  (void)qmi->DIRECT_RX;
+
+  return true;
+}
+
+/**
  * @brief   Force chip select high or low
  * @note    This function MUST be in RAM.
  *
@@ -133,12 +190,14 @@ RAMFUNC static void rp_flash_cs_force(EFlashDriver *eflp, bool high) {
  * @param[in] tx        transmit buffer (NULL to send zeros)
  * @param[out] rx       receive buffer (NULL to discard)
  * @param[in] count     number of bytes to transfer
+ * @return              true on success, false on timeout.
  */
-RAMFUNC static void rp_flash_put_get(EFlashDriver *eflp, const uint8_t *tx,
+RAMFUNC static bool rp_flash_put_get(EFlashDriver *eflp, const uint8_t *tx,
                                      uint8_t *rx, size_t count) {
   QMI_TypeDef *qmi = eflp->qmi;
   size_t tx_remaining = count;
   size_t rx_remaining = count;
+  uint32_t start = TIMER0->TIMERAWL;
 
   while ((tx_remaining > 0U) || (rx_remaining > 0U)) {
     uint32_t csr = qmi->DIRECT_CSR;
@@ -157,7 +216,13 @@ RAMFUNC static void rp_flash_put_get(EFlashDriver *eflp, const uint8_t *tx,
       }
       rx_remaining--;
     }
+
+    if (rp_flash_timeout(start, RP_FLASH_QMI_TIMEOUT_US)) {
+      return false;
+    }
   }
+
+  return true;
 }
 
 /**
@@ -169,53 +234,80 @@ RAMFUNC static void rp_flash_put_get(EFlashDriver *eflp, const uint8_t *tx,
  * @param[in] tx        transmit data after command (NULL if none)
  * @param[out] rx       receive buffer (NULL to discard)
  * @param[in] count     number of bytes to transfer after command
+ * @return              true on success, false on timeout.
  */
-RAMFUNC static void rp_flash_do_cmd(EFlashDriver *eflp, uint8_t cmd,
+RAMFUNC static bool rp_flash_do_cmd(EFlashDriver *eflp, uint8_t cmd,
                                     const uint8_t *tx, uint8_t *rx,
                                     size_t count) {
   QMI_TypeDef *qmi = eflp->qmi;
+  bool ok;
 
   /* Assert CS. */
   rp_flash_cs_force(eflp, false);
 
   /* Send command byte. */
-  qmi->DIRECT_TX = cmd;
-  while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_RXEMPTY) != 0U) {
-  }
-  (void)qmi->DIRECT_RX;
+  ok = rp_flash_direct_tx8(qmi, cmd);
 
   /* Transfer remaining data. */
-  if (count > 0U) {
-    rp_flash_put_get(eflp, tx, rx, count);
+  if (ok && (count > 0U)) {
+    ok = rp_flash_put_get(eflp, tx, rx, count);
   }
 
-  /* Deassert CS. */
+  /* Deassert CS, also on failed transfers. */
   rp_flash_cs_force(eflp, true);
+
+  return ok;
 }
 
 /**
  * @brief   Wait for flash to become ready.
  * @note    This function MUST be in RAM.
  *
- * @param[in] eflp      pointer to the EFlashDriver object
+ * @param[in] eflp        pointer to the EFlashDriver object
+ * @param[in] timeout_us  operation timeout in microseconds
+ * @return                true on success, false on timeout or
+ *                        communication failure.
  */
-RAMFUNC static void rp_flash_wait_ready(EFlashDriver *eflp) {
+RAMFUNC static bool rp_flash_wait_ready(EFlashDriver *eflp,
+                                        uint32_t timeout_us) {
+  uint32_t start = TIMER0->TIMERAWL;
   uint8_t status;
 
   do {
-    rp_flash_do_cmd(eflp, FLASHCMD_READ_STATUS, NULL, &status, 1U);
+    if (!rp_flash_do_cmd(eflp, FLASHCMD_READ_STATUS, NULL, &status, 1U)) {
+      return false;
+    }
+    if (((status & FLASH_STATUS_BUSY) != 0U) &&
+        rp_flash_timeout(start, timeout_us)) {
+      return false;
+    }
   } while ((status & FLASH_STATUS_BUSY) != 0U);
+
+  return true;
 }
 
 /**
- * @brief   Send write enable command.
+ * @brief   Send write enable command and verify the WEL latch.
  * @note    This function MUST be in RAM.
  *
  * @param[in] eflp      pointer to the EFlashDriver object
+ * @return              true on success, false on timeout or if the
+ *                      write enable latch did not set.
  */
-RAMFUNC static void rp_flash_write_enable(EFlashDriver *eflp) {
+RAMFUNC static bool rp_flash_write_enable(EFlashDriver *eflp) {
+  uint8_t status;
 
-  rp_flash_do_cmd(eflp, FLASHCMD_WRITE_ENABLE, NULL, NULL, 0U);
+  if (!rp_flash_do_cmd(eflp, FLASHCMD_WRITE_ENABLE, NULL, NULL, 0U)) {
+    return false;
+  }
+
+  /* Read back the status register and verify WEL is set, a device
+     that rejects the command would silently fail later. */
+  if (!rp_flash_do_cmd(eflp, FLASHCMD_READ_STATUS, NULL, &status, 1U)) {
+    return false;
+  }
+
+  return (status & FLASH_STATUS_WEL) != 0U;
 }
 
 /**
@@ -260,8 +352,11 @@ RAMFUNC static void rp_flash_flush_cache(EFlashDriver *eflp) {
  * @note    This follows a similar pattern to the ROM's flash_exit_xip()
  *
  * @param[in] eflp      pointer to the EFlashDriver object
+ * @return              true on success, false on timeout.  Also on
+ *                      failure the caller must re-enter XIP mode, the
+ *                      saved configuration is valid in both cases.
  */
-RAMFUNC static void rp_flash_exit_xip(EFlashDriver *eflp) {
+RAMFUNC static bool rp_flash_exit_xip(EFlashDriver *eflp) {
   QMI_TypeDef *qmi = eflp->qmi;
   XIP_CTRL_TypeDef *xip_ctrl = XIP_CTRL;
   PADS_QSPI_TypeDef *pads_qspi = PADS_QSPI;
@@ -269,6 +364,7 @@ RAMFUNC static void rp_flash_exit_xip(EFlashDriver *eflp) {
   uint32_t padctrl_tmp;
   unsigned i;
   volatile unsigned delay;
+  bool ok = true;
 
   /* Save current XIP configuration (CS0 and CS1) before switching
    * to direct mode. */
@@ -283,7 +379,8 @@ RAMFUNC static void rp_flash_exit_xip(EFlashDriver *eflp) {
   eflp->xip_m1_wcmd    = qmi->M1_WCMD;
 
   /* Wait for any pending work.*/
-  while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_BUSY) != 0U) {
+  if (!rp_flash_direct_wait_idle(qmi)) {
+    return false;
   }
 
   /* Default non XIP SPI configuration */
@@ -315,41 +412,42 @@ RAMFUNC static void rp_flash_exit_xip(EFlashDriver *eflp) {
   }
 
   /* Send 4 bytes / 32 clocks */
-  for (i = 0U; i < 4U; i++) {
-    qmi->DIRECT_TX = 0U;
-    while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_RXEMPTY) != 0U) {
+  for (i = 0U; ok && (i < 4U); i++) {
+    ok = rp_flash_direct_tx8(qmi, 0U);
+  }
+
+  if (ok) {
+    padctrl_tmp = (padctrl_tmp & ~PADS_QSPI_PDE) | PADS_QSPI_PUE;
+
+    /* 2. CS low */
+    rp_flash_cs_force(eflp, false);
+
+    pads_qspi->GPIO_QSPI_SD0 = padctrl_tmp;
+    pads_qspi->GPIO_QSPI_SD1 = padctrl_tmp;
+    pads_qspi->GPIO_QSPI_SD2 = padctrl_tmp;
+    pads_qspi->GPIO_QSPI_SD3 = padctrl_tmp;
+
+    /* Delay of ~6000 cycles */
+    for (delay = 0U; delay < 2048U; delay++) {
     }
-    (void)qmi->DIRECT_RX;
-  }
 
-  padctrl_tmp = (padctrl_tmp & ~PADS_QSPI_PDE) | PADS_QSPI_PUE;
-
-  /* 2. CS low */
-  rp_flash_cs_force(eflp, false);
-
-  pads_qspi->GPIO_QSPI_SD0 = padctrl_tmp;
-  pads_qspi->GPIO_QSPI_SD1 = padctrl_tmp;
-  pads_qspi->GPIO_QSPI_SD2 = padctrl_tmp;
-  pads_qspi->GPIO_QSPI_SD3 = padctrl_tmp;
-
-  /* Delay of ~6000 cycles */
-  for (delay = 0U; delay < 2048U; delay++) {
-  }
-
-  /* Send 4 bytes / 32 clocks */
-  for (i = 0U; i < 4U; i++) {
-    qmi->DIRECT_TX = 0U;
-    while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_RXEMPTY) != 0U) {
+    /* Send 4 bytes / 32 clocks */
+    for (i = 0U; ok && (i < 4U); i++) {
+      ok = rp_flash_direct_tx8(qmi, 0U);
     }
-    (void)qmi->DIRECT_RX;
   }
 
-  /* Restore pad controls. */
+  /* Restore pad controls, also on failed sequences. */
   pads_qspi->GPIO_QSPI_SD0 = padctrl_save;
   pads_qspi->GPIO_QSPI_SD1 = padctrl_save;
   padctrl_save = (padctrl_save & ~PADS_QSPI_PDE) | PADS_QSPI_PUE;
   pads_qspi->GPIO_QSPI_SD2 = padctrl_save;
   pads_qspi->GPIO_QSPI_SD3 = padctrl_save;
+
+  if (!ok) {
+    rp_flash_cs_force(eflp, true);
+    return false;
+  }
 
   /* 3. QPI exit: F5h in quad width on CS0. Exits flash chips that use
    *    this command to leave QPI mode (e.g. some Winbond, ISSI parts).
@@ -359,31 +457,44 @@ RAMFUNC static void rp_flash_exit_xip(EFlashDriver *eflp) {
   rp_flash_cs_force(eflp, false);
   qmi->DIRECT_TX = 0xF5U | QMI_DIRECT_TX_IWIDTH(QMI_DIRECT_TX_IWIDTH_Q) |
                    QMI_DIRECT_TX_OE | QMI_DIRECT_TX_NOPUSH;
-  while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_BUSY) != 0U) {
-  }
+  ok = rp_flash_direct_wait_idle(qmi);
   rp_flash_cs_force(eflp, true);
 
   /* Continuous-read recovery: CSn=0, MOSI=1, all other IOs Hi-Z, 16
    * clocks in single-width (Hardware Design with RP2350: Section 3.3,
    * RP2350 Datasheet: 5.4.8.7). Exits devices stuck in continuous-read
    * mode; QPI exit is handled separately by the FFh quad command below. */
-  rp_flash_cs_force(eflp, false);
-  for (i = 0U; i < 2U; i++) {
-    while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_TXFULL) != 0U) {
+  if (ok) {
+    rp_flash_cs_force(eflp, false);
+    for (i = 0U; ok && (i < 2U); i++) {
+      uint32_t start = TIMER0->TIMERAWL;
+
+      while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_TXFULL) != 0U) {
+        if (rp_flash_timeout(start, RP_FLASH_QMI_TIMEOUT_US)) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) {
+        qmi->DIRECT_TX = 0xFFU | QMI_DIRECT_TX_NOPUSH;
+      }
     }
-    qmi->DIRECT_TX = 0xFFU | QMI_DIRECT_TX_NOPUSH;
+    if (ok) {
+      ok = rp_flash_direct_wait_idle(qmi);
+    }
+    rp_flash_cs_force(eflp, true);
   }
-  while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_BUSY) != 0U) {
-  }
-  rp_flash_cs_force(eflp, true);
 
   /* QPI exit: FFh in quad width (catches devices that ignore F5h). */
-  rp_flash_cs_force(eflp, false);
-  qmi->DIRECT_TX = 0xFFU | QMI_DIRECT_TX_IWIDTH(QMI_DIRECT_TX_IWIDTH_Q) |
-                   QMI_DIRECT_TX_OE | QMI_DIRECT_TX_NOPUSH;
-  while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_BUSY) != 0U) {
+  if (ok) {
+    rp_flash_cs_force(eflp, false);
+    qmi->DIRECT_TX = 0xFFU | QMI_DIRECT_TX_IWIDTH(QMI_DIRECT_TX_IWIDTH_Q) |
+                     QMI_DIRECT_TX_OE | QMI_DIRECT_TX_NOPUSH;
+    ok = rp_flash_direct_wait_idle(qmi);
+    rp_flash_cs_force(eflp, true);
   }
-  rp_flash_cs_force(eflp, true);
+
+  return ok;
 }
 
 /**
@@ -398,9 +509,9 @@ RAMFUNC static void rp_flash_exit_xip(EFlashDriver *eflp) {
 RAMFUNC static void rp_flash_enter_xip(EFlashDriver *eflp) {
   QMI_TypeDef *qmi = eflp->qmi;
 
-  /* Wait for transfers to complete */
-  while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_BUSY) != 0U) {
-  }
+  /* Wait for transfers to complete.  On timeout the restore proceeds
+     anyway, XIP must come back no matter what. */
+  (void)rp_flash_direct_wait_idle(qmi);
 
   /* Disable direct mode and restore saved XIP configuration (CS0 and CS1). */
   qmi->DIRECT_CSR = 0U;
@@ -424,14 +535,19 @@ RAMFUNC static void rp_flash_enter_xip(EFlashDriver *eflp) {
  * @param[in] offset    flash offset (must be page-aligned or within page)
  * @param[in] data      data to program
  * @param[in] len       number of bytes (must not cross page boundary)
+ * @return              true on success, false on timeout or
+ *                      communication failure.
  */
-RAMFUNC static void rp_flash_program_page(EFlashDriver *eflp, uint32_t offset,
+RAMFUNC static bool rp_flash_program_page(EFlashDriver *eflp, uint32_t offset,
                                           const uint8_t *data, size_t len) {
   QMI_TypeDef *qmi = eflp->qmi;
   uint8_t addr[3];
+  bool ok;
 
   /* Send write enable. */
-  rp_flash_write_enable(eflp);
+  if (!rp_flash_write_enable(eflp)) {
+    return false;
+  }
 
   /* Prepare 24-bit address (big-endian). */
   addr[0] = (uint8_t)(offset >> 16);
@@ -442,22 +558,27 @@ RAMFUNC static void rp_flash_program_page(EFlashDriver *eflp, uint32_t offset,
   rp_flash_cs_force(eflp, false);
 
   /* Send page program command. */
-  qmi->DIRECT_TX = FLASHCMD_PAGE_PROGRAM;
-  while ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_RXEMPTY) != 0U) {
-  }
-  (void)qmi->DIRECT_RX;
+  ok = rp_flash_direct_tx8(qmi, FLASHCMD_PAGE_PROGRAM);
 
   /* Send address. */
-  rp_flash_put_get(eflp, addr, NULL, 3U);
+  if (ok) {
+    ok = rp_flash_put_get(eflp, addr, NULL, 3U);
+  }
 
   /* Send data. */
-  rp_flash_put_get(eflp, data, NULL, len);
+  if (ok) {
+    ok = rp_flash_put_get(eflp, data, NULL, len);
+  }
 
-  /* Deassert CS. */
+  /* Deassert CS, also on failed transfers. */
   rp_flash_cs_force(eflp, true);
 
   /* Wait for program to complete. */
-  rp_flash_wait_ready(eflp);
+  if (ok) {
+    ok = rp_flash_wait_ready(eflp, RP_FLASH_PROGRAM_TIMEOUT_US);
+  }
+
+  return ok;
 }
 
 /**
@@ -467,13 +588,17 @@ RAMFUNC static void rp_flash_program_page(EFlashDriver *eflp, uint32_t offset,
  * @param[in] eflp      pointer to the EFlashDriver object
  * @param[in] cmd       JEDEC erase command byte
  * @param[in] offset    flash offset (must be aligned to erase unit)
+ * @return              true on success, false on timeout or
+ *                      communication failure.
  */
-RAMFUNC static void rp_flash_erase_cmd(EFlashDriver *eflp, uint8_t cmd,
-                                        uint32_t offset) {
+RAMFUNC static bool rp_flash_erase_cmd(EFlashDriver *eflp, uint8_t cmd,
+                                       uint32_t offset) {
   uint8_t addr[3];
 
   /* Send write enable. */
-  rp_flash_write_enable(eflp);
+  if (!rp_flash_write_enable(eflp)) {
+    return false;
+  }
 
   /* Prepare 24-bit address (big-endian). */
   addr[0] = (uint8_t)(offset >> 16);
@@ -481,7 +606,7 @@ RAMFUNC static void rp_flash_erase_cmd(EFlashDriver *eflp, uint8_t cmd,
   addr[2] = (uint8_t)offset;
 
   /* Send erase command with address. */
-  rp_flash_do_cmd(eflp, cmd, addr, NULL, 3U);
+  return rp_flash_do_cmd(eflp, cmd, addr, NULL, 3U);
 }
 
 /**
@@ -493,21 +618,28 @@ RAMFUNC static void rp_flash_erase_cmd(EFlashDriver *eflp, uint8_t cmd,
  * @param[in] eflp      pointer to the EFlashDriver object
  * @param[in] cmd       JEDEC erase command byte
  * @param[in] offset    flash offset (must be aligned to erase unit)
+ * @return              An error code.
  */
-RAMFUNC static void rp_flash_erase_full(EFlashDriver *eflp, uint8_t cmd,
-                                         uint32_t offset) {
+RAMFUNC static flash_error_t rp_flash_erase_full(EFlashDriver *eflp,
+                                                 uint8_t cmd,
+                                                 uint32_t offset) {
+  flash_error_t err = FLASH_NO_ERROR;
 
   /* Exit XIP mode. */
-  rp_flash_exit_xip(eflp);
+  if (!rp_flash_exit_xip(eflp)) {
+    err = FLASH_ERROR_HW_FAILURE;
+  }
+  /* Send erase command and wait for erase to complete. */
+  else if (!rp_flash_erase_cmd(eflp, cmd, offset) ||
+           !rp_flash_wait_ready(eflp, RP_FLASH_ERASE_TIMEOUT_US)) {
+    err = FLASH_ERROR_ERASE;
+  }
 
-  /* Send erase command. */
-  rp_flash_erase_cmd(eflp, cmd, offset);
-
-  /* Wait for erase to complete. */
-  rp_flash_wait_ready(eflp);
-
-  /* Re-enter XIP mode. */
+  /* Re-enter XIP mode unconditionally, the system cannot continue
+     without XIP restored. */
   rp_flash_enter_xip(eflp);
+
+  return err;
 }
 
 /**
@@ -520,20 +652,28 @@ RAMFUNC static void rp_flash_erase_full(EFlashDriver *eflp, uint8_t cmd,
  * @param[in] offset    flash offset (must not cross page boundary)
  * @param[in] data      pointer to data in RAM
  * @param[in] len       number of bytes to program
+ * @return              An error code.
  */
-RAMFUNC static void rp_flash_program_page_full(EFlashDriver *eflp,
-                                               uint32_t offset,
-                                               const uint8_t *data,
-                                               size_t len) {
+RAMFUNC static flash_error_t rp_flash_program_page_full(EFlashDriver *eflp,
+                                                        uint32_t offset,
+                                                        const uint8_t *data,
+                                                        size_t len) {
+  flash_error_t err = FLASH_NO_ERROR;
 
   /* Exit XIP mode. */
-  rp_flash_exit_xip(eflp);
-
+  if (!rp_flash_exit_xip(eflp)) {
+    err = FLASH_ERROR_HW_FAILURE;
+  }
   /* Program the page. */
-  rp_flash_program_page(eflp, offset, data, len);
+  else if (!rp_flash_program_page(eflp, offset, data, len)) {
+    err = FLASH_ERROR_PROGRAM;
+  }
 
-  /* Re-enter XIP mode. */
+  /* Re-enter XIP mode unconditionally, the system cannot continue
+     without XIP restored. */
   rp_flash_enter_xip(eflp);
+
+  return err;
 }
 
 /**
@@ -545,18 +685,27 @@ RAMFUNC static void rp_flash_program_page_full(EFlashDriver *eflp,
  * @param[in] eflp      pointer to the EFlashDriver object
  * @param[out] rx       receive buffer
  * @param[in] count     number of bytes to transfer after command
+ * @return              An error code.
  */
-RAMFUNC static void rp_flash_read_uid_full(EFlashDriver *eflp,
-                                            uint8_t *rx, size_t count) {
+RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
+                                                    uint8_t *rx,
+                                                    size_t count) {
+  flash_error_t err = FLASH_NO_ERROR;
 
   /* Exit XIP mode. */
-  rp_flash_exit_xip(eflp);
-
+  if (!rp_flash_exit_xip(eflp)) {
+    err = FLASH_ERROR_HW_FAILURE;
+  }
   /* Send read unique ID command. */
-  rp_flash_do_cmd(eflp, FLASHCMD_READ_UNIQUE_ID, NULL, rx, count);
+  else if (!rp_flash_do_cmd(eflp, FLASHCMD_READ_UNIQUE_ID, NULL, rx, count)) {
+    err = FLASH_ERROR_HW_FAILURE;
+  }
 
-  /* Re-enter XIP mode. */
+  /* Re-enter XIP mode unconditionally, the system cannot continue
+     without XIP restored. */
   rp_flash_enter_xip(eflp);
+
+  return err;
 }
 
 /*===========================================================================*/
@@ -578,21 +727,26 @@ void rp_efl_lld_start(EFlashDriver *eflp) {
 
   /* Nothing to do - flash is always accessible via XIP. */
 }
-void rp_efl_lld_program_page_full(EFlashDriver *eflp,
-                                  uint32_t offset,
-                                  const uint8_t *data,
-                                  size_t len) {
-  rp_flash_program_page_full(eflp, offset, data, len);
+flash_error_t rp_efl_lld_program_page_full(EFlashDriver *eflp,
+                                           uint32_t offset,
+                                           const uint8_t *data,
+                                           size_t len) {
+
+  return rp_flash_program_page_full(eflp, offset, data, len);
 }
 
-void rp_efl_lld_erase_full(EFlashDriver *eflp, uint8_t cmd, uint32_t offset) {
-  rp_flash_erase_full(eflp, cmd, offset);
+flash_error_t rp_efl_lld_erase_full(EFlashDriver *eflp,
+                                    uint8_t cmd,
+                                    uint32_t offset) {
+
+  return rp_flash_erase_full(eflp, cmd, offset);
 }
 
-void rp_efl_lld_read_uid_full(EFlashDriver *eflp,
-                              uint8_t *rx,
-                              size_t count) {
-  rp_flash_read_uid_full(eflp, rx, count);
+flash_error_t rp_efl_lld_read_uid_full(EFlashDriver *eflp,
+                                       uint8_t *rx,
+                                       size_t count) {
+
+  return rp_flash_read_uid_full(eflp, rx, count);
 }
 
 #endif /* HAL_USE_EFL == TRUE */

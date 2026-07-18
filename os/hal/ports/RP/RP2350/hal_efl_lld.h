@@ -112,6 +112,31 @@
 #endif
 
 /**
+ * @brief   Timeout for QMI direct-mode FIFO/BUSY waits in microseconds.
+ * @details Bounds the individual controller-level waits (FIFO drains,
+ *          DIRECT_CSR BUSY polls) performed while XIP is disabled.
+ */
+#if !defined(RP_FLASH_QMI_TIMEOUT_US) || defined(__DOXYGEN__)
+#define RP_FLASH_QMI_TIMEOUT_US             1000U
+#endif
+
+/**
+ * @brief   Timeout for a page program operation in microseconds.
+ */
+#if !defined(RP_FLASH_PROGRAM_TIMEOUT_US) || defined(__DOXYGEN__)
+#define RP_FLASH_PROGRAM_TIMEOUT_US         20000U
+#endif
+
+/**
+ * @brief   Timeout for an erase operation in microseconds.
+ * @details Sized for the worst-case 64KB block erase time of common
+ *          QSPI flash devices.
+ */
+#if !defined(RP_FLASH_ERASE_TIMEOUT_US) || defined(__DOXYGEN__)
+#define RP_FLASH_ERASE_TIMEOUT_US           4000000U
+#endif
+
+/**
  * @brief   Enables PSRAM (CS1) cache handling in the EFL driver.
  * @details When enabled, the XIP cache flush performs a clean-before-
  *          invalidate sequence to write back dirty PSRAM cache lines

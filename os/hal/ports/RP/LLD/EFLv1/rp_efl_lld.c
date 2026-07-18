@@ -168,6 +168,7 @@ flash_error_t efl_lld_read(void *instance, flash_offset_t offset,
 flash_error_t efl_lld_program(void *instance, flash_offset_t offset,
                               size_t n, const uint8_t *pp) {
   EFlashDriver *devp = (EFlashDriver *)instance;
+  flash_error_t err = FLASH_NO_ERROR;
   syssts_t sts;
 
   osalDbgCheck((instance != NULL) && (pp != NULL) && (n > 0U));
@@ -206,10 +207,16 @@ flash_error_t efl_lld_program(void *instance, flash_offset_t offset,
     sts = osalSysGetStatusAndLockX();
 
     /* Program the page. */
-    rp_efl_lld_program_page_full(devp, page_base, page_buf,
-                                 RP_FLASH_PAGE_SIZE);
+    err = rp_efl_lld_program_page_full(devp, page_base, page_buf,
+                                       RP_FLASH_PAGE_SIZE);
 
     osalSysRestoreStatusX(sts);
+
+    /* Stop on the first failing page, the error is reported to the
+     * caller after the XIP-restored notification below. */
+    if (err != FLASH_NO_ERROR) {
+      break;
+    }
 
     offset += chunk;
     pp += chunk;
@@ -222,7 +229,7 @@ flash_error_t efl_lld_program(void *instance, flash_offset_t offset,
   /* Ready state again. */
   devp->state = FLASH_READY;
 
-  return FLASH_NO_ERROR;
+  return err;
 }
 
 /**
@@ -258,6 +265,7 @@ flash_error_t efl_lld_start_erase_sector(void *instance,
                                          flash_sector_t sector) {
   EFlashDriver *devp = (EFlashDriver *)instance;
   flash_offset_t offset;
+  flash_error_t err;
   syssts_t sts;
 
   osalDbgCheck(instance != NULL);
@@ -283,7 +291,7 @@ flash_error_t efl_lld_start_erase_sector(void *instance,
   sts = osalSysGetStatusAndLockX();
 
   /* Perform the entire erase sequence in RAM. */
-  rp_efl_lld_erase_full(devp, RP_FLASH_CMD_SECTOR_ERASE, offset);
+  err = rp_efl_lld_erase_full(devp, RP_FLASH_CMD_SECTOR_ERASE, offset);
 
   /* Restore system state. */
   osalSysRestoreStatusX(sts);
@@ -294,7 +302,7 @@ flash_error_t efl_lld_start_erase_sector(void *instance,
   /* Back to ready state. */
   devp->state = FLASH_READY;
 
-  return FLASH_NO_ERROR;
+  return err;
 }
 
 /**
@@ -316,6 +324,7 @@ flash_error_t efl_lld_start_erase_block(void *instance,
                                         uint32_t block) {
   EFlashDriver *devp = (EFlashDriver *)instance;
   flash_offset_t offset;
+  flash_error_t err;
   syssts_t sts;
 
   osalDbgCheck(instance != NULL);
@@ -337,7 +346,7 @@ flash_error_t efl_lld_start_erase_block(void *instance,
   /* Erase is one uninterrupted RAM-resident XIP-off transaction, so the
    * whole helper runs under syslock. */
   sts = osalSysGetStatusAndLockX();
-  rp_efl_lld_erase_full(devp, cmd, offset);
+  err = rp_efl_lld_erase_full(devp, cmd, offset);
   osalSysRestoreStatusX(sts);
 
   /* Notify the application that XIP is available again. */
@@ -345,7 +354,7 @@ flash_error_t efl_lld_start_erase_block(void *instance,
 
   devp->state = FLASH_READY;
 
-  return FLASH_NO_ERROR;
+  return err;
 }
 
 /**
@@ -440,11 +449,15 @@ flash_error_t efl_lld_verify_erase(void *instance, flash_sector_t sector) {
  *
  * @param[in] eflp      pointer to a @p EFlashDriver structure
  * @param[out] uid      pointer to an 8-byte buffer for the unique ID
+ * @return              An error code.
+ * @retval FLASH_NO_ERROR           if the unique ID has been read.
+ * @retval FLASH_ERROR_HW_FAILURE   if access to the memory failed.
  *
  * @api
  */
-void efl_lld_read_unique_id(EFlashDriver *eflp, uint8_t *uid) {
+flash_error_t efl_lld_read_unique_id(EFlashDriver *eflp, uint8_t *uid) {
   uint8_t rx[4U + RP_FLASH_UNIQUE_ID_SIZE];
+  flash_error_t err;
   syssts_t sts;
 
   osalDbgCheck((eflp != NULL) && (uid != NULL));
@@ -453,13 +466,17 @@ void efl_lld_read_unique_id(EFlashDriver *eflp, uint8_t *uid) {
   rpEflBeforeXipOff();
 
   sts = osalSysGetStatusAndLockX();
-  rp_efl_lld_read_uid_full(eflp, rx, sizeof(rx));
+  err = rp_efl_lld_read_uid_full(eflp, rx, sizeof(rx));
   osalSysRestoreStatusX(sts);
 
   /* Notify the application that XIP is available again. */
   rpEflAfterXipOn();
 
-  memcpy(uid, rx + 4U, RP_FLASH_UNIQUE_ID_SIZE);
+  if (err == FLASH_NO_ERROR) {
+    memcpy(uid, rx + 4U, RP_FLASH_UNIQUE_ID_SIZE);
+  }
+
+  return err;
 }
 
 /**

@@ -111,6 +111,32 @@
 #define RP_FLASH_WAIT_TIME_MS               1U
 #endif
 
+/**
+ * @brief   Timeout for SSI FIFO/BUSY waits in microseconds.
+ * @details Bounds the individual controller-level waits (FIFO drains,
+ *          SR BUSY polls, QSPI pad reset completion) performed while
+ *          XIP is disabled.
+ */
+#if !defined(RP_FLASH_SSI_TIMEOUT_US) || defined(__DOXYGEN__)
+#define RP_FLASH_SSI_TIMEOUT_US             1000U
+#endif
+
+/**
+ * @brief   Timeout for a page program operation in microseconds.
+ */
+#if !defined(RP_FLASH_PROGRAM_TIMEOUT_US) || defined(__DOXYGEN__)
+#define RP_FLASH_PROGRAM_TIMEOUT_US         20000U
+#endif
+
+/**
+ * @brief   Timeout for an erase operation in microseconds.
+ * @details Sized for the worst-case 64KB block erase time of common
+ *          QSPI flash devices.
+ */
+#if !defined(RP_FLASH_ERASE_TIMEOUT_US) || defined(__DOXYGEN__)
+#define RP_FLASH_ERASE_TIMEOUT_US           4000000U
+#endif
+
 /** @} */
 
 /*===========================================================================*/
