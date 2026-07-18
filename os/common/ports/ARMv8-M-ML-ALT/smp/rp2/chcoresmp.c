@@ -44,6 +44,13 @@
 /* Module local variables.                                                   */
 /*===========================================================================*/
 
+/**
+ * @brief   Cores which completed SMP initialization.
+ * @note    A core which never started must not be waited for in the
+ *          lockout handshake.
+ */
+static volatile bool port_lockout_ready[PORT_CORES_NUMBER];
+
 /*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
@@ -60,6 +67,90 @@ static void port_local_halt(void) {
   CH_CFG_SYSTEM_HALT_HOOK(reason);
 
   while (true) {
+  }
+}
+
+/**
+ * @brief   Parks the core while the other core has flash unavailable.
+ * @details Called from the FIFO handler on reception of the lockout token.
+ *          The whole wait executes from RAM with interrupts masked because
+ *          the requesting core is about to disable XIP; any flash fetch on
+ *          this core would fault or return garbage.
+ */
+CC_NO_INLINE CC_SECTION(".ramtext")
+static void port_fifo_lockout_wait(void) {
+  uint32_t primask = __get_PRIMASK();
+
+  __disable_irq();
+
+  /* Acknowledging the lockout, the requester waits for this before
+     touching XIP.*/
+  while ((SIO->FIFO_ST & SIO_FIFO_ST_RDY) == 0U) {
+  }
+  SIO->FIFO_WR = PORT_FIFO_LOCKOUT_ACK_MESSAGE;
+  __SEV();
+
+  /* Spinning on SIO registers only until released.*/
+  while (true) {
+    uint32_t message;
+
+    while ((SIO->FIFO_ST & SIO_FIFO_ST_VLD) == 0U) {
+    }
+    message = SIO->FIFO_RD;
+    if (message == PORT_FIFO_UNLOCK_MESSAGE) {
+      break;
+    }
+    if (message == PORT_FIFO_PANIC_MESSAGE) {
+      /* Cannot reach the flash-resident halt path, parking here, the
+         other core is halting anyway.*/
+      while (true) {
+      }
+    }
+    /* Anything else (reschedule tokens) is stale, the ISR epilogue
+       reschedules on return anyway.*/
+  }
+
+  /* Acknowledging the unlock, XIP is available again at this point.*/
+  while ((SIO->FIFO_ST & SIO_FIFO_ST_RDY) == 0U) {
+  }
+  SIO->FIFO_WR = PORT_FIFO_LOCKOUT_ACK_MESSAGE;
+  __SEV();
+
+  __set_PRIMASK(primask);
+}
+
+/**
+ * @brief   Sends a token to the other core and waits for its acknowledge.
+ * @details The FIFO RX side is drained directly because this core's FIFO
+ *          interrupt is masked during the handshake.
+ *
+ * @param[in] token     token to be sent
+ * @return              @p true on acknowledge, @p false on timeout.
+ */
+static bool port_lockout_handshake(uint32_t token) {
+  uint32_t start = TIMER0->TIMERAWL;
+
+  while ((SIO->FIFO_ST & SIO_FIFO_ST_RDY) == 0U) {
+  }
+  SIO->FIFO_WR = token;
+  __SEV();
+
+  while (true) {
+    if ((SIO->FIFO_ST & SIO_FIFO_ST_VLD) != 0U) {
+      uint32_t message = SIO->FIFO_RD;
+
+      if (message == PORT_FIFO_LOCKOUT_ACK_MESSAGE) {
+        return true;
+      }
+      if (message == PORT_FIFO_PANIC_MESSAGE) {
+        port_local_halt();
+      }
+      /* Reschedule tokens are dropped here, a reschedule round is forced
+         after the handshake.*/
+    }
+    if ((TIMER0->TIMERAWL - start) > PORT_LOCKOUT_TIMEOUT_US) {
+      return false;
+    }
   }
 }
 
@@ -86,8 +177,13 @@ CH_IRQ_HANDLER(VectorA4) {
     if (message == PORT_FIFO_PANIC_MESSAGE) {
       port_local_halt();
     }
+    /* The other core needs this core off flash, parking until released.*/
+    if (message == PORT_FIFO_LOCKOUT_MESSAGE) {
+      port_fifo_lockout_wait();
+      continue;
+    }
 #if defined(PORT_HANDLE_FIFO_MESSAGE)
-    if (message != PORT_FIFO_RESCHEDULE_MESSAGE) {
+    if (message < PORT_FIFO_LOCKOUT_ACK_MESSAGE) {
       PORT_HANDLE_FIFO_MESSAGE(port_get_core_id() ^ 1U, message);
     }
 #else
@@ -121,7 +217,80 @@ void __port_smp_init(os_instance_t *oip) {
   NVIC_SetPriority(SIO_IRQ_FIFOn, CORTEX_MINIMUM_PRIORITY);
   NVIC_EnableIRQ(SIO_IRQ_FIFOn);
 
+  /* This core can now be parked by the other one.*/
+  port_lockout_ready[port_get_core_id()] = true;
+
   (void)oip;
+}
+
+/**
+ * @brief   Parks the other core outside flash and masks local interrupts
+ *          sourced from it.
+ * @details On return the other core is spinning in RAM with interrupts
+ *          disabled and stays there until @p __port_flash_unlockout() is
+ *          called. Requests from both cores are serialized on a dedicated
+ *          hardware spinlock which is spun with interrupts enabled so that
+ *          a crossing request from the other core can park this core
+ *          first instead of deadlocking.
+ * @note    Must be called from thread context outside any critical
+ *          section.
+ */
+void __port_flash_lockout(void) {
+
+  chDbgAssert(!port_is_isr_context() &&
+              __port_irq_enabled(__port_get_irq_status()),
+              "not in thread context");
+
+  /* Serializing requesters, interrupts stay enabled while spinning.*/
+  while (SIO->SPINLOCK[PORT_LOCKOUT_SPINLOCK_NUMBER] == 0U) {
+  }
+  __DMB();
+
+  /* A core which never initialized cannot acknowledge and does not need
+     parking.*/
+  if (!port_lockout_ready[port_get_core_id() ^ 1U]) {
+    return;
+  }
+
+  /* Masking local interrupts so that the FIFO handler cannot steal the
+     acknowledge token; no lockout traffic can be in flight here because
+     the spinlock is held.*/
+  __disable_irq();
+
+  if (!port_lockout_handshake(PORT_FIFO_LOCKOUT_MESSAGE)) {
+    chSysHalt("lockout timeout");
+  }
+
+  __enable_irq();
+}
+
+/**
+ * @brief   Releases the core parked by @p __port_flash_lockout().
+ */
+void __port_flash_unlockout(void) {
+
+  chDbgAssert((SIO->SPINLOCK_ST &
+               (1UL << PORT_LOCKOUT_SPINLOCK_NUMBER)) != 0U,
+              "lockout not active");
+
+  if (port_lockout_ready[port_get_core_id() ^ 1U]) {
+    __disable_irq();
+
+    if (!port_lockout_handshake(PORT_FIFO_UNLOCK_MESSAGE)) {
+      chSysHalt("unlock timeout");
+    }
+
+    __enable_irq();
+  }
+
+  __DMB();
+  SIO->SPINLOCK[PORT_LOCKOUT_SPINLOCK_NUMBER] = (uint32_t)SIO;
+
+  /* A reschedule token could have been consumed during the handshakes,
+     forcing a reschedule round.*/
+  chSysLock();
+  chSchRescheduleS();
+  chSysUnlock();
 }
 
 /**

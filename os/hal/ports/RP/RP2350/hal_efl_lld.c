@@ -496,6 +496,10 @@ RAMFUNC static void rp_flash_erase_cmd(EFlashDriver *eflp, uint8_t cmd,
  */
 RAMFUNC static void rp_flash_erase_full(EFlashDriver *eflp, uint8_t cmd,
                                          uint32_t offset) {
+  uint32_t primask = __get_PRIMASK();
+
+  /* Defer fast interrupts too, their handlers may execute from flash.*/
+  __disable_irq();
 
   /* Exit XIP mode. */
   rp_flash_exit_xip(eflp);
@@ -508,6 +512,8 @@ RAMFUNC static void rp_flash_erase_full(EFlashDriver *eflp, uint8_t cmd,
 
   /* Re-enter XIP mode. */
   rp_flash_enter_xip(eflp);
+
+  __set_PRIMASK(primask);
 }
 
 /**
@@ -525,6 +531,10 @@ RAMFUNC static void rp_flash_program_page_full(EFlashDriver *eflp,
                                                uint32_t offset,
                                                const uint8_t *data,
                                                size_t len) {
+  uint32_t primask = __get_PRIMASK();
+
+  /* Defer fast interrupts too, their handlers may execute from flash.*/
+  __disable_irq();
 
   /* Exit XIP mode. */
   rp_flash_exit_xip(eflp);
@@ -534,6 +544,8 @@ RAMFUNC static void rp_flash_program_page_full(EFlashDriver *eflp,
 
   /* Re-enter XIP mode. */
   rp_flash_enter_xip(eflp);
+
+  __set_PRIMASK(primask);
 }
 
 /**
@@ -548,6 +560,10 @@ RAMFUNC static void rp_flash_program_page_full(EFlashDriver *eflp,
  */
 RAMFUNC static void rp_flash_read_uid_full(EFlashDriver *eflp,
                                             uint8_t *rx, size_t count) {
+  uint32_t primask = __get_PRIMASK();
+
+  /* Defer fast interrupts too, their handlers may execute from flash.*/
+  __disable_irq();
 
   /* Exit XIP mode. */
   rp_flash_exit_xip(eflp);
@@ -557,6 +573,8 @@ RAMFUNC static void rp_flash_read_uid_full(EFlashDriver *eflp,
 
   /* Re-enter XIP mode. */
   rp_flash_enter_xip(eflp);
+
+  __set_PRIMASK(primask);
 }
 
 /*===========================================================================*/
