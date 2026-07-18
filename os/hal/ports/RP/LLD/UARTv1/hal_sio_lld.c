@@ -107,8 +107,9 @@ __STATIC_INLINE void uart_enable_tx_irq(SIODriver *siop) {
  * @details This function must be invoked with interrupts disabled.
  *
  * @param[in] siop       pointer to a @p SIODriver object
+ * @return              The operation status.
  */
-__STATIC_INLINE void uart_init(SIODriver *siop) {
+__STATIC_INLINE msg_t uart_init(SIODriver *siop) {
   uint32_t div, idiv, fdiv, cr;
   halfreq_t clock;
 
@@ -116,11 +117,27 @@ __STATIC_INLINE void uart_init(SIODriver *siop) {
 
   osalDbgAssert(clock > 0U, "no clock");
 
+  /* Rejecting an invalid rate before using it as divisor.*/
+  if (siop->config->baud == 0U) {
+    return HAL_RET_CONFIG_ERROR;
+  }
+
   div = (8U * (uint32_t)clock) / siop->config->baud;
   idiv = div >> 7;
   fdiv = ((div & 0x7FU) + 1U) / 2U;
 
-  osalDbgAssert((idiv > 0U) && (idiv <= 0xFFFFU), "invalid baud rate");
+  /* The rounding of the fractional part can produce a carry, UARTFBRD is
+     only 6 bits wide so the carry must be propagated into the integer
+     part instead of being silently dropped.*/
+  if (fdiv >= 64U) {
+    idiv += 1U;
+    fdiv = 0U;
+  }
+
+  /* Rejecting rates that the divider cannot generate.*/
+  if ((idiv < 1U) || (idiv > 0xFFFFU)) {
+    return HAL_RET_CONFIG_ERROR;
+  }
 
   siop->uart->UARTIBRD = idiv;
   siop->uart->UARTFBRD = fdiv;
@@ -136,6 +153,8 @@ __STATIC_INLINE void uart_init(SIODriver *siop) {
   /* Setting up the operation.*/
   siop->uart->UARTICR   = siop->uart->UARTRIS;
   siop->uart->UARTCR    = cr | UART_UARTCR_RXE | UART_UARTCR_TXE | UART_UARTCR_UARTEN;
+
+  return HAL_RET_SUCCESS;
 }
 
 /*===========================================================================*/
@@ -205,9 +224,7 @@ msg_t sio_lld_start(SIODriver *siop) {
   }
 
   /* Configures the peripheral.*/
-  uart_init(siop);
-
-  return HAL_RET_SUCCESS;
+  return uart_init(siop);
 }
 
 /**

@@ -112,6 +112,14 @@ static void uart_start(UARTDriver *uartp) {
   idiv = div >> 7;
   fdiv = ((div & 0x7FU) + 1U) / 2U;
 
+  /* The rounding of the fractional part can produce a carry, UARTFBRD is
+     only 6 bits wide so the carry must be propagated into the integer
+     part instead of being silently dropped.*/
+  if (fdiv >= 64U) {
+    idiv += 1U;
+    fdiv = 0U;
+  }
+
   osalDbgAssert((idiv > 0U) && (idiv <= 0xFFFFU), "invalid baud rate");
 
   uartp->uart->UARTIBRD  = idiv;
