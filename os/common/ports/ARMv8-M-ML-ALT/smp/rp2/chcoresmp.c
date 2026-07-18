@@ -26,6 +26,8 @@
 
 #include "ch.h"
 
+#if (CH_CFG_SMP_MODE == TRUE) || defined(__DOXYGEN__)
+
 /*===========================================================================*/
 /* Module local definitions.                                                 */
 /*===========================================================================*/
@@ -114,12 +116,10 @@ void __port_smp_init(os_instance_t *oip) {
   port_timer_enable(oip);
 #endif
 
-#if CH_CFG_SMP_MODE == TRUE
   /* FIFO handler for this core. RP2350 uses a single shared IRQ 25.*/
   SIO->FIFO_ST = SIO_FIFO_ST_ROE | SIO_FIFO_ST_WOF;
   NVIC_SetPriority(SIO_IRQ_FIFOn, CORTEX_MINIMUM_PRIORITY);
   NVIC_EnableIRQ(SIO_IRQ_FIFOn);
-#endif
 
   (void)oip;
 }
@@ -139,5 +139,7 @@ void __port_spinlock_release(void) {
 
   port_spinlock_release();
 }
+
+#endif /* CH_CFG_SMP_MODE == TRUE */
 
 /** @} */
