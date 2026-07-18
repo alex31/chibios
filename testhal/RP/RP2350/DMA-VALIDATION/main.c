@@ -105,7 +105,11 @@ static void test_mem_to_mem(void) {
      count here would halt the system in debug builds, so only the masking
      path is verified: after dmaChannelSetCounterX(16) the register must
      read back with count 16 and the mode nibble at 0.*/
-  tc = dmachp->channel->TRANS_COUNT;
+  /* TRANS_COUNT reads back the LIVE down-counter (0 before any trigger);
+     the written reload value including the mode field is only visible in
+     the per-channel DBG_TCR debug register (DMA base + 0x804 + 0x40*n,
+     not modeled in rp2350.h).*/
+  tc = *(volatile uint32_t *)(0x50000804U + (0x40U * dmachp->chnidx));
   report("TRANS_COUNT mode nibble is NORMAL", (tc >> 28) == 0U);
   report("TRANS_COUNT count preserved", (tc & 0x0FFFFFFFU) == M2M_WORDS);
 
