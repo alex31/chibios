@@ -1,0 +1,243 @@
+/*
+    ChibiOS - Copyright (C) 2006-2026 Giovanni Di Sirio.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+*/
+
+/*
+ * EFL SMP lockout validation.
+ *
+ * Exercises the built-in RP_EFL_XIP_SAFETY_LOCKOUT strategy: one core
+ * performs erase/program/verify cycles on the last flash sector while the
+ * other core keeps executing flash-resident code, and a fast (above
+ * kernel priority) interrupt with a flash-resident handler runs
+ * throughout. Without the lockout the flash-resident core would fault or
+ * read garbage as soon as XIP is disabled.
+ *
+ * Report is emitted on UART0 (GPIO0/GPIO1) at the SIO default bitrate.
+ */
+
+#include <string.h>
+
+#include "ch.h"
+#include "hal.h"
+#include "chprintf.h"
+
+#include "efl_smp_lockout.h"
+
+/*===========================================================================*/
+/* Shared state, plain SRAM is coherent between the RP2350 cores.            */
+/*===========================================================================*/
+
+volatile uint32_t c0_heartbeat;
+volatile uint32_t c1_heartbeat;
+volatile uint32_t c1_cycles;
+volatile uint32_t c1_errors;
+volatile uint32_t c1_go;
+volatile uint32_t c1_done;
+volatile uint32_t fastirq_count;
+
+semaphore_t c1_ready_sem;
+
+/*===========================================================================*/
+/* Report helpers.                                                           */
+/*===========================================================================*/
+
+static BaseSequentialStream *chp = (BaseSequentialStream *)&SIOD0;
+
+static unsigned pass_count;
+static unsigned fail_count;
+
+static void report(const char *name, bool ok) {
+
+  chprintf(chp, "  [%s] %s\r\n", ok ? "PASS" : "FAIL", name);
+  if (ok) {
+    pass_count++;
+  }
+  else {
+    fail_count++;
+  }
+}
+
+/*===========================================================================*/
+/* Fast interrupt, priority above the kernel, handler in flash.              */
+/*===========================================================================*/
+
+/**
+ * @brief   TIMER1 alarm 0 handler.
+ * @note    Runs above the kernel priority ceiling so it is not masked by
+ *          critical sections; the lockout must defer it with PRIMASK
+ *          while XIP is off because this code executes from flash.
+ */
+void RP_TIMER1_IRQ0_HANDLER(void) {
+
+  TIMER1->INTR = 1U;
+  fastirq_count++;
+  TIMER1->ALARM[0] = TIMER1->TIMERAWL + 1000U;
+}
+
+static void fastirq_start(void) {
+
+  rp_peripheral_unreset(RESETS_ALLREG_TIMER1);
+  TIMER1->INTE = 1U;
+  nvicEnableVector(RP_TIMER1_IRQ0_NUMBER, 1U);
+  TIMER1->ALARM[0] = TIMER1->TIMERAWL + 1000U;
+}
+
+/*===========================================================================*/
+/* Flash exercise, shared by both cores.                                     */
+/*===========================================================================*/
+
+#define TEST_SECTOR         (RP_FLASH_SECTORS_COUNT - 1U)
+#define TEST_OFFSET         ((flash_offset_t)TEST_SECTOR * RP_FLASH_SECTOR_SIZE)
+#define TEST_PAGES          (RP_FLASH_SECTOR_SIZE / RP_FLASH_PAGE_SIZE)
+
+uint32_t flash_cycle(uint8_t pattern) {
+  static uint8_t buf[RP_FLASH_PAGE_SIZE];
+  BaseFlash *bfp = (BaseFlash *)&EFLD1;
+  uint32_t errors = 0U;
+  flash_error_t err;
+  unsigned page;
+
+  err = flashStartEraseSector(bfp, TEST_SECTOR);
+  if (err != FLASH_NO_ERROR) {
+    return 1U;
+  }
+  while (flashQueryErase(bfp, NULL) == FLASH_BUSY_ERASING) {
+  }
+
+  for (page = 0U; page < TEST_PAGES; page++) {
+    memset(buf, (int)(uint8_t)(pattern + page), sizeof buf);
+    err = flashProgram(bfp, TEST_OFFSET + (page * RP_FLASH_PAGE_SIZE),
+                       RP_FLASH_PAGE_SIZE, buf);
+    if (err != FLASH_NO_ERROR) {
+      errors++;
+    }
+  }
+
+  for (page = 0U; page < TEST_PAGES; page++) {
+    uint8_t expected = (uint8_t)(pattern + page);
+    unsigned i;
+
+    err = flashRead(bfp, TEST_OFFSET + (page * RP_FLASH_PAGE_SIZE),
+                    RP_FLASH_PAGE_SIZE, buf);
+    if (err != FLASH_NO_ERROR) {
+      errors++;
+      continue;
+    }
+    for (i = 0U; i < RP_FLASH_PAGE_SIZE; i++) {
+      if (buf[i] != expected) {
+        errors++;
+        break;
+      }
+    }
+  }
+
+  return errors;
+}
+
+/*===========================================================================*/
+/* Core 0 heartbeat thread, flash-resident tight loop.                       */
+/*===========================================================================*/
+
+static volatile bool hb_stop;
+
+static CH_MEM_PRIVATE_BSS(0) THD_WORKING_AREA(waHeartbeat, 256);
+static THD_FUNCTION(HeartbeatThread, arg) {
+
+  (void)arg;
+  chRegSetThreadName("heartbeat");
+  while (!hb_stop) {
+    c0_heartbeat++;
+  }
+}
+
+/*
+ * Application entry point, core 0.
+ */
+int main(void) {
+  uint32_t hb_before, fi_before, c1hb_before;
+  uint32_t my_errors;
+  unsigned i;
+
+  halInit();
+  chSysInit();
+  chSemObjectInit(&c1_ready_sem, 0);
+
+  /* UART0 console on GPIO0/GPIO1.*/
+  palSetLineMode(0U, PAL_MODE_ALTERNATE_UART);
+  palSetLineMode(1U, PAL_MODE_ALTERNATE_UART);
+  sioStart(&SIOD0, NULL);
+
+  palSetLineMode(25U, PAL_MODE_OUTPUT_PUSHPULL);
+
+  chprintf(chp, "\r\n*** EFL SMP lockout validation\r\n");
+  chprintf(chp, "*** Flash sector under test: %u\r\n", TEST_SECTOR);
+
+  eflStart(&EFLD1, NULL);
+
+  fastirq_start();
+
+  chThdCreateStatic(waHeartbeat, sizeof(waHeartbeat),
+                    NORMALPRIO - 1, HeartbeatThread, NULL);
+
+  /* Waiting for core 1 to come alive.*/
+  chSemWait(&c1_ready_sem);
+
+  /*
+   * Phase A: core 1 flashes, core 0 executes from flash throughout.
+   */
+  chprintf(chp, "--- Phase A: core 1 flashing, core 0 on flash\r\n");
+  hb_before = c0_heartbeat;
+  fi_before = fastirq_count;
+  c1_go = 1U;
+
+  for (i = 0U; (c1_done == 0U) && (i < 1200U); i++) {
+    chThdSleepMilliseconds(100);
+  }
+
+  report("phase A completed", c1_done != 0U);
+  report("core 1 flash cycles clean",
+         (c1_errors == 0U) && (c1_cycles == C1_FLASH_CYCLES));
+  report("core 0 heartbeat advanced", c0_heartbeat != hb_before);
+  report("fast IRQ serviced", fastirq_count != fi_before);
+
+  /*
+   * Phase B: mirrored, core 0 flashes while core 1 executes from flash.
+   */
+  chprintf(chp, "--- Phase B: core 0 flashing, core 1 on flash\r\n");
+  c1hb_before = c1_heartbeat;
+  fi_before = fastirq_count;
+  my_errors = 0U;
+  for (i = 0U; i < C0_FLASH_CYCLES; i++) {
+    my_errors += flash_cycle((uint8_t)(0xA0U + i));
+  }
+
+  report("core 0 flash cycles clean", my_errors == 0U);
+  report("core 1 heartbeat advanced", c1_heartbeat != c1hb_before);
+  report("fast IRQ serviced", fastirq_count != fi_before);
+
+  chprintf(chp, "\r\nResults: %u pass, %u fail\r\n", pass_count, fail_count);
+  if (fail_count == 0U) {
+    chprintf(chp, "ALL TESTS PASSED\r\n");
+  }
+  else {
+    chprintf(chp, "*** FAILURES DETECTED ***\r\n");
+  }
+
+  hb_stop = true;
+  while (true) {
+    palToggleLine(25U);
+    chThdSleepMilliseconds(500);
+  }
+}
