@@ -451,7 +451,12 @@ flash_error_t efl_lld_verify_erase(void *instance, flash_sector_t sector) {
  * @param[out] uid      pointer to an 8-byte buffer for the unique ID
  * @return              An error code.
  * @retval FLASH_NO_ERROR           if the unique ID has been read.
- * @retval FLASH_ERROR_HW_FAILURE   if access to the memory failed.
+ * @retval FLASH_ERROR_HW_FAILURE   on communication or controller
+ *                                  failures, including transfer
+ *                                  timeouts and XIP exit/restore
+ *                                  failures propagated from the lower
+ *                                  layer.  No other error codes are
+ *                                  returned by this function.
  *
  * @api
  */

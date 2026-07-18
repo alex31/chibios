@@ -462,31 +462,54 @@ static bool test_full_block_write_verify(uint32_t block) {
 /*
  * Test: ATRANS-aware program offset translation.
  *
- * Programs QMI ATRANS window 1 (logical 0x400000-0x7FFFFF) to alias
- * physical 0-4MiB (BASE=0, SIZE=0x400 in 4KiB units), then programs
- * a pattern through the aliased logical offset of the physical last
- * sector and verifies via a window-0 read at the original offset
- * that the physical last sector changed.  Also verifies that an
- * offset outside the mapped window size is rejected.  Only touches
- * the sacrificial last sector; ATRANS[1] is saved and restored.
+ * Picks the first free 4 MiB ATRANS window at or above the flash top
+ * and derives the physical address of the sacrificial last sector by
+ * translating its logical offset through the current mapping of the
+ * window containing it (no identity-mapping assumption).  The free
+ * window is aliased directly onto that physical sector (BASE is in
+ * 4 KiB units, SIZE covers one sector), a pattern is programmed
+ * through alias offset 0 and verified through the normal logical
+ * last-sector offset.  Also verifies that an offset outside the
+ * mapped window size (SIZE=0) is rejected.  Only touches the
+ * sacrificial last sector; the alias window is saved and restored
+ * and cleanup goes through the standard mapping.
  */
 static bool test_atrans_translation(void) {
   flash_offset_t last_off = TEST_BLOCK * RP_FLASH_BLOCK_64K_SIZE +
                             (SECTORS_PER_BLK - 1U) * RP_FLASH_SECTOR_SIZE;
-  uint32_t alias_off = 0x400000U + (uint32_t)last_off;
-  uint32_t atrans1_save = QMI->ATRANS[1];
+  uint32_t idx = (RP_FLASH_SIZE + 0x3FFFFFU) >> 22;
+  uint32_t win = ((uint32_t)last_off >> 22) & 7U;
+  uint32_t at, phys_last, alias_off, atrans_save;
   flash_error_t err;
   syssts_t sts;
   unsigned i;
   bool ok = true;
 
-  /* Start from an erased last sector (window 0, identity mapping). */
+  /* A flash filling the whole 32 MiB XIP space leaves no free alias
+     window; nothing can be validated without touching live mappings. */
+  if (idx > 7U) {
+    chprintf(chp, "    No free ATRANS window above flash top, skipped\r\n");
+    return true;
+  }
+
+  /* Physical address of the last sector, translated through the
+     current mapping of the window containing it. */
+  at          = QMI->ATRANS[win];
+  phys_last   = (((at & QMI_ATRANS_BASE_Msk) >> QMI_ATRANS_BASE_Pos) << 12) +
+                ((uint32_t)last_off & 0x3FFFFFU);
+  alias_off   = idx * 0x400000U;
+  atrans_save = QMI->ATRANS[idx];
+
+  chprintf(chp, "    Alias window %u -> phys 0x%08X\r\n", idx, phys_last);
+
+  /* Start from an erased last sector (normal logical offset). */
   if (erase_sector(TEST_BLOCK, SECTORS_PER_BLK - 1U) != FLASH_NO_ERROR)
     return false;
 
-  /* Alias window 1 to physical 0..4MiB. */
-  QMI->ATRANS[1] = (0x0U << QMI_ATRANS_BASE_Pos) |
-                   (0x400U << QMI_ATRANS_SIZE_Pos);
+  /* Alias window offset 0 exactly onto the physical last sector,
+     mapping a single sector. */
+  QMI->ATRANS[idx] = ((phys_last >> 12) << QMI_ATRANS_BASE_Pos) |
+                     ((RP_FLASH_SECTOR_SIZE >> 12) << QMI_ATRANS_SIZE_Pos);
 
   /* Program a pattern through the aliased offset.  The engine-level
      API bounds offsets to the flash descriptor, so the per-chip entry
@@ -502,8 +525,8 @@ static bool test_atrans_translation(void) {
     ok = false;
   }
 
-  /* Verify at the original window-0 offset that the physical last
-     sector changed. */
+  /* Verify through the normal logical last-sector offset that the
+     physical last sector changed. */
   if (ok &&
       (flashRead(bfp, last_off, RP_FLASH_PAGE_SIZE,
                  page_buf) != FLASH_NO_ERROR)) {
@@ -520,11 +543,11 @@ static bool test_atrans_translation(void) {
     }
   }
 
-  /* An offset beyond the mapped window size must be rejected while
-     XIP is still enabled. */
+  /* An offset beyond the mapped window size (SIZE=0) must be rejected
+     while XIP is still enabled. */
   if (ok) {
-    QMI->ATRANS[1] = (0x0U << QMI_ATRANS_BASE_Pos) |
-                     (0x0U << QMI_ATRANS_SIZE_Pos);
+    QMI->ATRANS[idx] = ((phys_last >> 12) << QMI_ATRANS_BASE_Pos) |
+                       (0x0U << QMI_ATRANS_SIZE_Pos);
     sts = osalSysGetStatusAndLockX();
     err = rp_efl_lld_program_page_full(&EFLD1, alias_off, page_buf,
                                        RP_FLASH_PAGE_SIZE);
@@ -535,10 +558,10 @@ static bool test_atrans_translation(void) {
     }
   }
 
-  /* Restore the boot ATRANS window. */
-  QMI->ATRANS[1] = atrans1_save;
+  /* Restore the saved ATRANS window. */
+  QMI->ATRANS[idx] = atrans_save;
 
-  /* Leave the sector erased. */
+  /* Leave the sector erased, cleaned up through the standard mapping. */
   if (erase_sector(TEST_BLOCK, SECTORS_PER_BLK - 1U) != FLASH_NO_ERROR)
     ok = false;
 

@@ -58,7 +58,7 @@ typedef struct {
   uint32_t ssi_spi_ctrlr0;
   uint32_t ssi_rx_sample_dly;
   uint32_t ssi_txd_drive_edge;
-  uint32_t pads_qspi_sd[4];
+  uint32_t pads_qspi[6];
 } xip_snapshot_t;
 
 static void xip_snapshot_capture(xip_snapshot_t *s) {
@@ -70,10 +70,12 @@ static void xip_snapshot_capture(xip_snapshot_t *s) {
   s->ssi_spi_ctrlr0    = XIP_SSI->SPI_CTRLR0;
   s->ssi_rx_sample_dly = XIP_SSI->RX_SAMPLE_DLY;
   s->ssi_txd_drive_edge = XIP_SSI->TXD_DRIVE_EDGE;
-  s->pads_qspi_sd[0]   = PADS_QSPI->GPIO_QSPI_SD0;
-  s->pads_qspi_sd[1]   = PADS_QSPI->GPIO_QSPI_SD1;
-  s->pads_qspi_sd[2]   = PADS_QSPI->GPIO_QSPI_SD2;
-  s->pads_qspi_sd[3]   = PADS_QSPI->GPIO_QSPI_SD3;
+  s->pads_qspi[0]      = PADS_QSPI->GPIO_QSPI_SCLK;
+  s->pads_qspi[1]      = PADS_QSPI->GPIO_QSPI_SD0;
+  s->pads_qspi[2]      = PADS_QSPI->GPIO_QSPI_SD1;
+  s->pads_qspi[3]      = PADS_QSPI->GPIO_QSPI_SD2;
+  s->pads_qspi[4]      = PADS_QSPI->GPIO_QSPI_SD3;
+  s->pads_qspi[5]      = PADS_QSPI->GPIO_QSPI_SS;
 }
 
 static bool xip_snapshot_compare(const xip_snapshot_t *a,
@@ -91,10 +93,12 @@ static void xip_snapshot_dump(const xip_snapshot_t *s) {
   chprintf(chp, "    SPI_CTRLR0    = 0x%08X\r\n", s->ssi_spi_ctrlr0);
   chprintf(chp, "    RX_SAMPLE_DLY = 0x%08X\r\n", s->ssi_rx_sample_dly);
   chprintf(chp, "    TXD_DRV_EDGE  = 0x%08X\r\n", s->ssi_txd_drive_edge);
-  chprintf(chp, "    PADS SD0      = 0x%08X\r\n", s->pads_qspi_sd[0]);
-  chprintf(chp, "    PADS SD1      = 0x%08X\r\n", s->pads_qspi_sd[1]);
-  chprintf(chp, "    PADS SD2      = 0x%08X\r\n", s->pads_qspi_sd[2]);
-  chprintf(chp, "    PADS SD3      = 0x%08X\r\n", s->pads_qspi_sd[3]);
+  chprintf(chp, "    PADS SCLK     = 0x%08X\r\n", s->pads_qspi[0]);
+  chprintf(chp, "    PADS SD0      = 0x%08X\r\n", s->pads_qspi[1]);
+  chprintf(chp, "    PADS SD1      = 0x%08X\r\n", s->pads_qspi[2]);
+  chprintf(chp, "    PADS SD2      = 0x%08X\r\n", s->pads_qspi[3]);
+  chprintf(chp, "    PADS SD3      = 0x%08X\r\n", s->pads_qspi[4]);
+  chprintf(chp, "    PADS SS       = 0x%08X\r\n", s->pads_qspi[5]);
 }
 
 /*===========================================================================*/

@@ -163,6 +163,32 @@ RAMFUNC static bool rp_flash_direct_tx8(QMI_TypeDef *qmi, uint32_t data) {
 }
 
 /**
+ * @brief   Best-effort resynchronization of the direct-mode FIFOs.
+ * @details After a transfer timeout the engine may still be shifting and
+ *          the RX FIFO may hold residue; without draining, a later
+ *          status poll can consume stale bytes and a BUSY=0 answer need
+ *          not belong to that poll. Bounded: a controller that never
+ *          recovers leaves residue behind, which subsequent polls then
+ *          fail on loudly.
+ * @note    This function MUST be in RAM.
+ *
+ * @param[in] qmi       pointer to the QMI registers
+ */
+RAMFUNC static void rp_flash_resync(QMI_TypeDef *qmi) {
+  uint32_t start = TIMER0->TIMERAWL;
+
+  while (((qmi->DIRECT_CSR & QMI_DIRECT_CSR_BUSY) != 0U) ||
+         ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_RXEMPTY) == 0U)) {
+    if ((qmi->DIRECT_CSR & QMI_DIRECT_CSR_RXEMPTY) == 0U) {
+      (void)qmi->DIRECT_RX;
+    }
+    if (rp_flash_timeout(start, RP_FLASH_QMI_TIMEOUT_US)) {
+      return;
+    }
+  }
+}
+
+/**
  * @brief   Force chip select high or low
  * @note    This function MUST be in RAM.
  *
@@ -251,6 +277,13 @@ RAMFUNC static bool rp_flash_do_cmd(EFlashDriver *eflp, uint8_t cmd,
   /* Transfer remaining data. */
   if (ok && (count > 0U)) {
     ok = rp_flash_put_get(eflp, tx, rx, count);
+  }
+
+  /* A failed transfer can leave the engine shifting and residue in the
+     RX FIFO; resynchronize before the CS edge so the next transaction
+     starts clean and later status polls read their own responses. */
+  if (!ok) {
+    rp_flash_resync(qmi);
   }
 
   /* Deassert CS, also on failed transfers. */
@@ -630,6 +663,12 @@ RAMFUNC static flash_error_t rp_flash_program_page(EFlashDriver *eflp,
     ok = rp_flash_put_get(eflp, data, NULL, len);
   }
 
+  /* A failed transfer can leave engine residue behind; resynchronize
+     before the CS edge so the ready polls read their own responses. */
+  if (!ok) {
+    rp_flash_resync(qmi);
+  }
+
   /* Deassert CS, also on failed transfers. */
   rp_flash_cs_force(eflp, true);
 
@@ -713,8 +752,9 @@ RAMFUNC static flash_error_t rp_flash_erase_full(EFlashDriver *eflp,
   }
 
   /* Re-enter XIP mode unconditionally, the system cannot continue
-     without XIP restored. */
-  if (!rp_flash_enter_xip(eflp) && (err == FLASH_NO_ERROR)) {
+     without XIP restored. A controller failure here outranks any
+     device-level error already recorded. */
+  if (!rp_flash_enter_xip(eflp)) {
     err = FLASH_ERROR_HW_FAILURE;
   }
 
@@ -749,8 +789,9 @@ RAMFUNC static flash_error_t rp_flash_program_page_full(EFlashDriver *eflp,
   }
 
   /* Re-enter XIP mode unconditionally, the system cannot continue
-     without XIP restored. */
-  if (!rp_flash_enter_xip(eflp) && (err == FLASH_NO_ERROR)) {
+     without XIP restored. A controller failure here outranks any
+     device-level error already recorded. */
+  if (!rp_flash_enter_xip(eflp)) {
     err = FLASH_ERROR_HW_FAILURE;
   }
 
@@ -783,8 +824,9 @@ RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
   }
 
   /* Re-enter XIP mode unconditionally, the system cannot continue
-     without XIP restored. */
-  if (!rp_flash_enter_xip(eflp) && (err == FLASH_NO_ERROR)) {
+     without XIP restored. A controller failure here outranks any
+     device-level error already recorded. */
+  if (!rp_flash_enter_xip(eflp)) {
     err = FLASH_ERROR_HW_FAILURE;
   }
 

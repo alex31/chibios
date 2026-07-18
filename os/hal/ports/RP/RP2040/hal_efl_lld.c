@@ -106,12 +106,14 @@ EFlashDriver EFLD1 = {
 CC_ALIGN_DATA(4) static uint8_t rp_boot2[252];
 
 /**
- * @brief   PADS_QSPI SD0..SD3 values saved before the flash operation.
- * @details rp_flash_connect_internal() hard-resets PADS_QSPI, so the
- *          pre-operation values must be captured before that reset and
- *          re-applied after boot2 has reconfigured the pads for XIP.
+ * @brief   PADS_QSPI SCLK, SD0..SD3 and SS values saved before the
+ *          flash operation.
+ * @details rp_flash_connect_internal() hard-resets PADS_QSPI, wiping
+ *          all six QSPI pad controls, so the pre-operation values must
+ *          be captured before that reset and re-applied after boot2
+ *          has reconfigured the pads for XIP.
  */
-static uint32_t rp_pads_save[4];
+static uint32_t rp_pads_save[6];
 
 /*===========================================================================*/
 /* Driver local functions.                                                   */
@@ -153,6 +155,31 @@ RAMFUNC static bool rp_flash_ssi_tx8(SSI_TypeDef *ssi, uint8_t data) {
   (void)ssi->DR[0];
 
   return true;
+}
+
+/**
+ * @brief   Best-effort resynchronization of the SSI FIFOs.
+ * @details After a transfer timeout the engine may still be shifting and
+ *          the RX FIFO may hold residue; without draining, a later
+ *          status poll can consume stale bytes and a BUSY=0 answer need
+ *          not belong to that poll. Bounded: a controller that never
+ *          recovers leaves residue behind, which subsequent polls then
+ *          fail on loudly.
+ * @note    This function MUST be in RAM.
+ *
+ * @param[in] ssi       pointer to the SSI registers
+ */
+RAMFUNC static void rp_flash_resync(SSI_TypeDef *ssi) {
+  uint32_t start = TIMER0->TIMERAWL;
+
+  while (((ssi->SR & SSI_SR_BUSY) != 0U) || (ssi->RXFLR > 0U)) {
+    if (ssi->RXFLR > 0U) {
+      (void)ssi->DR[0];
+    }
+    if (rp_flash_timeout(start, RP_FLASH_SSI_TIMEOUT_US)) {
+      return;
+    }
+  }
 }
 
 /**
@@ -244,6 +271,13 @@ RAMFUNC static bool rp_flash_do_cmd(EFlashDriver *eflp, uint8_t cmd,
   /* Transfer remaining data. */
   if (ok && (count > 0U)) {
     ok = rp_flash_put_get(eflp, tx, rx, count);
+  }
+
+  /* A failed transfer can leave the engine shifting and residue in the
+     RX FIFO; resynchronize before the CS edge so the next transaction
+     starts clean and later status polls read their own responses. */
+  if (!ok) {
+    rp_flash_resync(eflp->ssi);
   }
 
   /* Deassert CS, also on failed transfers. */
@@ -353,13 +387,15 @@ RAMFUNC static bool rp_flash_connect_internal(void) {
   uint32_t start;
   unsigned i;
 
-  /* Save the data pad controls before the hard reset below wipes them,
-     rp_flash_enter_xip() restores them verbatim once boot2 has brought
-     XIP back. */
-  rp_pads_save[0] = pads_qspi->GPIO_QSPI_SD0;
-  rp_pads_save[1] = pads_qspi->GPIO_QSPI_SD1;
-  rp_pads_save[2] = pads_qspi->GPIO_QSPI_SD2;
-  rp_pads_save[3] = pads_qspi->GPIO_QSPI_SD3;
+  /* Save all six QSPI pad controls (SCLK, SD0..SD3, SS) before the
+     hard reset below wipes them, rp_flash_enter_xip() restores them
+     verbatim once boot2 has brought XIP back. */
+  rp_pads_save[0] = pads_qspi->GPIO_QSPI_SCLK;
+  rp_pads_save[1] = pads_qspi->GPIO_QSPI_SD0;
+  rp_pads_save[2] = pads_qspi->GPIO_QSPI_SD1;
+  rp_pads_save[3] = pads_qspi->GPIO_QSPI_SD2;
+  rp_pads_save[4] = pads_qspi->GPIO_QSPI_SD3;
+  rp_pads_save[5] = pads_qspi->GPIO_QSPI_SS;
 
   /* Hard-reset IO_QSPI and PADS_QSPI. */
   RESETS->SET.RESET = bits;
@@ -549,11 +585,14 @@ RAMFUNC static bool rp_flash_enter_xip(EFlashDriver *eflp) {
 
   /* Boot2 reconfigures the pads for XIP; re-applying the values saved
      in rp_flash_connect_internal() restores any board/application-
-     specific pad tuning that existed before the operation. */
-  pads_qspi->GPIO_QSPI_SD0 = rp_pads_save[0];
-  pads_qspi->GPIO_QSPI_SD1 = rp_pads_save[1];
-  pads_qspi->GPIO_QSPI_SD2 = rp_pads_save[2];
-  pads_qspi->GPIO_QSPI_SD3 = rp_pads_save[3];
+     specific pad tuning that existed before the operation, on all six
+     QSPI pads (SCLK, SD0..SD3, SS). */
+  pads_qspi->GPIO_QSPI_SCLK = rp_pads_save[0];
+  pads_qspi->GPIO_QSPI_SD0  = rp_pads_save[1];
+  pads_qspi->GPIO_QSPI_SD1  = rp_pads_save[2];
+  pads_qspi->GPIO_QSPI_SD2  = rp_pads_save[3];
+  pads_qspi->GPIO_QSPI_SD3  = rp_pads_save[4];
+  pads_qspi->GPIO_QSPI_SS   = rp_pads_save[5];
 
   rp_flash_flush_cache();
 
@@ -603,6 +642,12 @@ RAMFUNC static flash_error_t rp_flash_program_page(EFlashDriver *eflp,
   /* Send data. */
   if (ok) {
     ok = rp_flash_put_get(eflp, data, NULL, len);
+  }
+
+  /* A failed transfer can leave engine residue behind; resynchronize
+     before the CS edge so the ready polls read their own responses. */
+  if (!ok) {
+    rp_flash_resync(ssi);
   }
 
   /* Deassert CS, also on failed transfers. */
@@ -687,8 +732,9 @@ RAMFUNC static flash_error_t rp_flash_erase_full(EFlashDriver *eflp,
   }
 
   /* Re-enter XIP mode unconditionally, the system cannot continue
-     without XIP restored. */
-  if (!rp_flash_enter_xip(eflp) && (err == FLASH_NO_ERROR)) {
+     without XIP restored. A controller failure here outranks any
+     device-level error already recorded. */
+  if (!rp_flash_enter_xip(eflp)) {
     err = FLASH_ERROR_HW_FAILURE;
   }
 
@@ -723,8 +769,9 @@ RAMFUNC static flash_error_t rp_flash_program_page_full(EFlashDriver *eflp,
   }
 
   /* Re-enter XIP mode unconditionally, the system cannot continue
-     without XIP restored. */
-  if (!rp_flash_enter_xip(eflp) && (err == FLASH_NO_ERROR)) {
+     without XIP restored. A controller failure here outranks any
+     device-level error already recorded. */
+  if (!rp_flash_enter_xip(eflp)) {
     err = FLASH_ERROR_HW_FAILURE;
   }
 
@@ -757,8 +804,9 @@ RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
   }
 
   /* Re-enter XIP mode unconditionally, the system cannot continue
-     without XIP restored. */
-  if (!rp_flash_enter_xip(eflp) && (err == FLASH_NO_ERROR)) {
+     without XIP restored. A controller failure here outranks any
+     device-level error already recorded. */
+  if (!rp_flash_enter_xip(eflp)) {
     err = FLASH_ERROR_HW_FAILURE;
   }
 
