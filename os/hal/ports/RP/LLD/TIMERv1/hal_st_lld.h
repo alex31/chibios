@@ -215,6 +215,10 @@ __STATIC_INLINE void st_lld_stop_alarm(void) {
 __STATIC_INLINE void st_lld_set_alarm(systime_t abstime) {
 
   TIMER0->ALARM[0]       = (uint32_t)abstime;
+  /* Re-arm if abstime already past to avoid ~71 min wait for counter wrap. */
+  if ((int32_t)(abstime - TIMER0->TIMERAWL) <= 0) {
+    TIMER0->ALARM[0]     = TIMER0->TIMERAWL + 2U;
+  }
 }
 
 /**
@@ -294,6 +298,10 @@ __STATIC_INLINE void st_lld_stop_alarm_n(unsigned alarm) {
 __STATIC_INLINE void st_lld_set_alarm_n(unsigned alarm, systime_t abstime) {
 
   TIMER0->ALARM[alarm]   = (uint32_t)abstime;
+  /* Re-arm if abstime already past to avoid ~71 min wait for counter wrap. */
+  if ((int32_t)(abstime - TIMER0->TIMERAWL) <= 0) {
+    TIMER0->ALARM[alarm] = TIMER0->TIMERAWL + 2U;
+  }
 }
 
 /**
