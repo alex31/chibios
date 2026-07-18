@@ -52,10 +52,16 @@
 static volatile bool port_lockout_ready[PORT_CORES_NUMBER];
 
 /**
- * @brief   Core currently owning the lockout spinlock, -1 when idle.
- * @note    Written only while the lockout spinlock is held.
+ * @brief   Per-core lockout-in-progress flags.
+ * @details Published with interrupts masked BEFORE acquiring the lockout
+ *          spinlock and cleared, also with interrupts masked, together
+ *          with its release. A same-core caller finding its flag already
+ *          set would otherwise spin on the hardware lock above the
+ *          holder's priority forever; that is a design error (concurrent
+ *          same-core lockouts must be serialized at a higher layer) and
+ *          fails loudly instead.
  */
-static volatile int port_lockout_owner = -1;
+static volatile bool port_lockout_wanted[PORT_CORES_NUMBER];
 
 /**
  * @brief   True when the current lockout actually parked the other core.
@@ -64,6 +70,19 @@ static volatile int port_lockout_owner = -1;
  *          ready flag may change in between.
  */
 static volatile bool port_lockout_parked;
+
+#if defined(PORT_HANDLE_FIFO_MESSAGE) || defined(__DOXYGEN__)
+/**
+ * @brief   Application messages captured while parked.
+ * @details While a core is parked its FIFO drain cannot run flash-resident
+ *          handlers; messages below the reserved range are buffered here
+ *          and delivered right after unparking. Excess messages beyond the
+ *          buffer depth are dropped.
+ */
+#define PORT_LOCKOUT_MSG_BUFFER_DEPTH   8U
+static volatile uint32_t port_lockout_msg_buffer[PORT_LOCKOUT_MSG_BUFFER_DEPTH];
+static volatile uint32_t port_lockout_msg_count;
+#endif
 
 /*===========================================================================*/
 /* Module local functions.                                                   */
@@ -120,8 +139,19 @@ static void port_fifo_lockout_wait(void) {
       while (true) {
       }
     }
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+    /* Application messages cannot be delivered while flash handlers are
+       unreachable, buffering for delivery after unparking. Reschedule
+       tokens are dropped, the ISR epilogue reschedules on return.*/
+    if (message < PORT_FIFO_LOCKOUT_ACK_MESSAGE) {
+      if (port_lockout_msg_count < PORT_LOCKOUT_MSG_BUFFER_DEPTH) {
+        port_lockout_msg_buffer[port_lockout_msg_count++] = message;
+      }
+    }
+#else
     /* Anything else (reschedule tokens) is stale, the ISR epilogue
        reschedules on return anyway.*/
+#endif
   }
 
   /* Acknowledging the unlock, XIP is available again at this point.*/
@@ -131,6 +161,16 @@ static void port_fifo_lockout_wait(void) {
   __SEV();
 
   __set_PRIMASK(primask);
+
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+  /* Back on flash, delivering the messages buffered during the park;
+     still in the FIFO ISR context.*/
+  while (port_lockout_msg_count > 0U) {
+    port_lockout_msg_count--;
+    PORT_HANDLE_FIFO_MESSAGE(port_get_core_id() ^ 1U,
+                             port_lockout_msg_buffer[port_lockout_msg_count]);
+  }
+#endif
 }
 
 /**
@@ -162,6 +202,15 @@ static bool port_lockout_handshake(uint32_t token) {
       if (message == PORT_FIFO_PANIC_MESSAGE) {
         port_local_halt();
       }
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+      /* Application messages are delivered inline, XIP is still on at
+         handshake time; the context is a thread with interrupts
+         masked, equivalent to the locked ISR context the handler
+         normally sees.*/
+      if (message < PORT_FIFO_LOCKOUT_ACK_MESSAGE) {
+        PORT_HANDLE_FIFO_MESSAGE(port_get_core_id() ^ 1U, message);
+      }
+#endif
       /* Reschedule tokens are dropped here, a reschedule round is forced
          after the handshake.*/
     }
@@ -259,10 +308,19 @@ void __port_flash_lockout(void) {
               ((__get_PRIMASK() & 1U) == 0U),
               "not in thread context");
 
-  /* Same-core re-entry would spin on the lockout spinlock forever,
-     failing loudly instead.*/
-  chDbgAssert(port_lockout_owner != (int)port_get_core_id(),
-              "lockout re-entered");
+  /* Publishing the lockout intent atomically before contending for the
+     hardware lock. A same-core caller finding the flag set would spin
+     on the spinlock above the holder's priority forever with no
+     timeout; concurrent same-core lockouts must be serialized at a
+     higher layer (the EFL state machine already does), so this is a
+     design error and fails loudly even in release builds.*/
+  __disable_irq();
+  if (port_lockout_wanted[port_get_core_id()]) {
+    __enable_irq();
+    chSysHalt("lockout re-entered");
+  }
+  port_lockout_wanted[port_get_core_id()] = true;
+  __enable_irq();
 
   /* Serializing requesters, interrupts stay enabled while spinning so a
      crossing request from the other core can park this core first.
@@ -273,7 +331,6 @@ void __port_flash_lockout(void) {
   while (SIO->SPINLOCK[PORT_LOCKOUT_SPINLOCK_NUMBER] == 0U) {
   }
   __DMB();
-  port_lockout_owner = (int)port_get_core_id();
 
   /* A core which never initialized cannot acknowledge and does not need
      parking. The decision is recorded for the unlock side, the flag may
@@ -318,9 +375,13 @@ void __port_flash_unlockout(void) {
     __enable_irq();
   }
 
-  port_lockout_owner = -1;
+  /* Releasing the hardware lock and withdrawing the intent flag as one
+     unit so a preempting same-core caller never observes them apart.*/
+  __disable_irq();
   __DMB();
   SIO->SPINLOCK[PORT_LOCKOUT_SPINLOCK_NUMBER] = (uint32_t)SIO;
+  port_lockout_wanted[port_get_core_id()] = false;
+  __enable_irq();
 
   /* A reschedule token could have been consumed during the handshakes,
      forcing a reschedule round.*/
