@@ -24,8 +24,8 @@
  * @{
  */
 
-#ifndef NVIC_H
-#define NVIC_H
+#ifndef RISCV_HAZARD3_NVIC_H
+#define RISCV_HAZARD3_NVIC_H
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -82,6 +82,6 @@ extern "C" {
 }
 #endif
 
-#endif /* NVIC_H */
+#endif /* RISCV_HAZARD3_NVIC_H */
 
 /** @} */

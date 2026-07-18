@@ -24,8 +24,8 @@
  * @{
  */
 
-#ifndef CACHE_H
-#define CACHE_H
+#ifndef RISCV_HAZARD3_CACHE_H
+#define RISCV_HAZARD3_CACHE_H
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -102,6 +102,6 @@ extern "C" {
 }
 #endif
 
-#endif /* CACHE_H */
+#endif /* RISCV_HAZARD3_CACHE_H */
 
 /** @} */
