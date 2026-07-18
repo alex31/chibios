@@ -507,9 +507,17 @@ int32_t pioProgramLoadI(const rp_pio_block_t *block,
     }
   }
 
-  /* Write the instructions to memory.*/
+  /* Write the instructions to memory, JMP instructions (major opcode 000,
+     bits 15:13) carry an absolute instruction memory address in bits 4:0
+     while pioasm emits program-relative targets, so all JMP targets are
+     relocated by the load offset.*/
   for (i = 0U; i < length; i++) {
-    block->pio->INSTR_MEM[offset + i] = program->instructions[i];
+    uint16_t instr = program->instructions[i];
+
+    if ((instr & 0xE000U) == 0x0000U) {
+      instr = (uint16_t)(instr + offset);
+    }
+    block->pio->INSTR_MEM[offset + i] = instr;
   }
 
   /* Mark slots as used.*/
