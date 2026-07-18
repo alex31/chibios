@@ -71,12 +71,12 @@ void __drv_streams_init(void) {
  * @param[in]     mode          Node mode flags.
  * @return                      A new reference to the object.
  */
-void *__stmdir_objinit_impl(void *ip, const void *vmt, vfs_driver_c *driver,
+void *__stmdir_objinit_impl(void *ip, const void *vmt, vfs_fs_c *driver,
                             vfs_mode_t mode) {
   vfs_streams_dir_node_c *self = (vfs_streams_dir_node_c *)ip;
 
   /* Initialization code.*/
-  self = __vfsdir_objinit_impl(self, vmt, (vfs_driver_c *)driver, mode);
+  self = __vfsdir_objinit_impl(self, vmt, (vfs_fs_c *)driver, mode);
   self->index = 0U;
 
   return self;
@@ -149,7 +149,7 @@ msg_t __stmdir_first_impl(void *ip, vfs_direntry_info_t *dip) {
  */
 msg_t __stmdir_next_impl(void *ip, vfs_direntry_info_t *dip) {
   vfs_streams_dir_node_c *self = (vfs_streams_dir_node_c *)ip;
-  vfs_streams_driver_c *vsdp = (vfs_streams_driver_c *)self->driver;
+  vfs_streams_driver_c *vsdp = (vfs_streams_driver_c *)self->fs;
 
   if (vsdp->streams[self->index].name != NULL) {
 
@@ -203,13 +203,13 @@ const struct vfs_streams_dir_node_vmt __vfs_streams_dir_node_vmt = {
  * @param[in]     stream        Stream to be associated.
  * @return                      A new reference to the object.
  */
-void *__stmfile_objinit_impl(void *ip, const void *vmt, vfs_driver_c *driver,
+void *__stmfile_objinit_impl(void *ip, const void *vmt, vfs_fs_c *driver,
                              vfs_mode_t mode, sequential_stream_i *stream,
                              random_stream_i *rstream) {
   vfs_streams_file_node_c *self = (vfs_streams_file_node_c *)ip;
 
   /* Initialization code.*/
-  self = __vfsfile_objinit_impl(self, vmt, (vfs_driver_c *)driver, mode);
+  self = __vfsfile_objinit_impl(self, vmt, (vfs_fs_c *)driver, mode);
   self->stream  = stream;
   self->rstream = rstream;
 
@@ -376,7 +376,7 @@ void *__stmdrv_objinit_impl(void *ip, const void *vmt,
   vfs_streams_driver_c *self = (vfs_streams_driver_c *)ip;
 
   /* Initialization of the ancestors-defined parts.*/
-  __vfsdrv_objinit_impl(self, vmt);
+  __vfsfs_objinit_impl(self, vmt);
 
   /* Initialization code.*/
   self->streams = streams;
@@ -401,45 +401,14 @@ void __stmdrv_dispose_impl(void *ip) {
   (void)self;
 
   /* Finalization of the ancestors-defined parts.*/
-  __vfsdrv_dispose_impl(self);
+  __vfsfs_dispose_impl(self);
 }
 
 /**
  * @memberof    vfs_streams_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvChangeCurrentDirectory().
- *
- * @param[in,out] ip            Pointer to a @p vfs_streams_driver_c instance.
- * @param[in]     path          Path of the new current directory.
- * @return                      The operation result.
- */
-msg_t __stmdrv_setcwd_impl(void *ip, const char *path) {
-
-  return __vfsdrv_setcwd_impl(ip, path);
-}
-
-/**
- * @memberof    vfs_streams_driver_c
- * @protected
- *
- * @brief       Override of method @p vfsDrvGetCurrentDirectory().
- *
- * @param[in,out] ip            Pointer to a @p vfs_streams_driver_c instance.
- * @param[out]    buf           Buffer for the path string.
- * @param[in]     size          Size of the buffer.
- * @return                      The operation result.
- */
-msg_t __stmdrv_getcwd_impl(void *ip, char *buf, size_t size) {
-
-  return __vfsdrv_getcwd_impl(ip, buf, size);
-}
-
-/**
- * @memberof    vfs_streams_driver_c
- * @protected
- *
- * @brief       Override of method @p vfsDrvStat().
+ * @brief       Override of method @p vfsFSStat().
  *
  * @param[in,out] ip            Pointer to a @p vfs_streams_driver_c instance.
  * @param[in]     path          Absolute path of the node to be examined.
@@ -492,7 +461,7 @@ msg_t __stmdrv_stat_impl(void *ip, const char *path, vfs_stat_t *sp) {
  * @memberof    vfs_streams_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvOpenDirectory().
+ * @brief       Override of method @p vfsFSOpenDirectory().
  *
  * @param[in,out] ip            Pointer to a @p vfs_streams_driver_c instance.
  * @param[in]     path          Absolute path of the directory to be opened.
@@ -519,7 +488,7 @@ msg_t __stmdrv_opendir_impl(void *ip, const char *path,
 
       /* Node object initialization.*/
       (void) stmdirObjectInit(sdnp,
-                              (vfs_driver_c *)self,
+                              (vfs_fs_c *)self,
                               VFS_MODE_S_IFDIR | VFS_MODE_S_IRUSR);
 
       *vdnpp = (vfs_directory_node_c *)sdnp;
@@ -537,7 +506,7 @@ msg_t __stmdrv_opendir_impl(void *ip, const char *path,
  * @memberof    vfs_streams_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvOpenFile().
+ * @brief       Override of method @p vfsFSOpenFile().
  *
  * @param[in,out] ip            Pointer to a @p vfs_streams_driver_c instance.
  * @param[in]     path          Absolute path of the directory to be opened.
@@ -583,7 +552,7 @@ msg_t __stmdrv_openfile_impl(void *ip, const char *path, int flags,
 
           /* Node object initialization.*/
           (void) stmfileObjectInit(sfnp,
-                                   (vfs_driver_c *)self,
+                                   (vfs_fs_c *)self,
                                    (dsep->mode & VFS_MODE_S_IFMT) |
                                        VFS_MODE_S_IFIFO |
                                        VFS_MODE_S_IRUSR |
@@ -612,7 +581,7 @@ msg_t __stmdrv_openfile_impl(void *ip, const char *path, int flags,
  * @memberof    vfs_streams_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvUnlink().
+ * @brief       Override of method @p vfsFSUnlink().
  *
  * @param[in,out] ip            Pointer to a @p vfs_streams_driver_c instance.
  * @param[in]     path          Path of the file to be unlinked.
@@ -620,14 +589,14 @@ msg_t __stmdrv_openfile_impl(void *ip, const char *path, int flags,
  */
 msg_t __stmdrv_unlink_impl(void *ip, const char *path) {
 
-  return __vfsdrv_unlink_impl(ip, path);
+  return __vfsfs_unlink_impl(ip, path);
 }
 
 /**
  * @memberof    vfs_streams_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvRename().
+ * @brief       Override of method @p vfsFSRename().
  *
  * @param[in,out] ip            Pointer to a @p vfs_streams_driver_c instance.
  * @param[in]     oldpath       Path of the node to be renamed.
@@ -636,14 +605,14 @@ msg_t __stmdrv_unlink_impl(void *ip, const char *path) {
  */
 msg_t __stmdrv_rename_impl(void *ip, const char *oldpath, const char *newpath) {
 
-  return __vfsdrv_rename_impl(ip, oldpath, newpath);
+  return __vfsfs_rename_impl(ip, oldpath, newpath);
 }
 
 /**
  * @memberof    vfs_streams_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvMkdir().
+ * @brief       Override of method @p vfsFSMkdir().
  *
  * @param[in,out] ip            Pointer to a @p vfs_streams_driver_c instance.
  * @param[in]     path          Path of the directory to be created.
@@ -652,14 +621,14 @@ msg_t __stmdrv_rename_impl(void *ip, const char *oldpath, const char *newpath) {
  */
 msg_t __stmdrv_mkdir_impl(void *ip, const char *path, vfs_mode_t mode) {
 
-  return __vfsdrv_mkdir_impl(ip, path, mode);
+  return __vfsfs_mkdir_impl(ip, path, mode);
 }
 
 /**
  * @memberof    vfs_streams_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvRmdir().
+ * @brief       Override of method @p vfsFSRmdir().
  *
  * @param[in,out] ip            Pointer to a @p vfs_streams_driver_c instance.
  * @param[in]     path          Path of the directory to be removed.
@@ -667,7 +636,7 @@ msg_t __stmdrv_mkdir_impl(void *ip, const char *path, vfs_mode_t mode) {
  */
 msg_t __stmdrv_rmdir_impl(void *ip, const char *path) {
 
-  return __vfsdrv_rmdir_impl(ip, path);
+  return __vfsfs_rmdir_impl(ip, path);
 }
 /** @} */
 
@@ -677,8 +646,6 @@ msg_t __stmdrv_rmdir_impl(void *ip, const char *path) {
  */
 const struct vfs_streams_driver_vmt __vfs_streams_driver_vmt = {
   .dispose                  = __stmdrv_dispose_impl,
-  .setcwd                   = __stmdrv_setcwd_impl,
-  .getcwd                   = __stmdrv_getcwd_impl,
   .stat                     = __stmdrv_stat_impl,
   .opendir                  = __stmdrv_opendir_impl,
   .openfile                 = __stmdrv_openfile_impl,
@@ -687,4 +654,3 @@ const struct vfs_streams_driver_vmt __vfs_streams_driver_vmt = {
   .mkdir                    = __stmdrv_mkdir_impl,
   .rmdir                    = __stmdrv_rmdir_impl
 };
-

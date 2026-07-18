@@ -150,9 +150,9 @@ struct vfs_streams_dir_node {
    */
   object_references_t       references;
   /**
-   * @brief       Driver handling this node.
+   * @brief       File system handling this node.
    */
-  vfs_driver_c              *driver;
+  vfs_fs_c                  *fs;
   /**
    * @brief       Node mode information.
    */
@@ -211,9 +211,9 @@ struct vfs_streams_file_node {
    */
   object_references_t       references;
   /**
-   * @brief       Driver handling this node.
+   * @brief       File system handling this node.
    */
-  vfs_driver_c              *driver;
+  vfs_fs_c                  *fs;
   /**
    * @brief       Node mode information.
    */
@@ -235,7 +235,7 @@ struct vfs_streams_file_node {
 
 /**
  * @class       vfs_streams_driver_c
- * @extends     vfs_driver_c
+ * @extends     vfs_fs_c
  *
  *
  * @name        Class @p vfs_streams_driver_c structures
@@ -253,9 +253,7 @@ typedef struct vfs_streams_driver vfs_streams_driver_c;
 struct vfs_streams_driver_vmt {
   /* From base_object_c.*/
   void (*dispose)(void *ip);
-  /* From vfs_driver_c.*/
-  msg_t (*setcwd)(void *ip, const char *path);
-  msg_t (*getcwd)(void *ip, char *buf, size_t size);
+  /* From vfs_fs_c.*/
   msg_t (*stat)(void *ip, const char *path, vfs_stat_t *sp);
   msg_t (*opendir)(void *ip, const char *path, vfs_directory_node_c **vdnpp);
   msg_t (*openfile)(void *ip, const char *path, int flags, vfs_file_node_c **vfnpp);
@@ -289,14 +287,14 @@ struct vfs_streams_driver {
 extern "C" {
 #endif
   /* Methods of vfs_streams_dir_node_c.*/
-  void *__stmdir_objinit_impl(void *ip, const void *vmt, vfs_driver_c *driver,
+  void *__stmdir_objinit_impl(void *ip, const void *vmt, vfs_fs_c *driver,
                               vfs_mode_t mode);
   void __stmdir_dispose_impl(void *ip);
   msg_t __stmdir_stat_impl(void *ip, vfs_stat_t *sp);
   msg_t __stmdir_first_impl(void *ip, vfs_direntry_info_t *dip);
   msg_t __stmdir_next_impl(void *ip, vfs_direntry_info_t *dip);
   /* Methods of vfs_streams_file_node_c.*/
-  void *__stmfile_objinit_impl(void *ip, const void *vmt, vfs_driver_c *driver,
+  void *__stmfile_objinit_impl(void *ip, const void *vmt, vfs_fs_c *driver,
                                vfs_mode_t mode, sequential_stream_i *stream,
                                random_stream_i *rstream);
   void __stmfile_dispose_impl(void *ip);
@@ -310,8 +308,6 @@ extern "C" {
   void *__stmdrv_objinit_impl(void *ip, const void *vmt,
                               const drv_streams_element_t *streams);
   void __stmdrv_dispose_impl(void *ip);
-  msg_t __stmdrv_setcwd_impl(void *ip, const char *path);
-  msg_t __stmdrv_getcwd_impl(void *ip, char *buf, size_t size);
   msg_t __stmdrv_stat_impl(void *ip, const char *path, vfs_stat_t *sp);
   msg_t __stmdrv_opendir_impl(void *ip, const char *path,
                               vfs_directory_node_c **vdnpp);
@@ -349,7 +345,7 @@ extern "C" {
  */
 CC_FORCE_INLINE
 static inline vfs_streams_dir_node_c *stmdirObjectInit(vfs_streams_dir_node_c *self,
-                                                       vfs_driver_c *driver,
+                                                       vfs_fs_c *driver,
                                                        vfs_mode_t mode) {
   extern const struct vfs_streams_dir_node_vmt __vfs_streams_dir_node_vmt;
 
@@ -376,7 +372,7 @@ static inline vfs_streams_dir_node_c *stmdirObjectInit(vfs_streams_dir_node_c *s
  */
 CC_FORCE_INLINE
 static inline vfs_streams_file_node_c *stmfileObjectInit(vfs_streams_file_node_c *self,
-                                                         vfs_driver_c *driver,
+                                                         vfs_fs_c *driver,
                                                          vfs_mode_t mode,
                                                          sequential_stream_i *stream,
                                                          random_stream_i *rstream) {

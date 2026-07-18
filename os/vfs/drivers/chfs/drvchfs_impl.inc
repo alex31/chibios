@@ -102,11 +102,11 @@ void __drv_chfs_init(void) {
  * @return                      A new reference to the object.
  */
 static void *__chfsdir_objinit_impl(void *ip, const void *vmt,
-                                    vfs_driver_c *driver, vfs_mode_t mode) {
+                                    vfs_fs_c *driver, vfs_mode_t mode) {
   vfs_chfs_dir_node_c *self = (vfs_chfs_dir_node_c *)ip;
 
   /* Initialization code.*/
-  self = __vfsdir_objinit_impl(ip, vmt, (vfs_driver_c *)driver, mode);
+  self = __vfsdir_objinit_impl(ip, vmt, (vfs_fs_c *)driver, mode);
 
   return self;
 }
@@ -220,7 +220,7 @@ static const struct vfs_chfs_dir_node_vmt __vfs_chfs_dir_node_vmt = {
  * @objinit
  */
 vfs_chfs_dir_node_c *chfsdirObjectInit(vfs_chfs_dir_node_c *self,
-                                       vfs_driver_c *driver,
+                                       vfs_fs_c *driver,
                                        vfs_mode_t mode) {
 
   return __chfsdir_objinit_impl(self, &__vfs_chfs_dir_node_vmt, driver, mode);
@@ -250,11 +250,11 @@ vfs_chfs_dir_node_c *chfsdirObjectInit(vfs_chfs_dir_node_c *self,
  * @return                      A new reference to the object.
  */
 static void *__chfsfile_objinit_impl(void *ip, const void *vmt,
-                                     vfs_driver_c *driver, vfs_mode_t mode) {
+                                     vfs_fs_c *driver, vfs_mode_t mode) {
   vfs_chfs_file_node_c *self = (vfs_chfs_file_node_c *)ip;
 
   /* Initialization code.*/
-  self = __vfsfile_objinit_impl(ip, vmt, (vfs_driver_c *)driver, mode);
+  self = __vfsfile_objinit_impl(ip, vmt, (vfs_fs_c *)driver, mode);
 
   return self;
 }
@@ -416,7 +416,7 @@ static const struct vfs_chfs_file_node_vmt __vfs_chfs_file_node_vmt = {
  */
 static __attribute__((unused))
 vfs_chfs_file_node_c *chfsfileObjectInit(vfs_chfs_file_node_c *self,
-                                         vfs_driver_c *driver,
+                                         vfs_fs_c *driver,
                                          vfs_mode_t mode) {
 
   return __chfsfile_objinit_impl(self, &__vfs_chfs_file_node_vmt, driver, mode);
@@ -449,12 +449,10 @@ void *__chfsdrv_objinit_impl(void *ip, const void *vmt,
   vfs_chfs_driver_c *self = (vfs_chfs_driver_c *)ip;
 
   /* Initialization of the ancestors-defined parts.*/
-  __vfsdrv_objinit_impl(self, vmt);
+  __vfsfs_objinit_impl(self, vmt);
 
   /* Initialization code.*/
   self->cfgp = cfgp;
-  self->cwd  = NULL;
-  self->path_cwd[0] = '\0';
 
   return self;
 }
@@ -476,54 +474,14 @@ void __chfsdrv_dispose_impl(void *ip) {
   (void)self;
 
   /* Finalization of the ancestors-defined parts.*/
-  __vfsdrv_dispose_impl(self);
+  __vfsfs_dispose_impl(self);
 }
 
 /**
  * @memberof    vfs_chfs_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvChangeCurrentDirectory().
- *
- * @param[in,out] ip            Pointer to a @p vfs_chfs_driver_c instance.
- * @param[in]     path          Path of the new current directory.
- * @return                      The operation result.
- */
-msg_t __chfsdrv_setcwd_impl(void *ip, const char *path) {
-  vfs_chfs_driver_c *self = (vfs_chfs_driver_c *)ip;
-
-  (void)self;
-  (void)path;
-
-  return CH_RET_SUCCESS;
-}
-
-/**
- * @memberof    vfs_chfs_driver_c
- * @protected
- *
- * @brief       Override of method @p vfsDrvGetCurrentDirectory().
- *
- * @param[in,out] ip            Pointer to a @p vfs_chfs_driver_c instance.
- * @param[out]    buf           Buffer for the path string.
- * @param[in]     size          Size of the buffer.
- * @return                      The operation result.
- */
-msg_t __chfsdrv_getcwd_impl(void *ip, char *buf, size_t size) {
-  vfs_chfs_driver_c *self = (vfs_chfs_driver_c *)ip;
-
-  (void)self;
-  (void)buf;
-  (void)size;
-
-  return CH_RET_SUCCESS;
-}
-
-/**
- * @memberof    vfs_chfs_driver_c
- * @protected
- *
- * @brief       Override of method @p vfsDrvStat().
+ * @brief       Override of method @p vfsFSStat().
  *
  * @param[in,out] ip            Pointer to a @p vfs_chfs_driver_c instance.
  * @param[in]     path          Absolute path of the node to be examined.
@@ -544,7 +502,7 @@ msg_t __chfsdrv_stat_impl(void *ip, const char *path, vfs_stat_t *sp) {
  * @memberof    vfs_chfs_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvOpenDirectory().
+ * @brief       Override of method @p vfsFSOpenDirectory().
  *
  * @param[in,out] ip            Pointer to a @p vfs_chfs_driver_c instance.
  * @param[in]     path          Absolute path of the directory to be opened.
@@ -567,7 +525,7 @@ msg_t __chfsdrv_opendir_impl(void *ip, const char *path,
  * @memberof    vfs_chfs_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvOpenFile().
+ * @brief       Override of method @p vfsFSOpenFile().
  *
  * @param[in,out] ip            Pointer to a @p vfs_chfs_driver_c instance.
  * @param[in]     path          Absolute path of the directory to be opened.
@@ -592,7 +550,7 @@ msg_t __chfsdrv_openfile_impl(void *ip, const char *path, int flags,
  * @memberof    vfs_chfs_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvUnlink().
+ * @brief       Override of method @p vfsFSUnlink().
  *
  * @param[in,out] ip            Pointer to a @p vfs_chfs_driver_c instance.
  * @param[in]     path          Path of the file to be unlinked.
@@ -611,7 +569,7 @@ msg_t __chfsdrv_unlink_impl(void *ip, const char *path) {
  * @memberof    vfs_chfs_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvRename().
+ * @brief       Override of method @p vfsFSRename().
  *
  * @param[in,out] ip            Pointer to a @p vfs_chfs_driver_c instance.
  * @param[in]     oldpath       Path of the node to be renamed.
@@ -632,7 +590,7 @@ msg_t __chfsdrv_rename_impl(void *ip, const char *oldpath, const char *newpath) 
  * @memberof    vfs_chfs_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvMkdir().
+ * @brief       Override of method @p vfsFSMkdir().
  *
  * @param[in,out] ip            Pointer to a @p vfs_chfs_driver_c instance.
  * @param[in]     path          Path of the directory to be created.
@@ -653,7 +611,7 @@ msg_t __chfsdrv_mkdir_impl(void *ip, const char *path, vfs_mode_t mode) {
  * @memberof    vfs_chfs_driver_c
  * @protected
  *
- * @brief       Override of method @p vfsDrvRmdir().
+ * @brief       Override of method @p vfsFSRmdir().
  *
  * @param[in,out] ip            Pointer to a @p vfs_chfs_driver_c instance.
  * @param[in]     path          Path of the directory to be removed.
@@ -675,8 +633,6 @@ msg_t __chfsdrv_rmdir_impl(void *ip, const char *path) {
  */
 const struct vfs_chfs_driver_vmt __vfs_chfs_driver_vmt = {
   .dispose                  = __chfsdrv_dispose_impl,
-  .setcwd                   = __chfsdrv_setcwd_impl,
-  .getcwd                   = __chfsdrv_getcwd_impl,
   .stat                     = __chfsdrv_stat_impl,
   .opendir                  = __chfsdrv_opendir_impl,
   .openfile                 = __chfsdrv_openfile_impl,

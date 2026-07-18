@@ -136,7 +136,7 @@ typedef struct vfs_romfs_tree vfs_romfs_tree_t;
 
 /**
  * @class       vfs_rom_driver_c
- * @extends     vfs_driver_c
+ * @extends     vfs_fs_c
  *
  *
  * @name        Class @p vfs_rom_driver_c structures
@@ -154,9 +154,7 @@ typedef struct vfs_rom_driver vfs_rom_driver_c;
 struct vfs_rom_driver_vmt {
   /* From base_object_c.*/
   void (*dispose)(void *ip);
-  /* From vfs_driver_c.*/
-  msg_t (*setcwd)(void *ip, const char *path);
-  msg_t (*getcwd)(void *ip, char *buf, size_t size);
+  /* From vfs_fs_c.*/
   msg_t (*stat)(void *ip, const char *path, vfs_stat_t *sp);
   msg_t (*opendir)(void *ip, const char *path, vfs_directory_node_c **vdnpp);
   msg_t (*openfile)(void *ip, const char *path, int flags, vfs_file_node_c **vfnpp);
@@ -282,8 +280,6 @@ extern "C" {
   void *__romdrv_objinit_impl(void *ip, const void *vmt,
                               const vfs_romfs_tree_t *tree);
   void __romdrv_dispose_impl(void *ip);
-  msg_t __romdrv_setcwd_impl(void *ip, const char *path);
-  msg_t __romdrv_getcwd_impl(void *ip, char *buf, size_t size);
   msg_t __romdrv_stat_impl(void *ip, const char *path, vfs_stat_t *sp);
   msg_t __romdrv_opendir_impl(void *ip, const char *path,
                               vfs_directory_node_c **vdnpp);

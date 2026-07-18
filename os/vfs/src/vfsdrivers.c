@@ -56,7 +56,7 @@
 /**
  * @brief       Opens a VFS file or directory.
  *
- * @param[in,out] drvp          Pointer to the @p vfs_driver_c object.
+ * @param[in,out] fsp           Pointer to the @p vfs_fs_c object.
  * @param[in]     path          Absolute path of the node to be opened.
  * @param[in]     flags         Open flags.
  * @param[out]    vnpp          Pointer to the pointer to the instantiated @p
@@ -65,18 +65,17 @@
  *
  * @api
  */
-msg_t vfsDrvOpen(vfs_driver_c *drvp, const char *path, int flags,
-                 vfs_node_c **vnpp) {
+msg_t vfsFSOpen(vfs_fs_c *fsp, const char *path, int flags, vfs_node_c **vnpp) {
   msg_t ret;
 
   /* Attempting to open as file.*/
-  ret = vfsDrvOpenFile(drvp, path, flags, (vfs_file_node_c **)vnpp);
+  ret = vfsFSOpenFile(fsp, path, flags, (vfs_file_node_c **)vnpp);
   if (ret == CH_RET_EISDIR) {
     if ((flags & VO_ACCMODE) != VO_RDONLY) {
       ret = CH_RET_EISDIR;
     }
     else {
-      ret = vfsDrvOpenDirectory(drvp, path, (vfs_directory_node_c **)vnpp);
+      ret = vfsFSOpenDirectory(fsp, path, (vfs_directory_node_c **)vnpp);
     }
   }
 
@@ -84,24 +83,24 @@ msg_t vfsDrvOpen(vfs_driver_c *drvp, const char *path, int flags,
 }
 
 /*===========================================================================*/
-/* Module class "vfs_driver_c" methods.                                      */
+/* Module class "vfs_fs_c" methods.                                          */
 /*===========================================================================*/
 
 /**
- * @name        Methods implementations of vfs_driver_c
+ * @name        Methods implementations of vfs_fs_c
  * @{
  */
 /**
  * @brief       Implementation of object creation.
  * @note        This function is meant to be used by derived classes.
  *
- * @param[out]    ip            Pointer to a @p vfs_driver_c instance to be
+ * @param[out]    ip            Pointer to a @p vfs_fs_c instance to be
  *                              initialized.
  * @param[in]     vmt           VMT pointer for the new object.
  * @return                      A new reference to the object.
  */
-void *__vfsdrv_objinit_impl(void *ip, const void *vmt) {
-  vfs_driver_c *self = (vfs_driver_c *)ip;
+void *__vfsfs_objinit_impl(void *ip, const void *vmt) {
+  vfs_fs_c *self = (vfs_fs_c *)ip;
 
   /* Initialization of the ancestors-defined parts.*/
   __bo_objinit_impl(self, vmt);
@@ -115,11 +114,11 @@ void *__vfsdrv_objinit_impl(void *ip, const void *vmt) {
  * @brief       Implementation of object finalization.
  * @note        This function is meant to be used by derived classes.
  *
- * @param[in,out] ip            Pointer to a @p vfs_driver_c instance to be
+ * @param[in,out] ip            Pointer to a @p vfs_fs_c instance to be
  *                              disposed.
  */
-void __vfsdrv_dispose_impl(void *ip) {
-  vfs_driver_c *self = (vfs_driver_c *)ip;
+void __vfsfs_dispose_impl(void *ip) {
+  vfs_fs_c *self = (vfs_fs_c *)ip;
 
   /* No finalization code.*/
   (void)self;
@@ -129,52 +128,16 @@ void __vfsdrv_dispose_impl(void *ip) {
 }
 
 /**
- * @brief       Implementation of method @p vfsDrvChangeCurrentDirectory().
+ * @brief       Implementation of method @p vfsFSStat().
  * @note        This function is meant to be used by derived classes.
  *
- * @param[in,out] ip            Pointer to a @p vfs_driver_c instance.
- * @param[in]     path          Path of the new current directory.
- * @return                      The operation result.
- */
-msg_t __vfsdrv_setcwd_impl(void *ip, const char *path) {
-  vfs_driver_c *self = (vfs_driver_c *)ip;
-
-  (void)self;
-  (void)path;
-
-  return CH_RET_ENOSYS;
-}
-
-/**
- * @brief       Implementation of method @p vfsDrvGetCurrentDirectory().
- * @note        This function is meant to be used by derived classes.
- *
- * @param[in,out] ip            Pointer to a @p vfs_driver_c instance.
- * @param[out]    buf           Buffer for the path string.
- * @param[in]     size          Size of the buffer.
- * @return                      The operation result.
- */
-msg_t __vfsdrv_getcwd_impl(void *ip, char *buf, size_t size) {
-  vfs_driver_c *self = (vfs_driver_c *)ip;
-
-  (void)self;
-  (void)buf;
-  (void)size;
-
-  return CH_RET_ENOSYS;
-}
-
-/**
- * @brief       Implementation of method @p vfsDrvStat().
- * @note        This function is meant to be used by derived classes.
- *
- * @param[in,out] ip            Pointer to a @p vfs_driver_c instance.
+ * @param[in,out] ip            Pointer to a @p vfs_fs_c instance.
  * @param[in]     path          Absolute path of the node to be examined.
  * @param[out]    sp            Pointer to a @p vfs_stat_t structure.
  * @return                      The operation result.
  */
-msg_t __vfsdrv_stat_impl(void *ip, const char *path, vfs_stat_t *sp) {
-  vfs_driver_c *self = (vfs_driver_c *)ip;
+msg_t __vfsfs_stat_impl(void *ip, const char *path, vfs_stat_t *sp) {
+  vfs_fs_c *self = (vfs_fs_c *)ip;
 
   (void)self;
   (void)path;
@@ -184,18 +147,18 @@ msg_t __vfsdrv_stat_impl(void *ip, const char *path, vfs_stat_t *sp) {
 }
 
 /**
- * @brief       Implementation of method @p vfsDrvOpenDirectory().
+ * @brief       Implementation of method @p vfsFSOpenDirectory().
  * @note        This function is meant to be used by derived classes.
  *
- * @param[in,out] ip            Pointer to a @p vfs_driver_c instance.
+ * @param[in,out] ip            Pointer to a @p vfs_fs_c instance.
  * @param[in]     path          Absolute path of the directory to be opened.
  * @param[out]    vdnpp         Pointer to the pointer to the instantiated @p
  *                              vfs_directory_node_c object.
  * @return                      The operation result.
  */
-msg_t __vfsdrv_opendir_impl(void *ip, const char *path,
-                            vfs_directory_node_c **vdnpp) {
-  vfs_driver_c *self = (vfs_driver_c *)ip;
+msg_t __vfsfs_opendir_impl(void *ip, const char *path,
+                           vfs_directory_node_c **vdnpp) {
+  vfs_fs_c *self = (vfs_fs_c *)ip;
 
   (void)self;
   (void)path;
@@ -205,19 +168,19 @@ msg_t __vfsdrv_opendir_impl(void *ip, const char *path,
 }
 
 /**
- * @brief       Implementation of method @p vfsDrvOpenFile().
+ * @brief       Implementation of method @p vfsFSOpenFile().
  * @note        This function is meant to be used by derived classes.
  *
- * @param[in,out] ip            Pointer to a @p vfs_driver_c instance.
+ * @param[in,out] ip            Pointer to a @p vfs_fs_c instance.
  * @param[in]     path          Absolute path of the directory to be opened.
  * @param[in]     flags         File open flags.
  * @param[out]    vfnpp         Pointer to the pointer to the instantiated @p
  *                              vfs_file_node_c object.
  * @return                      The operation result.
  */
-msg_t __vfsdrv_openfile_impl(void *ip, const char *path, int flags,
-                             vfs_file_node_c **vfnpp) {
-  vfs_driver_c *self = (vfs_driver_c *)ip;
+msg_t __vfsfs_openfile_impl(void *ip, const char *path, int flags,
+                            vfs_file_node_c **vfnpp) {
+  vfs_fs_c *self = (vfs_fs_c *)ip;
 
   (void)self;
   (void)path;
@@ -228,15 +191,15 @@ msg_t __vfsdrv_openfile_impl(void *ip, const char *path, int flags,
 }
 
 /**
- * @brief       Implementation of method @p vfsDrvUnlink().
+ * @brief       Implementation of method @p vfsFSUnlink().
  * @note        This function is meant to be used by derived classes.
  *
- * @param[in,out] ip            Pointer to a @p vfs_driver_c instance.
+ * @param[in,out] ip            Pointer to a @p vfs_fs_c instance.
  * @param[in]     path          Path of the file to be unlinked.
  * @return                      The operation result.
  */
-msg_t __vfsdrv_unlink_impl(void *ip, const char *path) {
-  vfs_driver_c *self = (vfs_driver_c *)ip;
+msg_t __vfsfs_unlink_impl(void *ip, const char *path) {
+  vfs_fs_c *self = (vfs_fs_c *)ip;
 
   (void)self;
   (void)path;
@@ -245,16 +208,16 @@ msg_t __vfsdrv_unlink_impl(void *ip, const char *path) {
 }
 
 /**
- * @brief       Implementation of method @p vfsDrvRename().
+ * @brief       Implementation of method @p vfsFSRename().
  * @note        This function is meant to be used by derived classes.
  *
- * @param[in,out] ip            Pointer to a @p vfs_driver_c instance.
+ * @param[in,out] ip            Pointer to a @p vfs_fs_c instance.
  * @param[in]     oldpath       Path of the node to be renamed.
  * @param[in]     newpath       New path of the renamed node.
  * @return                      The operation result.
  */
-msg_t __vfsdrv_rename_impl(void *ip, const char *oldpath, const char *newpath) {
-  vfs_driver_c *self = (vfs_driver_c *)ip;
+msg_t __vfsfs_rename_impl(void *ip, const char *oldpath, const char *newpath) {
+  vfs_fs_c *self = (vfs_fs_c *)ip;
 
   (void)self;
   (void)oldpath;
@@ -264,16 +227,16 @@ msg_t __vfsdrv_rename_impl(void *ip, const char *oldpath, const char *newpath) {
 }
 
 /**
- * @brief       Implementation of method @p vfsDrvMkdir().
+ * @brief       Implementation of method @p vfsFSMkdir().
  * @note        This function is meant to be used by derived classes.
  *
- * @param[in,out] ip            Pointer to a @p vfs_driver_c instance.
+ * @param[in,out] ip            Pointer to a @p vfs_fs_c instance.
  * @param[in]     path          Path of the directory to be created.
  * @param[in]     mode          Mode flags for the directory.
  * @return                      The operation result.
  */
-msg_t __vfsdrv_mkdir_impl(void *ip, const char *path, vfs_mode_t mode) {
-  vfs_driver_c *self = (vfs_driver_c *)ip;
+msg_t __vfsfs_mkdir_impl(void *ip, const char *path, vfs_mode_t mode) {
+  vfs_fs_c *self = (vfs_fs_c *)ip;
 
   (void)self;
   (void)path;
@@ -283,15 +246,15 @@ msg_t __vfsdrv_mkdir_impl(void *ip, const char *path, vfs_mode_t mode) {
 }
 
 /**
- * @brief       Implementation of method @p vfsDrvRmdir().
+ * @brief       Implementation of method @p vfsFSRmdir().
  * @note        This function is meant to be used by derived classes.
  *
- * @param[in,out] ip            Pointer to a @p vfs_driver_c instance.
+ * @param[in,out] ip            Pointer to a @p vfs_fs_c instance.
  * @param[in]     path          Path of the directory to be removed.
  * @return                      The operation result.
  */
-msg_t __vfsdrv_rmdir_impl(void *ip, const char *path) {
-  vfs_driver_c *self = (vfs_driver_c *)ip;
+msg_t __vfsfs_rmdir_impl(void *ip, const char *path) {
+  vfs_fs_c *self = (vfs_fs_c *)ip;
 
   (void)self;
   (void)path;

@@ -85,6 +85,8 @@ void vfsInit(void) {
 #endif
 }
 
+#if VFS_CFG_ENABLE_DRV_ROOT == TRUE
+
 /**
  * @brief   Changes the current VFS directory.
  *
@@ -95,7 +97,7 @@ void vfsInit(void) {
  */
 msg_t vfsChangeCurrentDirectory(const char *path) {
 
-  return vfsDrvChangeCurrentDirectory(vfs_root, path);
+  return vfsRootChangeCurrentDirectory(vfs_root, path);
 }
 
 /**
@@ -109,7 +111,7 @@ msg_t vfsChangeCurrentDirectory(const char *path) {
  */
 msg_t vfsGetCurrentDirectory(char *buf, size_t size) {
 
-  return vfsDrvGetCurrentDirectory(vfs_root, buf, size);
+  return vfsRootGetCurrentDirectory(vfs_root, buf, size);
 }
 
 /**
@@ -123,7 +125,7 @@ msg_t vfsGetCurrentDirectory(char *buf, size_t size) {
  */
 msg_t vfsStat(const char *path, vfs_stat_t *sp) {
 
-  return vfsDrvStat(vfs_root, path, sp);
+  return vfsFSStat(vfs_root, path, sp);
 }
 
 /**
@@ -139,7 +141,7 @@ msg_t vfsStat(const char *path, vfs_stat_t *sp) {
  */
 msg_t vfsOpen(const char *path, int flags, vfs_node_c **vnpp) {
 
-  return vfsDrvOpen(vfs_root, path, flags, vnpp);
+  return vfsFSOpen((vfs_fs_c *)vfs_root, path, flags, vnpp);
 }
 
 /**
@@ -154,7 +156,7 @@ msg_t vfsOpen(const char *path, int flags, vfs_node_c **vnpp) {
  */
 msg_t vfsOpenDirectory(const char *path, vfs_directory_node_c **vdnpp) {
 
-  return vfsDrvOpenDirectory(vfs_root, path, vdnpp);
+  return vfsFSOpenDirectory(vfs_root, path, vdnpp);
 }
 
 /**
@@ -170,7 +172,7 @@ msg_t vfsOpenDirectory(const char *path, vfs_directory_node_c **vdnpp) {
  */
 msg_t vfsOpenFile(const char *path, int flags, vfs_file_node_c **vfnpp) {
 
-  return vfsDrvOpenFile(vfs_root, path, flags, vfnpp);
+  return vfsFSOpenFile(vfs_root, path, flags, vfnpp);
 }
 
 /**
@@ -183,7 +185,7 @@ msg_t vfsOpenFile(const char *path, int flags, vfs_file_node_c **vfnpp) {
  */
 msg_t vfsUnlink(const char *path) {
 
-  return vfsDrvUnlink(vfs_root, path);
+  return vfsFSUnlink(vfs_root, path);
 }
 
 /**
@@ -197,7 +199,7 @@ msg_t vfsUnlink(const char *path) {
  */
 msg_t vfsRename(const char *oldpath, const char *newpath) {
 
-  return vfsDrvRename(vfs_root, oldpath, newpath);
+  return vfsFSRename(vfs_root, oldpath, newpath);
 }
 
 /**
@@ -211,7 +213,7 @@ msg_t vfsRename(const char *oldpath, const char *newpath) {
  */
 msg_t vfsMkdir(const char *path, vfs_mode_t mode) {
 
-  return vfsDrvMkdir(vfs_root, path, mode);
+  return vfsFSMkdir(vfs_root, path, mode);
 }
 
 /**
@@ -224,8 +226,10 @@ msg_t vfsMkdir(const char *path, vfs_mode_t mode) {
  */
 msg_t vfsRmdir(const char *path) {
 
-  return vfsDrvRmdir(vfs_root, path);
+  return vfsFSRmdir(vfs_root, path);
 }
+
+#endif /* VFS_CFG_ENABLE_DRV_ROOT == TRUE */
 
 /**
  * @brief   Returns node information.

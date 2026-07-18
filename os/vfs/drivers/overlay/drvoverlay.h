@@ -16,7 +16,7 @@
 
 /**
  * @file        drvoverlay.h
- * @brief       Generated VFS Template Driver header.
+ * @brief       Generated VFS Overlay Driver header.
  * @note        This is a generated file, do not edit directly.
  *
  * @addtogroup  DRVOVERLAY
@@ -123,9 +123,9 @@ struct vfs_overlay_dir_node {
    */
   object_references_t       references;
   /**
-   * @brief       Driver handling this node.
+   * @brief       File system handling this node.
    */
-  vfs_driver_c              *driver;
+  vfs_fs_c                  *fs;
   /**
    * @brief       Node mode information.
    */
@@ -143,7 +143,7 @@ struct vfs_overlay_dir_node {
 
 /**
  * @class       vfs_overlay_driver_c
- * @extends     vfs_driver_c
+ * @extends     vfs_fs_c
  *
  *
  * @name        Class @p vfs_overlay_driver_c structures
@@ -161,9 +161,7 @@ typedef struct vfs_overlay_driver vfs_overlay_driver_c;
 struct vfs_overlay_driver_vmt {
   /* From base_object_c.*/
   void (*dispose)(void *ip);
-  /* From vfs_driver_c.*/
-  msg_t (*setcwd)(void *ip, const char *path);
-  msg_t (*getcwd)(void *ip, char *buf, size_t size);
+  /* From vfs_fs_c.*/
   msg_t (*stat)(void *ip, const char *path, vfs_stat_t *sp);
   msg_t (*opendir)(void *ip, const char *path, vfs_directory_node_c **vdnpp);
   msg_t (*openfile)(void *ip, const char *path, int flags, vfs_file_node_c **vfnpp);
@@ -182,12 +180,11 @@ struct vfs_overlay_driver {
    * @brief       Virtual Methods Table.
    */
   const struct vfs_overlay_driver_vmt *vmt;
-  vfs_driver_c              *overlaid_drv;
+  vfs_fs_c                  *overlaid_drv;
   const char                *path_prefix;
-  char                      *path_cwd;
   unsigned                  next_driver;
   const char                *names[DRV_CFG_OVERLAY_DRV_MAX];
-  vfs_driver_c              *drivers[DRV_CFG_OVERLAY_DRV_MAX];
+  vfs_fs_c                  *drivers[DRV_CFG_OVERLAY_DRV_MAX];
   char                      buf[VFS_CFG_PATHLEN_MAX + 1];
 };
 /** @} */
@@ -223,11 +220,8 @@ extern "C" {
   msg_t __ovldir_next_impl(void *ip, vfs_direntry_info_t *dip);
   /* Methods of vfs_overlay_driver_c.*/
   void *__ovldrv_objinit_impl(void *ip, const void *vmt,
-                              vfs_driver_c *overlaid_drv,
-                              const char *path_prefix);
+                              vfs_fs_c *overlaid_drv, const char *path_prefix);
   void __ovldrv_dispose_impl(void *ip);
-  msg_t __ovldrv_setcwd_impl(void *ip, const char *path);
-  msg_t __ovldrv_getcwd_impl(void *ip, char *buf, size_t size);
   msg_t __ovldrv_stat_impl(void *ip, const char *path, vfs_stat_t *sp);
   msg_t __ovldrv_opendir_impl(void *ip, const char *path,
                               vfs_directory_node_c **vdnpp);
@@ -238,7 +232,7 @@ extern "C" {
                              const char *newpath);
   msg_t __ovldrv_mkdir_impl(void *ip, const char *path, vfs_mode_t mode);
   msg_t __ovldrv_rmdir_impl(void *ip, const char *path);
-  msg_t ovldrvRegisterDriver(void *ip, vfs_driver_c *vdp, const char *name);
+  msg_t ovldrvRegisterDriver(void *ip, vfs_fs_c *fsp, const char *name);
   msg_t ovldrvUnregisterDriver(void *ip, const char *name);
   /* Regular functions.*/
   void __drv_overlay_init(void);
@@ -284,7 +278,8 @@ static inline vfs_overlay_dir_node_c *ovldirObjectInit(vfs_overlay_dir_node_c *s
  *
  * @param[out]    self          Pointer to a @p vfs_overlay_driver_c instance
  *                              to be initialized.
- * @param[in]     overlaid_drv  Pointer to a driver to be overlaid or @p NULL.
+ * @param[in]     overlaid_drv  Pointer to a file system to be overlaid or @p
+ *                              NULL.
  * @param[in]     path_prefix   Prefix to be added to the paths or @p NULL, it
  *                              must be a normalized absolute path.
  * @return                      Pointer to the initialized object.
@@ -293,7 +288,7 @@ static inline vfs_overlay_dir_node_c *ovldirObjectInit(vfs_overlay_dir_node_c *s
  */
 CC_FORCE_INLINE
 static inline vfs_overlay_driver_c *ovldrvObjectInit(vfs_overlay_driver_c *self,
-                                                     vfs_driver_c *overlaid_drv,
+                                                     vfs_fs_c *overlaid_drv,
                                                      const char *path_prefix) {
   extern const struct vfs_overlay_driver_vmt __vfs_overlay_driver_vmt;
 

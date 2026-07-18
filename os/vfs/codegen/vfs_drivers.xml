@@ -2,7 +2,7 @@
 <module xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="http://www.chibios.org/xml/schema/ccode/modules.xsd"
   name="vfsdrivers" descr="VFS Drivers" editcode="false">
-  <brief>Common ancestor class of all reference-counted objects.</brief>
+  <brief>VFS file system class.</brief>
   <imports>
     <import>oop_base_object.xml</import>
   </imports>
@@ -25,11 +25,11 @@
       </group>
     </definitions_early>
     <types>
-      <class type="abstract" name="vfs_driver" namespace="vfsdrv"
-        ancestorname="base_object" descr="VFS driver">
-        <brief>Common ancestor class of all VFS driver classes.</brief>
+      <class type="abstract" name="vfs_fs" namespace="vfsfs"
+        ancestorname="base_object" descr="VFS file system">
+        <brief>Common ancestor class of all VFS file system classes.</brief>
         <details><![CDATA[Base class for objects that implement a Posix-like
-          file system interface.]]></details>
+          file system interface using normalized absolute paths.]]></details>
         <fields></fields>
         <methods>
           <objinit callsuper="true">
@@ -39,38 +39,7 @@
             <implementation><![CDATA[ ]]></implementation>
           </dispose>
           <virtual>
-            <method name="vfsDrvChangeCurrentDirectory"
-              shortname="setcwd" ctype="msg_t">
-              <brief>Changes the current VFS directory.</brief>
-              <param name="path" ctype="const char *" dir="in">Path of the new
-                current directory.</param>
-              <return>The operation result.</return>
-              <api />
-              <implementation>
-
-(void)self;
-(void)path;
-
-return CH_RET_ENOSYS;<![CDATA[]]></implementation>
-            </method>
-            <method name="vfsDrvGetCurrentDirectory" shortname="getcwd"
-              ctype="msg_t">
-              <brief>Returns the current VFS directory.</brief>
-              <param name="buf" ctype="char *" dir="out">Buffer for the path
-                string.</param>
-              <param name="size" ctype="size_t" dir="in">Size of the buffer
-              </param>
-              <return>The operation result.</return>
-              <api />
-              <implementation>
-
-(void)self;
-(void)buf;
-(void)size;
-
-return CH_RET_ENOSYS;<![CDATA[]]></implementation>
-            </method>
-            <method name="vfsDrvStat" shortname="stat" ctype="msg_t">
+            <method name="vfsFSStat" shortname="stat" ctype="msg_t">
               <brief>Returns file or directory information.</brief>
               <param name="path" ctype="const char *" dir="in">Absolute path of
                 the node to be examined.</param>
@@ -86,7 +55,7 @@ return CH_RET_ENOSYS;<![CDATA[]]></implementation>
 
 return CH_RET_ENOSYS;<![CDATA[]]></implementation>
             </method>
-            <method name="vfsDrvOpenDirectory" shortname="opendir"
+            <method name="vfsFSOpenDirectory" shortname="opendir"
               ctype="msg_t">
               <brief>Opens a VFS directory.</brief>
               <param name="path" ctype="const char *" dir="in">Absolute path of
@@ -106,7 +75,7 @@ return CH_RET_ENOSYS;<![CDATA[]]></implementation>
 
 return CH_RET_ENOSYS;<![CDATA[]]></implementation>
             </method>
-            <method name="vfsDrvOpenFile" shortname="openfile"
+            <method name="vfsFSOpenFile" shortname="openfile"
               ctype="msg_t">
               <brief>Opens a VFS file.</brief>
               <param name="path" ctype="const char *" dir="in">Absolute path of
@@ -127,7 +96,7 @@ return CH_RET_ENOSYS;<![CDATA[]]></implementation>
 
 return CH_RET_ENOSYS;<![CDATA[]]></implementation>
             </method>
-            <method name="vfsDrvUnlink" shortname="unlink" ctype="msg_t">
+            <method name="vfsFSUnlink" shortname="unlink" ctype="msg_t">
               <brief>Unlinks and possibly deletes a file.</brief>
               <param name="path" ctype="const char *" dir="in">Path of the file
                 to be unlinked.</param>
@@ -140,7 +109,7 @@ return CH_RET_ENOSYS;<![CDATA[]]></implementation>
 
 return CH_RET_ENOSYS;<![CDATA[]]></implementation>
             </method>
-            <method name="vfsDrvRename" shortname="rename" ctype="msg_t">
+            <method name="vfsFSRename" shortname="rename" ctype="msg_t">
               <brief>Renames a file or directory.</brief>
               <param name="oldpath" ctype="const char *" dir="in">Path of the
                 node to be renamed.</param>
@@ -156,7 +125,7 @@ return CH_RET_ENOSYS;<![CDATA[]]></implementation>
 
 return CH_RET_ENOSYS;<![CDATA[]]></implementation>
             </method>
-            <method name="vfsDrvMkdir" shortname="mkdir" ctype="msg_t">
+            <method name="vfsFSMkdir" shortname="mkdir" ctype="msg_t">
               <brief>Creates a directory.</brief>
               <param name="path" ctype="const char *" dir="in">Path of the
                 directory to be created.</param>
@@ -172,7 +141,7 @@ return CH_RET_ENOSYS;<![CDATA[]]></implementation>
 
 return CH_RET_ENOSYS;<![CDATA[]]></implementation>
             </method>
-            <method name="vfsDrvRmdir" shortname="rmdir" ctype="msg_t">
+            <method name="vfsFSRmdir" shortname="rmdir" ctype="msg_t">
               <brief>Removes a directory.</brief>
               <param name="path" ctype="const char *" dir="in">Path of the
                 directory to be removed.</param>
@@ -190,10 +159,10 @@ return CH_RET_ENOSYS;<![CDATA[]]></implementation>
       </class>
     </types>
     <functions>
-      <function name="vfsDrvOpen" ctype="msg_t">
+      <function name="vfsFSOpen" ctype="msg_t">
         <brief>Opens a VFS file or directory.</brief>
-        <param name="drvp" ctype="vfs_driver_c *" dir="both"> Pointer to the @p
-          vfs_driver_c object.
+        <param name="fsp" ctype="vfs_fs_c *" dir="both"> Pointer to the @p
+          vfs_fs_c object.
         </param>
         <param name="path" ctype="const char *" dir="in"> Absolute path of the
           node to be opened.
@@ -208,13 +177,13 @@ return CH_RET_ENOSYS;<![CDATA[]]></implementation>
 msg_t ret;
 
 /* Attempting to open as file.*/
-ret = vfsDrvOpenFile(drvp, path, flags, (vfs_file_node_c **)vnpp);
+ret = vfsFSOpenFile(fsp, path, flags, (vfs_file_node_c **)vnpp);
 if (ret == CH_RET_EISDIR) {
   if ((flags & VO_ACCMODE) != VO_RDONLY) {
     ret = CH_RET_EISDIR;
   }
   else {
-    ret = vfsDrvOpenDirectory(drvp, path, (vfs_directory_node_c **)vnpp);
+    ret = vfsFSOpenDirectory(fsp, path, (vfs_directory_node_c **)vnpp);
   }
 }
 

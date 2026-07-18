@@ -32,11 +32,8 @@
 /* Main and generic code.                                                    */
 /*===========================================================================*/
 
-/* VFS ROMFS driver object exported as the root file system.*/
+/* VFS ROMFS driver.*/
 static vfs_rom_driver_c rom_driver;
-
-/* Global pointer to the root VFS driver.*/
-vfs_driver_c *vfs_root = (vfs_driver_c *)&rom_driver;
 
 /*
  * Green LED blinker thread, times are in milliseconds.
@@ -73,8 +70,7 @@ int main(void) {
   /*
    * Initializes the ROMFS image exposed through the HTTPD custom file hooks.
    */
-  romdrvObjectInit(&rom_driver, &http_romfs);
-  httpd_vfs_init();
+  httpd_vfs_init((vfs_fs_c *)romdrvObjectInit(&rom_driver, &http_romfs));
 
   lwipInit(NULL);
 

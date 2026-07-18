@@ -16,7 +16,7 @@
 
 /**
  * @file        drvoverlay.c
- * @brief       Generated VFS Template Driver source.
+ * @brief       Generated VFS Overlay Driver source.
  * @note        This is a generated file, do not edit directly.
  *
  * @addtogroup  DRVOVERLAY

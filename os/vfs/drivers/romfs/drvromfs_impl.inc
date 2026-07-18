@@ -373,33 +373,17 @@ static const char *get_dir_path(const vfs_rom_dir_node_c *dp) {
 }
 
 static msg_t build_absolute_path(char *buf, const char *path) {
-  msg_t ret;
 
-  do {
-    *buf = '\0';
-
-    if (!vfs_path_is_separator(*path)) {
-      if (vfs_path_append(buf, "/", VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
-        ret = CH_RET_ENAMETOOLONG;
-        break;
-      }
-    }
-
-    if (vfs_path_append(buf, path, VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
-      ret = CH_RET_ENAMETOOLONG;
-      break;
-    }
-
-    if (vfs_path_normalize(buf, buf, VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
-      ret = CH_RET_ENAMETOOLONG;
-      break;
-    }
-
-    ret = CH_RET_SUCCESS;
+  if (!vfs_path_is_separator(*path)) {
+    return CH_RET_EINVAL;
   }
-  while (false);
 
-  return ret;
+  *buf = '\0';
+  if (vfs_path_append(buf, path, VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
+    return CH_RET_ENAMETOOLONG;
+  }
+
+  return CH_RET_SUCCESS;
 }
 
 static const vfs_romfs_dir_desc_t *find_dir(const vfs_rom_driver_c *drvp,
@@ -456,7 +440,7 @@ static bool get_next_child_dir(const vfs_rom_dir_node_c *self,
                                size_t from,
                                size_t *nextp,
                                char *name) {
-  const vfs_rom_driver_c *drvp = (const vfs_rom_driver_c *)self->driver;
+  const vfs_rom_driver_c *drvp = (const vfs_rom_driver_c *)self->fs;
   const char *parent = get_dir_path(self);
   size_t i;
 
@@ -658,11 +642,11 @@ void __drv_rom_init(void) {
  * @return                      A new reference to the object.
  */
 static void *__romdir_objinit_impl(void *ip, const void *vmt,
-                                   vfs_driver_c *driver, vfs_mode_t mode,
+                                   vfs_fs_c *driver, vfs_mode_t mode,
                                    const vfs_romfs_dir_desc_t *dir) {
   vfs_rom_dir_node_c *self = (vfs_rom_dir_node_c *)ip;
 
-  self = __vfsdir_objinit_impl(ip, vmt, (vfs_driver_c *)driver, mode);
+  self = __vfsdir_objinit_impl(ip, vmt, (vfs_fs_c *)driver, mode);
   self->dir = dir;
   self->next_dir = 0U;
   self->next_file = 0U;
@@ -798,7 +782,7 @@ static const struct vfs_rom_dir_node_vmt __vfs_rom_dir_node_vmt = {
  * @objinit
  */
 static vfs_rom_dir_node_c *romdirObjectInit(vfs_rom_dir_node_c *self,
-                                            vfs_driver_c *driver,
+                                            vfs_fs_c *driver,
                                             vfs_mode_t mode,
                                             const vfs_romfs_dir_desc_t *dir) {
 
@@ -830,12 +814,12 @@ static vfs_rom_dir_node_c *romdirObjectInit(vfs_rom_dir_node_c *self,
  * @return                      A new reference to the object.
  */
 static void *__romfile_objinit_impl(void *ip, const void *vmt,
-                                    vfs_driver_c *driver, vfs_mode_t mode,
+                                    vfs_fs_c *driver, vfs_mode_t mode,
                                     const vfs_romfs_file_desc_t *file,
                                     vfs_offset_t size, void *session) {
   vfs_rom_file_node_c *self = (vfs_rom_file_node_c *)ip;
 
-  self = __vfsfile_objinit_impl(ip, vmt, (vfs_driver_c *)driver, mode);
+  self = __vfsfile_objinit_impl(ip, vmt, (vfs_fs_c *)driver, mode);
   self->file = file;
   self->position = (vfs_offset_t)0;
   self->size = size;
@@ -1084,7 +1068,7 @@ static const struct vfs_rom_file_node_vmt __vfs_rom_file_node_vmt = {
  * @objinit
  */
 static vfs_rom_file_node_c *romfileObjectInit(vfs_rom_file_node_c *self,
-                                              vfs_driver_c *driver,
+                                              vfs_fs_c *driver,
                                               vfs_mode_t mode,
                                               const vfs_romfs_file_desc_t *file,
                                               vfs_offset_t size,
@@ -1117,7 +1101,7 @@ void *__romdrv_objinit_impl(void *ip, const void *vmt,
                             const vfs_romfs_tree_t *tree) {
   vfs_rom_driver_c *self = (vfs_rom_driver_c *)ip;
 
-  __vfsdrv_objinit_impl(self, vmt);
+  __vfsfs_objinit_impl(self, vmt);
   self->tree = tree;
 
   return self;
@@ -1132,65 +1116,11 @@ void *__romdrv_objinit_impl(void *ip, const void *vmt,
  */
 void __romdrv_dispose_impl(void *ip) {
 
-  __vfsdrv_dispose_impl(ip);
+  __vfsfs_dispose_impl(ip);
 }
 
 /**
- * @brief       Override of method @p vfsDrvChangeCurrentDirectory().
- *
- * @param[in,out] ip            Pointer to a @p vfs_rom_driver_c instance.
- * @param[in]     path          Path of the new current directory.
- * @return                      The operation result.
- */
-msg_t __romdrv_setcwd_impl(void *ip, const char *path) {
-  vfs_shared_buffer_t *shbuf;
-  msg_t ret;
-
-  (void)ip;
-
-  shbuf = vfs_buffer_take_wait();
-  ret = build_absolute_path(shbuf->buf, path);
-  if (!CH_RET_IS_ERROR(ret)) {
-    if (strcmp(shbuf->buf, "/") == 0) {
-      ret = CH_RET_SUCCESS;
-    }
-    else {
-      ret = CH_RET_ENOSYS;
-    }
-  }
-  vfs_buffer_release(shbuf);
-
-  return ret;
-}
-
-/**
- * @brief       Override of method @p vfsDrvGetCurrentDirectory().
- *
- * @param[in,out] ip            Pointer to a @p vfs_rom_driver_c instance.
- * @param[out]    buf           Buffer for the path string.
- * @param[in]     size          Size of the buffer.
- * @return                      The operation result.
- */
-msg_t __romdrv_getcwd_impl(void *ip, char *buf, size_t size) {
-
-  (void)ip;
-
-  if (size == (size_t)0) {
-    return CH_RET_ERANGE;
-  }
-  if (size < 2U) {
-    buf[0] = '\0';
-    return CH_RET_ERANGE;
-  }
-
-  buf[0] = '/';
-  buf[1] = '\0';
-
-  return CH_RET_SUCCESS;
-}
-
-/**
- * @brief       Override of method @p vfsDrvStat().
+ * @brief       Override of method @p vfsFSStat().
  *
  * @param[in,out] ip            Pointer to a @p vfs_rom_driver_c instance.
  * @param[in]     path          Absolute path of the node to be examined.
@@ -1239,7 +1169,7 @@ msg_t __romdrv_stat_impl(void *ip, const char *path, vfs_stat_t *sp) {
 }
 
 /**
- * @brief       Override of method @p vfsDrvOpenDirectory().
+ * @brief       Override of method @p vfsFSOpenDirectory().
  *
  * @param[in,out] ip            Pointer to a @p vfs_rom_driver_c instance.
  * @param[in]     path          Absolute path of the directory to be opened.
@@ -1278,7 +1208,7 @@ msg_t __romdrv_opendir_impl(void *ip, const char *path,
 
       rdnp = chPoolAlloc(&vfs_rom_driver_static.dir_nodes_pool);
       if (rdnp != NULL) {
-        (void)romdirObjectInit(rdnp, (vfs_driver_c *)self,
+        (void)romdirObjectInit(rdnp, (vfs_fs_c *)self,
                                VFS_MODE_S_IFDIR | VFS_MODE_S_IRUSR |
                                VFS_MODE_S_IXUSR, dirp);
         *vdnpp = (vfs_directory_node_c *)rdnp;
@@ -1296,7 +1226,7 @@ msg_t __romdrv_opendir_impl(void *ip, const char *path,
 }
 
 /**
- * @brief       Override of method @p vfsDrvOpenFile().
+ * @brief       Override of method @p vfsFSOpenFile().
  *
  * @param[in,out] ip            Pointer to a @p vfs_rom_driver_c instance.
  * @param[in]     path          Absolute path of the directory to be opened.
@@ -1367,7 +1297,7 @@ msg_t __romdrv_openfile_impl(void *ip, const char *path, int flags,
 
       rfnp = chPoolAlloc(&vfs_rom_driver_static.file_nodes_pool);
       if (rfnp != NULL) {
-        (void)romfileObjectInit(rfnp, (vfs_driver_c *)self,
+        (void)romfileObjectInit(rfnp, (vfs_fs_c *)self,
                                 VFS_MODE_S_IFREG | filep->mode,
                                 filep, size, session);
         *vfnpp = (vfs_file_node_c *)rfnp;
@@ -1402,7 +1332,7 @@ romdrv_openfile_done:
 }
 
 /**
- * @brief       Override of method @p vfsDrvUnlink().
+ * @brief       Override of method @p vfsFSUnlink().
  *
  * @param[in,out] ip            Pointer to a @p vfs_rom_driver_c instance.
  * @param[in]     path          Path of the file to be unlinked.
@@ -1417,7 +1347,7 @@ msg_t __romdrv_unlink_impl(void *ip, const char *path) {
 }
 
 /**
- * @brief       Override of method @p vfsDrvRename().
+ * @brief       Override of method @p vfsFSRename().
  *
  * @param[in,out] ip            Pointer to a @p vfs_rom_driver_c instance.
  * @param[in]     oldpath       Path of the node to be renamed.
@@ -1434,7 +1364,7 @@ msg_t __romdrv_rename_impl(void *ip, const char *oldpath, const char *newpath) {
 }
 
 /**
- * @brief       Override of method @p vfsDrvMkdir().
+ * @brief       Override of method @p vfsFSMkdir().
  *
  * @param[in,out] ip            Pointer to a @p vfs_rom_driver_c instance.
  * @param[in]     path          Path of the directory to be created.
@@ -1451,7 +1381,7 @@ msg_t __romdrv_mkdir_impl(void *ip, const char *path, vfs_mode_t mode) {
 }
 
 /**
- * @brief       Override of method @p vfsDrvRmdir().
+ * @brief       Override of method @p vfsFSRmdir().
  *
  * @param[in,out] ip            Pointer to a @p vfs_rom_driver_c instance.
  * @param[in]     path          Path of the directory to be removed.
@@ -1472,8 +1402,6 @@ msg_t __romdrv_rmdir_impl(void *ip, const char *path) {
  */
 const struct vfs_rom_driver_vmt __vfs_rom_driver_vmt = {
   .dispose                  = __romdrv_dispose_impl,
-  .setcwd                   = __romdrv_setcwd_impl,
-  .getcwd                   = __romdrv_getcwd_impl,
   .stat                     = __romdrv_stat_impl,
   .opendir                  = __romdrv_opendir_impl,
   .openfile                 = __romdrv_openfile_impl,
