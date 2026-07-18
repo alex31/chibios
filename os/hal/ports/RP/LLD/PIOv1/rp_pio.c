@@ -668,10 +668,15 @@ void pioProgramUnload(const rp_pio_block_t *block,
  * @post    The block is taken out of reset and intentionally left out of
  *          reset so the setting persists across the following
  *          @p pioSmAllocI() calls (whose internal unreset is idempotent).
- * @note    Releasing the last state machine of the block puts the block
- *          back in reset which clears GPIOBASE to zero, the window must be
- *          configured again before the next allocation cycle if a
- *          non-default base is required.
+ * @note    The block is put back in reset (clearing GPIOBASE to zero)
+ *          only when it becomes fully idle: no state machines allocated
+ *          AND no program loaded. After such a full release the window
+ *          must be configured again before the next allocation cycle if
+ *          a non-default base is required.
+ * @note    Not serialized against concurrent allocations: the base must
+ *          be selected during single-threaded initialization, before any
+ *          state machine of the block is allocated. Callers cannot
+ *          atomically pair this call with a following allocation.
  * @note    This function only exists on devices with the
  *          @p RP_PIO_HAS_GPIOBASE capability; on RP2040 all pads are
  *          directly accessible and no window selection is available.

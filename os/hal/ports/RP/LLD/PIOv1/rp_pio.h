@@ -630,6 +630,10 @@ __STATIC_INLINE void pioSmSetPinFunctionX(const rp_pio_sm_t *smp,
  *          on devices with the @p RP_PIO_HAS_GPIOBASE capability (RP2350).
  *          On devices without the capability (RP2040) pin numbers are
  *          absolute and this function is an identity mapping.
+ * @note    The window also applies to absolute GPIO operands encoded in
+ *          PIO instructions themselves, notably WAIT GPIO: a high-window
+ *          program must encode such operands window-relative too (e.g.
+ *          GPIO42 becomes 26 with base 16).
  *
  * @param[in] block     pointer to the PIO block descriptor
  * @param[in] gpio      absolute GPIO pin number, must fall within the
@@ -644,9 +648,11 @@ __STATIC_INLINE uint32_t pioGpioToRel(const rp_pio_block_t *block,
 #if (RP_PIO_HAS_GPIOBASE == TRUE) || defined(__DOXYGEN__)
   uint32_t base = block->pio->GPIOBASE;
 
-  /* The result must fit the 5-bit pin fields, i.e. the GPIO must be in
-     the [base, base + 31] window.*/
-  osalDbgCheck((gpio >= base) && ((gpio - base) < 32U));
+  /* The line must exist on the package and the result must fit the
+     5-bit pin fields, i.e. the GPIO must be in the [base, base + 31]
+     window.*/
+  osalDbgCheck((gpio < RP_GPIO_NUM_LINES) &&
+               (gpio >= base) && ((gpio - base) < 32U));
 
   return gpio - base;
 #else
