@@ -199,7 +199,9 @@ static uint32_t usb_prepare_out_ep_buffer(USBDriver *usbp, usbep_t ep, uint8_t b
     buf_ctrl |= USB_BUFFER_BUFFER0_AVAILABLE | buf_len;
     buf_ctrl &= ~USB_BUFFER_BUFFER0_FULL;
 
-    if (oesp->rxcnt + buf_len >= oesp->rxsize) {
+    /* rxsize holds the remaining transfer size, this buffer is the last one
+       of the transfer when it covers all of the remaining data. */
+    if (buf_len >= oesp->rxsize) {
         /* Last buffer */
         buf_ctrl |= USB_BUFFER_BUFFER0_LAST;
     }
