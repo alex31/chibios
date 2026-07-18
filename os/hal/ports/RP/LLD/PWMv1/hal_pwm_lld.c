@@ -383,20 +383,25 @@ void pwm_lld_start(PWMDriver *pwmp) {
     p->CH[pwmp->timer_id].CC  = 0;
   }
 
-  /* Counter clock divider. */
+  /* Counter clock divider as an 8.4 fixed point value, computed in 64
+     bits in order not to overflow at high system clocks. */
   halfreq_t sys_clk = halClockGetPointX(RP_CLK_SYS);
-  halfreq_t pwm_freq_min = sys_clk / 256;
+  uint32_t div_fp4 = (uint32_t)(((uint64_t)sys_clk << 4) /
+                                pwmp->config->frequency);
 
-  osalDbgAssert(pwmp->config->frequency >= pwm_freq_min,
-                "PWM counter frequency too low");
+  /* Divider 1.0 is the minimum supported value. */
+  if (div_fp4 < 0x010U) {
+    div_fp4 = 0x010U;
+  }
 
-  /* Integer part must not be zero. */
-  halfreq_t integer = sys_clk / pwmp->config->frequency;
-  integer = integer == 0 ? 1 : integer;
+  osalDbgAssert(div_fp4 <= 0xFFFU, "PWM frequency too low");
+  osalDbgAssert(pwmp->period >= 1U, "invalid PWM period");
 
-  halfreq_t fraction = (sys_clk << 4) / pwmp->config->frequency;
-  p->CH[pwmp->timer_id].DIV = (integer << 4 | (fraction & 0xF));
-  p->CH[pwmp->timer_id].TOP = pwmp->period;
+  p->CH[pwmp->timer_id].DIV = div_fp4;
+
+  /* The counter counts from zero to TOP included so the register must
+     be programmed with one count less than the requested period. */
+  p->CH[pwmp->timer_id].TOP = (uint32_t)(pwmp->period - 1U);
 
   uint32_t csr = PWM_CSR_EN | PWM_CSR_DIVMODE_FREE;
   csr &= ~PWM_CSR_PH_CORRECT;
