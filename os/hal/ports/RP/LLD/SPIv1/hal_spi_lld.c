@@ -167,12 +167,22 @@ void spi_lld_start(SPIDriver *spip) {
                                      RP_IRQ_SPI0_PRIORITY,
                                     (rp_dmaisr_t)spi_lld_serve_rx_interrupt,
                                     (void *)spip);
-      osalDbgAssert(spip->dmarx != NULL, "unable to allocate stream");
+      if (spip->dmarx == NULL) {
+        /* A fixed-channel allocation failure is a static configuration
+           conflict, continuing would dereference NULL later.*/
+        osalDbgAssert(false, "no RX DMA channel");
+        osalSysHalt("SPI DMA alloc");
+      }
       spip->dmatx = dmaChannelAllocI(RP_SPI_SPI0_TX_DMA_CHANNEL,
                                      RP_IRQ_SPI0_PRIORITY,
                                      (rp_dmaisr_t)spi_lld_serve_tx_interrupt,
                                      (void *)spip);
-      osalDbgAssert(spip->dmatx != NULL, "unable to allocate stream");
+      if (spip->dmatx == NULL) {
+        dmaChannelFreeI(spip->dmarx);
+        spip->dmarx = NULL;
+        osalDbgAssert(false, "no TX DMA channel");
+        osalSysHalt("SPI DMA alloc");
+      }
       dmaChannelEnableInterruptX(spip->dmarx);
       dmaChannelEnableInterruptX(spip->dmatx);
       rp_peripheral_unreset(RESETS_ALLREG_SPI0);
@@ -184,12 +194,22 @@ void spi_lld_start(SPIDriver *spip) {
                                      RP_IRQ_SPI1_PRIORITY,
                                     (rp_dmaisr_t)spi_lld_serve_rx_interrupt,
                                     (void *)spip);
-      osalDbgAssert(spip->dmarx != NULL, "unable to allocate stream");
+      if (spip->dmarx == NULL) {
+        /* A fixed-channel allocation failure is a static configuration
+           conflict, continuing would dereference NULL later.*/
+        osalDbgAssert(false, "no RX DMA channel");
+        osalSysHalt("SPI DMA alloc");
+      }
       spip->dmatx = dmaChannelAllocI(RP_SPI_SPI1_TX_DMA_CHANNEL,
                                      RP_IRQ_SPI1_PRIORITY,
                                      (rp_dmaisr_t)spi_lld_serve_tx_interrupt,
                                      (void *)spip);
-      osalDbgAssert(spip->dmatx != NULL, "unable to allocate stream");
+      if (spip->dmatx == NULL) {
+        dmaChannelFreeI(spip->dmarx);
+        spip->dmarx = NULL;
+        osalDbgAssert(false, "no TX DMA channel");
+        osalSysHalt("SPI DMA alloc");
+      }
       dmaChannelEnableInterruptX(spip->dmarx);
       dmaChannelEnableInterruptX(spip->dmatx);
       rp_peripheral_unreset(RESETS_ALLREG_SPI1);
