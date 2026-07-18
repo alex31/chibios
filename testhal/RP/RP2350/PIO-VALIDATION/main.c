@@ -39,7 +39,8 @@
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default
- * configuration bitrate (38400-8-N-1, see hal_sio_lld.c default_config).
+ * configuration bitrate (115200-8-N-1, SIO_DEFAULT_BITRATE override in
+ * this project's halconf.h).
  */
 
 #include "ch.h"
@@ -265,7 +266,7 @@ int main(void) {
   halInit();
   chSysInit();
 
-  /* UART0 console on GPIO0/GPIO1, SIO default configuration (38400).*/
+  /* UART0 console on GPIO0/GPIO1, halconf sets SIO default to 115200.*/
   palSetLineMode(0U, PAL_MODE_ALTERNATE_UART);
   palSetLineMode(1U, PAL_MODE_ALTERNATE_UART);
   sioStart(&SIOD0, NULL);
@@ -299,17 +300,33 @@ int main(void) {
   sq_off = pioProgramLoad(block, &sqwave_program);
   report("square wave loaded at nonzero offset", sq_off >= 1);
 
-  sqwave_start(smp, (uint32_t)sq_off);
-  edges = count_edges();
-  chprintf(chp, "      edges: %u\r\n", edges);
-  report("edge count in window", (edges >= EDGES_LO) && (edges <= EDGES_HI));
-  report("PC stays within program",
-         check_addr_window(smp, (uint32_t)sq_off, (uint32_t)sq_off + 2U));
+  /* Dependent steps only run with valid prerequisites, a failed
+     allocation or load must not be dereferenced or used as an
+     offset.*/
+  if ((smp != NULL) && (park_off == 0) && (sq_off >= 1)) {
+    sqwave_start(smp, (uint32_t)sq_off);
+    edges = count_edges();
+    chprintf(chp, "      edges: %u\r\n", edges);
+    report("edge count in window", (edges >= EDGES_LO) && (edges <= EDGES_HI));
+    report("PC stays within program",
+           check_addr_window(smp, (uint32_t)sq_off, (uint32_t)sq_off + 2U));
 
-  pioSmDisableX(smp);
+    pioSmDisableX(smp);
+  }
+  else {
+    report("edge count in window", false);
+    report("PC stays within program", false);
+    goto summary;
+  }
 
   /*
    * Test 2: full instruction memory allocation masks.
+   *
+   * Note: on Cortex-M the pre-fix undefined expression (1U << 32)
+   * happens to evaluate through a register LSL to the correct mask, so
+   * this leg regression-tests the behavior but cannot discriminate the
+   * undefined-behavior fix on this target; that is a compile-time
+   * property covered by UBSan/static analysis, not by this run.
    */
   chprintf(chp, "--- Test 2: 32-instruction masks\r\n");
 
@@ -413,6 +430,7 @@ int main(void) {
   /*
    * Summary.
    */
+summary:
   chprintf(chp, "\r\nResults: %u pass, %u fail\r\n", pass_count, fail_count);
   if (fail_count == 0U) {
     chprintf(chp, "ALL TESTS PASSED\r\n");

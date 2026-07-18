@@ -376,6 +376,14 @@ const rp_pio_sm_t *pioSmAlloc(const rp_pio_block_t *block,
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
  *
+ * @note    Freeing from a core other than the allocating one does not
+ *          synchronize with an interrupt handler already executing on
+ *          the owning core: a callback captured before the free can
+ *          still be running with its parameter when this returns. A
+ *          cross-core free therefore requires the caller to have
+ *          already disabled the state machine's interrupt sources and
+ *          quiesced its handler; this is asserted below.
+ *
  * @iclass
  */
 void pioSmFreeI(const rp_pio_sm_t *smp) {
@@ -389,6 +397,19 @@ void pioSmFreeI(const rp_pio_sm_t *smp) {
   osalDbgAssert(((pio.blocks[b].c0_allocated_mask |
                   pio.blocks[b].c1_allocated_mask) & smp->smmask) != 0U,
                 "not allocated");
+
+  /* On a cross-core free the owning core's handler must already be
+     quiesced by the caller, see the API note.*/
+  osalDbgAssert(
+      (((pio.blocks[b].c0_allocated_mask & smp->smmask) != 0U) ?
+       (SIO->CPUID == 0U) : (SIO->CPUID == 1U)) ||
+      ((smp->block->pio->IRQ0_INTE &
+        (PIO_IRQ_RXNEMPTY(smp->smidx) | PIO_IRQ_TXNFULL(smp->smidx) |
+         PIO_IRQ_SM(smp->smidx))) == 0U &&
+       (smp->block->pio->IRQ1_INTE &
+        (PIO_IRQ_RXNEMPTY(smp->smidx) | PIO_IRQ_TXNFULL(smp->smidx) |
+         PIO_IRQ_SM(smp->smidx))) == 0U),
+      "cross-core free with live interrupts");
 
   /* Disable the state machine.*/
   pioSmDisableX(smp);
