@@ -226,6 +226,14 @@
 #error "RP_PLL_USB_CLK must be 48 MHz for USB to work"
 #endif
 
+/*
+ * RP2350-E12 erratum check: reliable USB operation requires
+ * clk_sys >= 1.1 * clk_usb.
+ */
+#if ((RP_CLK_SYS_FREQ) * 10U) < ((RP_CLK_USB_FREQ) * 11U)
+#error "RP2350-E12: clk_sys must be at least 1.1 * clk_usb for reliable USB operation"
+#endif
+
 /**
  * @name    Various clock points.
  * @{
