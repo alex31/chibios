@@ -365,6 +365,14 @@ const rp_pio_sm_t *pioSmAlloc(const rp_pio_block_t *block,
 
 /**
  * @brief   Releases a PIO state machine.
+ * @note    The bookkeeping is keyed on the core that allocated the state
+ *          machine, not on the calling core, so a state machine can be
+ *          freed from either core. One residual asymmetry remains:
+ *          @p nvicDisableVector() acts on the calling core's NVIC, so a
+ *          cross-core free leaves the owner core's NVIC enable bit set.
+ *          This is benign because the state machine's IRQ0_INTE/IRQ1_INTE
+ *          bits are cleared for both cores first, so no interrupt can
+ *          fire, and the next allocation re-enables the vector anyway.
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
  *
@@ -390,8 +398,8 @@ void pioSmFreeI(const rp_pio_sm_t *smp) {
                                PIO_IRQ_TXNFULL(smp->smidx)  |
                                PIO_IRQ_SM(smp->smidx));
 
-  if (SIO->CPUID == 0U) {
-    /* state machine released by core 0.*/
+  if ((pio.blocks[b].c0_allocated_mask & smp->smmask) != 0U) {
+    /* state machine allocated by core 0.*/
     pio.blocks[b].c0_allocated_mask &= ~smp->smmask;
     if (pio.blocks[b].c0_allocated_mask == 0U) {
       switch (b) {
@@ -412,7 +420,7 @@ void pioSmFreeI(const rp_pio_sm_t *smp) {
     }
   }
   else {
-    /* state machine released by core 1.*/
+    /* state machine allocated by core 1.*/
     pio.blocks[b].c1_allocated_mask &= ~smp->smmask;
     if (pio.blocks[b].c1_allocated_mask == 0U) {
       switch (b) {
