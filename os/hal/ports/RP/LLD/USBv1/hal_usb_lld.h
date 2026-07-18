@@ -180,8 +180,10 @@ typedef struct {
   /* End of the mandatory fields.*/
   /**
    * @brief   Number of packets to receive.
+   * @note    Derived from the @p size_t rxsize, a 16-bit counter would
+   *          truncate large transfers.
    */
-  uint16_t                      rxpkts;
+  size_t                        rxpkts;
   /**
    * @brief   Data PID used by next transfer.
    */

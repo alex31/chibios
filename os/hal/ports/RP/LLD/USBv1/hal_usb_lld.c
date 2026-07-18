@@ -195,6 +195,8 @@ static uint32_t usb_prepare_out_ep_buffer(USBDriver *usbp, usbep_t ep, uint8_t b
     buf_ctrl |= oesp->next_pid ? USB_BUFFER_BUFFER0_DATA_PID : 0;
     oesp->next_pid ^= 1U;
 
+    /* uint16_t is safe here, the clamp to out_maxsize (a hardware packet
+       size, at most 1023) is what bounds the value. */
     uint16_t buf_len = oesp->rxsize < epcp->out_maxsize ? oesp->rxsize : epcp->out_maxsize;
     buf_ctrl |= USB_BUFFER_BUFFER0_AVAILABLE | buf_len;
     buf_ctrl &= ~USB_BUFFER_BUFFER0_FULL;
@@ -254,7 +256,9 @@ static uint32_t usb_prepare_in_ep_buffer(USBDriver *usbp, usbep_t ep, uint8_t bu
     const USBEndpointConfig *epcp = usbp->epc[ep];
     USBInEndpointState *iesp = usbp->epc[ep]->in_state;
 
-    /* txsize - txlast gives size of data to be sent but not yet in the buffer */
+    /* txsize - txlast gives size of data to be sent but not yet in the
+       buffer. uint16_t is safe for buf_len, the clamp to in_maxsize (a
+       hardware packet size, at most 1023) is what bounds the value. */
     buf_len = epcp->in_maxsize < iesp->txsize - iesp->txlast ?
               epcp->in_maxsize : iesp->txsize - iesp->txlast;
 
@@ -336,7 +340,7 @@ static void usb_serve_endpoint(USBDriver *usbp, usbep_t ep, bool is_in) {
   const USBEndpointConfig *epcp = usbp->epc[ep];
   USBOutEndpointState *oesp;
   USBInEndpointState *iesp;
-  uint16_t n;
+  size_t n;
 
   if (is_in) {
     /* IN endpoint */
@@ -834,8 +838,8 @@ void usb_lld_start_out(USBDriver *usbp, usbep_t ep) {
     /* Special case for zero sized packets.*/
     oesp->rxpkts = 1U;
   } else {
-    oesp->rxpkts = (uint16_t)((oesp->rxsize + usbp->epc[ep]->out_maxsize - 1) /
-                             usbp->epc[ep]->out_maxsize);
+    oesp->rxpkts = (oesp->rxsize + usbp->epc[ep]->out_maxsize - 1) /
+                   usbp->epc[ep]->out_maxsize;
   }
 
   usb_prepare_out_ep(usbp, ep);
