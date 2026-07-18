@@ -16,6 +16,7 @@ Exit status is 0 on PASS, 1 on FAIL, 2 on usage/setup errors.
 """
 
 import sys
+import threading
 import time
 
 try:
@@ -62,10 +63,41 @@ def read_exactly(port, count):
 
 
 def echo_once(port, size, seed):
-    tx = make_pattern(size, seed)
-    port.write(tx)
-    port.flush()
-    rx = read_exactly(port, size)
+    # Bulk OUT transfers only complete on a short packet or when the
+    # device-side armed length is reached; a write that is an exact
+    # multiple of the 64-byte packet size would otherwise sit in an
+    # unfinished transfer until later traffic. Terminate every pattern
+    # with a single-byte short packet so delivery is deterministic.
+    tx = make_pattern(size, seed) + b"\n"
+    if (len(tx) % 64) == 0:
+        tx += b"\n"
+    # Large transfers exceed the combined device/host buffering, so the
+    # echo must be drained concurrently with the write or both sides
+    # deadlock on full queues. A reader thread collects the echo while
+    # the write proceeds.
+    rx_buf = bytearray()
+    done = threading.Event()
+
+    def reader():
+        deadline = time.monotonic() + READ_TIMEOUT
+        while len(rx_buf) < len(tx) and time.monotonic() < deadline:
+            chunk = port.read(len(tx) - len(rx_buf))
+            if chunk:
+                rx_buf.extend(chunk)
+        done.set()
+
+    t = threading.Thread(target=reader)
+    t.start()
+    try:
+        port.write(tx)
+        port.flush()
+    except serial.SerialTimeoutException:
+        done.wait(READ_TIMEOUT)
+        t.join()
+        return False, "size=%d WRITE TIMEOUT" % size
+    t.join()
+    rx = bytes(rx_buf)
+    size = len(tx)
     if rx != tx:
         return False, "size=%d rx=%d bytes%s" % (
             size, len(rx),
