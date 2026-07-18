@@ -65,20 +65,25 @@ typedef struct {
   uint32_t qmi_m1_rcmd;
   uint32_t qmi_m1_wfmt;
   uint32_t qmi_m1_wcmd;
+  uint32_t pads_qspi_sd[4];
 } xip_snapshot_t;
 
 static void xip_snapshot_capture(xip_snapshot_t *s) {
 
-  s->xip_ctrl       = XIP_CTRL->CTRL;
-  s->qmi_direct_csr = QMI->DIRECT_CSR;
-  s->qmi_m0_timing  = QMI->M0_TIMING;
-  s->qmi_m0_rfmt    = QMI->M0_RFMT;
-  s->qmi_m0_rcmd    = QMI->M0_RCMD;
-  s->qmi_m1_timing  = QMI->M1_TIMING;
-  s->qmi_m1_rfmt    = QMI->M1_RFMT;
-  s->qmi_m1_rcmd    = QMI->M1_RCMD;
-  s->qmi_m1_wfmt    = QMI->M1_WFMT;
-  s->qmi_m1_wcmd    = QMI->M1_WCMD;
+  s->xip_ctrl        = XIP_CTRL->CTRL;
+  s->qmi_direct_csr  = QMI->DIRECT_CSR;
+  s->qmi_m0_timing   = QMI->M0_TIMING;
+  s->qmi_m0_rfmt     = QMI->M0_RFMT;
+  s->qmi_m0_rcmd     = QMI->M0_RCMD;
+  s->qmi_m1_timing   = QMI->M1_TIMING;
+  s->qmi_m1_rfmt     = QMI->M1_RFMT;
+  s->qmi_m1_rcmd     = QMI->M1_RCMD;
+  s->qmi_m1_wfmt     = QMI->M1_WFMT;
+  s->qmi_m1_wcmd     = QMI->M1_WCMD;
+  s->pads_qspi_sd[0] = PADS_QSPI->GPIO_QSPI_SD0;
+  s->pads_qspi_sd[1] = PADS_QSPI->GPIO_QSPI_SD1;
+  s->pads_qspi_sd[2] = PADS_QSPI->GPIO_QSPI_SD2;
+  s->pads_qspi_sd[3] = PADS_QSPI->GPIO_QSPI_SD3;
 }
 
 static bool xip_snapshot_compare(const xip_snapshot_t *a,
@@ -99,6 +104,10 @@ static void xip_snapshot_dump(const xip_snapshot_t *s) {
   chprintf(chp, "    M1_RCMD     = 0x%08X\r\n", s->qmi_m1_rcmd);
   chprintf(chp, "    M1_WFMT     = 0x%08X\r\n", s->qmi_m1_wfmt);
   chprintf(chp, "    M1_WCMD     = 0x%08X\r\n", s->qmi_m1_wcmd);
+  chprintf(chp, "    PADS SD0    = 0x%08X\r\n", s->pads_qspi_sd[0]);
+  chprintf(chp, "    PADS SD1    = 0x%08X\r\n", s->pads_qspi_sd[1]);
+  chprintf(chp, "    PADS SD2    = 0x%08X\r\n", s->pads_qspi_sd[2]);
+  chprintf(chp, "    PADS SD3    = 0x%08X\r\n", s->pads_qspi_sd[3]);
 }
 
 /*===========================================================================*/

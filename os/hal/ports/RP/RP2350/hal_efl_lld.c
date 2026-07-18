@@ -360,7 +360,7 @@ RAMFUNC static bool rp_flash_exit_xip(EFlashDriver *eflp) {
   QMI_TypeDef *qmi = eflp->qmi;
   XIP_CTRL_TypeDef *xip_ctrl = XIP_CTRL;
   PADS_QSPI_TypeDef *pads_qspi = PADS_QSPI;
-  uint32_t padctrl_save;
+  uint32_t padctrl_save[4];
   uint32_t padctrl_tmp;
   unsigned i;
   volatile unsigned delay;
@@ -405,10 +405,16 @@ RAMFUNC static bool rp_flash_exit_xip(EFlashDriver *eflp) {
    * 3. F5h QPI exit in quad width, 16x NOP ones, FFh QPI exit in quad width
   */
 
-  /* Save pad control and configure with output disabled.*/
-  padctrl_save = pads_qspi->GPIO_QSPI_SD0;
-  padctrl_tmp = (padctrl_save & ~(PADS_QSPI_OD | PADS_QSPI_PUE |
-                                  PADS_QSPI_PDE))
+  /* Save all four data pad controls and configure with output
+     disabled.  Each pad is restored verbatim afterwards, SD2/SD3 may
+     be configured differently from SD0/SD1 (e.g. /WP and /HOLD
+     pull-ups on single-SPI boards). */
+  padctrl_save[0] = pads_qspi->GPIO_QSPI_SD0;
+  padctrl_save[1] = pads_qspi->GPIO_QSPI_SD1;
+  padctrl_save[2] = pads_qspi->GPIO_QSPI_SD2;
+  padctrl_save[3] = pads_qspi->GPIO_QSPI_SD3;
+  padctrl_tmp = (padctrl_save[0] & ~(PADS_QSPI_OD | PADS_QSPI_PUE |
+                                     PADS_QSPI_PDE))
                 | PADS_QSPI_OD | PADS_QSPI_PDE;
 
   /* 1. CS high */
@@ -449,12 +455,11 @@ RAMFUNC static bool rp_flash_exit_xip(EFlashDriver *eflp) {
     }
   }
 
-  /* Restore pad controls, also on failed sequences. */
-  pads_qspi->GPIO_QSPI_SD0 = padctrl_save;
-  pads_qspi->GPIO_QSPI_SD1 = padctrl_save;
-  padctrl_save = (padctrl_save & ~PADS_QSPI_PDE) | PADS_QSPI_PUE;
-  pads_qspi->GPIO_QSPI_SD2 = padctrl_save;
-  pads_qspi->GPIO_QSPI_SD3 = padctrl_save;
+  /* Restore all pad controls verbatim, also on failed sequences. */
+  pads_qspi->GPIO_QSPI_SD0 = padctrl_save[0];
+  pads_qspi->GPIO_QSPI_SD1 = padctrl_save[1];
+  pads_qspi->GPIO_QSPI_SD2 = padctrl_save[2];
+  pads_qspi->GPIO_QSPI_SD3 = padctrl_save[3];
 
   if (!ok) {
     rp_flash_cs_force(eflp, true);
