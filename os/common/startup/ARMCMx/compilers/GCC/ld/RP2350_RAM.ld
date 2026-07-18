@@ -20,7 +20,7 @@
 
 MEMORY
 {
-    flash0 (rx) : org = 0x00000000, len = 16k   /* ROM                  */
+    flash0 (rx) : org = 0x00000000, len = 32k   /* ROM                  */
     flash1 (rx) : org = 0x10000000, len = DEFINED(FLASH_LEN) ? FLASH_LEN : 4096k /* XIP */
     flash2 (rx) : org = 0x00000000, len = 0
     flash3 (rx) : org = 0x00000000, len = 0
