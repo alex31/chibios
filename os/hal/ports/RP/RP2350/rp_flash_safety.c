@@ -35,8 +35,25 @@
 
 /**
  * @brief   Parks the other core before XIP becomes unavailable.
+ * @note    When the HAL itself started core 1, its readiness is awaited
+ *          before the first lockout: until then the core may be running
+ *          startup code from flash without being parkable yet. A core
+ *          started by other means is the application's responsibility
+ *          (do not perform flash operations before it is ready).
  */
 void rpEflBeforeXipOff(void) {
+
+#if RP_CORE1_START == TRUE
+  if (!__port_lockout_other_ready()) {
+    uint32_t start = TIMER0->TIMERAWL;
+
+    while (!__port_lockout_other_ready()) {
+      if ((TIMER0->TIMERAWL - start) > PORT_LOCKOUT_TIMEOUT_US) {
+        osalSysHalt("core 1 never became parkable");
+      }
+    }
+  }
+#endif
 
   __port_flash_lockout();
 }

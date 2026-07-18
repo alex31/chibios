@@ -164,6 +164,7 @@ extern "C" {
   void __port_spinlock_release(void);
   void __port_flash_lockout(void);
   void __port_flash_unlockout(void);
+  bool __port_lockout_other_ready(void);
 #ifdef __cplusplus
 }
 #endif

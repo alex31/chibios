@@ -117,6 +117,17 @@
  *          The value one is not valid, timeouts are rounded up to
  *          this value.
  */
+/**
+ * @brief   Fast interrupt priority levels.
+ * @details Reserves NVIC priorities 0..1 as above-kernel "fast" levels so
+ *          the test's TIMER1 interrupt is genuinely unmasked by kernel
+ *          critical sections; only PRIMASK (the lockout / RAM flash
+ *          sequences) defers it.
+ */
+#if !defined(PORT_FAST_PRIORITIES)
+#define PORT_FAST_PRIORITIES                2
+#endif
+
 #if !defined(CH_CFG_ST_TIMEDELTA)
 #define CH_CFG_ST_TIMEDELTA                 20
 #endif

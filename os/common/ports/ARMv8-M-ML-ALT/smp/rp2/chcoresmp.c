@@ -51,6 +51,20 @@
  */
 static volatile bool port_lockout_ready[PORT_CORES_NUMBER];
 
+/**
+ * @brief   Core currently owning the lockout spinlock, -1 when idle.
+ * @note    Written only while the lockout spinlock is held.
+ */
+static volatile int port_lockout_owner = -1;
+
+/**
+ * @brief   True when the current lockout actually parked the other core.
+ * @note    Written only while the lockout spinlock is held; the unlock
+ *          path must consume the decision made at lockout time, the
+ *          ready flag may change in between.
+ */
+static volatile bool port_lockout_parked;
+
 /*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
@@ -241,19 +255,34 @@ void __port_smp_init(os_instance_t *oip) {
 void __port_flash_lockout(void) {
 
   chDbgAssert(!port_is_isr_context() &&
-              __port_irq_enabled(__port_get_irq_status()),
+              __port_irq_enabled(__port_get_irq_status()) &&
+              ((__get_PRIMASK() & 1U) == 0U),
               "not in thread context");
 
-  /* Serializing requesters, interrupts stay enabled while spinning.*/
+  /* Same-core re-entry would spin on the lockout spinlock forever,
+     failing loudly instead.*/
+  chDbgAssert(port_lockout_owner != (int)port_get_core_id(),
+              "lockout re-entered");
+
+  /* Serializing requesters, interrupts stay enabled while spinning so a
+     crossing request from the other core can park this core first.
+     While the lockout is held the owning thread remains preemptible;
+     this is deliberate (interrupt windows between flash pages keep
+     watchdog feeding and IRQ latency alive on this core) at the
+     documented cost of extending the other core's park time.*/
   while (SIO->SPINLOCK[PORT_LOCKOUT_SPINLOCK_NUMBER] == 0U) {
   }
   __DMB();
+  port_lockout_owner = (int)port_get_core_id();
 
   /* A core which never initialized cannot acknowledge and does not need
-     parking.*/
+     parking. The decision is recorded for the unlock side, the flag may
+     rise in the meantime.*/
   if (!port_lockout_ready[port_get_core_id() ^ 1U]) {
+    port_lockout_parked = false;
     return;
   }
+  port_lockout_parked = true;
 
   /* Masking local interrupts so that the FIFO handler cannot steal the
      acknowledge token; no lockout traffic can be in flight here because
@@ -276,7 +305,10 @@ void __port_flash_unlockout(void) {
                (1UL << PORT_LOCKOUT_SPINLOCK_NUMBER)) != 0U,
               "lockout not active");
 
-  if (port_lockout_ready[port_get_core_id() ^ 1U]) {
+  /* Unlocking only if the matching lockout parked the other core, the
+     ready flag alone could have risen since then.*/
+  if (port_lockout_parked) {
+    port_lockout_parked = false;
     __disable_irq();
 
     if (!port_lockout_handshake(PORT_FIFO_UNLOCK_MESSAGE)) {
@@ -286,6 +318,7 @@ void __port_flash_unlockout(void) {
     __enable_irq();
   }
 
+  port_lockout_owner = -1;
   __DMB();
   SIO->SPINLOCK[PORT_LOCKOUT_SPINLOCK_NUMBER] = (uint32_t)SIO;
 
@@ -294,6 +327,20 @@ void __port_flash_unlockout(void) {
   chSysLock();
   chSchRescheduleS();
   chSysUnlock();
+}
+
+/**
+ * @brief   Tells whether the other core completed SMP initialization.
+ * @details Until this returns @p true the other core may be executing
+ *          startup code from flash without being parkable; callers which
+ *          know the core was started must wait for readiness before the
+ *          first lockout.
+ *
+ * @return              @p true if the other core can be parked.
+ */
+bool __port_lockout_other_ready(void) {
+
+  return port_lockout_ready[port_get_core_id() ^ 1U];
 }
 
 /**

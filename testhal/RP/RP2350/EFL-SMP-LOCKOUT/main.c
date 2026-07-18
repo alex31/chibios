@@ -47,7 +47,9 @@ volatile uint32_t c1_go;
 volatile uint32_t c1_done;
 volatile uint32_t fastirq_count;
 
-semaphore_t c1_ready_sem;
+/* Statically initialized: core 1 can signal it before core 0's main()
+   runs any code after chSysInit().*/
+SEMAPHORE_DECL(c1_ready_sem, 0);
 
 /*===========================================================================*/
 /* Report helpers.                                                           */
@@ -182,7 +184,6 @@ int main(void) {
 
   halInit();
   chSysInit();
-  chSemObjectInit(&c1_ready_sem, 0);
 
   /* UART0 console on GPIO0/GPIO1.*/
   palSetLineMode(0U, PAL_MODE_ALTERNATE_UART);
