@@ -50,6 +50,27 @@
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
+/**
+ * @brief   Safely programs and starts a tick generator.
+ * @note    The CYCLES register must not be rewritten while the generator
+ *          is running, the counter is only reloaded when it reaches zero
+ *          so a live rewrite can produce one wrong-length tick period.
+ *          Disable the generator and wait until it reports not running
+ *          before reprogramming it.
+ *
+ * @param[in] index     tick generator index (TICKS_xxx)
+ * @param[in] cycles    clk_ref cycles per tick
+ */
+static void rp_tick_start(uint32_t index, uint32_t cycles) {
+
+  TICKS->TICK[index].CTRL = 0U;
+  while ((TICKS->TICK[index].CTRL & TICKS_CTRL_RUNNING) != 0U) {
+    /* Waiting for the tick generator to stop */
+  }
+  TICKS->TICK[index].CYCLES = cycles;
+  TICKS->TICK[index].CTRL = TICKS_CTRL_ENABLE;
+}
+
 /*===========================================================================*/
 /* Driver exported functions.                                                */
 /*===========================================================================*/
@@ -69,8 +90,7 @@ void rp_clock_init(void) {
   rp_peripheral_unreset(RESETS_ALLREG_TIMER0);
 
   /* Configure tick generator for ~1 us ticks. */
-  TICKS->TICK[TICKS_TIMER0].CYCLES = RP_ROSC_ASSUMED_HZ / 1000000U;
-  TICKS->TICK[TICKS_TIMER0].CTRL = TICKS_CTRL_ENABLE;
+  rp_tick_start(TICKS_TIMER0, RP_ROSC_ASSUMED_HZ / 1000000U);
 
   /* Clear clock resus that may be in an unknown state */
   CLOCKS->RESUS.CTRL = 0U;
@@ -141,13 +161,13 @@ void rp_clock_init(void) {
   CLOCKS->CLK[RP_CLK_PERI].DIV = 1U << 16;
   CLOCKS->SET.CLK[RP_CLK_PERI].CTRL = CLOCKS_CLK_PERI_CTRL_ENABLE;
 
-  /* Calculate cycles for 1us tick based on clk_ref frequency. */
+  /* Calculate cycles for 1us tick based on clk_ref frequency, RP_XOSCCLK
+     is checked at compile time to be an integer number of MHz. */
   uint32_t cycles = RP_XOSCCLK / 1000000U;
 
   /* Start tick generators */
   for (uint32_t i = 0U; i < 6U; i++) {
-    TICKS->TICK[i].CYCLES = cycles;
-    TICKS->TICK[i].CTRL = TICKS_CTRL_ENABLE;
+    rp_tick_start(i, cycles);
   }
 }
 

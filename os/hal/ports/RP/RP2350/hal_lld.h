@@ -133,6 +133,10 @@
 #error "RP_XOSCCLK out of valid range (1-15 MHz)"
 #endif
 
+#if (RP_XOSCCLK % 1000000U) != 0
+#error "RP_XOSCCLK must be an integer number of MHz (1us tick granularity)"
+#endif
+
 /*
  * PLL_SYS configuration checks.
  */
