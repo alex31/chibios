@@ -556,7 +556,14 @@ int32_t pioProgramLoadI(const rp_pio_block_t *block,
     uint16_t instr = program->instructions[i];
 
     if ((instr & 0xE000U) == 0x0000U) {
-      instr = (uint16_t)(instr + offset);
+      uint32_t target = (uint32_t)(instr & 0x1FU) + offset;
+
+      /* Only the 5-bit address field is relocated: a program-relative
+         target always fits when the program does, anything larger is a
+         malformed program and must not carry into the condition and
+         delay fields.*/
+      osalDbgAssert(target <= 0x1FU, "JMP target out of range");
+      instr = (uint16_t)(((uint32_t)instr & ~0x1FU) | (target & 0x1FU));
     }
     block->pio->INSTR_MEM[offset + i] = instr;
   }
