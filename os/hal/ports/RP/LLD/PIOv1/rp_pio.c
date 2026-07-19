@@ -119,7 +119,7 @@ static void serve_pio_irq(uint32_t blockidx, __I uint32_t *ints_reg) {
 
     for (i = 0U; i < RP_PIO_NUM_STATE_MACHINES; i++) {
       if (pio.blocks[blockidx].sm[i].func != NULL) {
-        pio.blocks[blockidx].sm[i].func(pio.blocks[blockidx].sm[i].param,ints);
+        pio.blocks[blockidx].sm[i].func(pio.blocks[blockidx].sm[i].param, ints);
       }
     }
   }
@@ -286,7 +286,7 @@ const rp_pio_sm_t *pioSmAllocI(const rp_pio_block_t *block,
       }
 
       if (SIO->CPUID == 0U) {
-        /* state machine taken by core 0.*/
+        /* State machine taken by core 0.*/
         if (pio.blocks[b].c0_allocated_mask == 0U) {
           switch (b) {
           case 0U:
@@ -307,7 +307,7 @@ const rp_pio_sm_t *pioSmAllocI(const rp_pio_block_t *block,
         pio.blocks[b].c0_allocated_mask |= smmask;
       }
       else {
-        /* state machine taken by core 1.*/
+        /* State machine taken by core 1.*/
         if (pio.blocks[b].c1_allocated_mask == 0U) {
           switch (b) {
           case 0U:
@@ -420,7 +420,7 @@ void pioSmFreeI(const rp_pio_sm_t *smp) {
                                PIO_IRQ_SM(smp->smidx));
 
   if ((pio.blocks[b].c0_allocated_mask & smp->smmask) != 0U) {
-    /* state machine allocated by core 0.*/
+    /* State machine allocated by core 0.*/
     pio.blocks[b].c0_allocated_mask &= ~smp->smmask;
     if (pio.blocks[b].c0_allocated_mask == 0U) {
       switch (b) {
@@ -441,7 +441,7 @@ void pioSmFreeI(const rp_pio_sm_t *smp) {
     }
   }
   else {
-    /* state machine allocated by core 1.*/
+    /* State machine allocated by core 1.*/
     pio.blocks[b].c1_allocated_mask &= ~smp->smmask;
     if (pio.blocks[b].c1_allocated_mask == 0U) {
       switch (b) {

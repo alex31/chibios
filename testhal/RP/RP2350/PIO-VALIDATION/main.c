@@ -334,7 +334,7 @@ int main(void) {
   pioProgramUnload(block, park_off, park_program.length);
 
   for (i = 0U; i < RP_PIO_NUM_INSTR_MEM; i++) {
-    nop32_instructions[i] = 0xA042U;    /* nop = mov y, y.*/
+    nop32_instructions[i] = 0xA042U;    /* NOP encoded as mov y, y.*/
   }
 
   off32 = pioProgramLoad(block, &nop32_program);
