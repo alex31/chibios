@@ -162,8 +162,10 @@ static bool test_set_alarm_n_future(void) {
   TIMER0->ARMED = (1U << SCRATCH_ALARM);
   TIMER0->INTR  = (1U << SCRATCH_ALARM);
 
-  /* The alarm must fire, and not before the requested deadline.*/
-  return fired && (elapsed >= 150U);
+  /* The alarm must fire, and not before the requested deadline (the
+     elapsed measurement starts before the set call, so overhead can
+     only lengthen it).*/
+  return fired && (elapsed >= 200U);
 }
 
 /*
@@ -340,6 +342,11 @@ int main(void) {
   chprintf(chp, "  Iterations:  %u (D1 %uus, D2 %uus)\r\n",
            TEST_ITERATIONS, D1_DELAY_US, D2_DELAY_US);
   chprintf(chp, "\r\n");
+
+  /* A watchdog reset means the previous run stalled - that is a test
+     failure, not a fresh start.*/
+  report("no watchdog reset from previous run",
+         (reason & WATCHDOG_REASON_TIMER) == 0U);
 
   /* Watchdog backstop, fed once per test iteration.*/
   wdgStart(&WDGD1, &wdgcfg);
