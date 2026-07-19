@@ -104,7 +104,15 @@
 /** @} */
 
 #if !defined(RP_PAL_EVENT_CORE_AFFINITY)
-  /** @brief Core that handles all the PAL event interrupts. */
+  /**
+   * @brief   Core that handles all the PAL event interrupts.
+   * @note    The NVIC is a per-core resource, halInit() enables the events
+   *          interrupt vector only when it is executed on this core. When
+   *          the affinity core is not the core running halInit(), the
+   *          application must call @p palRPEnableEventsIrqX() from the
+   *          affinity core (e.g. from @p c1_main() after
+   *          @p chInstanceObjectInit()) before PAL events can be served.
+   */
   #define RP_PAL_EVENT_CORE_AFFINITY        0
 #endif
 
@@ -347,13 +355,22 @@ typedef uint32_t iopadid_t;
  * @notapi
  */
 /* @note    On RP2350, IOPORT2 maps to SIO GPIO_HI_OUT which is shared with
- *          QSPI/USB outputs in bits 31:16. This is a raw full-register write;
- *          use palSetPort()/palClearPort()/palTogglePort() when non-PAL high
- *          bits must be preserved.
+ *          QSPI/USB outputs in bits 31:16. Only the bits belonging to PAL
+ *          lines are updated, using a single write to the GPIO_OUT_XOR
+ *          alias, so the shared non-PAL latch bits are preserved.
+ * @note    The latch read and XOR write are not one atomic step: a
+ *          full-port write must be serialized by the application against
+ *          ALL concurrent output updates to the SAME port - including
+ *          line/group set, clear and toggle - because an update landing
+ *          between the read and the XOR write is folded into a value
+ *          neither writer requested. The set, clear and toggle APIs are
+ *          only atomic among themselves. Different ports are independent.
  */
 #define pal_lld_writeport(port, bits)                                       \
   do {                                                                      \
-    RP_PAL_SIO_REG(GPIO_OUT, (port)) = (uint32_t)(bits);                    \
+    RP_PAL_SIO_REG(GPIO_OUT_XOR, (port)) =                                  \
+      (RP_PAL_SIO_REG(GPIO_OUT, (port)) ^ (uint32_t)(bits)) &               \
+      (uint32_t)RP_PAL_VALID_MASK(port);                                    \
   } while (false)
 
 /**
@@ -438,6 +455,25 @@ typedef uint32_t iopadid_t;
   /** @brief IRQ priority of the external pad events. */
   #define RP_IO_IRQ_BANK0_PRIORITY          2
 #endif
+
+/**
+ * @brief   Enables the PAL events interrupt vector on the calling core.
+ * @details The NVIC is a per-core resource and the PAL events interrupts are
+ *          routed to the core selected by @p RP_PAL_EVENT_CORE_AFFINITY.
+ *          halInit() enables the vector only when running on the affinity
+ *          core, otherwise this function must be called from the affinity
+ *          core after it has been started.
+ * @note    Must be called from the @p RP_PAL_EVENT_CORE_AFFINITY core.
+ *
+ * @special
+ */
+__STATIC_INLINE void palRPEnableEventsIrqX(void) {
+
+  osalDbgAssert(SIO->CPUID == (uint32_t)RP_PAL_EVENT_CORE_AFFINITY,
+                "wrong core");
+
+  nvicEnableVector(RP_IO_IRQ_BANK0_NUMBER, RP_IO_IRQ_BANK0_PRIORITY);
+}
 
 #if !defined(__DOXYGEN__)
 extern palevent_t _pal_events[RP_GPIO_NUM_LINES];

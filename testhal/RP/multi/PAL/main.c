@@ -38,6 +38,71 @@ static THD_FUNCTION(Thread1, arg) {
 }
 #endif
 
+#if (defined(RP_PAL_SIO_REG) && (RP_GPIO_NUM_LINES > 32U)) ||               \
+    defined(__DOXYGEN__)
+/*
+ * On RP devices with more than 32 GPIO lines (RP2350), IOPORT2 maps to SIO
+ * GPIO_HI_OUT which shares bits 31:16 with the QSPI/USB output latches.
+ * This one-shot boot check verifies that palWritePort() on IOPORT2 updates
+ * only the PAL line latches and preserves the shared high bits.
+ *
+ * This demo has no serial console, therefore a failure is signalled by
+ * blinking a fast SOS pattern on LED1 forever; on success the normal demo
+ * behavior follows.
+ */
+static void check_ioport2_latch_preservation(void) {
+  static const uint8_t sos[] = {1, 1, 1, 3, 3, 3, 1, 1, 1};
+  uint32_t hi_original, hi_snapshot, saved_latch;
+  bool ok = true;
+
+  saved_latch = palReadLatch(IOPORT2) & 0xFFFFU;
+
+  /* The upper half is captured before seeding so it can be restored
+     exactly afterwards: the seeded bit may already be owned by earlier
+     firmware and must not be blindly cleared.*/
+  hi_original = SIO->GPIO_HI_OUT & 0xFFFF0000U;
+
+  /* Seeding a non-GPIO latch bit so preservation is actually exercised,
+     the QSPI/USB output latches are inert while their pads are not on
+     the SIO function.*/
+  SIO->GPIO_HI_OUT_SET = 0x00010000U;
+  hi_snapshot = SIO->GPIO_HI_OUT & 0xFFFF0000U;
+
+  palWritePort(IOPORT2, 0xAAAAU);
+  ok = ok && ((palReadLatch(IOPORT2) & 0xFFFFU) == 0xAAAAU);
+  ok = ok && ((SIO->GPIO_HI_OUT & 0xFFFF0000U) == hi_snapshot);
+
+  palWritePort(IOPORT2, 0x5555U);
+  ok = ok && ((palReadLatch(IOPORT2) & 0xFFFFU) == 0x5555U);
+  ok = ok && ((SIO->GPIO_HI_OUT & 0xFFFF0000U) == hi_snapshot);
+
+  palWritePort(IOPORT2, 0x0000U);
+  ok = ok && ((palReadLatch(IOPORT2) & 0xFFFFU) == 0x0000U);
+  ok = ok && ((SIO->GPIO_HI_OUT & 0xFFFF0000U) == hi_snapshot);
+
+  /* Restoring both halves exactly as found: the PAL lines through the
+     API, the shared upper half with an atomic masked XOR that cannot
+     disturb the lower half.*/
+  palWritePort(IOPORT2, saved_latch);
+  SIO->GPIO_HI_OUT_XOR = (SIO->GPIO_HI_OUT ^ hi_original) & 0xFFFF0000U;
+
+  while (!ok) {
+    unsigned i;
+
+    for (i = 0U; i < (sizeof sos / sizeof sos[0]); i++) {
+      palWriteLine(PORTAB_LINE_LED1, PORTAB_LED_ON);
+      chThdSleepMilliseconds(50U * sos[i]);
+      palWriteLine(PORTAB_LINE_LED1, PORTAB_LED_OFF);
+      chThdSleepMilliseconds(50U);
+    }
+    chThdSleepMilliseconds(300U);
+  }
+}
+#define CHECK_IOPORT2_LATCH_PRESERVATION()  check_ioport2_latch_preservation()
+#else
+#define CHECK_IOPORT2_LATCH_PRESERVATION()  do { } while (false)
+#endif
+
 #if PAL_USE_WAIT || defined(__DOXYGEN__)
 
 /*
@@ -57,6 +122,10 @@ int main(void) {
 
   /* Board-dependent GPIO setup code.*/
   portab_setup();
+
+  /* One-shot IOPORT2 shared-latch preservation check, no-op where IOPORT2
+     is not present.*/
+  CHECK_IOPORT2_LATCH_PRESERVATION();
 
 #if defined(PORTAB_LINE_LED2)
   /*
@@ -125,6 +194,10 @@ int main(void) {
   /* Board-dependent GPIO setup code.*/
   portab_setup();
 
+  /* One-shot IOPORT2 shared-latch preservation check, no-op where IOPORT2
+     is not present.*/
+  CHECK_IOPORT2_LATCH_PRESERVATION();
+
   /* Events initialization and registration.*/
   chEvtObjectInit(&button_pressed_event);
   chEvtObjectInit(&button_released_event);
@@ -177,6 +250,10 @@ int main(void) {
 
   /* Board-dependent GPIO setup code.*/
   portab_setup();
+
+  /* One-shot IOPORT2 shared-latch preservation check, no-op where IOPORT2
+     is not present.*/
+  CHECK_IOPORT2_LATCH_PRESERVATION();
 
 #if defined(PORTAB_LINE_LED2)
   /*
