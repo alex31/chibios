@@ -386,8 +386,20 @@ void pwm_lld_start(PWMDriver *pwmp) {
   /* Counter clock divider as an 8.4 fixed point value, computed in 64
      bits in order not to overflow at high system clocks. */
   halfreq_t sys_clk = halClockGetPointX(RP_CLK_SYS);
-  uint32_t div_fp4 = (uint32_t)(((uint64_t)sys_clk << 4) /
-                                pwmp->config->frequency);
+  uint32_t div_fp4;
+
+  /* This start path has no error channel; a zero frequency must not
+     reach the division (the 64-bit helper quietly returns zero, which
+     the minimum clamp below would turn into a full-speed counter). The
+     slowest supported divider is the closest predictable behavior. */
+  osalDbgAssert(pwmp->config->frequency > 0U, "invalid PWM frequency");
+  if (pwmp->config->frequency == 0U) {
+    div_fp4 = 0xFFFU;
+  }
+  else {
+    div_fp4 = (uint32_t)(((uint64_t)sys_clk << 4) /
+                         pwmp->config->frequency);
+  }
 
   /* Divider 1.0 is the minimum supported value. */
   if (div_fp4 < 0x010U) {
