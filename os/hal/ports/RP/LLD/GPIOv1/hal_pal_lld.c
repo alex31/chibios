@@ -143,6 +143,27 @@ void _pal_lld_init(void) {
   rp_peripheral_unreset(RESETS_ALLREG_IO_BANK0);
   rp_peripheral_unreset(RESETS_ALLREG_PADS_BANK0);
 
+#if defined(RP2040)
+  /* The PADS_BANK0 reset re-enables the digital input buffer and the
+     pull-down on the ADC-capable pads, undoing the boot-ROM mitigation
+     for erratum RP2040-E6 (increased leakage on GPIO26..GPIO29).
+     Analogue-safe state is restored immediately; configuring one of
+     these lines through the PAL deliberately makes it digital again.*/
+  {
+    unsigned pad;
+
+    for (pad = 26U; pad <= 29U; pad++) {
+      uint32_t padbits = PADS_BANK0->GPIO[pad];
+
+      /* The PAL_RP_PAD_* mode encodings carry the raw pad field at
+         bit position 24 upwards.*/
+      padbits &= ~((PAL_RP_PAD_PUE | PAL_RP_PAD_PDE | PAL_RP_PAD_IE) >> 24);
+      padbits |= (PAL_RP_PAD_OD >> 24);
+      PADS_BANK0->GPIO[pad] = padbits;
+    }
+  }
+#endif
+
   #if PAL_USE_CALLBACKS || PAL_USE_WAIT || defined(__DOXYGEN__)
   unsigned i;
 
