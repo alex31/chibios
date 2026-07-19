@@ -412,14 +412,16 @@ void pwm_lld_start(PWMDriver *pwmp) {
   if (div_fp4 > 0xFFFU) {
     div_fp4 = 0xFFFU;
   }
+  /* A zero period is a contract violation: debug builds reject it here,
+     release builds fall back to the clamp below. */
   osalDbgAssert(pwmp->period >= 1U, "invalid PWM period");
 
   p->CH[pwmp->timer_id].DIV = div_fp4;
 
   /* The counter counts from zero to TOP included so the register must
-     be programmed with one count less than the requested period; a zero
-     period is clamped to the shortest achievable cycle, matching
-     pwm_lld_change_period(). */
+     be programmed with one count less than the requested period; in
+     release builds a zero period is clamped to the shortest achievable
+     cycle, matching pwm_lld_change_period(). */
   p->CH[pwmp->timer_id].TOP =
     (uint32_t)(((pwmp->period >= 1U) ? pwmp->period : 1U) - 1U);
 
