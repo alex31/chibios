@@ -164,6 +164,10 @@ static void phase0(void) {
 
   /* Arm the reset test: marker first, then a short timeout with no
      further petting.  Expect a watchdog reset in ~100-200 ms.*/
+  /* Phase-0 results live in BSS and would be lost across the reset,
+     persisting them in scratch registers for the phase-1 summary.*/
+  WATCHDOG->SCRATCH[5] = pass_count;
+  WATCHDOG->SCRATCH[6] = fail_count;
   WATCHDOG->SCRATCH[7] = PHASE_MAGIC1;
   chprintf(chp, "  Arming 100 ms watchdog, expecting reset...\r\n");
 
@@ -255,6 +259,9 @@ int main(void) {
   chprintf(chp, "\r\n");
 
   if (boot_scratch[7] == PHASE_MAGIC1) {
+    /* Restore the phase-0 tallies persisted before the reset.*/
+    pass_count += boot_scratch[5];
+    fail_count += boot_scratch[6];
     phase1();
   }
 

@@ -62,10 +62,9 @@ static void set_wdg_counter(WDGDriver *wdgp) {
   time = time * 2U;
 #endif
 
-  /* Debug builds flag intervals exceeding the count capability, release
-     builds clamp to the ceiling below.*/
-  osalDbgAssert(time <= (uint64_t)WATCHDOG_CTRL_TIME,
-                "watchdog interval exceeds counter capability");
+  /* Oversized intervals clamp to the hardware ceiling in every build
+     type, keeping debug and release behavior identical and the clamp
+     path testable.*/
 
   /* Set ceiling if greater than count capability.*/
   time = (time > (uint64_t)WATCHDOG_CTRL_TIME) ? (uint64_t)WATCHDOG_CTRL_TIME
