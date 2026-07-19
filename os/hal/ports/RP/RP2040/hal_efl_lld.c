@@ -158,26 +158,24 @@ RAMFUNC static bool rp_flash_ssi_tx8(SSI_TypeDef *ssi, uint8_t data) {
 }
 
 /**
- * @brief   Best-effort resynchronization of the SSI FIFOs.
+ * @brief   Resynchronization of the SSI FIFOs.
  * @details After a transfer timeout the engine may still be shifting and
  *          the RX FIFO may hold residue; without draining, a later
  *          status poll can consume stale bytes and a BUSY=0 answer need
- *          not belong to that poll. Bounded: a controller that never
- *          recovers leaves residue behind, which subsequent polls then
- *          fail on loudly.
+ *          not belong to that poll, a false idle would let XIP return
+ *          over a busy device. Deliberately unbounded, matching the
+ *          wait-ready doctrine: no later poll can be trusted until the
+ *          engine is clean; a controller which never recovers leaves the
+ *          system spinning here for a watchdog to catch.
  * @note    This function MUST be in RAM.
  *
  * @param[in] ssi       pointer to the SSI registers
  */
 RAMFUNC static void rp_flash_resync(SSI_TypeDef *ssi) {
-  uint32_t start = TIMER0->TIMERAWL;
 
   while (((ssi->SR & SSI_SR_BUSY) != 0U) || (ssi->RXFLR > 0U)) {
     if (ssi->RXFLR > 0U) {
       (void)ssi->DR[0];
-    }
-    if (rp_flash_timeout(start, RP_FLASH_SSI_TIMEOUT_US)) {
-      return;
     }
   }
 }

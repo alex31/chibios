@@ -462,8 +462,10 @@ static bool test_full_block_write_verify(uint32_t block) {
 /*
  * Test: ATRANS-aware program offset translation.
  *
- * Picks the first free 4 MiB ATRANS window at or above the flash top
- * and derives the physical address of the sacrificial last sector by
+ * Picks the first free CS0 4 MiB ATRANS window (ATRANS0-3; ATRANS4-7
+ * translate the CS1 half of the XIP space and cannot alias the CS0
+ * flash) at or above the flash top and derives the physical address
+ * of the sacrificial last sector by
  * translating its logical offset through the current mapping of the
  * window containing it (no identity-mapping assumption).  The free
  * window is aliased directly onto that physical sector (BASE is in
@@ -485,10 +487,11 @@ static bool test_atrans_translation(void) {
   unsigned i;
   bool ok = true;
 
-  /* A flash filling the whole 32 MiB XIP space leaves no free alias
-     window; nothing can be validated without touching live mappings. */
-  if (idx > 7U) {
-    chprintf(chp, "    No free ATRANS window above flash top, skipped\r\n");
+  /* Only ATRANS0-3 issue to CS0; a flash filling the whole 16 MiB CS0
+     half leaves no free alias window on its own chip select and
+     ATRANS4-7 would alias CS1 (PSRAM) instead. */
+  if (idx > 3U) {
+    chprintf(chp, "    No free CS0 ATRANS window above flash top, skipped\r\n");
     return true;
   }
 
