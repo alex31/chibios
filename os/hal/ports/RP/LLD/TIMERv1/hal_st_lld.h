@@ -213,8 +213,31 @@ __STATIC_INLINE void st_lld_stop_alarm(void) {
  * @notapi
  */
 __STATIC_INLINE void st_lld_set_alarm(systime_t abstime) {
+  uint32_t target = (uint32_t)abstime;
 
-  TIMER0->ALARM[0]       = (uint32_t)abstime;
+  TIMER0->ALARM[0] = target;
+  /* Verify-and-retry: the counter can pass the programmed value between
+     the check and the store (an interrupt or bus stall in the window
+     recreates the ~71 min wrap wait), so the deadline is re-armed until
+     either it is provably in the future or the compare has genuinely
+     fired (ARMED bit cleared by hardware). ARMED is sampled immediately
+     before deciding to re-arm so a firing that lands mid-check is seen
+     in the narrowest possible window; the residual race, firing between
+     that read and the store, can at worst produce one spurious alarm
+     interrupt which the ST layer tolerates - the opposite failure, not
+     re-arming a missed deadline, is the one that must not happen. */
+  while (true) {
+    uint32_t now = TIMER0->TIMERAWL;
+
+    if ((int32_t)(target - now) > 0) {
+      break;
+    }
+    if ((TIMER0->ARMED & 1U) == 0U) {
+      break;
+    }
+    target = now + 2U;
+    TIMER0->ALARM[0] = target;
+  }
 }
 
 /**
@@ -292,8 +315,22 @@ __STATIC_INLINE void st_lld_stop_alarm_n(unsigned alarm) {
  * @notapi
  */
 __STATIC_INLINE void st_lld_set_alarm_n(unsigned alarm, systime_t abstime) {
+  uint32_t target = (uint32_t)abstime;
 
-  TIMER0->ALARM[alarm]   = (uint32_t)abstime;
+  TIMER0->ALARM[alarm] = target;
+  /* Verify-and-retry, see st_lld_set_alarm(). */
+  while (true) {
+    uint32_t now = TIMER0->TIMERAWL;
+
+    if ((int32_t)(target - now) > 0) {
+      break;
+    }
+    if ((TIMER0->ARMED & (1U << alarm)) == 0U) {
+      break;
+    }
+    target = now + 2U;
+    TIMER0->ALARM[alarm] = target;
+  }
 }
 
 /**

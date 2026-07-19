@@ -302,6 +302,14 @@ const rp_dma_channel_t *dmaChannelAlloc(uint32_t id,
 
 /**
  * @brief   Releases a DMA channel.
+ * @note    The channel is removed from the allocation mask of the core that
+ *          allocated it, which is not necessarily the calling core.
+ * @note    On a cross-core free @p nvicDisableVector() acts on the calling
+ *          core NVIC, so the owner core NVIC enable bit is left set when its
+ *          last channel is released by the other core. This is harmless
+ *          because @p dmaChannelDisableInterruptX() clears the per-channel
+ *          INTE bits for both cores, so no interrupt can be delivered
+ *          through the stale enable.
  *
  * @param[in] dmachp    pointer to a rp_dma_channel_t structure
  *
@@ -316,20 +324,34 @@ void dmaChannelFreeI(const rp_dma_channel_t *dmachp) {
                 "not allocated");
   osalDbgAssert(dmaChannelIsBusyX(dmachp) == false, "channel is busy");
 
+  /* A cross-core free cannot stop an interrupt handler already
+     executing on the owning core; the caller must have disabled the
+     channel's interrupt sources and quiesced its handler first. The
+     assertion catches the enabled-interrupt part of that contract.*/
+  osalDbgAssert(
+      (((dma.c0_allocated_mask & dmachp->chnmask) != 0U) ?
+       (SIO->CPUID == 0U) : (SIO->CPUID == 1U)) ||
+      (((dmachp->dma->INTE0 & dmachp->chnmask) == 0U) &&
+       ((dmachp->dma->INTE1 & dmachp->chnmask) == 0U)),
+      "cross-core free with live interrupts");
+
   /* Putting the stream in a known state.*/
   dmaChannelDisableInterruptX(dmachp);
   dmaChannelDisableX(dmachp);
   dmaChannelSetModeX(dmachp, 0U);
 
-  if (SIO->CPUID == 0U) {
-    /* Channel released by core 0.*/
+  /* The owner core is derived from the recorded allocation masks, using
+     SIO->CPUID here would leak the channel when the free is performed by
+     the other core.*/
+  if ((dma.c0_allocated_mask & dmachp->chnmask) != 0U) {
+    /* Channel allocated by core 0.*/
     dma.c0_allocated_mask &= ~dmachp->chnmask;
     if (dma.c0_allocated_mask == 0U) {
       nvicDisableVector(RP_DMA_IRQ_0_NUMBER);
     }
   }
   else {
-    /* Channel released by core 1.*/
+    /* Channel allocated by core 1.*/
     dma.c1_allocated_mask &= ~dmachp->chnmask;
     if (dma.c1_allocated_mask == 0U) {
       nvicDisableVector(RP_DMA_IRQ_1_NUMBER);

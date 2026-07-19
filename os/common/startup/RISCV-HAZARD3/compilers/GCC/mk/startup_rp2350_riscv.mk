@@ -17,8 +17,11 @@ STARTUPINC = $(CHIBIOS)/os/common/portability/GCC \
 
 STARTUPLD  = $(CHIBIOS)/os/common/startup/RISCV-HAZARD3/compilers/GCC/ld
 
+# Note: the per-core stacks live in the 4KiB scratch banks (ram4/ram5)
+# together with CH_MEM_LOCAL_BSS()/CH_MEM_LOCAL_COHERENT_BSS() annotated
+# data, 0x400+0x400 leaves half of each bank for annotated data.
 USE_EXCEPTIONS_STACKSIZE ?= 0x400
-USE_PROCESS_STACKSIZE    ?= 0x800
+USE_PROCESS_STACKSIZE    ?= 0x400
 
 # Shared variables
 ALLXASMSRC += $(STARTUPASM)

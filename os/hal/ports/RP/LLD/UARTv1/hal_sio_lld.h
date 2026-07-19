@@ -109,10 +109,32 @@
 
 /**
  * @brief   Low level fields of the SIO driver structure.
+ * @note    The PL011 has no transmission-complete interrupt, the end of
+ *          transmission is only observable by polling UARTFR.BUSY.  On
+ *          the RT kernel a virtual timer is used to poll for TX-end and
+ *          wake up threads suspended in @p sioSynchronizeTXEnd().
+ *          Without the RT kernel only the opportunistic detection
+ *          performed in the interrupt handler is available, and that
+ *          only runs when a TX interrupt fires on a FIFO level
+ *          crossing: a write too small to cross the threshold produces
+ *          no interrupt and @p sioSynchronizeTXEnd() can then block
+ *          indefinitely.  Reliable TX-end synchronization therefore
+ *          requires the RT kernel.
  */
+#if (defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)) ||       \
+    defined(__DOXYGEN__)
+#define sio_lld_driver_fields                                               \
+  /* Pointer to the USARTx registers block.*/                               \
+  UART_TypeDef             *uart;                                           \
+  /* TX-end polling virtual timer.*/                                        \
+  virtual_timer_t           txend_vt;                                       \
+  /* TX-end polling interval.*/                                             \
+  sysinterval_t             txend_step;
+#else
 #define sio_lld_driver_fields                                               \
   /* Pointer to the USARTx registers block.*/                               \
   UART_TypeDef             *uart;
+#endif
 
 /**
  * @brief   Low level fields of the SIO configuration structure.
@@ -156,6 +178,9 @@
  * @brief   Determines if RX has pending error events to be read and cleared.
  * @note    Only error and protocol errors are handled, data events are not
  *          considered.
+ * @note    The raw status register is used because the ISR masks handled
+ *          error sources in UARTIMSC while the condition is still pending,
+ *          reading the masked status would hide those errors.
  *
  * @param[in] siop      pointer to the @p SIODriver object
  * @return              The RX error events.
@@ -165,7 +190,7 @@
  * @notapi
  */
 #define sio_lld_has_rx_errors(siop)                                         \
-  (bool)(((siop)->uart->UARTMIS & SIO_LLD_ISR_RX_ERRORS) != 0U)
+  (bool)(((siop)->uart->UARTRIS & SIO_LLD_ISR_RX_ERRORS) != 0U)
 
 /**
  * @brief   Determines the state of the TX FIFO.

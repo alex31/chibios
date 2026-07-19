@@ -62,11 +62,6 @@
 #define RP_GPIO_IOCTRL_OUTOVER_Pos          12
 /** @} */
 
-/**
- * @brief   Dynamic clock supported.
- */
-#define HAL_LLD_USE_CLOCK_MANAGEMENT
-
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -80,6 +75,50 @@
  */
 #if !defined(RP_NO_INIT) || defined(__DOXYGEN__)
 #define RP_NO_INIT                          FALSE
+#endif
+
+/**
+ * @brief   Enables runtime changes of the system clock.
+ * @details When @p TRUE the port advertises the generic clock management
+ *          API (@p halClockSwitchMode()) and clock point queries become
+ *          dynamic. When @p FALSE (default) the clock tree is fixed at
+ *          initialization time and this feature costs nothing.
+ */
+#if !defined(RP_CLOCK_DYNAMIC) || defined(__DOXYGEN__)
+#define RP_CLOCK_DYNAMIC                    FALSE
+#endif
+
+/**
+ * @brief   Allows runtime clock configurations above the rated system
+ *          frequency.
+ * @details Effective only together with @p RP_CLOCK_DYNAMIC. When
+ *          @p FALSE (default) the runtime validation rejects any
+ *          configuration above the rated maximum system frequency
+ *          (@p RP_CLK_SYS_MAX); a boot configuration below the rated
+ *          maximum may still switch up to it.
+ *          Overclocked operation is outside the device specification;
+ *          configurations above the rated frequency must carry an
+ *          explicit QMI flash divider and may require a raised core
+ *          voltage (@p vreg_mv).
+ */
+#if !defined(RP_ALLOW_OVERCLOCK) || defined(__DOXYGEN__)
+#define RP_ALLOW_OVERCLOCK                  FALSE
+#endif
+
+/**
+ * @brief   Rated maximum system frequency of the device.
+ * @note    This is the specification limit, independent of the
+ *          compile-time boot configuration which may be lower.
+ */
+#if !defined(RP_CLK_SYS_MAX) || defined(__DOXYGEN__)
+#define RP_CLK_SYS_MAX                      150000000U
+#endif
+
+/**
+ * @brief   Upper frequency bound admitted when overclocking is enabled.
+ */
+#if !defined(RP_CLK_SYS_OVERCLOCK_MAX) || defined(__DOXYGEN__)
+#define RP_CLK_SYS_OVERCLOCK_MAX            300000000U
 #endif
 
 /**
@@ -133,56 +172,92 @@
 #error "RP_XOSCCLK out of valid range (1-15 MHz)"
 #endif
 
+#if (RP_XOSCCLK % 1000000U) != 0
+#error "RP_XOSCCLK must be an integer number of MHz (1us tick granularity)"
+#endif
+
 /*
- * PLL_SYS configuration checks.
+ * PLL_SYS configuration checks. The checks form a single chain so that
+ * a derived check dividing by a parameter is never evaluated while that
+ * parameter is out of range: a stray "division by zero in #if"
+ * diagnostic would bury the intended message.
  */
 #if (RP_PLL_SYS_REFDIV < 1) || (RP_PLL_SYS_REFDIV > 63)
 #error "RP_PLL_SYS_REFDIV out of valid range (1-63)"
-#endif
-
-#if (RP_PLL_SYS_VCO_FREQ < RP_PLL_VCO_MIN_FREQ) ||                          \
-    (RP_PLL_SYS_VCO_FREQ > RP_PLL_VCO_MAX_FREQ)
+#elif (RP_PLL_SYS_VCO_FREQ < RP_PLL_VCO_MIN_FREQ) ||                        \
+      (RP_PLL_SYS_VCO_FREQ > RP_PLL_VCO_MAX_FREQ)
 #error "RP_PLL_SYS_VCO_FREQ out of valid range (750-1600 MHz)"
-#endif
-
-#if (RP_PLL_SYS_POSTDIV1 < 1) || (RP_PLL_SYS_POSTDIV1 > 7)
+#elif (RP_PLL_SYS_POSTDIV1 < 1) || (RP_PLL_SYS_POSTDIV1 > 7)
 #error "RP_PLL_SYS_POSTDIV1 out of valid range (1-7)"
-#endif
-
-#if (RP_PLL_SYS_POSTDIV2 < 1) || (RP_PLL_SYS_POSTDIV2 > 7)
+#elif (RP_PLL_SYS_POSTDIV2 < 1) || (RP_PLL_SYS_POSTDIV2 > 7)
 #error "RP_PLL_SYS_POSTDIV2 out of valid range (1-7)"
-#endif
-
-#if RP_PLL_SYS_POSTDIV1 < RP_PLL_SYS_POSTDIV2
+#elif RP_PLL_SYS_POSTDIV1 < RP_PLL_SYS_POSTDIV2
 #error "RP_PLL_SYS_POSTDIV1 must be >= RP_PLL_SYS_POSTDIV2"
+#elif (RP_XOSCCLK % RP_PLL_SYS_REFDIV) != 0
+#error "RP_XOSCCLK is not divisible by RP_PLL_SYS_REFDIV"
+#elif (RP_XOSCCLK / RP_PLL_SYS_REFDIV) < 5000000
+#error "PLL_SYS reference frequency below 5 MHz minimum"
+#elif (RP_PLL_SYS_VCO_FREQ % (RP_XOSCCLK / RP_PLL_SYS_REFDIV)) != 0
+#error "RP_PLL_SYS_VCO_FREQ is not an integer multiple of the PLL_SYS reference frequency"
+#elif ((RP_PLL_SYS_VCO_FREQ / (RP_XOSCCLK / RP_PLL_SYS_REFDIV)) < 16) ||    \
+      ((RP_PLL_SYS_VCO_FREQ / (RP_XOSCCLK / RP_PLL_SYS_REFDIV)) > 320)
+#error "PLL_SYS FBDIV out of valid range (16-320)"
+#elif (RP_PLL_SYS_VCO_FREQ % (RP_PLL_SYS_POSTDIV1 * RP_PLL_SYS_POSTDIV2)) != 0
+#error "RP_PLL_SYS_VCO_FREQ is not divisible by RP_PLL_SYS_POSTDIV1 * RP_PLL_SYS_POSTDIV2"
 #endif
 
 /*
- * PLL_USB configuration checks.
+ * PLL_USB configuration checks, chained for the same reason as the
+ * PLL_SYS checks above.
  */
 #if (RP_PLL_USB_REFDIV < 1) || (RP_PLL_USB_REFDIV > 63)
 #error "RP_PLL_USB_REFDIV out of valid range (1-63)"
-#endif
-
-#if (RP_PLL_USB_VCO_FREQ < RP_PLL_VCO_MIN_FREQ) ||                          \
-    (RP_PLL_USB_VCO_FREQ > RP_PLL_VCO_MAX_FREQ)
+#elif (RP_PLL_USB_VCO_FREQ < RP_PLL_VCO_MIN_FREQ) ||                        \
+      (RP_PLL_USB_VCO_FREQ > RP_PLL_VCO_MAX_FREQ)
 #error "RP_PLL_USB_VCO_FREQ out of valid range (750-1600 MHz)"
-#endif
-
-#if (RP_PLL_USB_POSTDIV1 < 1) || (RP_PLL_USB_POSTDIV1 > 7)
+#elif (RP_PLL_USB_POSTDIV1 < 1) || (RP_PLL_USB_POSTDIV1 > 7)
 #error "RP_PLL_USB_POSTDIV1 out of valid range (1-7)"
-#endif
-
-#if (RP_PLL_USB_POSTDIV2 < 1) || (RP_PLL_USB_POSTDIV2 > 7)
+#elif (RP_PLL_USB_POSTDIV2 < 1) || (RP_PLL_USB_POSTDIV2 > 7)
 #error "RP_PLL_USB_POSTDIV2 out of valid range (1-7)"
-#endif
-
-#if RP_PLL_USB_POSTDIV1 < RP_PLL_USB_POSTDIV2
+#elif RP_PLL_USB_POSTDIV1 < RP_PLL_USB_POSTDIV2
 #error "RP_PLL_USB_POSTDIV1 must be >= RP_PLL_USB_POSTDIV2"
+#elif (RP_XOSCCLK % RP_PLL_USB_REFDIV) != 0
+#error "RP_XOSCCLK is not divisible by RP_PLL_USB_REFDIV"
+#elif (RP_XOSCCLK / RP_PLL_USB_REFDIV) < 5000000
+#error "PLL_USB reference frequency below 5 MHz minimum"
+#elif (RP_PLL_USB_VCO_FREQ % (RP_XOSCCLK / RP_PLL_USB_REFDIV)) != 0
+#error "RP_PLL_USB_VCO_FREQ is not an integer multiple of the PLL_USB reference frequency"
+#elif ((RP_PLL_USB_VCO_FREQ / (RP_XOSCCLK / RP_PLL_USB_REFDIV)) < 16) ||    \
+      ((RP_PLL_USB_VCO_FREQ / (RP_XOSCCLK / RP_PLL_USB_REFDIV)) > 320)
+#error "PLL_USB FBDIV out of valid range (16-320)"
+#elif (RP_PLL_USB_VCO_FREQ % (RP_PLL_USB_POSTDIV1 * RP_PLL_USB_POSTDIV2)) != 0
+#error "RP_PLL_USB_VCO_FREQ is not divisible by RP_PLL_USB_POSTDIV1 * RP_PLL_USB_POSTDIV2"
 #endif
 
 #if RP_PLL_USB_CLK != 48000000
 #error "RP_PLL_USB_CLK must be 48 MHz for USB to work"
+#endif
+
+/*
+ * RP2350-E12 erratum check: reliable USB operation requires
+ * clk_sys >= 1.1 * clk_usb.
+ */
+#if ((RP_CLK_SYS_FREQ) * 10U) < ((RP_CLK_USB_FREQ) * 11U)
+#error "RP2350-E12: clk_sys must be at least 1.1 * clk_usb for reliable USB operation"
+#endif
+
+#if (RP_CLOCK_DYNAMIC == TRUE) && defined(OSAL_ST_MODE) &&                  \
+    (OSAL_ST_MODE == OSAL_ST_MODE_PERIODIC)
+#error "RP_CLOCK_DYNAMIC requires tick-less mode, in periodic mode SysTick counts clk_sys and the kernel tick would scale with every switch"
+#endif
+
+#if (RP_ALLOW_OVERCLOCK == TRUE) && (RP_CLOCK_DYNAMIC == FALSE)
+#error "RP_ALLOW_OVERCLOCK requires RP_CLOCK_DYNAMIC"
+#endif
+
+#if (RP_ALLOW_OVERCLOCK == TRUE) &&                                         \
+    ((RP_CLK_SYS_OVERCLOCK_MAX) < (RP_CLK_SYS_MAX))
+#error "RP_CLK_SYS_OVERCLOCK_MAX below the rated system frequency"
 #endif
 
 /**
@@ -196,6 +271,8 @@
 #define RP_REF_CLK              hal_lld_get_clock_point(RP_CLK_REF)
 #define RP_CORE_CLK             hal_lld_get_clock_point(RP_CLK_SYS)
 #define RP_PERI_CLK             hal_lld_get_clock_point(RP_CLK_PERI)
+/* Note: the HSTX clock is reported as a clock point but it is not
+   configured by this HAL.*/
 #define RP_HSTX_CLK             hal_lld_get_clock_point(RP_CLK_HSTX)
 #define RP_USB_CLK              hal_lld_get_clock_point(RP_CLK_USB)
 #define RP_ADC_CLK              hal_lld_get_clock_point(RP_CLK_ADC)
@@ -205,14 +282,63 @@
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
 
-#if defined(HAL_LLD_USE_CLOCK_MANAGEMENT) || defined(__DOXYGEN__)
+#if (RP_CLOCK_DYNAMIC == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   The port supports the generic clock management API.
+ */
+#define HAL_LLD_USE_CLOCK_MANAGEMENT
+
 /**
  * @brief   Type of a clock configuration structure.
+ * @details Describes a PLL_SYS setting reachable at runtime through
+ *          @p halClockSwitchMode(). The reference is always the crystal
+ *          (@p RP_XOSCCLK); clk_peri follows clk_sys, clk_ref, clk_usb
+ *          and clk_adc are not affected by a switch.
  */
 typedef struct {
-  uint32_t          dummy;
+  /**
+   * @brief   PLL_SYS reference divider, 1..63.
+   */
+  uint32_t          pll_sys_refdiv;
+  /**
+   * @brief   PLL_SYS VCO frequency in Hz, 750 MHz..1600 MHz.
+   */
+  uint32_t          pll_sys_vco_freq;
+  /**
+   * @brief   PLL_SYS first post divider, 1..7.
+   */
+  uint32_t          pll_sys_postdiv1;
+  /**
+   * @brief   PLL_SYS second post divider, 1..postdiv1.
+   */
+  uint32_t          pll_sys_postdiv2;
+  /**
+   * @brief   Effective QMI flash clock divider for the new frequency,
+   *          0 or 1..255.
+   * @details Zero selects the divider the system booted with (captured
+   *          before the first switch), accepted only for targets at or
+   *          below the boot frequency where it is known-safe. A
+   *          non-zero value must keep the flash SCK within the device
+   *          rating at the new clk_sys. The switch first widens the
+   *          divider to a value safe at both the old and the new
+   *          frequency, and programs this target value only after the
+   *          new frequency is established, so flash timing stays in
+   *          specification at every instant.
+   */
+  uint32_t          qmi_clkdiv;
+  /**
+   * @brief   Core voltage in millivolts, 0 or 1100..1300 in steps of
+   *          50.
+   * @details Zero leaves the regulator untouched. A non-zero value is
+   *          only accepted when @p RP_ALLOW_OVERCLOCK is enabled; the
+   *          regulator is raised before an upward frequency change and
+   *          lowered after a downward one. Values above 1300 mV are
+   *          not supported (they require the POWMAN voltage-limit
+   *          unlock, deliberately out of scope).
+   */
+  uint32_t          vreg_mv;
 } halclkcfg_t;
-#endif /* defined(HAL_LLD_USE_CLOCK_MANAGEMENT) */
+#endif /* RP_CLOCK_DYNAMIC == TRUE */
 
 /*===========================================================================*/
 /* Driver macros.                                                            */
@@ -257,10 +383,23 @@ typedef uint32_t halcnt_t;
 #include "rp_pio.h"
 #include "rp_bootrom.h"
 
+extern uint32_t SystemCoreClock;
+
+#if (RP_CLOCK_DYNAMIC == TRUE) || defined(__DOXYGEN__)
+extern const halclkcfg_t hal_clkcfg_default;
+extern const halclkcfg_t hal_clkcfg_low;
+#if (RP_ALLOW_OVERCLOCK == TRUE) || defined(__DOXYGEN__)
+extern const halclkcfg_t hal_clkcfg_overclock;
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
   void hal_lld_init(void);
+#if (RP_CLOCK_DYNAMIC == TRUE) || defined(__DOXYGEN__)
+  bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp);
+#endif
 #ifdef __cplusplus
 }
 #endif
@@ -282,24 +421,6 @@ __STATIC_INLINE void rp_peripheral_unreset(uint32_t mask) {
   }
 }
 
-#if defined(HAL_LLD_USE_CLOCK_MANAGEMENT) || defined(__DOXYGEN__)
-/**
- * @brief   Switches to a different clock configuration
- *
- * @param[in] ccp       pointer to clock a @p halclkcfg_t structure
- * @return              The clock switch result.
- * @retval false        if the clock switch succeeded
- * @retval true         if the clock switch failed
- *
- * @notapi
- */
-__STATIC_INLINE bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp) {
-
-  (void)ccp;
-
-  return false;
-}
-
 /**
  * @brief   Returns the frequency of a clock point in Hz.
  *
@@ -315,7 +436,6 @@ __STATIC_INLINE halfreq_t hal_lld_get_clock_point(halclkpt_t clkpt) {
 
   return rp_clock_get_hz(clkpt);
 }
-#endif /* defined(HAL_LLD_USE_CLOCK_MANAGEMENT) */
 
 #endif /* HAL_LLD_H */
 

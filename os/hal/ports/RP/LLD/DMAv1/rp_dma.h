@@ -233,6 +233,10 @@ __STATIC_INLINE void dmaChannelSetDestinationX(const rp_dma_channel_t *dmachp,
 
 /**
  * @brief   Setup of the DMA transfer counter.
+ * @note    On the RP2350 the @p TRANS_COUNT bits [31:28] are the count MODE
+ *          field (NORMAL, TRIGGER_SELF, ENDLESS), the count is limited to
+ *          28 bits and the mode is enforced to NORMAL so that an oversized
+ *          count cannot silently switch the channel mode.
  *
  * @param[in] dmachp    pointer to a rp_dma_channel_t structure
  * @param[in] n         value to be written in the @p TRANS_COUNT register
@@ -244,7 +248,14 @@ __STATIC_INLINE void dmaChannelSetCounterX(const rp_dma_channel_t *dmachp,
 
   osalDbgAssert(dmaChannelIsBusyX(dmachp) == false, "channel is busy");
 
+#if defined(RP2350)
+  osalDbgAssert((n & DMA_TRANS_COUNT_MODE_Msk) == 0U, "count exceeds 28 bits");
+
+  dmachp->channel->TRANS_COUNT = (n & ~DMA_TRANS_COUNT_MODE_Msk) |
+                                 DMA_TRANS_COUNT_MODE_NORMAL;
+#else
   dmachp->channel->TRANS_COUNT = n;
+#endif
 }
 
 /**

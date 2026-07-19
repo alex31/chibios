@@ -108,11 +108,40 @@ static void uart_start(UARTDriver *uartp) {
   clock = halClockGetPointX(RP_CLK_PERI);
   osalDbgAssert(clock > 0U, "no clock");
 
+  /* This start path has no error channel; in release builds an invalid
+     zero baud must not reach the division. The peripheral is disabled
+     instead of trapping: on a restart from the ready state an early
+     return alone would leave the previous configuration silently
+     running in place of the requested one.*/
+  if ((cfgp->baud == 0U) || (clock == 0U)) {
+    uartp->uart->UARTIMSC = 0U;
+    uartp->uart->UARTCR   = 0U;
+    return;
+  }
+
   div  = (8U * (uint32_t)clock) / cfgp->baud;
   idiv = div >> 7;
   fdiv = ((div & 0x7FU) + 1U) / 2U;
 
+  /* The rounding of the fractional part can produce a carry, UARTFBRD is
+     only 6 bits wide so the carry must be propagated into the integer
+     part instead of being silently dropped.*/
+  if (fdiv >= 64U) {
+    idiv += 1U;
+    fdiv = 0U;
+  }
+
   osalDbgAssert((idiv > 0U) && (idiv <= 0xFFFFU), "invalid baud rate");
+
+  /* The carry can push the integer part past the 16-bit register for
+     edge rates; in release builds the peripheral is disabled instead of
+     writing a truncated divider, consistent with the zero-baud guard
+     above.*/
+  if ((idiv < 1U) || (idiv > 0xFFFFU)) {
+    uartp->uart->UARTIMSC = 0U;
+    uartp->uart->UARTCR   = 0U;
+    return;
+  }
 
   uartp->uart->UARTIBRD  = idiv;
   uartp->uart->UARTFBRD  = fdiv;

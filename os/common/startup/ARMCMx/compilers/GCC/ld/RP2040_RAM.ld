@@ -28,13 +28,22 @@ MEMORY
     flash6 (rx) : org = 0x00000000, len = 0
     flash7 (rx) : org = 0x00000000, len = 0
     ram0   (wx) : org = 0x20000000, len = 256k  /* SRAM0 striped        */
-    ram1   (wx) : org = 0x00000000, len = 256k  /* SRAM0 non striped    */
+    /* The non-striped SRAM0..SRAM3 alias window starts at 0x21000000 and
+       maps the same physical memory as the striped ram0 window, which
+       always holds data, BSS and heap. Any allocation through the alias
+       therefore collides with striped allocations, so the region is kept
+       at zero length; resize both regions consciously to use it.*/
+    ram1   (wx) : org = 0x21000000, len = 0     /* SRAM0 non striped    */
     ram2   (wx) : org = 0x00000000, len = 0
     ram3   (wx) : org = 0x00000000, len = 0
     ram4   (wx) : org = 0x20040000, len = 4k    /* SRAM4                */
     ram5   (wx) : org = 0x20041000, len = 4k    /* SRAM5                */
     ram6   (wx) : org = 0x00000000, len = 0
-    ram7   (wx) : org = 0x20041f00, len = 256   /* SRAM5 boot           */
+    /* The former ram7 region covered the last 256 bytes of SRAM5, fully
+       inside ram5, which hosts the core-1 stacks and .ram5 allocations.
+       The linker does not detect allocations made through overlapping
+       MEMORY regions, so the region is removed.*/
+    ram7   (wx) : org = 0x00000000, len = 0
 }
 
 /* For each data/text section two region are defined, a virtual region

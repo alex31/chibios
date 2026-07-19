@@ -31,10 +31,13 @@
 
 /**
  * @brief   XOSC startup delay multiplier.
- * @note    Default value of 1 for 12MHz crystal.
+ * @note    The base delay is ~1 ms of crystal periods. The default
+ *          multiplier of 6 gives a conservative ~6 ms startup delay
+ *          which accommodates slow-starting crystals. It can be
+ *          overridden from the board file.
  */
 #if !defined(RP_XOSC_STARTUP_DELAY_MULTIPLIER)
-#define RP_XOSC_STARTUP_DELAY_MULTIPLIER    1U
+#define RP_XOSC_STARTUP_DELAY_MULTIPLIER    6U
 #endif
 
 /*===========================================================================*/
@@ -48,10 +51,14 @@
 /**
  * @brief   XOSC startup delay value.
  * @note    Delay is in multiples of 256 crystal periods
- *          For 12MHz, each count is ~21.3us. Default gives 1ms startup.
+ *          For 12MHz, each count is ~21.3us. Default gives 6ms startup.
  */
 #define RP_XOSC_STARTUP_DELAY               \
     ((((RP_XOSCCLK / 1000U) + 128U) / 256U) * RP_XOSC_STARTUP_DELAY_MULTIPLIER)
+
+#if RP_XOSC_STARTUP_DELAY > 0x3FFF
+#error "RP_XOSC_STARTUP_DELAY exceeds the 14-bit STARTUP.DELAY register field"
+#endif
 
 /*===========================================================================*/
 /* Driver data structures and types.                                         */

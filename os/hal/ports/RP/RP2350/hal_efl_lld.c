@@ -740,6 +740,10 @@ RAMFUNC static flash_error_t rp_flash_erase_full(EFlashDriver *eflp,
                                                  uint8_t cmd,
                                                  uint32_t offset) {
   flash_error_t err = FLASH_NO_ERROR;
+  uint32_t primask = __get_PRIMASK();
+
+  /* Defer fast interrupts too, their handlers may execute from flash.*/
+  __disable_irq();
 
   /* Exit XIP mode. */
   if (!rp_flash_exit_xip(eflp)) {
@@ -756,6 +760,8 @@ RAMFUNC static flash_error_t rp_flash_erase_full(EFlashDriver *eflp,
   if (!rp_flash_enter_xip(eflp)) {
     err = FLASH_ERROR_HW_FAILURE;
   }
+
+  __set_PRIMASK(primask);
 
   return err;
 }
@@ -777,6 +783,10 @@ RAMFUNC static flash_error_t rp_flash_program_page_full(EFlashDriver *eflp,
                                                         const uint8_t *data,
                                                         size_t len) {
   flash_error_t err = FLASH_NO_ERROR;
+  uint32_t primask = __get_PRIMASK();
+
+  /* Defer fast interrupts too, their handlers may execute from flash.*/
+  __disable_irq();
 
   /* Exit XIP mode. */
   if (!rp_flash_exit_xip(eflp)) {
@@ -793,6 +803,8 @@ RAMFUNC static flash_error_t rp_flash_program_page_full(EFlashDriver *eflp,
   if (!rp_flash_enter_xip(eflp)) {
     err = FLASH_ERROR_HW_FAILURE;
   }
+
+  __set_PRIMASK(primask);
 
   return err;
 }
@@ -812,6 +824,10 @@ RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
                                                     uint8_t *rx,
                                                     size_t count) {
   flash_error_t err = FLASH_NO_ERROR;
+  uint32_t primask = __get_PRIMASK();
+
+  /* Defer fast interrupts too, their handlers may execute from flash.*/
+  __disable_irq();
 
   /* Exit XIP mode. */
   if (!rp_flash_exit_xip(eflp)) {
@@ -828,6 +844,8 @@ RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
   if (!rp_flash_enter_xip(eflp)) {
     err = FLASH_ERROR_HW_FAILURE;
   }
+
+  __set_PRIMASK(primask);
 
   return err;
 }

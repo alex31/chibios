@@ -173,73 +173,85 @@ OSAL_IRQ_HANDLER(RP_PWM_IRQ_WRAP_0_HANDLER) {
   PWM->INTR = ints;
 
 #if RP_PWM_USE_PWM0 == TRUE
-  if (((ints & PWM_INTS_CH(0)) != 0) && (PWMD0.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(0)) != 0) && (PWMD0.config != NULL) &&
+      (PWMD0.config->callback != NULL)) {
     PWMD0.config->callback(&PWMD0);
   }
 #endif
 
 #if RP_PWM_USE_PWM1 == TRUE
-  if (((ints & PWM_INTS_CH(1)) != 0) && (PWMD1.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(1)) != 0) && (PWMD1.config != NULL) &&
+      (PWMD1.config->callback != NULL)) {
     PWMD1.config->callback(&PWMD1);
   }
 #endif
 
 #if RP_PWM_USE_PWM2 == TRUE
-  if (((ints & PWM_INTS_CH(2)) != 0) && (PWMD2.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(2)) != 0) && (PWMD2.config != NULL) &&
+      (PWMD2.config->callback != NULL)) {
     PWMD2.config->callback(&PWMD2);
   }
 #endif
 
 #if RP_PWM_USE_PWM3 == TRUE
-  if (((ints & PWM_INTS_CH(3)) != 0) && (PWMD3.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(3)) != 0) && (PWMD3.config != NULL) &&
+      (PWMD3.config->callback != NULL)) {
     PWMD3.config->callback(&PWMD3);
   }
 #endif
 
 #if RP_PWM_USE_PWM4 == TRUE
-  if (((ints & PWM_INTS_CH(4)) != 0) && (PWMD4.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(4)) != 0) && (PWMD4.config != NULL) &&
+      (PWMD4.config->callback != NULL)) {
     PWMD4.config->callback(&PWMD4);
   }
 #endif
 
 #if RP_PWM_USE_PWM5 == TRUE
-  if (((ints & PWM_INTS_CH(5)) != 0) && (PWMD5.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(5)) != 0) && (PWMD5.config != NULL) &&
+      (PWMD5.config->callback != NULL)) {
     PWMD5.config->callback(&PWMD5);
   }
 #endif
 
 #if RP_PWM_USE_PWM6 == TRUE
-  if (((ints & PWM_INTS_CH(6)) != 0) && (PWMD6.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(6)) != 0) && (PWMD6.config != NULL) &&
+      (PWMD6.config->callback != NULL)) {
     PWMD6.config->callback(&PWMD6);
   }
 #endif
 
 #if RP_PWM_USE_PWM7 == TRUE
-  if (((ints & PWM_INTS_CH(7)) != 0) && (PWMD7.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(7)) != 0) && (PWMD7.config != NULL) &&
+      (PWMD7.config->callback != NULL)) {
     PWMD7.config->callback(&PWMD7);
   }
 #endif
 
 #if RP_PWM_USE_PWM8 == TRUE
-  if (((ints & PWM_INTS_CH(8)) != 0) && (PWMD8.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(8)) != 0) && (PWMD8.config != NULL) &&
+      (PWMD8.config->callback != NULL)) {
     PWMD8.config->callback(&PWMD8);
   }
 #endif
 
 #if RP_PWM_USE_PWM9 == TRUE
-  if (((ints & PWM_INTS_CH(9)) != 0) && (PWMD9.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(9)) != 0) && (PWMD9.config != NULL) &&
+      (PWMD9.config->callback != NULL)) {
     PWMD9.config->callback(&PWMD9);
   }
 #endif
 
 #if RP_PWM_USE_PWM10 == TRUE
-  if (((ints & PWM_INTS_CH(10)) != 0) && (PWMD10.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(10)) != 0) && (PWMD10.config != NULL) &&
+      (PWMD10.config->callback != NULL)) {
     PWMD10.config->callback(&PWMD10);
   }
 #endif
 
 #if RP_PWM_USE_PWM11 == TRUE
-  if (((ints & PWM_INTS_CH(11)) != 0) && (PWMD11.config->callback != NULL)) {
+  if (((ints & PWM_INTS_CH(11)) != 0) && (PWMD11.config != NULL) &&
+      (PWMD11.config->callback != NULL)) {
     PWMD11.config->callback(&PWMD11);
   }
 #endif
@@ -371,20 +383,47 @@ void pwm_lld_start(PWMDriver *pwmp) {
     p->CH[pwmp->timer_id].CC  = 0;
   }
 
-  /* Counter clock divider. */
+  /* Counter clock divider as an 8.4 fixed point value, computed in 64
+     bits in order not to overflow at high system clocks. */
   halfreq_t sys_clk = halClockGetPointX(RP_CLK_SYS);
-  halfreq_t pwm_freq_min = sys_clk / 256;
+  uint32_t div_fp4;
 
-  osalDbgAssert(pwmp->config->frequency >= pwm_freq_min,
-                "PWM counter frequency too low");
+  /* This start path has no error channel; a zero frequency must not
+     reach the division (the 64-bit helper quietly returns zero, which
+     the minimum clamp below would turn into a full-speed counter). The
+     slowest supported divider is the closest predictable behavior. */
+  osalDbgAssert(pwmp->config->frequency > 0U, "invalid PWM frequency");
+  if (pwmp->config->frequency == 0U) {
+    div_fp4 = 0xFFFU;
+  }
+  else {
+    div_fp4 = (uint32_t)(((uint64_t)sys_clk << 4) /
+                         pwmp->config->frequency);
+  }
 
-  /* Integer part must not be zero. */
-  halfreq_t integer = sys_clk / pwmp->config->frequency;
-  integer = integer == 0 ? 1 : integer;
+  /* Divider 1.0 is the minimum supported value. */
+  if (div_fp4 < 0x010U) {
+    div_fp4 = 0x010U;
+  }
 
-  halfreq_t fraction = (sys_clk << 4) / pwmp->config->frequency;
-  p->CH[pwmp->timer_id].DIV = (integer << 4 | (fraction & 0xF));
-  p->CH[pwmp->timer_id].TOP = pwmp->period;
+  /* The 12-bit INT.FRAC divider tops out at 255+15/16; release builds
+     clamp instead of writing a truncated unrelated value. */
+  osalDbgAssert(div_fp4 <= 0xFFFU, "PWM frequency too low");
+  if (div_fp4 > 0xFFFU) {
+    div_fp4 = 0xFFFU;
+  }
+  /* A zero period is a contract violation: debug builds reject it here,
+     release builds fall back to the clamp below. */
+  osalDbgAssert(pwmp->period >= 1U, "invalid PWM period");
+
+  p->CH[pwmp->timer_id].DIV = div_fp4;
+
+  /* The counter counts from zero to TOP included so the register must
+     be programmed with one count less than the requested period; in
+     release builds a zero period is clamped to the shortest achievable
+     cycle, matching pwm_lld_change_period(). */
+  p->CH[pwmp->timer_id].TOP =
+    (uint32_t)(((pwmp->period >= 1U) ? pwmp->period : 1U) - 1U);
 
   uint32_t csr = PWM_CSR_EN | PWM_CSR_DIVMODE_FREE;
   csr &= ~PWM_CSR_PH_CORRECT;
@@ -426,11 +465,19 @@ void pwm_lld_stop(PWMDriver *pwmp) {
 
   /* If in ready state then disables the PWM clock. */
   if (pwmp->state == PWM_READY) {
+    /* Disabling this slice wrap interrupt first, the vector is shared
+       among all slices and must not be able to fire for a stopped
+       driver. */
+    p->CLR.IRQ0_INTE = PWM_INTE_CH(pwmp->timer_id);
+
     p->CH[pwmp->timer_id].CSR = 0U;
     p->CH[pwmp->timer_id].CTR = 0U;
     p->CH[pwmp->timer_id].CC  = 0U;
     p->CH[pwmp->timer_id].DIV = 1U;
     p->CH[pwmp->timer_id].TOP = 0xFFFF;
+
+    /* Clearing any interrupt request still latched for this slice. */
+    p->INTR = PWM_INTR_CH(pwmp->timer_id);
   }
 
   /* If all timers are disabled, disable the interrupt and reset
@@ -498,7 +545,7 @@ void pwm_lld_disable_channel(PWMDriver *pwmp, pwmchannel_t channel) {
  * @notapi
  */
 void pwm_lld_enable_periodic_notification(PWMDriver *pwmp) {
-  pwmp->pwm->IRQ0_INTE |= PWM_INTE_CH(pwmp->timer_id);
+  pwmp->pwm->SET.IRQ0_INTE = PWM_INTE_CH(pwmp->timer_id);
 }
 
 /**
@@ -511,7 +558,7 @@ void pwm_lld_enable_periodic_notification(PWMDriver *pwmp) {
  * @notapi
  */
 void pwm_lld_disable_periodic_notification(PWMDriver *pwmp) {
-  pwmp->pwm->IRQ0_INTE &= ~PWM_INTE_CH(pwmp->timer_id);
+  pwmp->pwm->CLR.IRQ0_INTE = PWM_INTE_CH(pwmp->timer_id);
 }
 
 /**
