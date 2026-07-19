@@ -283,13 +283,27 @@ static bool test_stop_safety(void) {
     /* Sweeping the stop point across the 1000us period. */
     delay_us((i * 29U) % 1000U);
 
-    pwmStop(&PWMD1);
+    /* Keeping the wrap boundary away from the clear-to-stop window: a
+       wrap landing between the flag clear and the stop's lock would
+       deliver a legitimate pre-stop callback and read as a false
+       failure. The sweep above still exercises every stop phase
+       outside this guard band. */
+    t0 = time_us();
+    while (PWMD1.pwm->CH[PWMD1.timer_id].CTR > (PWM_PERIOD - 50U)) {
+      if ((uint32_t)(time_us() - t0) > 5000U) {
+        break;
+      }
+    }
     stop_cb_fired = false;
 
-    /* No callback may fire on a stopped driver. */
+    pwmStop(&PWMD1);
+
+    /* The flag was cleared before the stop and the wrap boundary is at
+       least 50us away, so any callback recorded from here on is a
+       stale post-stop delivery. */
     delay_us(2000U);
     if (stop_cb_fired) {
-      chprintf(chp, "    Cycle %u: callback fired after pwmStop()\r\n", i);
+      chprintf(chp, "    Cycle %u: callback fired during or after pwmStop()\r\n", i);
       return false;
     }
   }

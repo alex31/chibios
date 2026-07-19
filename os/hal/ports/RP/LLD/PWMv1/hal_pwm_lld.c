@@ -405,8 +405,11 @@ void pwm_lld_start(PWMDriver *pwmp) {
   p->CH[pwmp->timer_id].DIV = div_fp4;
 
   /* The counter counts from zero to TOP included so the register must
-     be programmed with one count less than the requested period. */
-  p->CH[pwmp->timer_id].TOP = (uint32_t)(pwmp->period - 1U);
+     be programmed with one count less than the requested period; a zero
+     period is clamped to the shortest achievable cycle, matching
+     pwm_lld_change_period(). */
+  p->CH[pwmp->timer_id].TOP =
+    (uint32_t)(((pwmp->period >= 1U) ? pwmp->period : 1U) - 1U);
 
   uint32_t csr = PWM_CSR_EN | PWM_CSR_DIVMODE_FREE;
   csr &= ~PWM_CSR_PH_CORRECT;
