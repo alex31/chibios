@@ -355,9 +355,18 @@ static void i2c_lld_serve_interrupt(I2CDriver *i2cp) {
   }
 
   if (intr & I2C_IC_INTR_STAT_R_STOP_DET) {
-    /* Clear irq flag. A STOP is only ever generated with the last command
-       of a transfer, so a STOP detection always means completion. */
+    /* Clear irq flag. */
     (void)dp->CLRSTOPDET;
+
+    /* The RP silicon hardwires IC_CON.STOP_DET_IF_MASTER_ACTIVE off
+       (the write is inert, verified by register read-back), so this
+       interrupt also fires for STOP conditions issued by other masters
+       on the bus. It only means completion when this driver has queued
+       its own final command; a foreign STOP mid-transfer is ignored,
+       the own transfer continues under hardware arbitration. */
+    if ((i2cp->txbytes > 0U) || (i2cp->rxbytes > 0U)) {
+      return;
+    }
   }
 
   /* Transmission complete, disable and clear all interrupts. */
