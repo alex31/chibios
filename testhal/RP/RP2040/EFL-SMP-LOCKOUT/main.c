@@ -193,6 +193,11 @@ int main(void) {
          (c1_errors == 0U) && (c1_cycles == C1_FLASH_CYCLES));
   report("core 0 heartbeat advanced", c0_heartbeat != hb_before);
 
+  /* Liveness now, not just at some point during the phase.*/
+  hb_before = c0_heartbeat;
+  chThdSleepMilliseconds(10);
+  report("core 0 alive after phase A", c0_heartbeat != hb_before);
+
   /*
    * Phase B: mirrored, core 0 flashes while core 1 executes from flash.
    * Skipped if phase A never completed, core 1 could still be inside
@@ -208,6 +213,12 @@ int main(void) {
 
     report("core 0 flash cycles clean", my_errors == 0U);
     report("core 1 heartbeat advanced", c1_heartbeat != c1hb_before);
+
+    /* The peer must still be running after the last flash operation; a
+       core that faulted mid-phase would have stopped incrementing.*/
+    c1hb_before = c1_heartbeat;
+    chThdSleepMilliseconds(10);
+    report("core 1 alive after flashing", c1_heartbeat != c1hb_before);
   }
   else {
     report("phase B skipped, phase A incomplete", false);
