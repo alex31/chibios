@@ -40,6 +40,11 @@
 
 /*
  * MCU type.
+ * The Pico 2 mounts the RP2350A (QFN-60) package and correctly defaults to
+ * the A-package capabilities (GPIO0-29, AINSEL 0-3 on GPIO26-29). Boards
+ * mounting the RP2350B (QFN-80) package must define RP2350B_QFN80 in their
+ * board.h/board files to advertise the extended capabilities (GPIO0-47,
+ * AINSEL 0-7 on GPIO40-47).
  */
 #define RP2350
 
