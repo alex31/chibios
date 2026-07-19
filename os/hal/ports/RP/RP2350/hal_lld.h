@@ -93,7 +93,9 @@
  *          frequency.
  * @details Effective only together with @p RP_CLOCK_DYNAMIC. When
  *          @p FALSE (default) the runtime validation rejects any
- *          configuration above the compile-time system frequency.
+ *          configuration above the rated maximum system frequency
+ *          (@p RP_CLK_SYS_MAX); a boot configuration below the rated
+ *          maximum may still switch up to it.
  *          Overclocked operation is outside the device specification;
  *          configurations above the rated frequency must carry an
  *          explicit QMI flash divider and may require a raised core

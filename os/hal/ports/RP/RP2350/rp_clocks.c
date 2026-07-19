@@ -595,12 +595,13 @@ bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp) {
 
 #if RP_ALLOW_OVERCLOCK == TRUE
   /* A lowered voltage is applied only after the frequency has come
-     down; a late regulator timeout is reported although the clocks
-     are already at the (safe, lower) target. */
+     down. A late regulator timeout is deliberately not reported: the
+     clocks are already at the target and the voltage stays at its
+     previous, higher and therefore safe, level - a missed power
+     optimization must not make callers believe the frequency change
+     failed and skip their driver restarts. */
   if ((ccp->vreg_mv != 0U) && (ccp->vreg_mv < rp_clock_get_vreg_mv())) {
-    if (rp_clock_set_vreg(ccp->vreg_mv)) {
-      return true;
-    }
+    (void)rp_clock_set_vreg(ccp->vreg_mv);
   }
 #endif
 
