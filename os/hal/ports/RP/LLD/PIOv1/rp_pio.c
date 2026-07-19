@@ -92,6 +92,23 @@ static struct {
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
+/**
+ * @brief   Computes an instruction memory allocation mask.
+ * @details Returns a mask with @p length consecutive bits set starting at
+ *          bit @p offset.
+ * @note    The computation is performed with a 64-bit intermediate because
+ *          a program can span all @p RP_PIO_NUM_INSTR_MEM (32) slots and
+ *          <tt>1U << 32</tt> is undefined behavior on a 32-bit target.
+ *
+ * @param[in] length    number of consecutive slots, 1..32
+ * @param[in] offset    first slot index
+ * @return              The allocation mask.
+ */
+static uint32_t pio_imem_mask(uint32_t length, uint32_t offset) {
+
+  return (uint32_t)(((1ULL << length) - 1ULL) << offset);
+}
+
 static void serve_pio_irq(uint32_t blockidx, __I uint32_t *ints_reg) {
   uint32_t ints;
 
@@ -102,7 +119,7 @@ static void serve_pio_irq(uint32_t blockidx, __I uint32_t *ints_reg) {
 
     for (i = 0U; i < RP_PIO_NUM_STATE_MACHINES; i++) {
       if (pio.blocks[blockidx].sm[i].func != NULL) {
-        pio.blocks[blockidx].sm[i].func(pio.blocks[blockidx].sm[i].param,ints);
+        pio.blocks[blockidx].sm[i].func(pio.blocks[blockidx].sm[i].param, ints);
       }
     }
   }
@@ -269,7 +286,7 @@ const rp_pio_sm_t *pioSmAllocI(const rp_pio_block_t *block,
       }
 
       if (SIO->CPUID == 0U) {
-        /* state machine taken by core 0.*/
+        /* State machine taken by core 0.*/
         if (pio.blocks[b].c0_allocated_mask == 0U) {
           switch (b) {
           case 0U:
@@ -290,7 +307,7 @@ const rp_pio_sm_t *pioSmAllocI(const rp_pio_block_t *block,
         pio.blocks[b].c0_allocated_mask |= smmask;
       }
       else {
-        /* state machine taken by core 1.*/
+        /* State machine taken by core 1.*/
         if (pio.blocks[b].c1_allocated_mask == 0U) {
           switch (b) {
           case 0U:
@@ -348,8 +365,24 @@ const rp_pio_sm_t *pioSmAlloc(const rp_pio_block_t *block,
 
 /**
  * @brief   Releases a PIO state machine.
+ * @note    The bookkeeping is keyed on the core that allocated the state
+ *          machine, not on the calling core, so a state machine can be
+ *          freed from either core. One residual asymmetry remains:
+ *          @p nvicDisableVector() acts on the calling core's NVIC, so a
+ *          cross-core free leaves the owner core's NVIC enable bit set.
+ *          This is benign because the state machine's IRQ0_INTE/IRQ1_INTE
+ *          bits are cleared for both cores first, so no interrupt can
+ *          fire, and the next allocation re-enables the vector anyway.
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
+ *
+ * @note    Freeing from a core other than the allocating one does not
+ *          synchronize with an interrupt handler already executing on
+ *          the owning core: a callback captured before the free can
+ *          still be running with its parameter when this returns. A
+ *          cross-core free therefore requires the caller to have
+ *          already disabled the state machine's interrupt sources and
+ *          quiesced its handler; this is asserted below.
  *
  * @iclass
  */
@@ -365,6 +398,19 @@ void pioSmFreeI(const rp_pio_sm_t *smp) {
                   pio.blocks[b].c1_allocated_mask) & smp->smmask) != 0U,
                 "not allocated");
 
+  /* On a cross-core free the owning core's handler must already be
+     quiesced by the caller, see the API note.*/
+  osalDbgAssert(
+      (((pio.blocks[b].c0_allocated_mask & smp->smmask) != 0U) ?
+       (SIO->CPUID == 0U) : (SIO->CPUID == 1U)) ||
+      ((smp->block->pio->IRQ0_INTE &
+        (PIO_IRQ_RXNEMPTY(smp->smidx) | PIO_IRQ_TXNFULL(smp->smidx) |
+         PIO_IRQ_SM(smp->smidx))) == 0U &&
+       (smp->block->pio->IRQ1_INTE &
+        (PIO_IRQ_RXNEMPTY(smp->smidx) | PIO_IRQ_TXNFULL(smp->smidx) |
+         PIO_IRQ_SM(smp->smidx))) == 0U),
+      "cross-core free with live interrupts");
+
   /* Disable the state machine.*/
   pioSmDisableX(smp);
 
@@ -373,8 +419,8 @@ void pioSmFreeI(const rp_pio_sm_t *smp) {
                                PIO_IRQ_TXNFULL(smp->smidx)  |
                                PIO_IRQ_SM(smp->smidx));
 
-  if (SIO->CPUID == 0U) {
-    /* state machine released by core 0.*/
+  if ((pio.blocks[b].c0_allocated_mask & smp->smmask) != 0U) {
+    /* State machine allocated by core 0.*/
     pio.blocks[b].c0_allocated_mask &= ~smp->smmask;
     if (pio.blocks[b].c0_allocated_mask == 0U) {
       switch (b) {
@@ -395,7 +441,7 @@ void pioSmFreeI(const rp_pio_sm_t *smp) {
     }
   }
   else {
-    /* state machine released by core 1.*/
+    /* State machine allocated by core 1.*/
     pio.blocks[b].c1_allocated_mask &= ~smp->smmask;
     if (pio.blocks[b].c1_allocated_mask == 0U) {
       switch (b) {
@@ -420,9 +466,12 @@ void pioSmFreeI(const rp_pio_sm_t *smp) {
   pio.blocks[b].sm[smp->smidx].func  = NULL;
   pio.blocks[b].sm[smp->smidx].param = NULL;
 
-  /* Reset PIO block if no state machines remain.*/
-  if ((pio.blocks[b].c0_allocated_mask |
-       pio.blocks[b].c1_allocated_mask) == 0U) {
+  /* Reset PIO block only if no state machines remain allocated and no
+     programs are loaded, resetting while instruction memory is allocated
+     would wipe loaded programs behind the bookkeeping's back.*/
+  if (((pio.blocks[b].c0_allocated_mask |
+        pio.blocks[b].c1_allocated_mask) == 0U) &&
+      (pio.blocks[b].imem_allocated == 0U)) {
     rp_peripheral_reset(smp->block->resets_mask);
   }
 }
@@ -469,7 +518,7 @@ int32_t pioProgramLoadI(const rp_pio_block_t *block,
     offset = (uint32_t)program->origin;
     osalDbgCheck(offset + length <= RP_PIO_NUM_INSTR_MEM);
 
-    mask = ((1U << length) - 1U) << offset;
+    mask = pio_imem_mask(length, offset);
     if ((pio.blocks[b].imem_allocated & mask) != 0U) {
       return -1;
     }
@@ -479,7 +528,7 @@ int32_t pioProgramLoadI(const rp_pio_block_t *block,
     uint32_t found = 0U;
 
     for (offset = 0U; offset <= RP_PIO_NUM_INSTR_MEM - length; offset++) {
-      mask = ((1U << length) - 1U) << offset;
+      mask = pio_imem_mask(length, offset);
       if ((pio.blocks[b].imem_allocated & mask) == 0U) {
         found = 1U;
         break;
@@ -490,13 +539,37 @@ int32_t pioProgramLoadI(const rp_pio_block_t *block,
     }
   }
 
-  /* Write the instructions to memory.*/
+  /* If the block is fully idle (no state machines allocated by either core
+     and no programs loaded) it is still held in reset, it must be taken out
+     of reset before instruction memory can be written.*/
+  if (((pio.blocks[b].c0_allocated_mask |
+        pio.blocks[b].c1_allocated_mask) == 0U) &&
+      (pio.blocks[b].imem_allocated == 0U)) {
+    rp_peripheral_unreset(block->resets_mask);
+  }
+
+  /* Write the instructions to memory, JMP instructions (major opcode 000,
+     bits 15:13) carry an absolute instruction memory address in bits 4:0
+     while pioasm emits program-relative targets, so all JMP targets are
+     relocated by the load offset.*/
   for (i = 0U; i < length; i++) {
-    block->pio->INSTR_MEM[offset + i] = program->instructions[i];
+    uint16_t instr = program->instructions[i];
+
+    if ((instr & 0xE000U) == 0x0000U) {
+      uint32_t target = (uint32_t)(instr & 0x1FU) + offset;
+
+      /* Only the 5-bit address field is relocated: a program-relative
+         target always fits when the program does, anything larger is a
+         malformed program and must not carry into the condition and
+         delay fields.*/
+      osalDbgAssert(target <= 0x1FU, "JMP target out of range");
+      instr = (uint16_t)(((uint32_t)instr & ~0x1FU) | (target & 0x1FU));
+    }
+    block->pio->INSTR_MEM[offset + i] = instr;
   }
 
   /* Mark slots as used.*/
-  pio.blocks[b].imem_allocated |= ((1U << length) - 1U) << offset;
+  pio.blocks[b].imem_allocated |= pio_imem_mask(length, offset);
 
   return (int32_t)offset;
 }
@@ -520,7 +593,7 @@ void pioProgramUnloadI(const rp_pio_block_t *block,
   osalDbgCheck(((uint32_t)offset + length) <= RP_PIO_NUM_INSTR_MEM);
 
   b = block->pioidx;
-  mask = ((1U << length) - 1U) << (uint32_t)offset;
+  mask = pio_imem_mask(length, (uint32_t)offset);
 
   osalDbgAssert((pio.blocks[b].imem_allocated & mask) == mask,
                 "not allocated");
@@ -532,6 +605,14 @@ void pioProgramUnloadI(const rp_pio_block_t *block,
 
   /* Free slots.*/
   pio.blocks[b].imem_allocated &= ~mask;
+
+  /* Reset PIO block if it became fully idle, no state machines allocated
+     by either core and no programs loaded.*/
+  if (((pio.blocks[b].c0_allocated_mask |
+        pio.blocks[b].c1_allocated_mask) == 0U) &&
+      (pio.blocks[b].imem_allocated == 0U)) {
+    rp_peripheral_reset(block->resets_mask);
+  }
 }
 
 /**
@@ -571,6 +652,70 @@ void pioProgramUnload(const rp_pio_block_t *block,
   pioProgramUnloadI(block, offset, length);
   osalSysUnlock();
 }
+
+#if (RP_PIO_HAS_GPIOBASE == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   Selects the GPIO window of a PIO block.
+ * @details On devices with more than 32 GPIO lines (RP2350) each PIO block
+ *          accesses a 32-pin window of the pads. With @p base set to 0 the
+ *          block drives GPIO0..31, with @p base set to 16 it drives
+ *          GPIO16..47 (RP2350B). The 5-bit pin fields written into the
+ *          PINCTRL and EXECCTRL registers are relative to this window,
+ *          see @p pioGpioToRel().
+ * @pre     The block must be completely idle: no state machines allocated
+ *          on either core and no program loaded. Moving the pin window
+ *          under running state machines is invalid.
+ * @post    The block is taken out of reset and intentionally left out of
+ *          reset so the setting persists across the following
+ *          @p pioSmAllocI() calls (whose internal unreset is idempotent).
+ * @note    The block is put back in reset (clearing GPIOBASE to zero)
+ *          only when it becomes fully idle: no state machines allocated
+ *          AND no program loaded. After such a full release the window
+ *          must be configured again before the next allocation cycle if
+ *          a non-default base is required.
+ * @note    Not serialized against concurrent allocations: the base must
+ *          be selected during single-threaded initialization, before any
+ *          state machine of the block is allocated. Callers cannot
+ *          atomically pair this call with a following allocation.
+ * @note    This function only exists on devices with the
+ *          @p RP_PIO_HAS_GPIOBASE capability; on RP2040 all pads are
+ *          directly accessible and no window selection is available.
+ *
+ * @param[in] block     pointer to the PIO block descriptor
+ * @param[in] base      first GPIO accessible by the block, must be 0 or 16
+ *
+ * @api
+ */
+void pioSetGpioBase(const rp_pio_block_t *block, uint32_t base) {
+  uint32_t b;
+
+  osalDbgCheck(block != NULL);
+  osalDbgCheck((base == 0U) || (base == 16U));
+
+  b = block->pioidx;
+
+  osalSysLock();
+
+  /* The pin window can only be moved while the block is completely
+     idle.*/
+  osalDbgAssert((pio.blocks[b].c0_allocated_mask |
+                 pio.blocks[b].c1_allocated_mask) == 0U,
+                "state machines allocated");
+  osalDbgAssert(pio.blocks[b].imem_allocated == 0U, "program loaded");
+
+  /* An idle block is held in reset, it must be released for the GPIOBASE
+     write to take effect. Resetting it back would clear the register so
+     the block is left out of reset.*/
+  rp_peripheral_unreset(block->resets_mask);
+
+  block->pio->GPIOBASE = base;
+
+  /* Read-back check, catches read-only register definitions.*/
+  osalDbgAssert(block->pio->GPIOBASE == base, "GPIOBASE not written");
+
+  osalSysUnlock();
+}
+#endif /* RP_PIO_HAS_GPIOBASE == TRUE */
 
 #endif /* RP_PIO_REQUIRED */
 

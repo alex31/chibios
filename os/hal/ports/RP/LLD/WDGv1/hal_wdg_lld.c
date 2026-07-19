@@ -51,8 +51,10 @@ WDGDriver WDGD1;
  */
 static void set_wdg_counter(WDGDriver *wdgp) {
 
-  /* Set the time in milliseconds, default to 50ms */
-  uint32_t time = wdgp->config->rlr;
+  /* Set the time in milliseconds, default to 50ms. The scaling is done
+     in 64 bits because it overflows 32 bits for large intervals, which
+     would wrap to a tiny LOAD value and cause an immediate reset.*/
+  uint64_t time = (uint64_t)wdgp->config->rlr;
   time = ((time == 0U) ? 50U : time) * 1000U;
 
 #if RP_WDG_HAS_E1_ERRATA
@@ -60,11 +62,17 @@ static void set_wdg_counter(WDGDriver *wdgp) {
   time = time * 2U;
 #endif
 
-  /* Set ceiling if greater than count capability.*/
-  time = (time > WATCHDOG_CTRL_TIME) ? WATCHDOG_CTRL_TIME : time;
+  /* Oversized intervals clamp to the hardware ceiling in every build
+     type, keeping debug and release behavior identical and the clamp
+     path testable.*/
+
+  /* Set ceiling if greater than count capability, the mask matches the
+     register being written.*/
+  time = (time > (uint64_t)WATCHDOG_LOAD) ? (uint64_t)WATCHDOG_LOAD
+                                          : time;
 
   /* Set the interval.*/
-  wdgp->wdg->LOAD = time;
+  wdgp->wdg->LOAD = (uint32_t)time;
 }
 
 /*===========================================================================*/

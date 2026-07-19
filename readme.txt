@@ -81,6 +81,14 @@ See .devcontainer/README.md for included tools and usage.
 *****************************************************************************
 
 *** Next ***
+- NEW: RP2350 runtime clock switching (RP_CLOCK_DYNAMIC, default FALSE):
+       real halClockSwitchMode() support with runtime-validated PLL_SYS
+       configurations, flash-timing-safe reclocking with both cores kept
+       executing from XIP, dynamic clock point queries and a hardware
+       validation target. Optional overclocking behind a second opt-in
+       (RP_ALLOW_OVERCLOCK, default FALSE) with a mandatory explicit flash
+       divider above the rated frequency and POWMAN core voltage control up
+       to 1.30 V (github PR #109).
 - NEW: Hazard3 RISC-V support for RP2350: RT/NIL ports, dual-core SMP,
        Xh3irq interrupt handling, periodic and tickless MTIME support, PMP
        stack guards, startup/HAL integration, demo, and hardware validation

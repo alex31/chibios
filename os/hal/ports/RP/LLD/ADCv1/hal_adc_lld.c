@@ -191,10 +191,11 @@ void adc_lld_init(void) {
  * @brief   Configures and activates the ADC peripheral.
  *
  * @param[in] adcp      pointer to the @p ADCDriver object
+ * @return              The operation status.
  *
  * @notapi
  */
-void adc_lld_start(ADCDriver *adcp) {
+msg_t adc_lld_start(ADCDriver *adcp) {
 
   /* If in stopped state then enables the ADC and DMA clocks.*/
   if (adcp->state == ADC_STOP) {
@@ -205,10 +206,8 @@ void adc_lld_start(ADCDriver *adcp) {
                                   RP_ADC_ADC1_DMA_IRQ_PRIORITY,
                                   adc_lld_serve_dma_interrupt,
                                   (void *)adcp);
-      osalDbgAssert(adcp->dma != NULL, "unable to allocate DMA channel");
-
       if (adcp->dma == NULL) {
-        return;
+        return HAL_RET_NO_RESOURCE;
       }
 
       /* Reset ADC peripheral.*/
@@ -233,6 +232,8 @@ void adc_lld_start(ADCDriver *adcp) {
     }
 #endif /* RP_ADC_USE_ADC1 */
   }
+
+  return HAL_RET_SUCCESS;
 }
 
 /**

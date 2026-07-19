@@ -42,9 +42,20 @@
 /* RP2350                                                                   */
 /*===========================================================================*/
 
-/* GPIO attributes.*/
+/* GPIO attributes.
+   RP2350A (QFN-60): GPIO0-29, 4 IO_BANK0 interrupt registers.
+   RP2350B (QFN-80): GPIO0-47, 6 IO_BANK0 interrupt registers.
+   Select QFN-80 variant by defining RP2350B_QFN80 in the board build
+   flags. */
+#if defined(RP2350B_QFN80)
+/* RP2350B QFN-80: GPIO0-47. */
 #define RP_GPIO_NUM_LINES                   48
 #define RP_GPIO_INTR_REGS                   6
+#else
+/* RP2350A QFN-60 (Pico 2): GPIO0-29. */
+#define RP_GPIO_NUM_LINES                   30
+#define RP_GPIO_INTR_REGS                   4
+#endif
 
 /* UART attributes.*/
 #define RP_HAS_UART0                        TRUE
@@ -55,6 +66,7 @@
 #define RP_HAS_PIO1                         TRUE
 #define RP_HAS_PIO2                         TRUE
 #define RP_PIO_NUM_BLOCKS                   3
+#define RP_PIO_HAS_GPIOBASE                 TRUE
 
 /* TIMER attributes.*/
 #define RP_HAS_TIMER0                       TRUE

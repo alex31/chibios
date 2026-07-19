@@ -102,13 +102,96 @@ __STATIC_INLINE void uart_enable_tx_irq(SIODriver *siop) {
   }
 }
 
+#if (defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)) ||       \
+    defined(__DOXYGEN__)
+/**
+ * @brief   TX-end polling timer callback.
+ * @details The PL011 has no transmission-complete interrupt, the only way
+ *          to observe the physical end of transmission is by polling the
+ *          BUSY bit in UARTFR.  This callback re-arms itself while the
+ *          transmitter is busy and wakes up the TX-end waiter when the
+ *          wire is finally idle.
+ * @note    Virtual timer callbacks are invoked in ISR context outside the
+ *          kernel critical section, a critical section is established
+ *          where required.
+ *
+ * @param[in] vtp       pointer to the virtual timer
+ * @param[in] p         pointer to a @p SIODriver object
+ */
+static void uart_txend_timer_cb(virtual_timer_t *vtp, void *p) {
+  SIODriver *siop = (SIODriver *)p;
+
+  if (sio_lld_is_tx_ongoing(siop)) {
+    /* Transmission still in progress, polling again later.*/
+    chSysLockFromISR();
+    chVTSetI(vtp, siop->txend_step, uart_txend_timer_cb, p);
+    chSysUnlockFromISR();
+  }
+  else {
+    /* Transmission finished, waking up the TX-end waiter, if any.  The
+       macro establishes its own critical section.*/
+    __sio_wakeup_txend(siop);
+  }
+}
+
+/**
+ * @brief   Arms or re-arms the TX-end polling timer.
+ * @note    Callable from any context.
+ *
+ * @param[in] siop      pointer to a @p SIODriver object
+ */
+static void uart_txend_timer_arm(SIODriver *siop) {
+  syssts_t sts;
+
+  sts = chSysGetStatusAndLockX();
+  chVTSetI(&siop->txend_vt, siop->txend_step,
+           uart_txend_timer_cb, (void *)siop);
+  chSysRestoreStatusX(sts);
+}
+#endif /* defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE) */
+
+/**
+ * @brief   UART deactivation.
+ * @details Disables the vector and puts the peripheral back in reset.
+ *          Shared by the stop path and by the start failure rollback.
+ *
+ * @param[in] siop       pointer to a @p SIODriver object
+ */
+static void uart_deactivate(SIODriver *siop) {
+
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+  /* Stopping the TX-end polling timer. This function is called within
+     a critical section, the I-class API is used.*/
+  chVTResetI(&siop->txend_vt);
+#endif
+
+  if (false) {
+  }
+#if RP_SIO_USE_UART0 == TRUE
+  else if (&SIOD0 == siop) {
+    nvicDisableVector(RP_UART0_IRQ_NUMBER);
+    rp_peripheral_reset(RESETS_ALLREG_UART0);
+  }
+#endif
+#if RP_SIO_USE_UART1 == TRUE
+  else if (&SIOD1 == siop) {
+    nvicDisableVector(RP_UART1_IRQ_NUMBER);
+    rp_peripheral_reset(RESETS_ALLREG_UART1);
+  }
+#endif
+  else {
+    osalDbgAssert(false, "invalid SIO instance");
+  }
+}
+
 /**
  * @brief   UART initialization.
  * @details This function must be invoked with interrupts disabled.
  *
  * @param[in] siop       pointer to a @p SIODriver object
+ * @return              The operation status.
  */
-__STATIC_INLINE void uart_init(SIODriver *siop) {
+__STATIC_INLINE msg_t uart_init(SIODriver *siop) {
   uint32_t div, idiv, fdiv, cr;
   halfreq_t clock;
 
@@ -116,11 +199,27 @@ __STATIC_INLINE void uart_init(SIODriver *siop) {
 
   osalDbgAssert(clock > 0U, "no clock");
 
+  /* Rejecting an invalid rate before using it as divisor.*/
+  if (siop->config->baud == 0U) {
+    return HAL_RET_CONFIG_ERROR;
+  }
+
   div = (8U * (uint32_t)clock) / siop->config->baud;
   idiv = div >> 7;
   fdiv = ((div & 0x7FU) + 1U) / 2U;
 
-  osalDbgAssert((idiv > 0U) && (idiv <= 0xFFFFU), "invalid baud rate");
+  /* The rounding of the fractional part can produce a carry, UARTFBRD is
+     only 6 bits wide so the carry must be propagated into the integer
+     part instead of being silently dropped.*/
+  if (fdiv >= 64U) {
+    idiv += 1U;
+    fdiv = 0U;
+  }
+
+  /* Rejecting rates that the divider cannot generate.*/
+  if ((idiv < 1U) || (idiv > 0xFFFFU)) {
+    return HAL_RET_CONFIG_ERROR;
+  }
 
   siop->uart->UARTIBRD = idiv;
   siop->uart->UARTFBRD = fdiv;
@@ -136,6 +235,8 @@ __STATIC_INLINE void uart_init(SIODriver *siop) {
   /* Setting up the operation.*/
   siop->uart->UARTICR   = siop->uart->UARTRIS;
   siop->uart->UARTCR    = cr | UART_UARTCR_RXE | UART_UARTCR_TXE | UART_UARTCR_UARTEN;
+
+  return HAL_RET_SUCCESS;
 }
 
 /*===========================================================================*/
@@ -157,11 +258,17 @@ void sio_lld_init(void) {
 #if RP_SIO_USE_UART0 == TRUE
   sioObjectInit(&SIOD0);
   SIOD0.uart = UART0;
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+  chVTObjectInit(&SIOD0.txend_vt);
+#endif
   rp_peripheral_reset(RESETS_ALLREG_UART0);
 #endif
 #if RP_SIO_USE_UART1 == TRUE
   sioObjectInit(&SIOD1);
   SIOD1.uart = UART1;
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+  chVTObjectInit(&SIOD1.txend_vt);
+#endif
   rp_peripheral_reset(RESETS_ALLREG_UART1);
 #endif
 }
@@ -175,6 +282,7 @@ void sio_lld_init(void) {
  * @notapi
  */
 msg_t sio_lld_start(SIODriver *siop) {
+  msg_t msg;
 
   /* Using the default configuration if the application passed a
      NULL pointer.*/
@@ -205,9 +313,30 @@ msg_t sio_lld_start(SIODriver *siop) {
   }
 
   /* Configures the peripheral.*/
-  uart_init(siop);
+  msg = uart_init(siop);
 
-  return HAL_RET_SUCCESS;
+  if (msg != HAL_RET_SUCCESS) {
+    /* A rejected configuration must not leave the peripheral active:
+       the generic layer returns the driver to the stop state without
+       calling the stop hook, so without this rollback the vector would
+       stay enabled and, on a restart from the ready state, the previous
+       configuration would keep running while the driver reports itself
+       stopped.*/
+    uart_deactivate(siop);
+
+    return msg;
+  }
+
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+  /* TX-end polling interval, about 4 character times assuming 10 bits
+     per frame, never less than one tick.*/
+  siop->txend_step = OSAL_US2I((4U * 10U * 1000000U) / siop->config->baud);
+  if (siop->txend_step < (sysinterval_t)1) {
+    siop->txend_step = (sysinterval_t)1;
+  }
+#endif
+
+  return msg;
 }
 
 /**
@@ -220,26 +349,8 @@ msg_t sio_lld_start(SIODriver *siop) {
 void sio_lld_stop(SIODriver *siop) {
 
   if (siop->state == SIO_READY) {
-    /* Resets the peripheral.*/
-
-    /* Disables the peripheral.*/
-    if (false) {
-    }
-#if RP_SIO_USE_UART0 == TRUE
-    else if (&SIOD0 == siop) {
-      nvicDisableVector(RP_UART0_IRQ_NUMBER);
-      rp_peripheral_reset(RESETS_ALLREG_UART0);
-    }
-#endif
-#if RP_SIO_USE_UART1 == TRUE
-    else if (&SIOD1 == siop) {
-      nvicDisableVector(RP_UART1_IRQ_NUMBER);
-      rp_peripheral_reset(RESETS_ALLREG_UART1);
-    }
-#endif
-    else {
-      osalDbgAssert(false, "invalid SIO instance");
-    }
+    /* Disables the vector and resets the peripheral.*/
+    uart_deactivate(siop);
   }
 }
 
@@ -427,8 +538,13 @@ size_t sio_lld_write(SIODriver *siop, const uint8_t *buffer, size_t n) {
     wr++;
   }
 
-  /* The transmit complete interrupt is always re-enabled on write.*/
-  /* none */
+  /* There is no transmission-complete interrupt on the PL011, TX-end
+     detection is delegated to a polling virtual timer.*/
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+  if (wr > 0U) {
+    uart_txend_timer_arm(siop);
+  }
+#endif
 
   return wr;
 }
@@ -473,8 +589,11 @@ void sio_lld_put(SIODriver *siop, uint_fast16_t data) {
     uart_enable_tx_irq(siop);
   }
 
-  /* The transmit complete interrupt is always re-enabled on write.*/
-  /* none */
+  /* There is no transmission-complete interrupt on the PL011, TX-end
+     detection is delegated to a polling virtual timer.*/
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+  uart_txend_timer_arm(siop);
+#endif
 }
 
 /**
@@ -583,6 +702,15 @@ void sio_lld_serve_interrupt(SIODriver *siop) {
 
       /* Waiting thread woken, if any.*/
       __sio_wakeup_tx(siop);
+
+      /* Opportunistic TX-end detection.  The PL011 has no transmission
+         complete interrupt so the physical end of transmission is only
+         observable through the flags register: TX FIFO empty and the
+         shift register no longer busy.*/
+      if ((u->UARTFR & (UART_UARTFR_TXFE | UART_UARTFR_BUSY)) ==
+          UART_UARTFR_TXFE) {
+        __sio_wakeup_txend(siop);
+      }
     }
 
     /* Updating IMSC, some sources could have been disabled.*/

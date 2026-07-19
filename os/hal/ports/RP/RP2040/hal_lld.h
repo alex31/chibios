@@ -62,11 +62,6 @@
 #define RP_GPIO_IOCTRL_OUTOVER_Pos          8
 /** @} */
 
-/**
- * @brief   Dynamic clock supported.
- */
-#define HAL_LLD_USE_CLOCK_MANAGEMENT
-
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -205,15 +200,6 @@
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
 
-#if defined(HAL_LLD_USE_CLOCK_MANAGEMENT) || defined(__DOXYGEN__)
-/**
- * @brief   Type of a clock configuration structure.
- */
-typedef struct {
-  uint32_t          dummy;
-} halclkcfg_t;
-#endif /* defined(HAL_LLD_USE_CLOCK_MANAGEMENT) */
-
 /*===========================================================================*/
 /* Driver macros.                                                            */
 /*===========================================================================*/
@@ -282,24 +268,6 @@ __STATIC_INLINE void rp_peripheral_unreset(uint32_t mask) {
   }
 }
 
-#if defined(HAL_LLD_USE_CLOCK_MANAGEMENT) || defined(__DOXYGEN__)
-/**
- * @brief   Switches to a different clock configuration
- *
- * @param[in] ccp       pointer to clock a @p halclkcfg_t structure
- * @return              The clock switch result.
- * @retval false        if the clock switch succeeded
- * @retval true         if the clock switch failed
- *
- * @notapi
- */
-__STATIC_INLINE bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp) {
-
-  (void)ccp;
-
-  return false;
-}
-
 /**
  * @brief   Returns the frequency of a clock point in Hz.
  *
@@ -315,7 +283,6 @@ __STATIC_INLINE halfreq_t hal_lld_get_clock_point(halclkpt_t clkpt) {
 
   return rp_clock_get_hz(clkpt);
 }
-#endif /* defined(HAL_LLD_USE_CLOCK_MANAGEMENT) */
 
 #endif /* HAL_LLD_H */
 
