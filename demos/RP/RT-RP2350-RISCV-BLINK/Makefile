@@ -54,7 +54,7 @@ endif
 # Stack size to be allocated to the RISC-V process stack. This stack is
 # the stack used by the main() thread.
 ifeq ($(USE_PROCESS_STACKSIZE),)
-  USE_PROCESS_STACKSIZE = 0x800
+  USE_PROCESS_STACKSIZE = 0x400
 endif
 
 # Stack size to the allocated to the RISC-V main/exceptions stack. This
