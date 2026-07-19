@@ -27,8 +27,11 @@
  *
  * This exercises:
  *  - the NACK abort source to I2C_ACK_FAILURE error mapping,
- *  - the abort path of the write, write-then-read (repeated START) and
- *    pure read transfer shapes,
+ *  - the abort path of the write, write-then-read and pure read
+ *    request shapes; note the address byte NACKs before any data phase,
+ *    so the repeated-START itself is not reached on an empty bus (that
+ *    needs an ACK-capable slave and is validated separately by
+ *    inspection/register evidence),
  *  - driver robustness across repeated aborts and i2cStop()/i2cStart()
  *    cycles.
  *
@@ -162,8 +165,9 @@ static bool test_repeated_nack_write(void) {
 }
 
 /*
- * Test: a write-then-read request (repeated START shape) to the absent
- * address aborts just as cleanly.
+ * Test: a write-then-read request to the absent address aborts just as
+ * cleanly. The address NACK precedes the data phase, so this covers the
+ * abort of that request shape, not the repeated-START generation.
  */
 static bool test_nack_write_then_read(void) {
 
@@ -254,7 +258,7 @@ int main(void) {
 
   /* Test 3: write-then-read shape. */
   ok = test_nack_write_then_read();
-  report("Write-then-read request aborts cleanly", ok);
+  report("Write-then-read shape aborts on address NACK", ok);
 
   /* Test 4: pure read shape. */
   ok = test_nack_pure_read();
