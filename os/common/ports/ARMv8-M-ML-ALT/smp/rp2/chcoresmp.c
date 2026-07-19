@@ -82,8 +82,9 @@ CH_IRQ_HANDLER(VectorA4) {
 
   while ((SIO->FIFO_ST & SIO_FIFO_ST_VLD) != 0U) {
     uint32_t message = SIO->FIFO_RD;
-    /* Core 1 checks for panic from Core 0.*/
-    if ((message == PORT_FIFO_PANIC_MESSAGE) && (port_get_core_id() == 1U)) {
+    /* FIFO traffic always comes from the other core, so panic handling must
+       be symmetric.*/
+    if (message == PORT_FIFO_PANIC_MESSAGE) {
       port_local_halt();
     }
 #if defined(PORT_HANDLE_FIFO_MESSAGE)
