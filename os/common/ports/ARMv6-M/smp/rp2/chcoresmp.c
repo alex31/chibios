@@ -26,6 +26,11 @@
 
 #include "ch.h"
 
+/* This translation unit is always listed by port_rp2.mk, but its contents
+   depend on definitions made available only when the kernel is configured
+   for SMP; it compiles to nothing in a non-SMP configuration.*/
+#if (CH_CFG_SMP_MODE == TRUE) || defined(__DOXYGEN__)
+
 /*===========================================================================*/
 /* Module local definitions.                                                 */
 /*===========================================================================*/
@@ -172,5 +177,7 @@ void __port_spinlock_release(void) {
 
   port_spinlock_release();
 }
+
+#endif /* CH_CFG_SMP_MODE == TRUE */
 
 /** @} */
