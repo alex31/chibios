@@ -2144,7 +2144,7 @@ typedef struct {
 #define UART_UARTLCR_H_SPS_Msk            (1U << UART_UARTLCR_H_SPS_Pos)
 #define UART_UARTLCR_H_SPS                UART_UARTLCR_H_SPS_Msk
 #define UART_UARTLCR_H_WLEN_Pos           5U
-#define UART_UARTLCR_H_WLEN_Msk           (1U << UART_UARTLCR_H_WLEN_Pos)
+#define UART_UARTLCR_H_WLEN_Msk           (3U << UART_UARTLCR_H_WLEN_Pos)
 #define UART_UARTLCR_H_WLEN(n)            ((n) << UART_UARTLCR_H_WLEN_Pos)
 #define UART_UARTLCR_H_WLEN_5BITS         UART_UARTLCR_H_WLEN(0U)
 #define UART_UARTLCR_H_WLEN_6BITS         UART_UARTLCR_H_WLEN(1U)
@@ -2549,7 +2549,7 @@ typedef struct {
 #define WATCHDOG_REASON_TIMER             WATCHDOG_REASON_TIMER_Msk
 
 #define WATCHDOG_TICK_COUNT_Pos           11U
-#define WATCHDOG_TICK_COUNT_Msk           (0xFF800U << WATCHDOG_TICK_COUNT_Pos)
+#define WATCHDOG_TICK_COUNT_Msk           (0x1FFU << WATCHDOG_TICK_COUNT_Pos)
 #define WATCHDOG_TICK_COUNT               WATCHDOG_TICK_COUNT_Msk
 #define WATCHDOG_TICK_RUNNING_Pos         10U
 #define WATCHDOG_TICK_RUNNING_Msk         (1U << WATCHDOG_TICK_RUNNING_Pos)
@@ -2857,7 +2857,7 @@ typedef struct {
 #define I2C_IC_SDA_HOLD_IC_SDA_RX_HOLD_Msk               (0xFFU << I2C_IC_SDA_HOLD_IC_SDA_RX_HOLD_Pos)
 #define I2C_IC_SDA_HOLD_IC_SDA_RX_HOLD                   I2C_IC_SDA_HOLD_IC_SDA_RX_HOLD_Msk
 #define I2C_IC_SDA_HOLD_IC_SDA_TX_HOLD_Pos               0U
-#define I2C_IC_SDA_HOLD_IC_SDA_TX_HOLD_Msk               (0xFFU << I2C_IC_SDA_HOLD_IC_SDA_TX_HOLD_Pos)
+#define I2C_IC_SDA_HOLD_IC_SDA_TX_HOLD_Msk               (0xFFFFU << I2C_IC_SDA_HOLD_IC_SDA_TX_HOLD_Pos)
 #define I2C_IC_SDA_HOLD_IC_SDA_TX_HOLD                   I2C_IC_SDA_HOLD_IC_SDA_TX_HOLD_Msk
 
 #define I2C_IC_TX_ABRT_SOURCE_TX_FLUSH_CNT_Pos           23U
@@ -2955,7 +2955,7 @@ typedef struct {
 #define I2C_IC_COMP_PARAM_1_TX_BUFFER_DEPTH_Pos          16U
 #define I2C_IC_COMP_PARAM_1_TX_BUFFER_DEPTH_Msk          (0xFFU << I2C_IC_COMP_PARAM_1_TX_BUFFER_DEPTH_Pos)
 #define I2C_IC_COMP_PARAM_1_TX_BUFFER_DEPTH              I2C_IC_COMP_PARAM_1_TX_BUFFER_DEPTH_Msk
-#define I2C_IC_COMP_PARAM_1_RX_BUFFER_DEPTH_Pos          0U
+#define I2C_IC_COMP_PARAM_1_RX_BUFFER_DEPTH_Pos          8U
 #define I2C_IC_COMP_PARAM_1_RX_BUFFER_DEPTH_Msk          (0xFFU << I2C_IC_COMP_PARAM_1_RX_BUFFER_DEPTH_Pos)
 #define I2C_IC_COMP_PARAM_1_RX_BUFFER_DEPTH              I2C_IC_COMP_PARAM_1_RX_BUFFER_DEPTH_Msk
 
