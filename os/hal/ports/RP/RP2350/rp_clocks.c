@@ -63,6 +63,8 @@
  */
 static void rp_tick_start(uint32_t index, uint32_t cycles) {
 
+  osalDbgAssert(index <= TICKS_RISCV, "invalid tick generator index");
+
   TICKS->TICK[index].CTRL = 0U;
   while ((TICKS->TICK[index].CTRL & TICKS_CTRL_RUNNING) != 0U) {
     /* Waiting for the tick generator to stop */
