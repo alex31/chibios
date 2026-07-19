@@ -60,6 +60,18 @@
 #define PORT_SPINLOCK_NUMBER            31
 #endif
 
+/* Note: the ram4/ram5 scratch banks used by the following sections also
+   hold the per-core default stacks, annotated data competes with stack
+   space and an overflow surfaces as a link-time region error.*/
+
+/**
+ * @brief   Marker enabling suffixed @p PORT_MEM_LOCAL_COHERENT_BSSn
+ *          selection in chmem.h.
+ */
+#if !defined(PORT_MEM_LOCAL_COHERENT_BSS)
+#define PORT_MEM_LOCAL_COHERENT_BSS     /* Enables suffixed PORT_MEM_LOCAL_COHERENT_BSSn selection in chmem.h.*/
+#endif
+
 /**
  * @brief   Preferential local and coherent BSS section for core zero.
  */
@@ -72,6 +84,14 @@
  */
 #if !defined(PORT_MEM_LOCAL_COHERENT_BSS1)
 #define PORT_MEM_LOCAL_COHERENT_BSS1    CC_SECTION(".ram5_clear.core1")
+#endif
+
+/**
+ * @brief   Marker enabling suffixed @p PORT_MEM_LOCAL_BSSn selection
+ *          in chmem.h.
+ */
+#if !defined(PORT_MEM_LOCAL_BSS)
+#define PORT_MEM_LOCAL_BSS              /* Enables suffixed PORT_MEM_LOCAL_BSSn selection in chmem.h.*/
 #endif
 
 /**
