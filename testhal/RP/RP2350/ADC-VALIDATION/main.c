@@ -146,9 +146,17 @@ static void test_start_failure(void) {
          ADCD1.state == ADC_STOP);
 
   /* If the start unexpectedly succeeded (regression), restore ADC_STOP
-     so the recovery test still starts from a known state.*/
+     so the recovery test still starts from a known state. Under the
+     historical regression the state lies (READY without a DMA channel)
+     and adcStop() would free a NULL channel and halt; the driver is
+     only stopped through the API when it actually holds one.*/
   if (ADCD1.state != ADC_STOP) {
-    adcStop(&ADCD1);
+    if (ADCD1.dma != NULL) {
+      adcStop(&ADCD1);
+    }
+    else {
+      ADCD1.state = ADC_STOP;
+    }
   }
 }
 
