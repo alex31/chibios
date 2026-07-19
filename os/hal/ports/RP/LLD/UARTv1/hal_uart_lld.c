@@ -108,6 +108,13 @@ static void uart_start(UARTDriver *uartp) {
   clock = halClockGetPointX(RP_CLK_PERI);
   osalDbgAssert(clock > 0U, "no clock");
 
+  /* This start path has no error channel; in release builds an invalid
+     zero baud must not reach the division. The divider is left
+     unprogrammed, which is predictable, instead of trapping.*/
+  if ((cfgp->baud == 0U) || (clock == 0U)) {
+    return;
+  }
+
   div  = (8U * (uint32_t)clock) / cfgp->baud;
   idiv = div >> 7;
   fdiv = ((div & 0x7FU) + 1U) / 2U;
