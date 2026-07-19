@@ -151,6 +151,40 @@ static void uart_txend_timer_arm(SIODriver *siop) {
 #endif /* defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE) */
 
 /**
+ * @brief   UART deactivation.
+ * @details Disables the vector and puts the peripheral back in reset.
+ *          Shared by the stop path and by the start failure rollback.
+ *
+ * @param[in] siop       pointer to a @p SIODriver object
+ */
+static void uart_deactivate(SIODriver *siop) {
+
+#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
+  /* Stopping the TX-end polling timer. This function is called within
+     a critical section, the I-class API is used.*/
+  chVTResetI(&siop->txend_vt);
+#endif
+
+  if (false) {
+  }
+#if RP_SIO_USE_UART0 == TRUE
+  else if (&SIOD0 == siop) {
+    nvicDisableVector(RP_UART0_IRQ_NUMBER);
+    rp_peripheral_reset(RESETS_ALLREG_UART0);
+  }
+#endif
+#if RP_SIO_USE_UART1 == TRUE
+  else if (&SIOD1 == siop) {
+    nvicDisableVector(RP_UART1_IRQ_NUMBER);
+    rp_peripheral_reset(RESETS_ALLREG_UART1);
+  }
+#endif
+  else {
+    osalDbgAssert(false, "invalid SIO instance");
+  }
+}
+
+/**
  * @brief   UART initialization.
  * @details This function must be invoked with interrupts disabled.
  *
@@ -281,14 +315,24 @@ msg_t sio_lld_start(SIODriver *siop) {
   /* Configures the peripheral.*/
   msg = uart_init(siop);
 
+  if (msg != HAL_RET_SUCCESS) {
+    /* A rejected configuration must not leave the peripheral active:
+       the generic layer returns the driver to the stop state without
+       calling the stop hook, so without this rollback the vector would
+       stay enabled and, on a restart from the ready state, the previous
+       configuration would keep running while the driver reports itself
+       stopped.*/
+    uart_deactivate(siop);
+
+    return msg;
+  }
+
 #if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
-  if (msg == HAL_RET_SUCCESS) {
-    /* TX-end polling interval, about 4 character times assuming 10 bits
-       per frame, never less than one tick.*/
-    siop->txend_step = OSAL_US2I((4U * 10U * 1000000U) / siop->config->baud);
-    if (siop->txend_step < (sysinterval_t)1) {
-      siop->txend_step = (sysinterval_t)1;
-    }
+  /* TX-end polling interval, about 4 character times assuming 10 bits
+     per frame, never less than one tick.*/
+  siop->txend_step = OSAL_US2I((4U * 10U * 1000000U) / siop->config->baud);
+  if (siop->txend_step < (sysinterval_t)1) {
+    siop->txend_step = (sysinterval_t)1;
   }
 #endif
 
@@ -305,33 +349,8 @@ msg_t sio_lld_start(SIODriver *siop) {
 void sio_lld_stop(SIODriver *siop) {
 
   if (siop->state == SIO_READY) {
-
-#if defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)
-    /* Stopping the TX-end polling timer.  This function is called within
-       a critical section, the I-class API is used.*/
-    chVTResetI(&siop->txend_vt);
-#endif
-
-    /* Resets the peripheral.*/
-
-    /* Disables the peripheral.*/
-    if (false) {
-    }
-#if RP_SIO_USE_UART0 == TRUE
-    else if (&SIOD0 == siop) {
-      nvicDisableVector(RP_UART0_IRQ_NUMBER);
-      rp_peripheral_reset(RESETS_ALLREG_UART0);
-    }
-#endif
-#if RP_SIO_USE_UART1 == TRUE
-    else if (&SIOD1 == siop) {
-      nvicDisableVector(RP_UART1_IRQ_NUMBER);
-      rp_peripheral_reset(RESETS_ALLREG_UART1);
-    }
-#endif
-    else {
-      osalDbgAssert(false, "invalid SIO instance");
-    }
+    /* Disables the vector and resets the peripheral.*/
+    uart_deactivate(siop);
   }
 }
 

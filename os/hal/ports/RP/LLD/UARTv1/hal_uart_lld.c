@@ -109,9 +109,13 @@ static void uart_start(UARTDriver *uartp) {
   osalDbgAssert(clock > 0U, "no clock");
 
   /* This start path has no error channel; in release builds an invalid
-     zero baud must not reach the division. The divider is left
-     unprogrammed, which is predictable, instead of trapping.*/
+     zero baud must not reach the division. The peripheral is disabled
+     instead of trapping: on a restart from the ready state an early
+     return alone would leave the previous configuration silently
+     running in place of the requested one.*/
   if ((cfgp->baud == 0U) || (clock == 0U)) {
+    uartp->uart->UARTIMSC = 0U;
+    uartp->uart->UARTCR   = 0U;
     return;
   }
 
