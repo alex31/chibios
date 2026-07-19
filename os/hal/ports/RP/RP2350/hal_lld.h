@@ -271,11 +271,17 @@ typedef struct {
    */
   uint32_t          pll_sys_postdiv2;
   /**
-   * @brief   QMI flash clock divider to program after the switch.
-   * @note    Zero keeps the divider currently in effect (as programmed
-   *          by the boot ROM for the boot configuration). A non-zero
-   *          value must keep the flash SCK within the device rating at
-   *          the new clk_sys.
+   * @brief   Effective QMI flash clock divider for the new frequency,
+   *          0 or 1..255.
+   * @details Zero selects the divider the system booted with (captured
+   *          before the first switch), which is safe at every admitted
+   *          frequency because it is safe at the highest one. A
+   *          non-zero value must keep the flash SCK within the device
+   *          rating at the new clk_sys. The switch first widens the
+   *          divider to a value safe at both the old and the new
+   *          frequency, and programs this target value only after the
+   *          new frequency is established, so flash timing stays in
+   *          specification at every instant.
    */
   uint32_t          qmi_clkdiv;
 } halclkcfg_t;

@@ -70,19 +70,28 @@ static void report(const char *name, bool ok) {
 
 /*
  * Measures a clock with the FC0 frequency counter, result in kHz.
+ * Returns zero on a counter timeout so callers report a failed
+ * measurement instead of hanging or comparing garbage.
  */
 static uint32_t fc0_measure_khz(uint32_t src) {
+  uint32_t start;
 
+  start = TIMER0->TIMERAWL;
   while ((CLOCKS->FC0.STATUS & CLOCKS_FC0_STATUS_RUNNING) != 0U) {
-    /* Waiting out a previous measurement.*/
+    if ((uint32_t)(TIMER0->TIMERAWL - start) > 100000U) {
+      return 0U;
+    }
   }
   CLOCKS->FC0.REF_KHZ  = RP_CLK_REF_FREQ / 1000U;
   CLOCKS->FC0.MIN_KHZ  = 0U;
   CLOCKS->FC0.MAX_KHZ  = CLOCKS_FC0_MAX_KHZ_Msk;
   CLOCKS->FC0.INTERVAL = 10U;         /* 2^10 us test interval.*/
   CLOCKS->FC0.SRC      = src;
+  start = TIMER0->TIMERAWL;
   while ((CLOCKS->FC0.STATUS & CLOCKS_FC0_STATUS_DONE) == 0U) {
-    /* Waiting for DONE.*/
+    if ((uint32_t)(TIMER0->TIMERAWL - start) > 100000U) {
+      return 0U;
+    }
   }
   return (CLOCKS->FC0.RESULT & CLOCKS_FC0_RESULT_KHZ_Msk) >>
          CLOCKS_FC0_RESULT_KHZ_Pos;
@@ -179,6 +188,10 @@ int main(void) {
          halClockGetPointX(RP_CLK_SYS) == 96000000U);
   report("clk_peri point follows",
          halClockGetPointX(RP_CLK_PERI) == 96000000U);
+  report("untouched points intact",
+         (halClockGetPointX(RP_CLK_REF) == RP_CLK_REF_FREQ) &&
+         (halClockGetPointX(RP_CLK_USB) == RP_CLK_USB_FREQ) &&
+         (halClockGetPointX(RP_CLK_ADC) == RP_CLK_ADC_FREQ));
   report("console talks after restart", true);  /* Reading this proves it.*/
 
   /* 4: flash integrity at the new frequency.*/
@@ -196,6 +209,27 @@ int main(void) {
   chprintf(chp, "  clk_sys = %u kHz\r\n", khz);
   report("clk_sys back at compile-time frequency",
          freq_close_khz(khz, RP_CLK_SYS_FREQ / 1000U));
+
+  /* Explicit divider round trip: switch down with a deliberately wide
+     flash divider, then verify that returning with the default
+     configuration restores the boot divider instead of keeping the
+     wide one at the high frequency.*/
+  {
+    uint32_t boot_enc, enc;
+    halclkcfg_t wide = hal_clkcfg_low;
+
+    boot_enc = QMI->M0_TIMING & QMI_TIMING_CLKDIV_Msk;
+    wide.qmi_clkdiv = 8U;             /* 96 MHz / 8 = 12 MHz SCK, safe.*/
+    chThdSleepMilliseconds(20);
+    ok = (halClockSwitchMode(&wide) == false);
+    enc = QMI->M0_TIMING & QMI_TIMING_CLKDIV_Msk;
+    ok = ok && (enc == 8U);
+    ok = ok && (halClockSwitchMode(&hal_clkcfg_default) == false);
+    enc = QMI->M0_TIMING & QMI_TIMING_CLKDIV_Msk;
+    console_restart();
+    report("explicit divider applied and boot divider restored",
+           ok && (enc == boot_enc));
+  }
 
   chThdSleepMilliseconds(20);   /* Drain before the first stress switch.*/
   ok = true;

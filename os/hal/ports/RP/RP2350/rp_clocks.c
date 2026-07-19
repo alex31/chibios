@@ -79,11 +79,23 @@ const halclkcfg_t hal_clkcfg_low = {
 #if (RP_CLOCK_DYNAMIC == TRUE) || defined(__DOXYGEN__)
 /**
  * @brief   Current clock point frequencies.
- * @details Zero-initialized in BSS; @p rp_clock_get_hz() serves the
- *          compile-time constants until @p rp_clock_init() populates
- *          this table.
+ * @details All-zero until the first successful runtime switch populates
+ *          every entry; @p rp_clock_get_hz() serves the compile-time
+ *          constants while the activation entry (@p RP_CLK_SYS, written
+ *          last) is zero. Volatile: written on one core, read lock-free
+ *          on the other.
  */
-static uint32_t rp_clock_points[RP_CLK_COUNT];
+static volatile uint32_t rp_clock_points[RP_CLK_COUNT];
+
+/**
+ * @brief   Effective QMI flash divider the system booted with, 1..256.
+ * @details Captured on the first switch, before anything has changed
+ *          it; zero means not yet captured (BSS state). The boot value
+ *          is safe at the boot frequency, which is the highest the
+ *          validation admits, therefore safe at every admitted
+ *          frequency.
+ */
+static uint32_t rp_clock_boot_qmi_div;
 #endif
 
 /*===========================================================================*/
@@ -128,6 +140,19 @@ static void rp_tick_start(uint32_t index, uint32_t cycles) {
  */
 void rp_clock_init(void) {
   uint32_t cycles;
+
+#if RP_CLOCK_DYNAMIC == TRUE
+  {
+    /* Deactivating the dynamic table explicitly: this code can run
+       before CRT0 clears BSS and retained SRAM after a warm reset
+       could otherwise present a stale table to early callers. */
+    unsigned i;
+
+    for (i = 0U; i < RP_CLK_COUNT; i++) {
+      rp_clock_points[i] = 0U;
+    }
+  }
+#endif
 
   /* Start early tick generator for safety module timeouts. */
   rp_peripheral_unreset(RESETS_ALLREG_TIMER0);
@@ -213,17 +238,6 @@ void rp_clock_init(void) {
     rp_tick_start(i, cycles);
   }
 
-#if RP_CLOCK_DYNAMIC == TRUE
-  /* Activating dynamic clock point queries, the boot values match the
-     compile-time constants by construction. */
-  rp_clock_points[RP_CLK_REF]  = RP_CLK_REF_FREQ;
-  rp_clock_points[RP_CLK_PERI] = RP_CLK_PERI_FREQ;
-  rp_clock_points[RP_CLK_USB]  = RP_CLK_USB_FREQ;
-  rp_clock_points[RP_CLK_ADC]  = RP_CLK_ADC_FREQ;
-  /* RP_CLK_SYS is written last, a non-zero value here switches
-     rp_clock_get_hz() over to the table. */
-  rp_clock_points[RP_CLK_SYS]  = RP_CLK_SYS_FREQ;
-#endif
 }
 
 /**
@@ -239,11 +253,12 @@ uint32_t rp_clock_get_hz(uint32_t clk_index) {
   osalDbgAssert(clk_index < RP_CLK_COUNT, "invalid clock index");
 
 #if RP_CLOCK_DYNAMIC == TRUE
-  /* The table lives in BSS and stays zero until rp_clock_init() has
-     populated it; falling through to the compile-time constants below
-     preserves the documented pre-initialization callability, the
-     constants are correct by definition until the first switch and the
-     first switch cannot happen before initialization. */
+  /* The table stays zero (explicitly cleared at rp_clock_init() entry,
+     again by the CRT0 BSS clear) until the first successful runtime
+     switch populates every entry and writes RP_CLK_SYS last; falling
+     through to the compile-time constants preserves the documented
+     pre-initialization callability and the constants are correct by
+     definition until that first switch. */
   if (rp_clock_points[RP_CLK_SYS] != 0U) {
     return rp_clock_points[clk_index];
   }
@@ -363,7 +378,13 @@ RAMFUNC static void rp_clock_set_qmi_clkdiv(uint32_t clkdiv) {
  *          recompute from the updated clock points.
  * @note    On SMP configurations the other core keeps executing during
  *          the switch (timing stays in specification throughout); it
- *          slows to the parked frequency while PLL_SYS relocks.
+ *          slows to the parked frequency while PLL_SYS relocks. Only
+ *          local interrupts are masked, no kernel lock is taken.
+ * @note    While PLL_SYS relocks the system transits through the
+ *          reference frequency, transiently violating the RP2350-E12
+ *          clk_sys/clk_usb ratio; do not switch while USB traffic is
+ *          active. This mirrors the transition-window caveat of the
+ *          other ports implementing this API.
  *
  * @param[in] ccp       pointer to a @p halclkcfg_t structure
  * @return              The operation status.
@@ -373,8 +394,7 @@ RAMFUNC static void rp_clock_set_qmi_clkdiv(uint32_t clkdiv) {
  * @special
  */
 bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp) {
-  uint32_t sys_freq, qmi_old, qmi_new, qmi_safe;
-  syssts_t sts;
+  uint32_t sys_freq, div_old, div_new, div_safe, primask;
 
   osalDbgCheck(ccp != NULL);
 
@@ -384,16 +404,29 @@ bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp) {
   sys_freq = ccp->pll_sys_vco_freq /
              (ccp->pll_sys_postdiv1 * ccp->pll_sys_postdiv2);
 
-  qmi_old  = (QMI->M0_TIMING & QMI_TIMING_CLKDIV_Msk) >>
-             QMI_TIMING_CLKDIV_Pos;
-  qmi_new  = (ccp->qmi_clkdiv != 0U) ? ccp->qmi_clkdiv : qmi_old;
-  qmi_safe = (qmi_new > qmi_old) ? qmi_new : qmi_old;
+  /* Effective divider values: the CLKDIV encoding zero means divide by
+     256, comparisons must never be done on raw encodings. The boot
+     divider is captured on the first switch, before anything has
+     changed it. */
+  div_old = (QMI->M0_TIMING & QMI_TIMING_CLKDIV_Msk) >>
+            QMI_TIMING_CLKDIV_Pos;
+  div_old = (div_old == 0U) ? 256U : div_old;
+  if (rp_clock_boot_qmi_div == 0U) {
+    rp_clock_boot_qmi_div = div_old;
+  }
+  div_new  = (ccp->qmi_clkdiv != 0U) ? ccp->qmi_clkdiv
+                                     : rp_clock_boot_qmi_div;
+  div_safe = (div_new > div_old) ? div_new : div_old;
 
-  sts = osalSysGetStatusAndLockX();
+  /* Only local interrupts are masked: the sequence touches no kernel
+     state and taking the kernel lock here would stall the other core
+     on any kernel entry for the whole PLL relock. */
+  primask = __get_PRIMASK();
+  __disable_irq();
 
   /* Flash divider safe at both the current and the target frequency
      before anything changes. */
-  rp_clock_set_qmi_clkdiv(qmi_safe);
+  rp_clock_set_qmi_clkdiv(div_safe & 0xFFU);
 
   /* Parking clk_sys on clk_ref through the glitchless mux; execution
      continues from flash at the reference frequency. */
@@ -415,15 +448,25 @@ bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp) {
     /* Waiting for clk_sys to run from PLL_SYS. */
   }
 
-  /* Final flash divider for the new frequency. */
-  rp_clock_set_qmi_clkdiv(qmi_new);
+  /* Final flash divider for the new frequency; the encoding for the
+     effective divider 256 is zero. */
+  rp_clock_set_qmi_clkdiv(div_new & 0xFFU);
 
-  /* Publishing the new frequencies; clk_peri follows clk_sys. */
-  rp_clock_points[RP_CLK_SYS]  = sys_freq;
+  /* Publishing the new frequencies. Every entry is written on every
+     switch because the table may have been cleared after a partial
+     early population; RP_CLK_SYS is the activation entry and is
+     published last, behind a barrier, so a lock-free reader on the
+     other core that observes it also observes the rest. */
+  rp_clock_points[RP_CLK_REF]  = RP_CLK_REF_FREQ;
+  rp_clock_points[RP_CLK_USB]  = RP_CLK_USB_FREQ;
+  rp_clock_points[RP_CLK_ADC]  = RP_CLK_ADC_FREQ;
   rp_clock_points[RP_CLK_PERI] = sys_freq;
+  __DMB();
+  rp_clock_points[RP_CLK_SYS]  = sys_freq;
+  __DMB();
   SystemCoreClock = sys_freq;
 
-  osalSysRestoreStatusX(sts);
+  __set_PRIMASK(primask);
 
   return false;
 }
