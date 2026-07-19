@@ -73,15 +73,20 @@ static volatile bool port_lockout_parked;
 
 #if defined(PORT_HANDLE_FIFO_MESSAGE) || defined(__DOXYGEN__)
 /**
- * @brief   Application messages captured while parked.
+ * @brief   Per-core application messages captured while the FIFO is being
+ *          drained outside the FIFO handler.
  * @details While a core is parked its FIFO drain cannot run flash-resident
- *          handlers; messages below the reserved range are buffered here
- *          and delivered right after unparking. Excess messages beyond the
- *          buffer depth are dropped.
+ *          handlers, and a core draining the FIFO during a lockout
+ *          handshake is in thread context which the handler is not
+ *          entitled to; messages below the reserved range are buffered
+ *          here and delivered from the FIFO handler afterwards. Excess
+ *          messages beyond the buffer depth are dropped. Each core only
+ *          touches its own row, no cross-core synchronization is needed.
  */
 #define PORT_LOCKOUT_MSG_BUFFER_DEPTH   8U
-static volatile uint32_t port_lockout_msg_buffer[PORT_LOCKOUT_MSG_BUFFER_DEPTH];
-static volatile uint32_t port_lockout_msg_count;
+static volatile uint32_t port_lockout_msg_buffer[PORT_CORES_NUMBER]
+                                                [PORT_LOCKOUT_MSG_BUFFER_DEPTH];
+static volatile uint32_t port_lockout_msg_count[PORT_CORES_NUMBER];
 #endif
 
 /*===========================================================================*/
@@ -144,8 +149,13 @@ static void port_fifo_lockout_wait(void) {
        unreachable, buffering for delivery after unparking. Reschedule
        tokens are dropped, the ISR epilogue reschedules on return.*/
     if (message < PORT_FIFO_LOCKOUT_ACK_MESSAGE) {
-      if (port_lockout_msg_count < PORT_LOCKOUT_MSG_BUFFER_DEPTH) {
-        port_lockout_msg_buffer[port_lockout_msg_count++] = message;
+      /* SIO->CPUID is read directly: port_get_core_id() is a static
+         inline whose out-of-line copy would live in flash, which is
+         unreachable here.*/
+      uint32_t core = SIO->CPUID;
+
+      if (port_lockout_msg_count[core] < PORT_LOCKOUT_MSG_BUFFER_DEPTH) {
+        port_lockout_msg_buffer[core][port_lockout_msg_count[core]++] = message;
       }
     }
 #else
@@ -163,12 +173,17 @@ static void port_fifo_lockout_wait(void) {
   __set_PRIMASK(primask);
 
 #if defined(PORT_HANDLE_FIFO_MESSAGE)
-  /* Back on flash, delivering the messages buffered during the park;
-     still in the FIFO ISR context.*/
-  while (port_lockout_msg_count > 0U) {
-    port_lockout_msg_count--;
-    PORT_HANDLE_FIFO_MESSAGE(port_get_core_id() ^ 1U,
-                             port_lockout_msg_buffer[port_lockout_msg_count]);
+  /* Back on flash, delivering the messages buffered during the park in
+     arrival order; still in the FIFO ISR context.*/
+  {
+    core_id_t core = port_get_core_id();
+    uint32_t i;
+
+    for (i = 0U; i < port_lockout_msg_count[core]; i++) {
+      PORT_HANDLE_FIFO_MESSAGE(core ^ 1U,
+                               port_lockout_msg_buffer[core][i]);
+    }
+    port_lockout_msg_count[core] = 0U;
   }
 #endif
 }
@@ -203,12 +218,17 @@ static bool port_lockout_handshake(uint32_t token) {
         port_local_halt();
       }
 #if defined(PORT_HANDLE_FIFO_MESSAGE)
-      /* Application messages are delivered inline, XIP is still on at
-         handshake time; the context is a thread with interrupts
-         masked, equivalent to the locked ISR context the handler
-         normally sees.*/
+      /* Application messages cannot be delivered here: this is thread
+         context with interrupts masked, not the ISR context the handler
+         is entitled to (state checking, epilogue reschedule). Buffering
+         for delivery from the FIFO handler pended after the handshake.*/
       if (message < PORT_FIFO_LOCKOUT_ACK_MESSAGE) {
-        PORT_HANDLE_FIFO_MESSAGE(port_get_core_id() ^ 1U, message);
+        core_id_t core = port_get_core_id();
+
+        if (port_lockout_msg_count[core] < PORT_LOCKOUT_MSG_BUFFER_DEPTH) {
+          port_lockout_msg_buffer[core][port_lockout_msg_count[core]++] =
+            message;
+        }
       }
 #endif
       /* Reschedule tokens are dropped here, a reschedule round is forced
@@ -236,6 +256,22 @@ CH_IRQ_HANDLER(VectorA4) {
   CH_IRQ_PROLOGUE();
 
   SIO->FIFO_ST = SIO_FIFO_ST_ROE | SIO_FIFO_ST_WOF;
+
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+  /* Messages buffered by a lockout handshake on this core are delivered
+     first, they arrived before anything still in the FIFO. The producer
+     runs in thread context with interrupts masked, it cannot race this
+     handler.*/
+  {
+    core_id_t core = port_get_core_id();
+    uint32_t i;
+
+    for (i = 0U; i < port_lockout_msg_count[core]; i++) {
+      PORT_HANDLE_FIFO_MESSAGE(core ^ 1U, port_lockout_msg_buffer[core][i]);
+    }
+    port_lockout_msg_count[core] = 0U;
+  }
+#endif
 
   while ((SIO->FIFO_ST & SIO_FIFO_ST_VLD) != 0U) {
     uint32_t message = SIO->FIFO_RD;
@@ -350,6 +386,15 @@ void __port_flash_lockout(void) {
     chSysHalt("lockout timeout");
   }
 
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+  /* Messages captured during the handshake are delivered by the FIFO
+     handler in its normal ISR context, pending it while still masked so
+     delivery happens right at the enable below.*/
+  if (port_lockout_msg_count[port_get_core_id()] > 0U) {
+    NVIC_SetPendingIRQ(SIO_IRQ_FIFOn);
+  }
+#endif
+
   __enable_irq();
 }
 
@@ -371,6 +416,15 @@ void __port_flash_unlockout(void) {
     if (!port_lockout_handshake(PORT_FIFO_UNLOCK_MESSAGE)) {
       chSysHalt("unlock timeout");
     }
+
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+    /* Messages captured during the handshake are delivered by the FIFO
+       handler in its normal ISR context, pending it while still masked
+       so delivery happens right at the enable below.*/
+    if (port_lockout_msg_count[port_get_core_id()] > 0U) {
+      NVIC_SetPendingIRQ(SIO_IRQ_FIFOn);
+    }
+#endif
 
     __enable_irq();
   }
