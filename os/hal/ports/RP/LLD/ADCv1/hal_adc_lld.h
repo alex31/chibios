@@ -31,6 +31,8 @@
 /* Driver constants.                                                         */
 /*===========================================================================*/
 
+#define ADC_LLD_ENHANCED_API
+
 /**
  * @name    ADC CS register bits
  * @{
@@ -287,7 +289,7 @@ extern ADCDriver ADCD1;
 extern "C" {
 #endif
   void adc_lld_init(void);
-  void adc_lld_start(ADCDriver *adcp);
+  msg_t adc_lld_start(ADCDriver *adcp);
   void adc_lld_stop(ADCDriver *adcp);
   void adc_lld_start_conversion(ADCDriver *adcp);
   void adc_lld_stop_conversion(ADCDriver *adcp);
