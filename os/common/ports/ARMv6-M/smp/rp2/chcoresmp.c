@@ -78,6 +78,10 @@ CH_IRQ_HANDLER(Vector7C) {
 
   while ((SIO->FIFO_ST & SIO_FIFO_ST_VLD) != 0U) {
     uint32_t message = SIO->FIFO_RD;
+    /* A panic on either core halts the other one too.*/
+    if (message == PORT_FIFO_PANIC_MESSAGE) {
+      port_local_halt();
+    }
 #if defined(PORT_HANDLE_FIFO_MESSAGE)
     if (message != PORT_FIFO_RESCHEDULE_MESSAGE) {
       PORT_HANDLE_FIFO_MESSAGE(1U, message);
