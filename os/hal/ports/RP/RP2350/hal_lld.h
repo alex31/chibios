@@ -62,11 +62,6 @@
 #define RP_GPIO_IOCTRL_OUTOVER_Pos          12
 /** @} */
 
-/**
- * @brief   Dynamic clock supported.
- */
-#define HAL_LLD_USE_CLOCK_MANAGEMENT
-
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -133,56 +128,78 @@
 #error "RP_XOSCCLK out of valid range (1-15 MHz)"
 #endif
 
+#if (RP_XOSCCLK % 1000000U) != 0
+#error "RP_XOSCCLK must be an integer number of MHz (1us tick granularity)"
+#endif
+
 /*
- * PLL_SYS configuration checks.
+ * PLL_SYS configuration checks. The checks form a single chain so that
+ * a derived check dividing by a parameter is never evaluated while that
+ * parameter is out of range: a stray "division by zero in #if"
+ * diagnostic would bury the intended message.
  */
 #if (RP_PLL_SYS_REFDIV < 1) || (RP_PLL_SYS_REFDIV > 63)
 #error "RP_PLL_SYS_REFDIV out of valid range (1-63)"
-#endif
-
-#if (RP_PLL_SYS_VCO_FREQ < RP_PLL_VCO_MIN_FREQ) ||                          \
-    (RP_PLL_SYS_VCO_FREQ > RP_PLL_VCO_MAX_FREQ)
+#elif (RP_PLL_SYS_VCO_FREQ < RP_PLL_VCO_MIN_FREQ) ||                        \
+      (RP_PLL_SYS_VCO_FREQ > RP_PLL_VCO_MAX_FREQ)
 #error "RP_PLL_SYS_VCO_FREQ out of valid range (750-1600 MHz)"
-#endif
-
-#if (RP_PLL_SYS_POSTDIV1 < 1) || (RP_PLL_SYS_POSTDIV1 > 7)
+#elif (RP_PLL_SYS_POSTDIV1 < 1) || (RP_PLL_SYS_POSTDIV1 > 7)
 #error "RP_PLL_SYS_POSTDIV1 out of valid range (1-7)"
-#endif
-
-#if (RP_PLL_SYS_POSTDIV2 < 1) || (RP_PLL_SYS_POSTDIV2 > 7)
+#elif (RP_PLL_SYS_POSTDIV2 < 1) || (RP_PLL_SYS_POSTDIV2 > 7)
 #error "RP_PLL_SYS_POSTDIV2 out of valid range (1-7)"
-#endif
-
-#if RP_PLL_SYS_POSTDIV1 < RP_PLL_SYS_POSTDIV2
+#elif RP_PLL_SYS_POSTDIV1 < RP_PLL_SYS_POSTDIV2
 #error "RP_PLL_SYS_POSTDIV1 must be >= RP_PLL_SYS_POSTDIV2"
+#elif (RP_XOSCCLK % RP_PLL_SYS_REFDIV) != 0
+#error "RP_XOSCCLK is not divisible by RP_PLL_SYS_REFDIV"
+#elif (RP_XOSCCLK / RP_PLL_SYS_REFDIV) < 5000000
+#error "PLL_SYS reference frequency below 5 MHz minimum"
+#elif (RP_PLL_SYS_VCO_FREQ % (RP_XOSCCLK / RP_PLL_SYS_REFDIV)) != 0
+#error "RP_PLL_SYS_VCO_FREQ is not an integer multiple of the PLL_SYS reference frequency"
+#elif ((RP_PLL_SYS_VCO_FREQ / (RP_XOSCCLK / RP_PLL_SYS_REFDIV)) < 16) ||    \
+      ((RP_PLL_SYS_VCO_FREQ / (RP_XOSCCLK / RP_PLL_SYS_REFDIV)) > 320)
+#error "PLL_SYS FBDIV out of valid range (16-320)"
+#elif (RP_PLL_SYS_VCO_FREQ % (RP_PLL_SYS_POSTDIV1 * RP_PLL_SYS_POSTDIV2)) != 0
+#error "RP_PLL_SYS_VCO_FREQ is not divisible by RP_PLL_SYS_POSTDIV1 * RP_PLL_SYS_POSTDIV2"
 #endif
 
 /*
- * PLL_USB configuration checks.
+ * PLL_USB configuration checks, chained for the same reason as the
+ * PLL_SYS checks above.
  */
 #if (RP_PLL_USB_REFDIV < 1) || (RP_PLL_USB_REFDIV > 63)
 #error "RP_PLL_USB_REFDIV out of valid range (1-63)"
-#endif
-
-#if (RP_PLL_USB_VCO_FREQ < RP_PLL_VCO_MIN_FREQ) ||                          \
-    (RP_PLL_USB_VCO_FREQ > RP_PLL_VCO_MAX_FREQ)
+#elif (RP_PLL_USB_VCO_FREQ < RP_PLL_VCO_MIN_FREQ) ||                        \
+      (RP_PLL_USB_VCO_FREQ > RP_PLL_VCO_MAX_FREQ)
 #error "RP_PLL_USB_VCO_FREQ out of valid range (750-1600 MHz)"
-#endif
-
-#if (RP_PLL_USB_POSTDIV1 < 1) || (RP_PLL_USB_POSTDIV1 > 7)
+#elif (RP_PLL_USB_POSTDIV1 < 1) || (RP_PLL_USB_POSTDIV1 > 7)
 #error "RP_PLL_USB_POSTDIV1 out of valid range (1-7)"
-#endif
-
-#if (RP_PLL_USB_POSTDIV2 < 1) || (RP_PLL_USB_POSTDIV2 > 7)
+#elif (RP_PLL_USB_POSTDIV2 < 1) || (RP_PLL_USB_POSTDIV2 > 7)
 #error "RP_PLL_USB_POSTDIV2 out of valid range (1-7)"
-#endif
-
-#if RP_PLL_USB_POSTDIV1 < RP_PLL_USB_POSTDIV2
+#elif RP_PLL_USB_POSTDIV1 < RP_PLL_USB_POSTDIV2
 #error "RP_PLL_USB_POSTDIV1 must be >= RP_PLL_USB_POSTDIV2"
+#elif (RP_XOSCCLK % RP_PLL_USB_REFDIV) != 0
+#error "RP_XOSCCLK is not divisible by RP_PLL_USB_REFDIV"
+#elif (RP_XOSCCLK / RP_PLL_USB_REFDIV) < 5000000
+#error "PLL_USB reference frequency below 5 MHz minimum"
+#elif (RP_PLL_USB_VCO_FREQ % (RP_XOSCCLK / RP_PLL_USB_REFDIV)) != 0
+#error "RP_PLL_USB_VCO_FREQ is not an integer multiple of the PLL_USB reference frequency"
+#elif ((RP_PLL_USB_VCO_FREQ / (RP_XOSCCLK / RP_PLL_USB_REFDIV)) < 16) ||    \
+      ((RP_PLL_USB_VCO_FREQ / (RP_XOSCCLK / RP_PLL_USB_REFDIV)) > 320)
+#error "PLL_USB FBDIV out of valid range (16-320)"
+#elif (RP_PLL_USB_VCO_FREQ % (RP_PLL_USB_POSTDIV1 * RP_PLL_USB_POSTDIV2)) != 0
+#error "RP_PLL_USB_VCO_FREQ is not divisible by RP_PLL_USB_POSTDIV1 * RP_PLL_USB_POSTDIV2"
 #endif
 
 #if RP_PLL_USB_CLK != 48000000
 #error "RP_PLL_USB_CLK must be 48 MHz for USB to work"
+#endif
+
+/*
+ * RP2350-E12 erratum check: reliable USB operation requires
+ * clk_sys >= 1.1 * clk_usb.
+ */
+#if ((RP_CLK_SYS_FREQ) * 10U) < ((RP_CLK_USB_FREQ) * 11U)
+#error "RP2350-E12: clk_sys must be at least 1.1 * clk_usb for reliable USB operation"
 #endif
 
 /**
@@ -196,6 +213,8 @@
 #define RP_REF_CLK              hal_lld_get_clock_point(RP_CLK_REF)
 #define RP_CORE_CLK             hal_lld_get_clock_point(RP_CLK_SYS)
 #define RP_PERI_CLK             hal_lld_get_clock_point(RP_CLK_PERI)
+/* Note: the HSTX clock is reported as a clock point but it is not
+   configured by this HAL.*/
 #define RP_HSTX_CLK             hal_lld_get_clock_point(RP_CLK_HSTX)
 #define RP_USB_CLK              hal_lld_get_clock_point(RP_CLK_USB)
 #define RP_ADC_CLK              hal_lld_get_clock_point(RP_CLK_ADC)
@@ -204,15 +223,6 @@
 /*===========================================================================*/
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
-
-#if defined(HAL_LLD_USE_CLOCK_MANAGEMENT) || defined(__DOXYGEN__)
-/**
- * @brief   Type of a clock configuration structure.
- */
-typedef struct {
-  uint32_t          dummy;
-} halclkcfg_t;
-#endif /* defined(HAL_LLD_USE_CLOCK_MANAGEMENT) */
 
 /*===========================================================================*/
 /* Driver macros.                                                            */
@@ -282,24 +292,6 @@ __STATIC_INLINE void rp_peripheral_unreset(uint32_t mask) {
   }
 }
 
-#if defined(HAL_LLD_USE_CLOCK_MANAGEMENT) || defined(__DOXYGEN__)
-/**
- * @brief   Switches to a different clock configuration
- *
- * @param[in] ccp       pointer to clock a @p halclkcfg_t structure
- * @return              The clock switch result.
- * @retval false        if the clock switch succeeded
- * @retval true         if the clock switch failed
- *
- * @notapi
- */
-__STATIC_INLINE bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp) {
-
-  (void)ccp;
-
-  return false;
-}
-
 /**
  * @brief   Returns the frequency of a clock point in Hz.
  *
@@ -315,7 +307,6 @@ __STATIC_INLINE halfreq_t hal_lld_get_clock_point(halclkpt_t clkpt) {
 
   return rp_clock_get_hz(clkpt);
 }
-#endif /* defined(HAL_LLD_USE_CLOCK_MANAGEMENT) */
 
 #endif /* HAL_LLD_H */
 

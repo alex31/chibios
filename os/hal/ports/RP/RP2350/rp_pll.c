@@ -69,14 +69,26 @@
 void rp_pll_init(PLL_TypeDef *pll, uint32_t refdiv, uint32_t vco_freq,
                  uint32_t postdiv1, uint32_t postdiv2) {
 
-  uint32_t ref_freq = RP_XOSCCLK / refdiv;
-  uint32_t fbdiv = vco_freq / ref_freq;
-  uint32_t pdiv = PLL_PRIM_POSTDIV1(postdiv1) | PLL_PRIM_POSTDIV2(postdiv2);
+  uint32_t ref_freq;
+  uint32_t fbdiv;
+  uint32_t pdiv;
+
+  /* Denominators must be validated before any division uses them. */
+  osalDbgAssert((refdiv >= 1U) && (refdiv <= 63U), "invalid REFDIV");
+
+  ref_freq = RP_XOSCCLK / refdiv;
+  osalDbgAssert(ref_freq != 0U, "reference frequency is zero");
+  fbdiv = vco_freq / ref_freq;
+  pdiv = PLL_PRIM_POSTDIV1(postdiv1) | PLL_PRIM_POSTDIV2(postdiv2);
 
   osalDbgAssert(vco_freq >= RP_PLL_VCO_MIN_FREQ &&
                 vco_freq <= RP_PLL_VCO_MAX_FREQ,
                 "VCO frequency out of range");
+  osalDbgAssert((RP_XOSCCLK % refdiv) == 0U, "XOSC not divisible by REFDIV");
+  osalDbgAssert(ref_freq >= 5000000U, "reference frequency below 5 MHz");
   osalDbgAssert(fbdiv >= 16U && fbdiv <= 320U, "FBDIV out of range");
+  osalDbgAssert((ref_freq * fbdiv) == vco_freq,
+                "VCO not an integer multiple of reference");
   osalDbgAssert(postdiv1 >= 1U && postdiv1 <= 7U, "POSTDIV1 out of range");
   osalDbgAssert(postdiv2 >= 1U && postdiv2 <= 7U, "POSTDIV2 out of range");
   osalDbgAssert(ref_freq <= (vco_freq / 16U), "Reference frequency too high");
