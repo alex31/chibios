@@ -35,6 +35,13 @@
 /* Module local definitions.                                                 */
 /*===========================================================================*/
 
+/**
+ * @brief   FIFO interrupt number of the current core.
+ * @note    RP2040 routes the SIO FIFO through separate per-core IRQs,
+ *          15 for core 0 and 16 for core 1.
+ */
+#define SIO_FIFO_IRQn ((IRQn_Type)(15 + (int)SIO->CPUID))
+
 /*===========================================================================*/
 /* Module exported variables.                                                */
 /*===========================================================================*/
@@ -46,6 +53,51 @@
 /*===========================================================================*/
 /* Module local variables.                                                   */
 /*===========================================================================*/
+
+/**
+ * @brief   Cores which completed SMP initialization.
+ * @note    A core which never started must not be waited for in the
+ *          lockout handshake.
+ */
+static volatile bool port_lockout_ready[PORT_CORES_NUMBER];
+
+/**
+ * @brief   Per-core lockout-in-progress flags.
+ * @details Published with interrupts masked BEFORE acquiring the lockout
+ *          spinlock and cleared, also with interrupts masked, together
+ *          with its release. A same-core caller finding its flag already
+ *          set would otherwise spin on the hardware lock above the
+ *          holder's priority forever; that is a design error (concurrent
+ *          same-core lockouts must be serialized at a higher layer) and
+ *          fails loudly instead.
+ */
+static volatile bool port_lockout_wanted[PORT_CORES_NUMBER];
+
+/**
+ * @brief   True when the current lockout actually parked the other core.
+ * @note    Written only while the lockout spinlock is held; the unlock
+ *          path must consume the decision made at lockout time, the
+ *          ready flag may change in between.
+ */
+static volatile bool port_lockout_parked;
+
+#if defined(PORT_HANDLE_FIFO_MESSAGE) || defined(__DOXYGEN__)
+/**
+ * @brief   Per-core application messages captured while the FIFO is being
+ *          drained outside the FIFO handler.
+ * @details While a core is parked its FIFO drain cannot run flash-resident
+ *          handlers, and a core draining the FIFO during a lockout
+ *          handshake is in thread context which the handler is not
+ *          entitled to; messages below the reserved range are buffered
+ *          here and delivered from the FIFO handler afterwards. Excess
+ *          messages beyond the buffer depth are dropped. Each core only
+ *          touches its own row, no cross-core synchronization is needed.
+ */
+#define PORT_LOCKOUT_MSG_BUFFER_DEPTH   8U
+static volatile uint32_t port_lockout_msg_buffer[PORT_CORES_NUMBER]
+                                                [PORT_LOCKOUT_MSG_BUFFER_DEPTH];
+static volatile uint32_t port_lockout_msg_count[PORT_CORES_NUMBER];
+#endif
 
 /*===========================================================================*/
 /* Module local functions.                                                   */
@@ -66,6 +118,187 @@ static void port_local_halt(void) {
   }
 }
 
+/**
+ * @brief   Parks the core while the other core has flash unavailable.
+ * @details Called from the FIFO handler on reception of the lockout token.
+ *          The whole wait executes from RAM with interrupts masked because
+ *          the requesting core is about to disable XIP; any flash fetch on
+ *          this core would fault or return garbage.
+ */
+CC_NO_INLINE CC_SECTION(".ramtext")
+static void port_fifo_lockout_wait(void) {
+  uint32_t primask = __get_PRIMASK();
+
+  __disable_irq();
+
+  /* Acknowledging the lockout, the requester waits for this before
+     touching XIP.*/
+  while ((SIO->FIFO_ST & SIO_FIFO_ST_RDY) == 0U) {
+  }
+  SIO->FIFO_WR = PORT_FIFO_LOCKOUT_ACK_MESSAGE;
+  __SEV();
+
+  /* Spinning on SIO registers only until released.*/
+  while (true) {
+    uint32_t message;
+
+    while ((SIO->FIFO_ST & SIO_FIFO_ST_VLD) == 0U) {
+    }
+    message = SIO->FIFO_RD;
+    if (message == PORT_FIFO_UNLOCK_MESSAGE) {
+      break;
+    }
+    if (message == PORT_FIFO_PANIC_MESSAGE) {
+      /* Cannot reach the flash-resident halt path, parking here, the
+         other core is halting anyway.*/
+      while (true) {
+      }
+    }
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+    /* Application messages cannot be delivered while flash handlers are
+       unreachable, buffering for delivery after unparking. Reschedule
+       tokens are dropped, the ISR epilogue reschedules on return.*/
+    if (message < PORT_FIFO_LOCKOUT_ACK_MESSAGE) {
+      /* SIO->CPUID is read directly: port_get_core_id() is a static
+         inline whose out-of-line copy would live in flash, which is
+         unreachable here.*/
+      uint32_t core = SIO->CPUID;
+
+      if (port_lockout_msg_count[core] < PORT_LOCKOUT_MSG_BUFFER_DEPTH) {
+        port_lockout_msg_buffer[core][port_lockout_msg_count[core]++] = message;
+      }
+    }
+#else
+    /* Anything else (reschedule tokens) is stale, the ISR epilogue
+       reschedules on return anyway.*/
+#endif
+  }
+
+  /* Acknowledging the unlock, XIP is available again at this point.*/
+  while ((SIO->FIFO_ST & SIO_FIFO_ST_RDY) == 0U) {
+  }
+  SIO->FIFO_WR = PORT_FIFO_LOCKOUT_ACK_MESSAGE;
+  __SEV();
+
+  __set_PRIMASK(primask);
+
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+  /* Back on flash, delivering the messages buffered during the park in
+     arrival order; still in the FIFO ISR context.*/
+  {
+    core_id_t core = port_get_core_id();
+    uint32_t i;
+
+    for (i = 0U; i < port_lockout_msg_count[core]; i++) {
+      PORT_HANDLE_FIFO_MESSAGE(core ^ 1U,
+                               port_lockout_msg_buffer[core][i]);
+    }
+    port_lockout_msg_count[core] = 0U;
+  }
+#endif
+}
+
+/**
+ * @brief   Sends a token to the other core and waits for its acknowledge.
+ * @details The FIFO RX side is drained directly because this core's FIFO
+ *          interrupt is masked during the handshake.
+ *
+ * @param[in] token     token to be sent
+ * @return              @p true on acknowledge, @p false on timeout.
+ */
+static bool port_lockout_handshake(uint32_t token) {
+  uint32_t start = TIMER0->TIMERAWL;
+
+  while ((SIO->FIFO_ST & SIO_FIFO_ST_RDY) == 0U) {
+    if ((TIMER0->TIMERAWL - start) > PORT_LOCKOUT_TIMEOUT_US) {
+      return false;
+    }
+  }
+  SIO->FIFO_WR = token;
+  __SEV();
+
+  while (true) {
+    if ((SIO->FIFO_ST & SIO_FIFO_ST_VLD) != 0U) {
+      uint32_t message = SIO->FIFO_RD;
+
+      if (message == PORT_FIFO_LOCKOUT_ACK_MESSAGE) {
+        return true;
+      }
+      if (message == PORT_FIFO_PANIC_MESSAGE) {
+        port_local_halt();
+      }
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+      /* Application messages cannot be delivered here: this is thread
+         context with interrupts masked, not the ISR context the handler
+         is entitled to (state checking, epilogue reschedule). Buffering
+         for delivery from the FIFO handler pended after the handshake.*/
+      if (message < PORT_FIFO_LOCKOUT_ACK_MESSAGE) {
+        core_id_t core = port_get_core_id();
+
+        if (port_lockout_msg_count[core] < PORT_LOCKOUT_MSG_BUFFER_DEPTH) {
+          port_lockout_msg_buffer[core][port_lockout_msg_count[core]++] =
+            message;
+        }
+      }
+#endif
+      /* Reschedule tokens are dropped here, a reschedule round is forced
+         after the handshake.*/
+    }
+    if ((TIMER0->TIMERAWL - start) > PORT_LOCKOUT_TIMEOUT_US) {
+      return false;
+    }
+  }
+}
+
+/**
+ * @brief   Common FIFO service routine for both per-core handlers.
+ * @note    Runs on the receiving core; messages always come from the
+ *          other core.
+ */
+static void port_fifo_serve(void) {
+
+  SIO->FIFO_ST = SIO_FIFO_ST_ROE | SIO_FIFO_ST_WOF;
+
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+  /* Messages buffered by a lockout handshake on this core are delivered
+     first, they arrived before anything still in the FIFO. The producer
+     runs in thread context with interrupts masked, it cannot race this
+     handler.*/
+  {
+    core_id_t core = port_get_core_id();
+    uint32_t i;
+
+    for (i = 0U; i < port_lockout_msg_count[core]; i++) {
+      PORT_HANDLE_FIFO_MESSAGE(core ^ 1U, port_lockout_msg_buffer[core][i]);
+    }
+    port_lockout_msg_count[core] = 0U;
+  }
+#endif
+
+  while ((SIO->FIFO_ST & SIO_FIFO_ST_VLD) != 0U) {
+    uint32_t message = SIO->FIFO_RD;
+
+    /* A panic on either core halts the other one too.*/
+    if (message == PORT_FIFO_PANIC_MESSAGE) {
+      port_local_halt();
+    }
+    /* The other core needs this core off flash, parking until released.*/
+    if (message == PORT_FIFO_LOCKOUT_MESSAGE) {
+      port_fifo_lockout_wait();
+      continue;
+    }
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+    if (message < PORT_FIFO_LOCKOUT_ACK_MESSAGE) {
+      PORT_HANDLE_FIFO_MESSAGE(port_get_core_id() ^ 1U, message);
+    }
+#else
+    (void)message;
+#endif
+  }
+
+  __SEV();
+}
+
 /*===========================================================================*/
 /* Module interrupt handlers.                                                */
 /*===========================================================================*/
@@ -79,24 +312,7 @@ CH_IRQ_HANDLER(Vector7C) {
 
   CH_IRQ_PROLOGUE();
 
-  SIO->FIFO_ST = SIO_FIFO_ST_ROE | SIO_FIFO_ST_WOF;
-
-  while ((SIO->FIFO_ST & SIO_FIFO_ST_VLD) != 0U) {
-    uint32_t message = SIO->FIFO_RD;
-    /* A panic on either core halts the other one too.*/
-    if (message == PORT_FIFO_PANIC_MESSAGE) {
-      port_local_halt();
-    }
-#if defined(PORT_HANDLE_FIFO_MESSAGE)
-    if (message != PORT_FIFO_RESCHEDULE_MESSAGE) {
-      PORT_HANDLE_FIFO_MESSAGE(1U, message);
-    }
-#else
-    (void)message;
-#endif
-  }
-
-  __SEV();
+  port_fifo_serve();
 
   CH_IRQ_EPILOGUE();
 }
@@ -110,21 +326,7 @@ CH_IRQ_HANDLER(Vector80) {
 
   CH_IRQ_PROLOGUE();
 
-  SIO->FIFO_ST = SIO_FIFO_ST_ROE | SIO_FIFO_ST_WOF;
-
-  while ((SIO->FIFO_ST & SIO_FIFO_ST_VLD) != 0U) {
-    uint32_t message = SIO->FIFO_RD;
-    if (message == PORT_FIFO_PANIC_MESSAGE) {
-      port_local_halt();
-    }
-#if defined(PORT_HANDLE_FIFO_MESSAGE)
-    if (message != PORT_FIFO_RESCHEDULE_MESSAGE) {
-      PORT_HANDLE_FIFO_MESSAGE(0U, message);
-    }
-#endif
-  }
-
-  __SEV();
+  port_fifo_serve();
 
   CH_IRQ_EPILOGUE();
 }
@@ -145,7 +347,6 @@ void __port_smp_init(os_instance_t *oip) {
   port_timer_enable(oip);
 #endif
 
-#if CH_CFG_SMP_MODE == TRUE
   /* FIFO handlers for each core.*/
   SIO->FIFO_ST = SIO_FIFO_ST_ROE | SIO_FIFO_ST_WOF;
   if (oip->core_id == 0U) {
@@ -159,7 +360,141 @@ void __port_smp_init(os_instance_t *oip) {
   else {
     chDbgAssert(false, "unexpected core id");
   }
+
+  /* This core can now be parked by the other one.*/
+  port_lockout_ready[port_get_core_id()] = true;
+}
+
+/**
+ * @brief   Parks the other core outside flash for a flash operation.
+ * @details On return the other core is spinning in RAM with interrupts
+ *          disabled and stays there until @p __port_flash_unlockout() is
+ *          called. Requests from both cores are serialized on a dedicated
+ *          hardware spinlock which is spun with interrupts enabled so that
+ *          a crossing request from the other core can park this core
+ *          first instead of deadlocking.
+ * @note    Must be called from thread context outside any critical
+ *          section.
+ */
+void __port_flash_lockout(void) {
+
+  chDbgAssert(!port_is_isr_context() &&
+              __port_irq_enabled(__port_get_irq_status()) &&
+              ((__get_PRIMASK() & 1U) == 0U),
+              "not in thread context");
+
+  /* Publishing the lockout intent atomically before contending for the
+     hardware lock. A same-core caller finding the flag set would spin
+     on the spinlock above the holder's priority forever with no
+     timeout; concurrent same-core lockouts must be serialized at a
+     higher layer (the EFL state machine already does), so this is a
+     design error and fails loudly even in release builds.*/
+  __disable_irq();
+  if (port_lockout_wanted[port_get_core_id()]) {
+    __enable_irq();
+    chSysHalt("lockout re-entered");
+  }
+  port_lockout_wanted[port_get_core_id()] = true;
+  __enable_irq();
+
+  /* Serializing requesters, interrupts stay enabled while spinning so a
+     crossing request from the other core can park this core first.
+     While the lockout is held the owning thread remains preemptible;
+     this is deliberate (interrupt windows between flash pages keep
+     watchdog feeding and IRQ latency alive on this core) at the
+     documented cost of extending the other core's park time.*/
+  while (SIO->SPINLOCK[PORT_LOCKOUT_SPINLOCK_NUMBER] == 0U) {
+  }
+  __DMB();
+
+  /* A core which never initialized cannot acknowledge and does not need
+     parking. The decision is recorded for the unlock side, the flag may
+     rise in the meantime.*/
+  if (!port_lockout_ready[port_get_core_id() ^ 1U]) {
+    port_lockout_parked = false;
+    return;
+  }
+  port_lockout_parked = true;
+
+  /* Masking local interrupts so that the FIFO handler cannot steal the
+     acknowledge token; no lockout traffic can be in flight here because
+     the spinlock is held.*/
+  __disable_irq();
+
+  if (!port_lockout_handshake(PORT_FIFO_LOCKOUT_MESSAGE)) {
+    chSysHalt("lockout timeout");
+  }
+
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+  /* Messages captured during the handshake are delivered by the FIFO
+     handler in its normal ISR context, pending it while still masked so
+     delivery happens right at the enable below.*/
+  if (port_lockout_msg_count[port_get_core_id()] > 0U) {
+    NVIC_SetPendingIRQ(SIO_FIFO_IRQn);
+  }
 #endif
+
+  __enable_irq();
+}
+
+/**
+ * @brief   Releases the core parked by @p __port_flash_lockout().
+ */
+void __port_flash_unlockout(void) {
+
+  chDbgAssert((SIO->SPINLOCK_ST &
+               (1UL << PORT_LOCKOUT_SPINLOCK_NUMBER)) != 0U,
+              "lockout not active");
+
+  /* Unlocking only if the matching lockout parked the other core, the
+     ready flag alone could have risen since then.*/
+  if (port_lockout_parked) {
+    port_lockout_parked = false;
+    __disable_irq();
+
+    if (!port_lockout_handshake(PORT_FIFO_UNLOCK_MESSAGE)) {
+      chSysHalt("unlock timeout");
+    }
+
+#if defined(PORT_HANDLE_FIFO_MESSAGE)
+    /* Messages captured during the handshake are delivered by the FIFO
+       handler in its normal ISR context, pending it while still masked
+       so delivery happens right at the enable below.*/
+    if (port_lockout_msg_count[port_get_core_id()] > 0U) {
+      NVIC_SetPendingIRQ(SIO_FIFO_IRQn);
+    }
+#endif
+
+    __enable_irq();
+  }
+
+  /* Releasing the hardware lock and withdrawing the intent flag as one
+     unit so a preempting same-core caller never observes them apart.*/
+  __disable_irq();
+  __DMB();
+  SIO->SPINLOCK[PORT_LOCKOUT_SPINLOCK_NUMBER] = (uint32_t)SIO;
+  port_lockout_wanted[port_get_core_id()] = false;
+  __enable_irq();
+
+  /* A reschedule token could have been consumed during the handshakes,
+     forcing a reschedule round.*/
+  chSysLock();
+  chSchRescheduleS();
+  chSysUnlock();
+}
+
+/**
+ * @brief   Tells whether the other core completed SMP initialization.
+ * @details Until this returns @p true the other core may be executing
+ *          startup code from flash without being parkable; callers which
+ *          know the core was started must wait for readiness before the
+ *          first lockout.
+ *
+ * @return              @p true if the other core can be parked.
+ */
+bool __port_lockout_other_ready(void) {
+
+  return port_lockout_ready[port_get_core_id() ^ 1U];
 }
 
 /**

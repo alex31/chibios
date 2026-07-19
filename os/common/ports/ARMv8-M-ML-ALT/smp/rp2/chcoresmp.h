@@ -43,10 +43,16 @@
 
 /**
  * @name    IPC FIFO messages
+ * @note    Values from @p PORT_FIFO_LOCKOUT_ACK_MESSAGE upwards are reserved
+ *          for the port layer, @p PORT_HANDLE_FIFO_MESSAGE only receives
+ *          values below it.
  * @{
  */
 #define PORT_FIFO_RESCHEDULE_MESSAGE    0xFFFFFFFFU
 #define PORT_FIFO_PANIC_MESSAGE         0xFFFFFFFEU
+#define PORT_FIFO_LOCKOUT_MESSAGE       0xFFFFFFFDU
+#define PORT_FIFO_UNLOCK_MESSAGE        0xFFFFFFFCU
+#define PORT_FIFO_LOCKOUT_ACK_MESSAGE   0xFFFFFFFBU
 /** @} */
 
 /*===========================================================================*/
@@ -70,6 +76,22 @@
  */
 #if !defined(PORT_MEM_LOCAL_COHERENT_BSS)
 #define PORT_MEM_LOCAL_COHERENT_BSS     /* Enables suffixed PORT_MEM_LOCAL_COHERENT_BSSn selection in chmem.h.*/
+#endif
+
+/**
+ * @brief   Spinlock serializing core-lockout requesters.
+ */
+#if !defined(PORT_LOCKOUT_SPINLOCK_NUMBER)
+#define PORT_LOCKOUT_SPINLOCK_NUMBER    30
+#endif
+
+/**
+ * @brief   Timeout on the lockout handshake in microseconds.
+ * @note    A core which does not acknowledge within this time is assumed
+ *          dead and the system is halted.
+ */
+#if !defined(PORT_LOCKOUT_TIMEOUT_US)
+#define PORT_LOCKOUT_TIMEOUT_US         100000U
 #endif
 
 /**
@@ -116,6 +138,14 @@
   #error "invalid PORT_SPINLOCK_NUMBER value"
 #endif
 
+#if (PORT_LOCKOUT_SPINLOCK_NUMBER < 0) || (PORT_LOCKOUT_SPINLOCK_NUMBER > 31)
+  #error "invalid PORT_LOCKOUT_SPINLOCK_NUMBER value"
+#endif
+
+#if PORT_LOCKOUT_SPINLOCK_NUMBER == PORT_SPINLOCK_NUMBER
+  #error "PORT_LOCKOUT_SPINLOCK_NUMBER conflicts with PORT_SPINLOCK_NUMBER"
+#endif
+
 /*===========================================================================*/
 /* Module data structures and types.                                         */
 /*===========================================================================*/
@@ -152,6 +182,9 @@ extern "C" {
   void __port_smp_init(os_instance_t *oip);
   void __port_spinlock_take(void);
   void __port_spinlock_release(void);
+  void __port_flash_lockout(void);
+  void __port_flash_unlockout(void);
+  bool __port_lockout_other_ready(void);
 #ifdef __cplusplus
 }
 #endif

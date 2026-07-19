@@ -86,6 +86,27 @@
  */
 #define RP_FLASH_UNIQUE_ID_SIZE             8U
 
+/**
+ * @name    XIP safety strategies
+ * @{
+ */
+/**
+ * @brief   Flash safety left to the application.
+ * @details The application is responsible for providing @p
+ *          rpEflBeforeXipOff() / @p rpEflAfterXipOn() implementations
+ *          which keep the other core and DMA away from XIP while flash
+ *          operations are in progress.
+ */
+#define RP_EFL_XIP_SAFETY_NONE              0
+/**
+ * @brief   Built-in SMP lockout.
+ * @details The port parks the other core in RAM with interrupts masked
+ *          for the duration of each flash operation. DMA reading from the
+ *          XIP window remains an application responsibility.
+ */
+#define RP_EFL_XIP_SAFETY_LOCKOUT           1
+/** @} */
+
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -102,6 +123,26 @@
  */
 #if !defined(RP_FLASH_SIZE) || defined(__DOXYGEN__)
 #define RP_FLASH_SIZE                       (2U * 1024U * 1024U)
+#endif
+
+/**
+ * @brief   XIP safety strategy used while flash operations run.
+ * @details One of @p RP_EFL_XIP_SAFETY_NONE (application-provided hooks)
+ *          or @p RP_EFL_XIP_SAFETY_LOCKOUT (built-in SMP core lockout).
+ * @note    SMP configurations must select a strategy explicitly in
+ *          mcuconf.h, flash operations are not SMP-safe otherwise.
+ */
+#if !defined(RP_EFL_XIP_SAFETY) || defined(__DOXYGEN__)
+#if defined(CH_CFG_SMP_MODE) && (CH_CFG_SMP_MODE == TRUE)
+#error "SMP EFL requires RP_EFL_XIP_SAFETY in mcuconf.h: select RP_EFL_XIP_SAFETY_LOCKOUT or RP_EFL_XIP_SAFETY_NONE with application hooks"
+#else
+#define RP_EFL_XIP_SAFETY                   RP_EFL_XIP_SAFETY_NONE
+#endif
+#endif
+
+#if (RP_EFL_XIP_SAFETY != RP_EFL_XIP_SAFETY_NONE) &&                        \
+    (RP_EFL_XIP_SAFETY != RP_EFL_XIP_SAFETY_LOCKOUT)
+#error "invalid RP_EFL_XIP_SAFETY value"
 #endif
 
 /**

@@ -27,10 +27,12 @@ endif
 HALCONF := $(strip $(shell cat $(HALCONFDIR)/halconf.h | egrep -e "\#define"))
 
 ifneq ($(findstring HAL_USE_EFL TRUE,$(HALCONF)),)
-PLATFORMSRC += $(CHIBIOS)/os/hal/ports/RP/RP2350/hal_efl_lld.c
+PLATFORMSRC += $(CHIBIOS)/os/hal/ports/RP/RP2350/hal_efl_lld.c \
+               $(CHIBIOS)/os/hal/ports/RP/RP2350/rp_flash_safety.c
 endif
 else
-PLATFORMSRC += $(CHIBIOS)/os/hal/ports/RP/RP2350/hal_efl_lld.c
+PLATFORMSRC += $(CHIBIOS)/os/hal/ports/RP/RP2350/hal_efl_lld.c \
+               $(CHIBIOS)/os/hal/ports/RP/RP2350/rp_flash_safety.c
 endif
 
 # Drivers compatible with the platform.
