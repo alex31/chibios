@@ -78,6 +78,17 @@
 #endif
 
 /**
+ * @brief   Enables runtime changes of the system clock.
+ * @details When @p TRUE the port advertises the generic clock management
+ *          API (@p halClockSwitchMode()) and clock point queries become
+ *          dynamic. When @p FALSE (default) the clock tree is fixed at
+ *          initialization time and this feature costs nothing.
+ */
+#if !defined(RP_CLOCK_DYNAMIC) || defined(__DOXYGEN__)
+#define RP_CLOCK_DYNAMIC                    FALSE
+#endif
+
+/**
  * @brief   Starts core 1 after initialization.
  */
 #if !defined(RP_CORE1_START) || defined(__DOXYGEN__)
@@ -202,6 +213,11 @@
 #error "RP2350-E12: clk_sys must be at least 1.1 * clk_usb for reliable USB operation"
 #endif
 
+#if (RP_CLOCK_DYNAMIC == TRUE) && defined(OSAL_ST_MODE) &&                  \
+    (OSAL_ST_MODE == OSAL_ST_MODE_PERIODIC)
+#error "RP_CLOCK_DYNAMIC requires tick-less mode, in periodic mode SysTick counts clk_sys and the kernel tick would scale with every switch"
+#endif
+
 /**
  * @name    Various clock points.
  * @{
@@ -223,6 +239,47 @@
 /*===========================================================================*/
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
+
+#if (RP_CLOCK_DYNAMIC == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   The port supports the generic clock management API.
+ */
+#define HAL_LLD_USE_CLOCK_MANAGEMENT
+
+/**
+ * @brief   Type of a clock configuration structure.
+ * @details Describes a PLL_SYS setting reachable at runtime through
+ *          @p halClockSwitchMode(). The reference is always the crystal
+ *          (@p RP_XOSCCLK); clk_peri follows clk_sys, clk_ref, clk_usb
+ *          and clk_adc are not affected by a switch.
+ */
+typedef struct {
+  /**
+   * @brief   PLL_SYS reference divider, 1..63.
+   */
+  uint32_t          pll_sys_refdiv;
+  /**
+   * @brief   PLL_SYS VCO frequency in Hz, 750 MHz..1600 MHz.
+   */
+  uint32_t          pll_sys_vco_freq;
+  /**
+   * @brief   PLL_SYS first post divider, 1..7.
+   */
+  uint32_t          pll_sys_postdiv1;
+  /**
+   * @brief   PLL_SYS second post divider, 1..postdiv1.
+   */
+  uint32_t          pll_sys_postdiv2;
+  /**
+   * @brief   QMI flash clock divider to program after the switch.
+   * @note    Zero keeps the divider currently in effect (as programmed
+   *          by the boot ROM for the boot configuration). A non-zero
+   *          value must keep the flash SCK within the device rating at
+   *          the new clk_sys.
+   */
+  uint32_t          qmi_clkdiv;
+} halclkcfg_t;
+#endif /* RP_CLOCK_DYNAMIC == TRUE */
 
 /*===========================================================================*/
 /* Driver macros.                                                            */
@@ -267,10 +324,20 @@ typedef uint32_t halcnt_t;
 #include "rp_pio.h"
 #include "rp_bootrom.h"
 
+extern uint32_t SystemCoreClock;
+
+#if (RP_CLOCK_DYNAMIC == TRUE) || defined(__DOXYGEN__)
+extern const halclkcfg_t hal_clkcfg_default;
+extern const halclkcfg_t hal_clkcfg_low;
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
   void hal_lld_init(void);
+#if (RP_CLOCK_DYNAMIC == TRUE) || defined(__DOXYGEN__)
+  bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp);
+#endif
 #ifdef __cplusplus
 }
 #endif
