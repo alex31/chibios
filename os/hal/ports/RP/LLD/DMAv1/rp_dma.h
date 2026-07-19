@@ -281,12 +281,27 @@ __STATIC_INLINE void dmaChannelSetModeX(const rp_dma_channel_t *dmachp,
  * @brief   Aborts the current transfer on a DMA channel.
  * @note    EN and CHAIN_TO are cleared before asserting CHAN_ABORT to
  *          prevent post-abort re-triggering (RP2350-E5).
+ * @note    Implements the RP2040-E13 workaround: the channel interrupt
+ *          enables are masked around the abort, completion of the
+ *          in-flight transfer is awaited through @p BUSY rather than
+ *          only @p CHAN_ABORT, and the spurious completion status the
+ *          aborted transfer may raise is discarded before the enables
+ *          are restored. The sequence is also correct on RP2350.
  *
  * @param[in] dmachp    pointer to a rp_dma_channel_t structure
  *
  * @special
  */
 __STATIC_INLINE void dmaChannelAbortX(const rp_dma_channel_t *dmachp) {
+  uint32_t inte0, inte1;
+
+  /* RP2040-E13: a transfer still in flight when the abort is requested
+     can complete afterwards and raise its completion interrupt; the
+     channel interrupt enables are saved and masked for the duration.*/
+  inte0 = dmachp->dma->INTE0 & dmachp->chnmask;
+  inte1 = dmachp->dma->INTE1 & dmachp->chnmask;
+  dmachp->dma->CLR.INTE0 = dmachp->chnmask;
+  dmachp->dma->CLR.INTE1 = dmachp->chnmask;
 
   /* Clear EN and set CHAIN_TO to self (no chaining) per RP2350-E5.
      W1C error flags are masked to zero to preserve them. */
@@ -299,6 +314,18 @@ __STATIC_INLINE void dmaChannelAbortX(const rp_dma_channel_t *dmachp) {
   dmachp->dma->SET.CHAN_ABORT = dmachp->chnmask;
   while ((dmachp->dma->CHAN_ABORT & dmachp->chnmask) != 0U) {
   }
+
+  /* RP2040-E13: CHAN_ABORT can clear while the aborted transfer is
+     still completing; BUSY is the authoritative indication.*/
+  while ((dmachp->channel->CTRL_TRIG & DMA_CTRL_TRIG_BUSY) != 0U) {
+  }
+
+  /* Discarding the completion the aborted transfer may have raised,
+     then restoring the interrupt enables.*/
+  dmachp->dma->INTS0 = dmachp->chnmask;
+  dmachp->dma->INTS1 = dmachp->chnmask;
+  dmachp->dma->SET.INTE0 = inte0;
+  dmachp->dma->SET.INTE1 = inte1;
 }
 
 /**
