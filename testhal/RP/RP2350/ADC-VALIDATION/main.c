@@ -135,7 +135,8 @@ static void test_start_failure(void) {
   taken = dma_hog_all();
   chprintf(chp, "  DMA channels hogged: %u of %u\r\n",
            taken, (unsigned)RP_DMA_NUM_CHANNELS);
-  report("All free DMA channels allocated", taken > 0U);
+  report("DMA hog acquired channels (exhaustion proven by next check)",
+         taken > 0U);
 
   msg = adcStart(&ADCD1, NULL);
   chprintf(chp, "  adcStart() returned %d, state %d\r\n",
@@ -155,7 +156,9 @@ static void test_start_failure(void) {
       adcStop(&ADCD1);
     }
     else {
-      ADCD1.state = ADC_STOP;
+      /* Re-initializing through the public API instead of patching
+         internal fields.*/
+      adcObjectInit(&ADCD1);
     }
   }
 }
