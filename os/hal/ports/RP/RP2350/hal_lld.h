@@ -156,7 +156,9 @@
 #error "RP_PLL_SYS_POSTDIV1 must be >= RP_PLL_SYS_POSTDIV2"
 #endif
 
-#if (RP_XOSCCLK % RP_PLL_SYS_REFDIV) != 0
+#if (RP_PLL_SYS_REFDIV) < 1
+#error "RP_PLL_SYS_REFDIV must be at least 1"
+#elif (RP_XOSCCLK % RP_PLL_SYS_REFDIV) != 0
 #error "RP_XOSCCLK is not divisible by RP_PLL_SYS_REFDIV"
 #endif
 
@@ -201,7 +203,9 @@
 #error "RP_PLL_USB_POSTDIV1 must be >= RP_PLL_USB_POSTDIV2"
 #endif
 
-#if (RP_XOSCCLK % RP_PLL_USB_REFDIV) != 0
+#if (RP_PLL_USB_REFDIV) < 1
+#error "RP_PLL_USB_REFDIV must be at least 1"
+#elif (RP_XOSCCLK % RP_PLL_USB_REFDIV) != 0
 #error "RP_XOSCCLK is not divisible by RP_PLL_USB_REFDIV"
 #endif
 
