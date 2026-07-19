@@ -85,6 +85,7 @@ static void rp_tick_start(uint32_t index, uint32_t cycles) {
  * @note    See RP2350 Datasheet 8.1.3.1 Clock Instances (Table 541)
  */
 void rp_clock_init(void) {
+  uint32_t cycles;
 
   /* Start early tick generator for safety module timeouts. */
   rp_peripheral_unreset(RESETS_ALLREG_TIMER0);
@@ -163,7 +164,7 @@ void rp_clock_init(void) {
 
   /* Calculate cycles for 1us tick based on clk_ref frequency, RP_XOSCCLK
      is checked at compile time to be an integer number of MHz. */
-  uint32_t cycles = RP_XOSCCLK / 1000000U;
+  cycles = RP_XOSCCLK / 1000000U;
 
   /* Start tick generators */
   for (uint32_t i = 0U; i < 6U; i++) {
