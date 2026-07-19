@@ -202,11 +202,13 @@ static void usb_e15_defer_if_frame_end(const USBEndpointConfig *epcp) {
   if ((epcp->ep_mode & USB_EP_MODE_TYPE) != USB_EP_MODE_TYPE_BULK) {
     return;
   }
-  while ((TIMER0->TIMERAWL - usb_e15_last_sof_time) >= 800U) {
-    if ((TIMER0->TIMERAWL - usb_e15_last_sof_time) >= 2000U) {
-      /* SOFs are not arriving, there is no frame timing to respect.*/
-      break;
-    }
+  /* The position inside the nominal 1 ms frame cadence is derived by
+     modulo from the last recorded SOF: this path often runs inside the
+     USB interrupt handler where the SOF handler cannot refresh the
+     timestamp, and a timestamp stale by whole frames still yields the
+     correct position. The wait is bounded to the ~200 us frame tail by
+     construction, also when SOFs have stopped entirely.*/
+  while (((TIMER0->TIMERAWL - usb_e15_last_sof_time) % 1000U) >= 800U) {
   }
 }
 #endif /* RP_USB_E15_WORKAROUND == TRUE */
@@ -441,14 +443,16 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
   if (ints & USB_INTS_BUS_RESET) {
     USB->CLR.SIESTATUS = USB_SIE_STATUS_BUS_RESET;
 
-    /* The other causes captured in this snapshot predate the reset and
-       their status flags are sticky: discarding them so that only events
-       arriving on the fresh bus re-enter the handler. Cleared before the
-       reset processing: interrupt service may have been delayed past the
-       end of the reset condition, and a genuine first SETUP arriving
-       during the (potentially long) reset callback must survive. */
-    USB->CLR.SIESTATUS = USB_SIE_STATUS_SETUP_REC |
-                         USB_SIE_STATUS_SUSPENDED |
+    /* Suspend/resume causes captured in this snapshot predate the reset
+       and are discarded. SETUP_REC is deliberately preserved: when
+       interrupt service was delayed past the end of the reset condition
+       the same snapshot can already hold the first genuine SETUP of the
+       fresh bus, and discarding it would force a host retry. The sticky
+       flag makes the handler re-enter after the reset processing and
+       serve that SETUP against clean state; a stale pre-reset SETUP
+       handled the same way is harmless because a new SETUP always
+       supersedes EP0 state. */
+    USB->CLR.SIESTATUS = USB_SIE_STATUS_SUSPENDED |
                          USB_SIE_STATUS_RESUME;
 
     _usb_reset(usbp);
