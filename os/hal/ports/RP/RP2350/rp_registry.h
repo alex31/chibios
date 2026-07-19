@@ -66,6 +66,7 @@
 #define RP_HAS_PIO1                         TRUE
 #define RP_HAS_PIO2                         TRUE
 #define RP_PIO_NUM_BLOCKS                   3
+#define RP_PIO_HAS_GPIOBASE                 TRUE
 
 /* TIMER attributes.*/
 #define RP_HAS_TIMER0                       TRUE
