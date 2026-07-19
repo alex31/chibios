@@ -129,6 +129,15 @@
 #endif
 
 /*
+ * The watchdog tick generator divides the crystal down to the 1 MHz
+ * time base advertised to the OS and the timer; a non-integer-MHz
+ * crystal would silently produce a wrong tick frequency.
+ */
+#if (RP_XOSCCLK % 1000000) != 0
+#error "RP_XOSCCLK must be an integer number of MHz for the 1 MHz tick generator"
+#endif
+
+/*
  * PLL_SYS configuration checks.
  */
 #if (RP_PLL_SYS_REFDIV < 1) || (RP_PLL_SYS_REFDIV > 63)
@@ -150,6 +159,27 @@
 
 #if RP_PLL_SYS_POSTDIV1 < RP_PLL_SYS_POSTDIV2
 #error "RP_PLL_SYS_POSTDIV1 must be >= RP_PLL_SYS_POSTDIV2"
+#endif
+
+#if (RP_XOSCCLK % RP_PLL_SYS_REFDIV) != 0
+#error "RP_XOSCCLK is not divisible by RP_PLL_SYS_REFDIV"
+#endif
+
+#if (RP_XOSCCLK / RP_PLL_SYS_REFDIV) < 5000000
+#error "PLL_SYS reference frequency below 5 MHz minimum"
+#endif
+
+#if (RP_PLL_SYS_VCO_FREQ % (RP_XOSCCLK / RP_PLL_SYS_REFDIV)) != 0
+#error "RP_PLL_SYS_VCO_FREQ is not an integer multiple of the PLL_SYS reference frequency"
+#endif
+
+#if ((RP_PLL_SYS_VCO_FREQ / (RP_XOSCCLK / RP_PLL_SYS_REFDIV)) < 16) ||      \
+    ((RP_PLL_SYS_VCO_FREQ / (RP_XOSCCLK / RP_PLL_SYS_REFDIV)) > 320)
+#error "PLL_SYS FBDIV out of valid range (16-320)"
+#endif
+
+#if (RP_PLL_SYS_VCO_FREQ % (RP_PLL_SYS_POSTDIV1 * RP_PLL_SYS_POSTDIV2)) != 0
+#error "RP_PLL_SYS_VCO_FREQ is not divisible by RP_PLL_SYS_POSTDIV1 * RP_PLL_SYS_POSTDIV2"
 #endif
 
 /*
@@ -176,8 +206,37 @@
 #error "RP_PLL_USB_POSTDIV1 must be >= RP_PLL_USB_POSTDIV2"
 #endif
 
+#if (RP_XOSCCLK % RP_PLL_USB_REFDIV) != 0
+#error "RP_XOSCCLK is not divisible by RP_PLL_USB_REFDIV"
+#endif
+
+#if (RP_XOSCCLK / RP_PLL_USB_REFDIV) < 5000000
+#error "PLL_USB reference frequency below 5 MHz minimum"
+#endif
+
+#if (RP_PLL_USB_VCO_FREQ % (RP_XOSCCLK / RP_PLL_USB_REFDIV)) != 0
+#error "RP_PLL_USB_VCO_FREQ is not an integer multiple of the PLL_USB reference frequency"
+#endif
+
+#if ((RP_PLL_USB_VCO_FREQ / (RP_XOSCCLK / RP_PLL_USB_REFDIV)) < 16) ||      \
+    ((RP_PLL_USB_VCO_FREQ / (RP_XOSCCLK / RP_PLL_USB_REFDIV)) > 320)
+#error "PLL_USB FBDIV out of valid range (16-320)"
+#endif
+
+#if (RP_PLL_USB_VCO_FREQ % (RP_PLL_USB_POSTDIV1 * RP_PLL_USB_POSTDIV2)) != 0
+#error "RP_PLL_USB_VCO_FREQ is not divisible by RP_PLL_USB_POSTDIV1 * RP_PLL_USB_POSTDIV2"
+#endif
+
 #if RP_PLL_USB_CLK != 48000000
 #error "RP_PLL_USB_CLK must be 48 MHz for USB to work"
+#endif
+
+/*
+ * RP2040-E16 erratum check: reliable USB operation requires
+ * clk_sys >= 1.1 * clk_usb.
+ */
+#if ((RP_CLK_SYS_FREQ) * 10U) < ((RP_CLK_USB_FREQ) * 11U)
+#error "RP2040-E16: clk_sys must be at least 1.1 * clk_usb for reliable USB operation"
 #endif
 
 /**

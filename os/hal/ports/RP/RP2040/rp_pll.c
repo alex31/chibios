@@ -76,7 +76,11 @@ void rp_pll_init(PLL_TypeDef *pll, uint32_t refdiv, uint32_t vco_freq,
   osalDbgAssert(vco_freq >= RP_PLL_VCO_MIN_FREQ &&
                 vco_freq <= RP_PLL_VCO_MAX_FREQ,
                 "VCO frequency out of range");
+  osalDbgAssert((RP_XOSCCLK % refdiv) == 0U, "XOSC not divisible by REFDIV");
+  osalDbgAssert(ref_freq >= 5000000U, "reference frequency below 5 MHz");
   osalDbgAssert(fbdiv >= 16U && fbdiv <= 320U, "FBDIV out of range");
+  osalDbgAssert((ref_freq * fbdiv) == vco_freq,
+                "VCO not an integer multiple of reference");
   osalDbgAssert(postdiv1 >= 1U && postdiv1 <= 7U, "POSTDIV1 out of range");
   osalDbgAssert(postdiv2 >= 1U && postdiv2 <= 7U, "POSTDIV2 out of range");
   osalDbgAssert(ref_freq <= (vco_freq / 16U), "Reference frequency too high");
