@@ -31,16 +31,16 @@ extern "C" {
 #endif
   void rp_efl_lld_init(void);
   void rp_efl_lld_start(EFlashDriver *eflp);
-  void rp_efl_lld_program_page_full(EFlashDriver *eflp,
-                                    uint32_t offset,
-                                    const uint8_t *data,
-                                    size_t len);
-  void rp_efl_lld_erase_full(EFlashDriver *eflp,
-                             uint8_t cmd,
-                             uint32_t offset);
-  void rp_efl_lld_read_uid_full(EFlashDriver *eflp,
-                                uint8_t *rx,
-                                size_t count);
+  flash_error_t rp_efl_lld_program_page_full(EFlashDriver *eflp,
+                                             uint32_t offset,
+                                             const uint8_t *data,
+                                             size_t len);
+  flash_error_t rp_efl_lld_erase_full(EFlashDriver *eflp,
+                                      uint8_t cmd,
+                                      uint32_t offset);
+  flash_error_t rp_efl_lld_read_uid_full(EFlashDriver *eflp,
+                                         uint8_t *rx,
+                                         size_t count);
 #ifdef __cplusplus
 }
 #endif

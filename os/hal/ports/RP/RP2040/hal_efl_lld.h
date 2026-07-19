@@ -125,6 +125,12 @@
 #define RP_FLASH_SIZE                       (2U * 1024U * 1024U)
 #endif
 
+/* The driver issues 24-bit (3-byte) JEDEC addresses; larger devices
+   would silently wrap around and corrupt low flash. */
+#if RP_FLASH_SIZE > (16U * 1024U * 1024U)
+#error "RP_FLASH_SIZE exceeds 24-bit flash addressing"
+#endif
+
 /**
  * @brief   XIP safety strategy used while flash operations run.
  * @details One of @p RP_EFL_XIP_SAFETY_NONE (application-provided hooks)
@@ -150,6 +156,32 @@
  */
 #if !defined(RP_FLASH_WAIT_TIME_MS) || defined(__DOXYGEN__)
 #define RP_FLASH_WAIT_TIME_MS               1U
+#endif
+
+/**
+ * @brief   Timeout for SSI FIFO/BUSY waits in microseconds.
+ * @details Bounds the individual controller-level waits (FIFO drains,
+ *          SR BUSY polls, QSPI pad reset completion) performed while
+ *          XIP is disabled.
+ */
+#if !defined(RP_FLASH_SSI_TIMEOUT_US) || defined(__DOXYGEN__)
+#define RP_FLASH_SSI_TIMEOUT_US             1000U
+#endif
+
+/**
+ * @brief   Timeout for a page program operation in microseconds.
+ */
+#if !defined(RP_FLASH_PROGRAM_TIMEOUT_US) || defined(__DOXYGEN__)
+#define RP_FLASH_PROGRAM_TIMEOUT_US         20000U
+#endif
+
+/**
+ * @brief   Timeout for an erase operation in microseconds.
+ * @details Sized for the worst-case 64KB block erase time of common
+ *          QSPI flash devices.
+ */
+#if !defined(RP_FLASH_ERASE_TIMEOUT_US) || defined(__DOXYGEN__)
+#define RP_FLASH_ERASE_TIMEOUT_US           4000000U
 #endif
 
 /** @} */

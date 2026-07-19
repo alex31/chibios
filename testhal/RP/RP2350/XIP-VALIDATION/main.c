@@ -65,20 +65,25 @@ typedef struct {
   uint32_t qmi_m1_rcmd;
   uint32_t qmi_m1_wfmt;
   uint32_t qmi_m1_wcmd;
+  uint32_t pads_qspi_sd[4];
 } xip_snapshot_t;
 
 static void xip_snapshot_capture(xip_snapshot_t *s) {
 
-  s->xip_ctrl       = XIP_CTRL->CTRL;
-  s->qmi_direct_csr = QMI->DIRECT_CSR;
-  s->qmi_m0_timing  = QMI->M0_TIMING;
-  s->qmi_m0_rfmt    = QMI->M0_RFMT;
-  s->qmi_m0_rcmd    = QMI->M0_RCMD;
-  s->qmi_m1_timing  = QMI->M1_TIMING;
-  s->qmi_m1_rfmt    = QMI->M1_RFMT;
-  s->qmi_m1_rcmd    = QMI->M1_RCMD;
-  s->qmi_m1_wfmt    = QMI->M1_WFMT;
-  s->qmi_m1_wcmd    = QMI->M1_WCMD;
+  s->xip_ctrl        = XIP_CTRL->CTRL;
+  s->qmi_direct_csr  = QMI->DIRECT_CSR;
+  s->qmi_m0_timing   = QMI->M0_TIMING;
+  s->qmi_m0_rfmt     = QMI->M0_RFMT;
+  s->qmi_m0_rcmd     = QMI->M0_RCMD;
+  s->qmi_m1_timing   = QMI->M1_TIMING;
+  s->qmi_m1_rfmt     = QMI->M1_RFMT;
+  s->qmi_m1_rcmd     = QMI->M1_RCMD;
+  s->qmi_m1_wfmt     = QMI->M1_WFMT;
+  s->qmi_m1_wcmd     = QMI->M1_WCMD;
+  s->pads_qspi_sd[0] = PADS_QSPI->GPIO_QSPI_SD0;
+  s->pads_qspi_sd[1] = PADS_QSPI->GPIO_QSPI_SD1;
+  s->pads_qspi_sd[2] = PADS_QSPI->GPIO_QSPI_SD2;
+  s->pads_qspi_sd[3] = PADS_QSPI->GPIO_QSPI_SD3;
 }
 
 static bool xip_snapshot_compare(const xip_snapshot_t *a,
@@ -99,6 +104,10 @@ static void xip_snapshot_dump(const xip_snapshot_t *s) {
   chprintf(chp, "    M1_RCMD     = 0x%08X\r\n", s->qmi_m1_rcmd);
   chprintf(chp, "    M1_WFMT     = 0x%08X\r\n", s->qmi_m1_wfmt);
   chprintf(chp, "    M1_WCMD     = 0x%08X\r\n", s->qmi_m1_wcmd);
+  chprintf(chp, "    PADS SD0    = 0x%08X\r\n", s->pads_qspi_sd[0]);
+  chprintf(chp, "    PADS SD1    = 0x%08X\r\n", s->pads_qspi_sd[1]);
+  chprintf(chp, "    PADS SD2    = 0x%08X\r\n", s->pads_qspi_sd[2]);
+  chprintf(chp, "    PADS SD3    = 0x%08X\r\n", s->pads_qspi_sd[3]);
 }
 
 /*===========================================================================*/
@@ -162,12 +171,20 @@ static flash_error_t program_page(uint32_t block, unsigned sector_idx,
 static bool test_unique_id(void) {
   uint8_t uid0[RP_FLASH_UNIQUE_ID_SIZE];
   uint8_t uid1[RP_FLASH_UNIQUE_ID_SIZE];
+  flash_error_t err0, err1;
   bool all_zero = true;
   bool all_ff = true;
   unsigned i;
 
-  efl_lld_read_unique_id(&EFLD1, uid0);
-  efl_lld_read_unique_id(&EFLD1, uid1);
+  err0 = efl_lld_read_unique_id(&EFLD1, uid0);
+  err1 = efl_lld_read_unique_id(&EFLD1, uid1);
+
+  /* On a failed read the buffers are not valid, skip the consistency
+     and blank comparisons. */
+  if ((err0 != FLASH_NO_ERROR) || (err1 != FLASH_NO_ERROR)) {
+    chprintf(chp, "    UID read failed (%d, %d)\r\n", (int)err0, (int)err1);
+    return false;
+  }
 
   chprintf(chp, "    UID: ");
   for (i = 0U; i < RP_FLASH_UNIQUE_ID_SIZE; i++) {
@@ -442,6 +459,118 @@ static bool test_full_block_write_verify(uint32_t block) {
   return true;
 }
 
+/*
+ * Test: ATRANS-aware program offset translation.
+ *
+ * Picks the first free CS0 4 MiB ATRANS window (ATRANS0-3; ATRANS4-7
+ * translate the CS1 half of the XIP space and cannot alias the CS0
+ * flash) at or above the flash top and derives the physical address
+ * of the sacrificial last sector by
+ * translating its logical offset through the current mapping of the
+ * window containing it (no identity-mapping assumption).  The free
+ * window is aliased directly onto that physical sector (BASE is in
+ * 4 KiB units, SIZE covers one sector), a pattern is programmed
+ * through alias offset 0 and verified through the normal logical
+ * last-sector offset.  Also verifies that an offset outside the
+ * mapped window size (SIZE=0) is rejected.  Only touches the
+ * sacrificial last sector; the alias window is saved and restored
+ * and cleanup goes through the standard mapping.
+ */
+static bool test_atrans_translation(void) {
+  flash_offset_t last_off = TEST_BLOCK * RP_FLASH_BLOCK_64K_SIZE +
+                            (SECTORS_PER_BLK - 1U) * RP_FLASH_SECTOR_SIZE;
+  uint32_t idx = (RP_FLASH_SIZE + 0x3FFFFFU) >> 22;
+  uint32_t win = ((uint32_t)last_off >> 22) & 7U;
+  uint32_t at, phys_last, alias_off, atrans_save;
+  flash_error_t err;
+  syssts_t sts;
+  unsigned i;
+  bool ok = true;
+
+  /* Only ATRANS0-3 issue to CS0; a flash filling the whole 16 MiB CS0
+     half leaves no free alias window on its own chip select and
+     ATRANS4-7 would alias CS1 (PSRAM) instead. */
+  if (idx > 3U) {
+    chprintf(chp, "    No free CS0 ATRANS window above flash top, skipped\r\n");
+    return true;
+  }
+
+  /* Physical address of the last sector, translated through the
+     current mapping of the window containing it. */
+  at          = QMI->ATRANS[win];
+  phys_last   = (((at & QMI_ATRANS_BASE_Msk) >> QMI_ATRANS_BASE_Pos) << 12) +
+                ((uint32_t)last_off & 0x3FFFFFU);
+  alias_off   = idx * 0x400000U;
+  atrans_save = QMI->ATRANS[idx];
+
+  chprintf(chp, "    Alias window %u -> phys 0x%08X\r\n", idx, phys_last);
+
+  /* Start from an erased last sector (normal logical offset). */
+  if (erase_sector(TEST_BLOCK, SECTORS_PER_BLK - 1U) != FLASH_NO_ERROR)
+    return false;
+
+  /* Alias window offset 0 exactly onto the physical last sector,
+     mapping a single sector. */
+  QMI->ATRANS[idx] = ((phys_last >> 12) << QMI_ATRANS_BASE_Pos) |
+                     ((RP_FLASH_SECTOR_SIZE >> 12) << QMI_ATRANS_SIZE_Pos);
+
+  /* Program a pattern through the aliased offset.  The engine-level
+     API bounds offsets to the flash descriptor, so the per-chip entry
+     point is called directly under the same syslock bracket the
+     engine uses. */
+  memset(page_buf, 0xC3, RP_FLASH_PAGE_SIZE);
+  sts = osalSysGetStatusAndLockX();
+  err = rp_efl_lld_program_page_full(&EFLD1, alias_off, page_buf,
+                                     RP_FLASH_PAGE_SIZE);
+  osalSysRestoreStatusX(sts);
+  if (err != FLASH_NO_ERROR) {
+    chprintf(chp, "    Aliased program failed (%d)\r\n", (int)err);
+    ok = false;
+  }
+
+  /* Verify through the normal logical last-sector offset that the
+     physical last sector changed. */
+  if (ok &&
+      (flashRead(bfp, last_off, RP_FLASH_PAGE_SIZE,
+                 page_buf) != FLASH_NO_ERROR)) {
+    ok = false;
+  }
+  if (ok) {
+    for (i = 0U; i < RP_FLASH_PAGE_SIZE; i++) {
+      if (page_buf[i] != 0xC3U) {
+        chprintf(chp, "    Byte %u: expected 0xC3 got 0x%02X\r\n",
+                 i, page_buf[i]);
+        ok = false;
+        break;
+      }
+    }
+  }
+
+  /* An offset beyond the mapped window size (SIZE=0) must be rejected
+     while XIP is still enabled. */
+  if (ok) {
+    QMI->ATRANS[idx] = ((phys_last >> 12) << QMI_ATRANS_BASE_Pos) |
+                       (0x0U << QMI_ATRANS_SIZE_Pos);
+    sts = osalSysGetStatusAndLockX();
+    err = rp_efl_lld_program_page_full(&EFLD1, alias_off, page_buf,
+                                       RP_FLASH_PAGE_SIZE);
+    osalSysRestoreStatusX(sts);
+    if (err != FLASH_ERROR_HW_FAILURE) {
+      chprintf(chp, "    Unmapped offset not rejected (%d)\r\n", (int)err);
+      ok = false;
+    }
+  }
+
+  /* Restore the saved ATRANS window. */
+  QMI->ATRANS[idx] = atrans_save;
+
+  /* Leave the sector erased, cleaned up through the standard mapping. */
+  if (erase_sector(TEST_BLOCK, SECTORS_PER_BLK - 1U) != FLASH_NO_ERROR)
+    ok = false;
+
+  return ok;
+}
+
 /*===========================================================================*/
 /* Blinker thread.                                                           */
 /*===========================================================================*/
@@ -556,6 +685,11 @@ int main(void) {
   chprintf(chp, "\r\n  Full 64KB write + XIP verify...\r\n");
   ok = test_full_block_write_verify(TEST_BLOCK);
   report("Full 64KB block write and XIP readback", ok);
+
+  /* Test 14: ATRANS translation. */
+  chprintf(chp, "\r\n  ATRANS translation...\r\n");
+  ok = test_atrans_translation();
+  report("atrans translation", ok);
 
   /* Cleanup. */
   chprintf(chp, "\r\n  Cleanup block erase...\r\n");
