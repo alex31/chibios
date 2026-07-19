@@ -213,11 +213,19 @@ __STATIC_INLINE void st_lld_stop_alarm(void) {
  * @notapi
  */
 __STATIC_INLINE void st_lld_set_alarm(systime_t abstime) {
+  uint32_t target = (uint32_t)abstime;
 
-  TIMER0->ALARM[0]       = (uint32_t)abstime;
-  /* Re-arm if abstime already past to avoid ~71 min wait for counter wrap. */
-  if ((int32_t)(abstime - TIMER0->TIMERAWL) <= 0) {
-    TIMER0->ALARM[0]     = TIMER0->TIMERAWL + 2U;
+  TIMER0->ALARM[0] = target;
+  /* Verify-and-retry: the counter can pass the programmed value between
+     the check and the store (an interrupt or bus stall in the window
+     recreates the ~71 min wrap wait), so the deadline is re-armed until
+     either it is provably in the future or the compare has genuinely
+     fired (ARMED bit cleared by hardware) - a fired alarm must not be
+     re-armed into a duplicate event. */
+  while (((TIMER0->ARMED & 1U) != 0U) &&
+         ((int32_t)(target - TIMER0->TIMERAWL) <= 0)) {
+    target = TIMER0->TIMERAWL + 2U;
+    TIMER0->ALARM[0] = target;
   }
 }
 
@@ -296,11 +304,14 @@ __STATIC_INLINE void st_lld_stop_alarm_n(unsigned alarm) {
  * @notapi
  */
 __STATIC_INLINE void st_lld_set_alarm_n(unsigned alarm, systime_t abstime) {
+  uint32_t target = (uint32_t)abstime;
 
-  TIMER0->ALARM[alarm]   = (uint32_t)abstime;
-  /* Re-arm if abstime already past to avoid ~71 min wait for counter wrap. */
-  if ((int32_t)(abstime - TIMER0->TIMERAWL) <= 0) {
-    TIMER0->ALARM[alarm] = TIMER0->TIMERAWL + 2U;
+  TIMER0->ALARM[alarm] = target;
+  /* Verify-and-retry, see st_lld_set_alarm(). */
+  while (((TIMER0->ARMED & (1U << alarm)) != 0U) &&
+         ((int32_t)(target - TIMER0->TIMERAWL) <= 0)) {
+    target = TIMER0->TIMERAWL + 2U;
+    TIMER0->ALARM[alarm] = target;
   }
 }
 
