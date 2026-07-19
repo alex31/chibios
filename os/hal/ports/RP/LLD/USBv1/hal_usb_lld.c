@@ -183,6 +183,34 @@ static void reset_ep0(USBDriver *usbp) {
   usbp->epc[0]->in_state->next_pid = 1U;
 }
 
+#if (RP_USB_E15_WORKAROUND == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   TIMER0 timestamp of the most recent frame start.
+ */
+static volatile uint32_t usb_e15_last_sof_time;
+
+/**
+ * @brief   Defers a bulk IN publication falling into the frame end.
+ * @details RP2040-E15: making a bulk IN buffer available during roughly
+ *          the last 200 us of a frame can corrupt the transfer on
+ *          affected host topologies. Publication is delayed by busy-wait
+ *          until the next frame starts; if frame timing stops (suspend
+ *          or detach) the wait is abandoned after one frame time.
+ */
+static void usb_e15_defer_if_frame_end(const USBEndpointConfig *epcp) {
+
+  if ((epcp->ep_mode & USB_EP_MODE_TYPE) != USB_EP_MODE_TYPE_BULK) {
+    return;
+  }
+  while ((TIMER0->TIMERAWL - usb_e15_last_sof_time) >= 800U) {
+    if ((TIMER0->TIMERAWL - usb_e15_last_sof_time) >= 2000U) {
+      /* SOFs are not arriving, there is no frame timing to respect.*/
+      break;
+    }
+  }
+}
+#endif /* RP_USB_E15_WORKAROUND == TRUE */
+
 /**
  * @brief   Prepare buffer for receiving data.
  */
@@ -329,6 +357,10 @@ static void usb_prepare_in_ep(USBDriver *usbp, usbep_t ep) {
     EP_CTRL(ep).IN = ep_ctrl;
   }
 
+#if RP_USB_E15_WORKAROUND == TRUE
+  usb_e15_defer_if_frame_end(usbp->epc[ep]);
+#endif
+
   BUF_CTRL(ep).IN = buf_ctrl;
   __DSB();
 }
@@ -465,21 +497,25 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 
   /* SOF handling.*/
   if (ints & USB_INTS_DEV_SOF) {
+#if RP_USB_E15_WORKAROUND == TRUE
+    /* Frame timing reference for the bulk IN publication guard.*/
+    usb_e15_last_sof_time = TIMER0->TIMERAWL;
+#else
     /* SOF interrupt was used to detect resume of the USB bus after issuing a
      * remote wake up of the host, therefore we disable it again. */
     if (usbp->config->sof_cb == NULL) {
       USB->CLR.INTE = USB_INTE_DEV_SOF;
     }
+#endif
     if (usbp->state == USB_SUSPENDED) {
       _usb_wakeup(usbp);
     }
 
     _usb_isr_invoke_sof_cb(usbp);
 
-    /*
-     * Clear SOF flag by reading SOF_RD
-     * This helps avoid the RP2040-E15 Errata and is harmless on the RP2350.
-     */
+    /* Reading SOF_RD clears the DEV_SOF interrupt flag. It does not by
+       itself address RP2040-E15; the actual workaround is the bulk IN
+       publication guard around the frame end. */
     (void)USB->SOFRD;
   }
 
@@ -581,9 +617,14 @@ void usb_lld_start(USBDriver *usbp) {
                   USB_INTE_BUS_RESET |
                   USB_INTE_BUFF_STATUS;
 
+#if RP_USB_E15_WORKAROUND == TRUE
+      /* The frame-end publication guard needs continuous frame timing.*/
+      USB->SET.INTE = USB_INTE_DEV_SOF;
+#else
       if (usbp->config->sof_cb != NULL) {
         USB->SET.INTE = USB_INTE_DEV_SOF;
       }
+#endif
 
 #if RP_USB_USE_ERROR_DATA_SEQ_INTR == TRUE
       USB->SET.INTE = USB_INTE_ERROR_DATA_SEQ;
