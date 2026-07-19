@@ -133,6 +133,16 @@ static void uart_start(UARTDriver *uartp) {
 
   osalDbgAssert((idiv > 0U) && (idiv <= 0xFFFFU), "invalid baud rate");
 
+  /* The carry can push the integer part past the 16-bit register for
+     edge rates; in release builds the peripheral is disabled instead of
+     writing a truncated divider, consistent with the zero-baud guard
+     above.*/
+  if ((idiv < 1U) || (idiv > 0xFFFFU)) {
+    uartp->uart->UARTIMSC = 0U;
+    uartp->uart->UARTCR   = 0U;
+    return;
+  }
+
   uartp->uart->UARTIBRD  = idiv;
   uartp->uart->UARTFBRD  = fdiv;
 

@@ -26,8 +26,9 @@
  *    transmission-complete interrupt, TX-end is only observable through
  *    UARTFR.BUSY.  The driver wakes TX-end waiters through a polling
  *    virtual timer plus an opportunistic check in the interrupt handler.
- *    The test queues a 256-byte pattern and measures the elapsed time of
- *    sioSynchronizeTXEnd() with the free-running 1 MHz TIMER0.  At 38400
+ *    The test writes a 256-byte pattern and measures, with the
+ *    free-running 1 MHz TIMER0, the time from the first write call to
+ *    sioSynchronizeTXEnd() returning - queueing time included.  At 38400
  *    bauds 256 frames of 10 bits take about 66.7 ms; the test passes when
  *    the measured time is within [60 ms, 80 ms], proving that the call
  *    returned when the wire actually drained, neither early nor late.
