@@ -80,15 +80,19 @@ OSAL_IRQ_HANDLER(RP_RTC_IRQ_HANDLER) {
   /* Disable the alarm to clear the interrupt. */
   rtc_disable_alarm(&RTCD1);
 
-  /* If it is a repeatable alarm, re-enable the alarm. */
-  if ((RTCD1.mask & RTC_ALARM_NON_REPEATING) != RTC_ALARM_NON_REPEATING) {
+  /* A stale pending interrupt taken after the alarm has been disabled
+     must neither re-enable matching nor invoke the callback. */
+  if (RTCD1.mask != RTC_ALARM_DISABLE_ALL_MATCHING) {
+    /* If it is a repeatable alarm, re-enable the alarm. */
+    if ((RTCD1.mask & RTC_ALARM_NON_REPEATING) != RTC_ALARM_NON_REPEATING) {
       rtc_enable_alarm(&RTCD1);
-  }
+    }
 #if RTC_SUPPORTS_CALLBACKS == TRUE
-  if (RTCD1.callback != NULL) {
-    RTCD1.callback(&RTCD1, RTC_EVENT_ALARM);
-  }
+    if (RTCD1.callback != NULL) {
+      RTCD1.callback(&RTCD1, RTC_EVENT_ALARM);
+    }
 #endif
+  }
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -225,11 +229,13 @@ void rtc_lld_get_time(RTCDriver *rtcp, RTCDateTime *timespec) {
 /**
  * @brief   Set alarm time.
  * @note    The alarm time can be partially specified by leaving fields as zero.
+ * @note    A @p NULL alarm specification, or a specification with no
+ *          matching fields enabled, disables the alarm.
  * @note    The function can be called from any context.
  *
  * @param[in] rtcp      pointer to RTC driver structure.
  * @param[in] alarm     alarm identifier. Can be 1.
- * @param[in] alarmspec pointer to a @p RTCAlarm structure.
+ * @param[in] alarmspec pointer to a @p RTCAlarm structure or @p NULL.
  *
  * @notapi
  */
@@ -239,14 +245,28 @@ void rtc_lld_set_alarm(RTCDriver *rtcp,
 
   (void)alarm;
   uint32_t sec, min, hour, day, month, year, dotw, setup0, setup1;
-  const RTCDateTime *timespec = &alarmspec->alarm;
-  const rtcdtmask_t dtmask = alarmspec->mask;
 
-  if (dtmask == RTC_ALARM_DISABLE_ALL_MATCHING) {
-    /* Disable RTC when no fields are enabled. */
+  if ((alarmspec == NULL) ||
+      (alarmspec->mask == RTC_ALARM_DISABLE_ALL_MATCHING)) {
+    /* Entering a reentrant critical zone.*/
+    syssts_t sts = osalSysGetStatusAndLockX();
+
+    /* Disable matching and the alarm interrupt; the level interrupt
+       deasserts when matching deactivates. */
     rtc_disable_alarm(rtcp);
+    rtcp->rtc->INTE &= ~RTC_INTE_RTC;
+
+    /* Update the saved software state so the alarm reads back as
+       disabled. */
+    rtcp->mask = RTC_ALARM_DISABLE_ALL_MATCHING;
+
+    /* Leaving a reentrant critical zone.*/
+    osalSysRestoreStatusX(sts);
     return;
   }
+
+  const RTCDateTime *timespec = &alarmspec->alarm;
+  const rtcdtmask_t dtmask = alarmspec->mask;
 
   /* Setup date/time fields. */
   sec = (uint32_t)timespec->millisecond / 1000;
