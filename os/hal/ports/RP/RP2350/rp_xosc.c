@@ -70,7 +70,7 @@ void rp_xosc_init(void) {
   XOSC->SET.CTRL = XOSC_CTRL_ENABLE_ENABLE;
 
   /* Wait for XOSC to be stable with timeout protection. */
-  if (halRegWaitAnySet32X((volatile uint32_t *)&XOSC->STATUS, XOSC_STATUS_STABLE,
+  if (halRegWaitAnySet32X(&XOSC->STATUS, XOSC_STATUS_STABLE,
                           RP_XOSC_STABLE_TIMEOUT_US, NULL)) {
     halSftFail("XOSC stable timeout");
   }

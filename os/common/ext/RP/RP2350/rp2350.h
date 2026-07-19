@@ -494,8 +494,8 @@ typedef struct {
   __IO uint32_t         SPINLOCK[32];
   __IO uint32_t         DOORBELL_OUT_SET;
   __IO uint32_t         DOORBELL_OUT_CLR;
-  __I  uint32_t         DOORBELL_IN_SET;
-  __I  uint32_t         DOORBELL_IN_CLR;
+  __IO uint32_t         DOORBELL_IN_SET;
+  __IO uint32_t         DOORBELL_IN_CLR;
   __IO uint32_t         PERI_NONSEC;
   __I  uint32_t         resvd194[3];
   __IO uint32_t         RISCV_SOFTIRQ;
@@ -1270,7 +1270,7 @@ typedef struct {
     __IO uint32_t       PINCTRL;
   } SM[4];
   __IO uint32_t         RXF_PUTGET[4][4];
-  __I  uint32_t         GPIOBASE;
+  __IO uint32_t         GPIOBASE;
   __IO uint32_t         INTR;
   __IO uint32_t         IRQ0_INTE;
   __IO uint32_t         IRQ0_INTF;
@@ -1302,7 +1302,7 @@ typedef struct {
       __IO uint32_t     PINCTRL;
     } SM[4];
     __IO uint32_t       RXF_PUTGET[4][4];
-    __I  uint32_t       GPIOBASE;
+    __IO uint32_t       GPIOBASE;
     __IO uint32_t       INTR;
     __IO uint32_t       IRQ0_INTE;
     __IO uint32_t       IRQ0_INTF;
@@ -1335,7 +1335,7 @@ typedef struct {
       __IO uint32_t     PINCTRL;
     } SM[4];
     __IO uint32_t       RXF_PUTGET[4][4];
-    __I  uint32_t       GPIOBASE;
+    __IO uint32_t       GPIOBASE;
     __IO uint32_t       INTR;
     __IO uint32_t       IRQ0_INTE;
     __IO uint32_t       IRQ0_INTF;
@@ -1368,7 +1368,7 @@ typedef struct {
       __IO uint32_t     PINCTRL;
     } SM[4];
     __IO uint32_t       RXF_PUTGET[4][4];
-    __I  uint32_t       GPIOBASE;
+    __IO uint32_t       GPIOBASE;
     __IO uint32_t       INTR;
     __IO uint32_t       IRQ0_INTE;
     __IO uint32_t       IRQ0_INTF;
@@ -1382,38 +1382,34 @@ typedef struct {
 
 typedef struct {
   __IO uint32_t         CTRL;
-  __I  uint32_t         STATUS;
+  __IO uint32_t         STATUS;
   __IO uint32_t         DORMANT;
   __IO uint32_t         STARTUP;
-  __I  uint32_t         resvd10[3];
   __IO uint32_t         COUNT;
-  __I  uint32_t         resvd20[1016];
+  __I  uint32_t         resvd14[1019];
   struct {
     __IO uint32_t       CTRL;
-    __I  uint32_t       STATUS;
+    __IO uint32_t       STATUS;
     __IO uint32_t       DORMANT;
     __IO uint32_t       STARTUP;
-    __I  uint32_t       resvd10[3];
     __IO uint32_t       COUNT;
-    __I  uint32_t       resvd20[1016];
+    __I  uint32_t       resvd14[1019];
   } XOR;
   struct {
     __IO uint32_t       CTRL;
-    __I  uint32_t       STATUS;
+    __IO uint32_t       STATUS;
     __IO uint32_t       DORMANT;
     __IO uint32_t       STARTUP;
-    __I  uint32_t       resvd10[3];
     __IO uint32_t       COUNT;
-    __I  uint32_t       resvd20[1016];
+    __I  uint32_t       resvd14[1019];
   } SET;
   struct {
     __IO uint32_t       CTRL;
-    __I  uint32_t       STATUS;
+    __IO uint32_t       STATUS;
     __IO uint32_t       DORMANT;
     __IO uint32_t       STARTUP;
-    __I  uint32_t       resvd10[3];
     __IO uint32_t       COUNT;
-    __I  uint32_t       resvd20[1016];
+    __I  uint32_t       resvd14[1019];
   } CLR;
 } XOSC_TypeDef;
 
@@ -1700,6 +1696,11 @@ typedef struct {
  * @note    See RP2350 Datasheet 12.6.10 DMA List of Registers
  * @{
  */
+#define DMA_TRANS_COUNT_MODE_Pos          28U
+#define DMA_TRANS_COUNT_MODE_Msk          (0xFU << DMA_TRANS_COUNT_MODE_Pos)
+#define DMA_TRANS_COUNT_MODE_NORMAL       (0x0U << DMA_TRANS_COUNT_MODE_Pos)
+#define DMA_TRANS_COUNT_MODE_TRIGGER_SELF (0x1U << DMA_TRANS_COUNT_MODE_Pos)
+#define DMA_TRANS_COUNT_MODE_ENDLESS      (0xFU << DMA_TRANS_COUNT_MODE_Pos)
 #define DMA_CTRL_TRIG_AHB_ERROR           (1U << 31)
 #define DMA_CTRL_TRIG_READ_ERROR          (1U << 30)
 #define DMA_CTRL_TRIG_WRITE_ERROR         (1U << 29)
@@ -2414,6 +2415,17 @@ typedef struct {
 #define QMI_DIRECT_TX_IWIDTH_S            0U
 #define QMI_DIRECT_TX_IWIDTH_D            1U
 #define QMI_DIRECT_TX_IWIDTH_Q            2U
+/** @} */
+
+/**
+ * @name    QMI ATRANSx bits definitions
+ * @note    BASE and SIZE are expressed in 4 KiB units.
+ * @{
+ */
+#define QMI_ATRANS_BASE_Pos               0U
+#define QMI_ATRANS_BASE_Msk               (0xFFFU << QMI_ATRANS_BASE_Pos)
+#define QMI_ATRANS_SIZE_Pos               16U
+#define QMI_ATRANS_SIZE_Msk               (0x7FFU << QMI_ATRANS_SIZE_Pos)
 /** @} */
 
 
