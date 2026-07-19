@@ -31,9 +31,8 @@
  * WATCHDOG->SCRATCH[7] (preserved across watchdog resets) carries a
  * phase marker.
  *
- * Note: CH_DBG_ENABLE_ASSERTS is disabled in this project because the
- * clamp test deliberately requests an out-of-range interval, which
- * would trip the LLD's osalDbgAssert() in debug builds.
+ * Assertions are enabled: the LLD clamps oversized intervals uniformly
+ * in all build types, the clamp leg must pass with checking active.
  *
  * Single-core only.  Output on SIOD0 (GPIO0/GPIO1) at default 38400.
  */

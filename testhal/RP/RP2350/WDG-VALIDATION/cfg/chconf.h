@@ -617,7 +617,7 @@
 /* Asserts stay disabled: the clamp test deliberately requests an
    out-of-range watchdog interval to validate the release-mode clamp
    path in the WDG LLD, which would otherwise trip osalDbgAssert().*/
-#define CH_DBG_ENABLE_ASSERTS               FALSE
+#define CH_DBG_ENABLE_ASSERTS               TRUE
 #endif
 
 /**
