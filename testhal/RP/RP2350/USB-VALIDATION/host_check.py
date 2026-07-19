@@ -4,7 +4,9 @@
 Usage:
     python3 host_check.py /dev/ttyACM0
 
-Requires python3 and pyserial only.
+Requires python3 and pyserial, on a Linux host: the script imports fcntl
+and drives USBDEVFS_RESET through the tty's usbfs node, neither of which
+exists on Windows or macOS.
 
 Legs:
   1. Echo correctness: deterministic patterns of several sizes, written

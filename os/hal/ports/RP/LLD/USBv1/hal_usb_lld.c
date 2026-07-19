@@ -409,6 +409,16 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
   if (ints & USB_INTS_BUS_RESET) {
     USB->CLR.SIESTATUS = USB_SIE_STATUS_BUS_RESET;
 
+    /* The other causes captured in this snapshot predate the reset and
+       their status flags are sticky: discarding them so that only events
+       arriving on the fresh bus re-enter the handler. Cleared before the
+       reset processing: interrupt service may have been delayed past the
+       end of the reset condition, and a genuine first SETUP arriving
+       during the (potentially long) reset callback must survive. */
+    USB->CLR.SIESTATUS = USB_SIE_STATUS_SETUP_REC |
+                         USB_SIE_STATUS_SUSPENDED |
+                         USB_SIE_STATUS_RESUME;
+
     _usb_reset(usbp);
     return;
   }
@@ -763,8 +773,13 @@ void usb_lld_disable_endpoints(USBDriver *usbp) {
   }
 
 #if defined(RP2350)
-  /* Releasing the abort requests after the buffer controls are clean. */
+  /* Releasing the abort requests after the buffer controls are clean,
+     then acknowledging the done flags: they are sticky write-clear and
+     held asserted while the abort request stands (bootrom teardown uses
+     this order), so clearing them first could leave them set to falsely
+     satisfy the next teardown's wait. */
   USB->ABORT = 0U;
+  USB->CLR.ABORTDONE = 0xFFFFFFFCU;
 #endif
 
   /* Discard pending buffer completions of the torn down endpoints, EP0
