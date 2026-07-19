@@ -181,6 +181,7 @@ void rp_clock_init(void) {
       rp_clock_points[i] = 0U;
     }
     rp_clock_seq = 0U;
+    rp_clock_boot_qmi_div = 0U;
   }
 #endif
 
