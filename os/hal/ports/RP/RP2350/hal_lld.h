@@ -104,6 +104,15 @@
 #endif
 
 /**
+ * @brief   Rated maximum system frequency of the device.
+ * @note    This is the specification limit, independent of the
+ *          compile-time boot configuration which may be lower.
+ */
+#if !defined(RP_CLK_SYS_MAX) || defined(__DOXYGEN__)
+#define RP_CLK_SYS_MAX                      150000000U
+#endif
+
+/**
  * @brief   Upper frequency bound admitted when overclocking is enabled.
  */
 #if !defined(RP_CLK_SYS_OVERCLOCK_MAX) || defined(__DOXYGEN__)
@@ -245,7 +254,7 @@
 #endif
 
 #if (RP_ALLOW_OVERCLOCK == TRUE) &&                                         \
-    ((RP_CLK_SYS_OVERCLOCK_MAX) < (RP_CLK_SYS_FREQ))
+    ((RP_CLK_SYS_OVERCLOCK_MAX) < (RP_CLK_SYS_MAX))
 #error "RP_CLK_SYS_OVERCLOCK_MAX below the rated system frequency"
 #endif
 
@@ -305,8 +314,8 @@ typedef struct {
    * @brief   Effective QMI flash clock divider for the new frequency,
    *          0 or 1..255.
    * @details Zero selects the divider the system booted with (captured
-   *          before the first switch), which is safe at every admitted
-   *          frequency because it is safe at the highest one. A
+   *          before the first switch), accepted only for targets at or
+   *          below the boot frequency where it is known-safe. A
    *          non-zero value must keep the flash SCK within the device
    *          rating at the new clk_sys. The switch first widens the
    *          divider to a value safe at both the old and the new

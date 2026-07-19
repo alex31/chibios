@@ -348,11 +348,6 @@ static bool rp_clock_config_valid(const halclkcfg_t *ccp) {
   if (sys_freq > RP_CLK_SYS_OVERCLOCK_MAX) {
     return false;
   }
-  /* Above the rated frequency the boot flash divider is no longer
-     known-safe, an explicit divider is mandatory. */
-  if ((sys_freq > RP_PLL_SYS_CLK) && (ccp->qmi_clkdiv == 0U)) {
-    return false;
-  }
   /* Regulator range: 1100..1300 mV in 50 mV steps, or untouched. */
   if (ccp->vreg_mv != 0U) {
     if ((ccp->vreg_mv < 1100U) || (ccp->vreg_mv > 1300U) ||
@@ -362,14 +357,22 @@ static bool rp_clock_config_valid(const halclkcfg_t *ccp) {
   }
 #else
   /* Without overclocking support the port admits configurations up to
-     the rated system frequency only, and the regulator is off limits. */
-  if (sys_freq > RP_PLL_SYS_CLK) {
+     the rated maximum, which may exceed a lower compile-time boot
+     frequency; the regulator is off limits. */
+  if (sys_freq > RP_CLK_SYS_MAX) {
     return false;
   }
   if (ccp->vreg_mv != 0U) {
     return false;
   }
 #endif
+
+  /* The boot flash divider is only known-safe up to the boot
+     frequency; any target above it requires an explicit divider,
+     whether overclocked or merely above a low boot configuration. */
+  if ((sys_freq > RP_PLL_SYS_CLK) && (ccp->qmi_clkdiv == 0U)) {
+    return false;
+  }
 
   /* RP2350-E12: reliable USB operation requires clk_sys >= 1.1 *
      clk_usb; clk_usb stays at its fixed frequency across switches. The
@@ -429,7 +432,8 @@ static uint32_t rp_clock_get_vreg_mv(void) {
  *          while the timing register changes.
  * @note    This function MUST be in RAM.
  *
- * @param[in] clkdiv    new CLKDIV value, 1..255
+ * @param[in] clkdiv    new CLKDIV encoding, 0..255 where zero encodes
+ *                      the effective divider 256
  */
 RAMFUNC static void rp_clock_set_qmi_clkdiv(uint32_t clkdiv) {
 
