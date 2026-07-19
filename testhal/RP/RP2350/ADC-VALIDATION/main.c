@@ -144,6 +144,12 @@ static void test_start_failure(void) {
          msg != HAL_RET_SUCCESS);
   report("Driver state remains ADC_STOP on failure",
          ADCD1.state == ADC_STOP);
+
+  /* If the start unexpectedly succeeded (regression), restore ADC_STOP
+     so the recovery test still starts from a known state.*/
+  if (ADCD1.state != ADC_STOP) {
+    adcStop(&ADCD1);
+  }
 }
 
 /*
