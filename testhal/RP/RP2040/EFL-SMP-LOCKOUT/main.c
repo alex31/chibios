@@ -174,8 +174,17 @@ int main(void) {
   chThdCreateStatic(waHeartbeat, sizeof(waHeartbeat),
                     NORMALPRIO - 1, HeartbeatThread, NULL);
 
-  /* Waiting for core 1 to come alive.*/
-  chSemWait(&c1_ready_sem);
+  /* Waiting for core 1 to come alive; a core that never starts must
+     produce a report rather than an eternal hang.*/
+  if (chSemWaitTimeout(&c1_ready_sem, TIME_S2I(5)) != MSG_OK) {
+    report("core 1 became ready", false);
+    chprintf(chp, "\r\nResults: %u pass, %u fail\r\n", pass_count, fail_count);
+    chprintf(chp, "*** FAILURES DETECTED ***\r\n");
+    while (true) {
+      palToggleLine(25U);
+      chThdSleepMilliseconds(100);
+    }
+  }
 
   /*
    * Phase A: core 1 flashes, core 0 executes from flash throughout.
