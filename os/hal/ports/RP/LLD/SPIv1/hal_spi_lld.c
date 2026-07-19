@@ -171,7 +171,10 @@ void spi_lld_start(SPIDriver *spip) {
         /* A fixed-channel allocation failure is a static configuration
            conflict, continuing would dereference NULL later.*/
         osalDbgAssert(false, "no RX DMA channel");
-        osalSysHalt("SPI DMA alloc");
+        /* Formally an API-class function, every in-tree OSAL implements it
+       as an any-state halt (RT/NIL delegate to chSysHalt), which is what
+       this deterministic configuration failure requires.*/
+    osalSysHalt("SPI DMA alloc");
       }
       spip->dmatx = dmaChannelAllocI(RP_SPI_SPI0_TX_DMA_CHANNEL,
                                      RP_IRQ_SPI0_PRIORITY,
@@ -181,7 +184,10 @@ void spi_lld_start(SPIDriver *spip) {
         dmaChannelFreeI(spip->dmarx);
         spip->dmarx = NULL;
         osalDbgAssert(false, "no TX DMA channel");
-        osalSysHalt("SPI DMA alloc");
+        /* Formally an API-class function, every in-tree OSAL implements it
+       as an any-state halt (RT/NIL delegate to chSysHalt), which is what
+       this deterministic configuration failure requires.*/
+    osalSysHalt("SPI DMA alloc");
       }
       dmaChannelEnableInterruptX(spip->dmarx);
       dmaChannelEnableInterruptX(spip->dmatx);
@@ -198,7 +204,10 @@ void spi_lld_start(SPIDriver *spip) {
         /* A fixed-channel allocation failure is a static configuration
            conflict, continuing would dereference NULL later.*/
         osalDbgAssert(false, "no RX DMA channel");
-        osalSysHalt("SPI DMA alloc");
+        /* Formally an API-class function, every in-tree OSAL implements it
+       as an any-state halt (RT/NIL delegate to chSysHalt), which is what
+       this deterministic configuration failure requires.*/
+    osalSysHalt("SPI DMA alloc");
       }
       spip->dmatx = dmaChannelAllocI(RP_SPI_SPI1_TX_DMA_CHANNEL,
                                      RP_IRQ_SPI1_PRIORITY,
@@ -208,7 +217,10 @@ void spi_lld_start(SPIDriver *spip) {
         dmaChannelFreeI(spip->dmarx);
         spip->dmarx = NULL;
         osalDbgAssert(false, "no TX DMA channel");
-        osalSysHalt("SPI DMA alloc");
+        /* Formally an API-class function, every in-tree OSAL implements it
+       as an any-state halt (RT/NIL delegate to chSysHalt), which is what
+       this deterministic configuration failure requires.*/
+    osalSysHalt("SPI DMA alloc");
       }
       dmaChannelEnableInterruptX(spip->dmarx);
       dmaChannelEnableInterruptX(spip->dmatx);
