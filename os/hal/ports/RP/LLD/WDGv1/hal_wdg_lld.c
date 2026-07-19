@@ -66,9 +66,10 @@ static void set_wdg_counter(WDGDriver *wdgp) {
      type, keeping debug and release behavior identical and the clamp
      path testable.*/
 
-  /* Set ceiling if greater than count capability.*/
-  time = (time > (uint64_t)WATCHDOG_CTRL_TIME) ? (uint64_t)WATCHDOG_CTRL_TIME
-                                               : time;
+  /* Set ceiling if greater than count capability, the mask matches the
+     register being written.*/
+  time = (time > (uint64_t)WATCHDOG_LOAD) ? (uint64_t)WATCHDOG_LOAD
+                                          : time;
 
   /* Set the interval.*/
   wdgp->wdg->LOAD = (uint32_t)time;

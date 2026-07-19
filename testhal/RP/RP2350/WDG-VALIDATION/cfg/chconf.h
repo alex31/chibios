@@ -614,9 +614,9 @@
  * @note    The default is @p FALSE.
  */
 #if !defined(CH_DBG_ENABLE_ASSERTS)
-/* Asserts stay disabled: the clamp test deliberately requests an
-   out-of-range watchdog interval to validate the release-mode clamp
-   path in the WDG LLD, which would otherwise trip osalDbgAssert().*/
+/* Asserts deliberately enabled: the LLD clamps oversized intervals
+   uniformly in all build types, the clamp leg must pass with checking
+   active.*/
 #define CH_DBG_ENABLE_ASSERTS               TRUE
 #endif
 
