@@ -48,6 +48,7 @@ void c1_main(void) {
   dmaChannelFreeI(c1_free_chp);
   chSysUnlock();
 
+  __DMB();                          /* Free's effects before the flag.*/
   c1_free_done = 1U;
 
   while (true) {

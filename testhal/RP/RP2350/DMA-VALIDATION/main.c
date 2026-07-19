@@ -118,11 +118,11 @@ static void test_mem_to_mem(void) {
      the mode nibble away and forces NORMAL (reload reads 0x10); the
      old plain assignment would leave 0x20000010 with mode 2.*/
   dmaChannelSetCounterX(dmachp, 0x20000010U);
-  tc = *(volatile uint32_t *)(0x50000804U + (0x40U * dmachp->chnidx));
+  tc = DMA->CH_DBG[dmachp->chnidx].TCR;
   report("oversized count masked to NORMAL",
          ((tc >> 28) == 0U) && ((tc & 0x0FFFFFFFU) == 0x10U));
   dmaChannelSetCounterX(dmachp, 0xF0000010U);
-  tc = *(volatile uint32_t *)(0x50000804U + (0x40U * dmachp->chnidx));
+  tc = DMA->CH_DBG[dmachp->chnidx].TCR;
   report("ENDLESS-nibble count masked to NORMAL",
          ((tc >> 28) == 0U) && ((tc & 0x0FFFFFFFU) == 0x10U));
   dmaChannelSetCounterX(dmachp, M2M_WORDS);
@@ -185,6 +185,7 @@ static void test_cross_core_free(void) {
   for (i = 0U; (c1_free_done == 0U) && (i < 500U); i++) {
     chThdSleepMilliseconds(10);
   }
+  __DMB();                          /* Free's effects before the checks.*/
   report("core 1 performed the free", c1_free_done != 0U);
   if (c1_free_done == 0U) {
     /* A late free would make the allocation count timing-dependent,
