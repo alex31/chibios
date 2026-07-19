@@ -183,6 +183,36 @@ static void reset_ep0(USBDriver *usbp) {
   usbp->epc[0]->in_state->next_pid = 1U;
 }
 
+#if (RP_USB_E15_WORKAROUND == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   TIMER0 timestamp of the most recent frame start.
+ */
+static volatile uint32_t usb_e15_last_sof_time;
+
+/**
+ * @brief   Defers a bulk IN publication falling into the frame end.
+ * @details RP2040-E15: making a bulk IN buffer available during roughly
+ *          the last 200 us of a frame can corrupt the transfer on
+ *          affected host topologies. Publication is delayed by busy-wait
+ *          until the next frame starts; if frame timing stops (suspend
+ *          or detach) the wait is abandoned after one frame time.
+ */
+static void usb_e15_defer_if_frame_end(const USBEndpointConfig *epcp) {
+
+  if ((epcp->ep_mode & USB_EP_MODE_TYPE) != USB_EP_MODE_TYPE_BULK) {
+    return;
+  }
+  /* The position inside the nominal 1 ms frame cadence is derived by
+     modulo from the last recorded SOF: this path often runs inside the
+     USB interrupt handler where the SOF handler cannot refresh the
+     timestamp, and a timestamp stale by whole frames still yields the
+     correct position. The wait is bounded to the ~200 us frame tail by
+     construction, also when SOFs have stopped entirely.*/
+  while (((TIMER0->TIMERAWL - usb_e15_last_sof_time) % 1000U) >= 800U) {
+  }
+}
+#endif /* RP_USB_E15_WORKAROUND == TRUE */
+
 /**
  * @brief   Prepare buffer for receiving data.
  */
@@ -195,11 +225,15 @@ static uint32_t usb_prepare_out_ep_buffer(USBDriver *usbp, usbep_t ep, uint8_t b
     buf_ctrl |= oesp->next_pid ? USB_BUFFER_BUFFER0_DATA_PID : 0;
     oesp->next_pid ^= 1U;
 
+    /* uint16_t is safe here, the clamp to out_maxsize (a hardware packet
+       size, at most 1023) is what bounds the value. */
     uint16_t buf_len = oesp->rxsize < epcp->out_maxsize ? oesp->rxsize : epcp->out_maxsize;
     buf_ctrl |= USB_BUFFER_BUFFER0_AVAILABLE | buf_len;
     buf_ctrl &= ~USB_BUFFER_BUFFER0_FULL;
 
-    if (oesp->rxcnt + buf_len >= oesp->rxsize) {
+    /* rxsize holds the remaining transfer size, this buffer is the last one
+       of the transfer when it covers all of the remaining data. */
+    if (buf_len >= oesp->rxsize) {
         /* Last buffer */
         buf_ctrl |= USB_BUFFER_BUFFER0_LAST;
     }
@@ -252,7 +286,9 @@ static uint32_t usb_prepare_in_ep_buffer(USBDriver *usbp, usbep_t ep, uint8_t bu
     const USBEndpointConfig *epcp = usbp->epc[ep];
     USBInEndpointState *iesp = usbp->epc[ep]->in_state;
 
-    /* txsize - txlast gives size of data to be sent but not yet in the buffer */
+    /* txsize - txlast gives size of data to be sent but not yet in the
+       buffer. uint16_t is safe for buf_len, the clamp to in_maxsize (a
+       hardware packet size, at most 1023) is what bounds the value. */
     buf_len = epcp->in_maxsize < iesp->txsize - iesp->txlast ?
               epcp->in_maxsize : iesp->txsize - iesp->txlast;
 
@@ -323,6 +359,10 @@ static void usb_prepare_in_ep(USBDriver *usbp, usbep_t ep) {
     EP_CTRL(ep).IN = ep_ctrl;
   }
 
+#if RP_USB_E15_WORKAROUND == TRUE
+  usb_e15_defer_if_frame_end(usbp->epc[ep]);
+#endif
+
   BUF_CTRL(ep).IN = buf_ctrl;
   __DSB();
 }
@@ -334,7 +374,7 @@ static void usb_serve_endpoint(USBDriver *usbp, usbep_t ep, bool is_in) {
   const USBEndpointConfig *epcp = usbp->epc[ep];
   USBOutEndpointState *oesp;
   USBInEndpointState *iesp;
-  uint16_t n;
+  size_t n;
 
   if (is_in) {
     /* IN endpoint */
@@ -394,6 +434,31 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 
   ints = USB->INTS;
 
+  /* Bus reset must be handled before BUFF_STATUS and SETUP_REQ: the
+   * pre-reset completions belong to transfers that died with the bus and
+   * usb_lld_reset() discards them, and processing SETUP first would queue
+   * a response that _usb_reset() destroys. The remaining bits of this
+   * pre-reset snapshot are equally stale, so the handler stops here;
+   * anything still genuinely pending re-enters the interrupt. */
+  if (ints & USB_INTS_BUS_RESET) {
+    USB->CLR.SIESTATUS = USB_SIE_STATUS_BUS_RESET;
+
+    /* Suspend/resume causes captured in this snapshot predate the reset
+       and are discarded. SETUP_REC is deliberately preserved: when
+       interrupt service was delayed past the end of the reset condition
+       the same snapshot can already hold the first genuine SETUP of the
+       fresh bus, and discarding it would force a host retry. The sticky
+       flag makes the handler re-enter after the reset processing and
+       serve that SETUP against clean state; a stale pre-reset SETUP
+       handled the same way is harmless because a new SETUP always
+       supersedes EP0 state. */
+    USB->CLR.SIESTATUS = USB_SIE_STATUS_SUSPENDED |
+                         USB_SIE_STATUS_RESUME;
+
+    _usb_reset(usbp);
+    return;
+  }
+
   /* Endpoint events handling. */
   if (ints & USB_INTS_BUFF_STATUS) {
     uint32_t buf_status = USB->BUFSTATUS;
@@ -409,14 +474,6 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
       }
       bit <<= 1U;
     }
-  }
-
-  /* Bus reset must be handled before SETUP_REQ: when both are pending,
-   * processing SETUP first queues a response that _usb_reset() destroys. */
-  if (ints & USB_INTS_BUS_RESET) {
-    USB->CLR.SIESTATUS = USB_SIE_STATUS_BUS_RESET;
-
-    _usb_reset(usbp);
   }
 
   /* USB setup packet handling. */
@@ -444,21 +501,25 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 
   /* SOF handling.*/
   if (ints & USB_INTS_DEV_SOF) {
+#if RP_USB_E15_WORKAROUND == TRUE
+    /* Frame timing reference for the bulk IN publication guard.*/
+    usb_e15_last_sof_time = TIMER0->TIMERAWL;
+#else
     /* SOF interrupt was used to detect resume of the USB bus after issuing a
      * remote wake up of the host, therefore we disable it again. */
     if (usbp->config->sof_cb == NULL) {
       USB->CLR.INTE = USB_INTE_DEV_SOF;
     }
+#endif
     if (usbp->state == USB_SUSPENDED) {
       _usb_wakeup(usbp);
     }
 
     _usb_isr_invoke_sof_cb(usbp);
 
-    /*
-     * Clear SOF flag by reading SOF_RD
-     * This helps avoid the RP2040-E15 Errata and is harmless on the RP2350.
-     */
+    /* Reading SOF_RD clears the DEV_SOF interrupt flag. It does not by
+       itself address RP2040-E15; the actual workaround is the bulk IN
+       publication guard around the frame end. */
     (void)USB->SOFRD;
   }
 
@@ -560,9 +621,14 @@ void usb_lld_start(USBDriver *usbp) {
                   USB_INTE_BUS_RESET |
                   USB_INTE_BUFF_STATUS;
 
+#if RP_USB_E15_WORKAROUND == TRUE
+      /* The frame-end publication guard needs continuous frame timing.*/
+      USB->SET.INTE = USB_INTE_DEV_SOF;
+#else
       if (usbp->config->sof_cb != NULL) {
         USB->SET.INTE = USB_INTE_DEV_SOF;
       }
+#endif
 
 #if RP_USB_USE_ERROR_DATA_SEQ_INTR == TRUE
       USB->SET.INTE = USB_INTE_ERROR_DATA_SEQ;
@@ -622,6 +688,10 @@ void usb_lld_reset(USBDriver *usbp) {
         EP_CTRL(ep).OUT  = 0U;
         BUF_CTRL(ep).OUT = 0U;
     }
+
+    /* Discard all pending buffer completions, they belong to transfers
+       that were aborted by the bus reset. */
+    USB->CLR.BUFSTATUS = 0xFFFFFFFFU;
 }
 
 /**
@@ -718,10 +788,48 @@ void usb_lld_disable_endpoints(USBDriver *usbp) {
   /* Reset the packet memory allocator. */
   usbp->noffset = 0U;
 
-  for (uint8_t ep = 1; ep <= USB_MAX_ENDPOINTS; ep++) {
-    EP_CTRL(ep).IN &= ~USB_EP_EN;
-    EP_CTRL(ep).OUT &= ~USB_EP_EN;
+#if defined(RP2350)
+  /* Buffer controls may still be owned by the controller (AVAILABLE
+     set, transaction admitted); the hardware defines EP_ABORT_DONE as
+     the point where they are safe to modify. Abort all non-EP0
+     endpoints and wait, bounded, for the acknowledge before touching
+     the buffer controls. RP2040 silicon lacks these registers, its
+     teardown below remains best-effort. */
+  USB->ABORT = 0xFFFFFFFCU;
+  {
+    uint32_t start = TIMER0->TIMERAWL;
+
+    while ((USB->ABORTDONE & 0xFFFFFFFCU) != 0xFFFFFFFCU) {
+      if ((uint32_t)(TIMER0->TIMERAWL - start) > 1000U) {
+        break;
+      }
+    }
   }
+#endif
+
+  /* Fully tear down all non control endpoints, mirroring the reset path:
+     clearing only USB_EP_EN would leave stale buffer controls (AVAILABLE,
+     STALL, PIDs) behind for the next configuration. */
+  for (uint8_t ep = 1; ep <= USB_MAX_ENDPOINTS; ep++) {
+    EP_CTRL(ep).IN   = 0U;
+    BUF_CTRL(ep).IN  = 0U;
+    EP_CTRL(ep).OUT  = 0U;
+    BUF_CTRL(ep).OUT = 0U;
+  }
+
+#if defined(RP2350)
+  /* Releasing the abort requests after the buffer controls are clean,
+     then acknowledging the done flags: they are sticky write-clear and
+     held asserted while the abort request stands (bootrom teardown uses
+     this order), so clearing them first could leave them set to falsely
+     satisfy the next teardown's wait. */
+  USB->ABORT = 0U;
+  USB->CLR.ABORTDONE = 0xFFFFFFFCU;
+#endif
+
+  /* Discard pending buffer completions of the torn down endpoints, EP0
+     (bits 0 and 1) is left untouched. */
+  USB->CLR.BUFSTATUS = 0xFFFFFFFCU;
 }
 
 /**
@@ -817,8 +925,8 @@ void usb_lld_start_out(USBDriver *usbp, usbep_t ep) {
     /* Special case for zero sized packets.*/
     oesp->rxpkts = 1U;
   } else {
-    oesp->rxpkts = (uint16_t)((oesp->rxsize + usbp->epc[ep]->out_maxsize - 1) /
-                             usbp->epc[ep]->out_maxsize);
+    oesp->rxpkts = (oesp->rxsize + usbp->epc[ep]->out_maxsize - 1) /
+                   usbp->epc[ep]->out_maxsize;
   }
 
   usb_prepare_out_ep(usbp, ep);

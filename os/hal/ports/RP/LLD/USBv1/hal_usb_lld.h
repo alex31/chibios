@@ -106,6 +106,24 @@ extern bool usb_vbus_detect(void);
 #define RP_USB_USE_ERROR_DATA_SEQ_INTR      FALSE
 #endif
 
+/**
+ * @brief   Enables the RP2040-E15 bulk IN workaround.
+ * @details Affected RP2040 devices can corrupt bulk IN transfers larger
+ *          than 50 bytes when a buffer is made available during the last
+ *          200 us of a frame on some host topologies (VL805-class hubs).
+ *          The workaround defers bulk IN buffer publication until the
+ *          next frame start, costing up to ~200 us of busy-wait per
+ *          deferred publication. Enabled by default on RP2040; the
+ *          erratum does not apply to RP2350.
+ */
+#if !defined(RP_USB_E15_WORKAROUND) || defined(__DOXYGEN__)
+#if defined(RP2040) || defined(__DOXYGEN__)
+#define RP_USB_E15_WORKAROUND               TRUE
+#else
+#define RP_USB_E15_WORKAROUND               FALSE
+#endif
+#endif
+
 #if !defined(RP_IRQ_USB0_PRIORITY)
 #error "RP_IRQ_USB0_PRIORITY not defined in mcuconf.h"
 #endif
@@ -180,8 +198,10 @@ typedef struct {
   /* End of the mandatory fields.*/
   /**
    * @brief   Number of packets to receive.
+   * @note    Derived from the @p size_t rxsize, a 16-bit counter would
+   *          truncate large transfers.
    */
-  uint16_t                      rxpkts;
+  size_t                        rxpkts;
   /**
    * @brief   Data PID used by next transfer.
    */
