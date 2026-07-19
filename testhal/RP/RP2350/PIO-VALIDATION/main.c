@@ -343,12 +343,18 @@ int main(void) {
   off1 = pioProgramLoad(block, &single_program);
   report("full memory rejects further load", off1 == -1);
 
-  pioProgramUnload(block, off32, nop32_program.length);
+  /* Unloads and dependent steps are gated on their prerequisite loads,
+     a failed leg must be reported, not turned into a driver assert.*/
+  if (off32 >= 0) {
+    pioProgramUnload(block, off32, nop32_program.length);
+  }
 
   off1 = pioProgramLoad(block, &single_program);
   report("reload after unload succeeds", off1 >= 0);
 
-  pioProgramUnload(block, off1, single_program.length);
+  if (off1 >= 0) {
+    pioProgramUnload(block, off1, single_program.length);
+  }
 
   /*
    * Test 3: block reset lifetime vs. instruction memory.
@@ -358,6 +364,9 @@ int main(void) {
   /* 3a: instruction memory must survive freeing the last state machine.*/
   sq_off = pioProgramLoad(block, &sqwave_program);
   report("square wave reloaded", sq_off >= 0);
+  if (sq_off < 0) {
+    goto summary;
+  }
 
   sqwave_start(smp, (uint32_t)sq_off);
   edges = count_edges();
@@ -367,6 +376,9 @@ int main(void) {
   pioSmFree(smp);                       /* Last SM of the block.*/
   smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
   report("SM0 re-allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
 
   /* Restart without reloading the program.*/
   sqwave_start(smp, (uint32_t)sq_off);
@@ -383,9 +395,15 @@ int main(void) {
 
   sq_off = pioProgramLoad(block, &sqwave_program);
   report("load before first alloc accepted", sq_off >= 0);
+  if (sq_off < 0) {
+    goto summary;
+  }
 
   smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
   report("SM0 allocated after load", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
 
   sqwave_start(smp, (uint32_t)sq_off);
   edges = count_edges();
