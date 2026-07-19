@@ -15,8 +15,15 @@ Build (requires arm-none-eabi-gcc):
 
     make
 
-Flash `build/ch.uf2` onto a Raspberry Pi Pico 2 (BOOTSEL drag-and-drop or
-picotool).
+The build produces `build/ch.elf` and `build/ch.bin`. Flash either with
+openocd:
+
+    openocd -f interface/cmsis-dap.cfg -f target/rp2350.cfg \
+            -c "program build/ch.elf verify reset exit"
+
+or with picotool (device in BOOTSEL mode):
+
+    picotool load -u -x build/ch.elf
 
 - USB: CDC-ACM on the Pico 2 micro-USB connector (EP1 bulk IN/OUT, EP2
   interrupt IN). Shows up as `/dev/ttyACMx` on Linux.
@@ -39,9 +46,18 @@ Legs:
 
 1. Echo correctness: for sizes [1, 63, 64, 65, 128, 129, 192, 512, 4096,
    8192] a deterministic pattern is written, read back and byte-compared,
-   50 rounds.
-2. Reset stress: 25 cycles of close/open of the port with a 64-byte echo in
-   each cycle.
+   50 rounds. Every transfer ends with a newline terminator in a short
+   final packet so delivery is deterministic: for sizes that are not a
+   multiple of 64 the terminator replaces the last pattern byte and the
+   wire total equals the advertised size; for multiples of 64 the
+   terminator is appended (size + 1 bytes on the wire), since such a
+   payload cannot both match the size and end in a short packet. The
+   script logs the actual wire total per size in round 0.
+2. Reset stress: 25 cycles of a real USB device reset (ioctl
+   `USBDEVFS_RESET` on the port's `/dev/bus/usb/BBB/DDD` node) followed
+   by a 64-byte echo once the tty reappears. Without permission on the
+   usbfs node the leg falls back to plain close/open cycles and reports
+   itself as degraded.
 
 The script prints PASS/FAIL per leg and a final `HOST RESULT: PASS|FAIL`
 line; the exit status is 0 only on overall PASS.

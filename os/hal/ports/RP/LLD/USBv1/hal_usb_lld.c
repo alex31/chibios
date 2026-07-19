@@ -403,11 +403,14 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
   /* Bus reset must be handled before BUFF_STATUS and SETUP_REQ: the
    * pre-reset completions belong to transfers that died with the bus and
    * usb_lld_reset() discards them, and processing SETUP first would queue
-   * a response that _usb_reset() destroys. */
+   * a response that _usb_reset() destroys. The remaining bits of this
+   * pre-reset snapshot are equally stale, so the handler stops here;
+   * anything still genuinely pending re-enters the interrupt. */
   if (ints & USB_INTS_BUS_RESET) {
     USB->CLR.SIESTATUS = USB_SIE_STATUS_BUS_RESET;
 
     _usb_reset(usbp);
+    return;
   }
 
   /* Endpoint events handling. */
@@ -730,6 +733,25 @@ void usb_lld_disable_endpoints(USBDriver *usbp) {
   /* Reset the packet memory allocator. */
   usbp->noffset = 0U;
 
+#if defined(RP2350)
+  /* Buffer controls may still be owned by the controller (AVAILABLE
+     set, transaction admitted); the hardware defines EP_ABORT_DONE as
+     the point where they are safe to modify. Abort all non-EP0
+     endpoints and wait, bounded, for the acknowledge before touching
+     the buffer controls. RP2040 silicon lacks these registers, its
+     teardown below remains best-effort. */
+  USB->ABORT = 0xFFFFFFFCU;
+  {
+    uint32_t start = TIMER0->TIMERAWL;
+
+    while ((USB->ABORTDONE & 0xFFFFFFFCU) != 0xFFFFFFFCU) {
+      if ((uint32_t)(TIMER0->TIMERAWL - start) > 1000U) {
+        break;
+      }
+    }
+  }
+#endif
+
   /* Fully tear down all non control endpoints, mirroring the reset path:
      clearing only USB_EP_EN would leave stale buffer controls (AVAILABLE,
      STALL, PIDs) behind for the next configuration. */
@@ -739,6 +761,11 @@ void usb_lld_disable_endpoints(USBDriver *usbp) {
     EP_CTRL(ep).OUT  = 0U;
     BUF_CTRL(ep).OUT = 0U;
   }
+
+#if defined(RP2350)
+  /* Releasing the abort requests after the buffer controls are clean. */
+  USB->ABORT = 0U;
+#endif
 
   /* Discard pending buffer completions of the torn down endpoints, EP0
      (bits 0 and 1) is left untouched. */
