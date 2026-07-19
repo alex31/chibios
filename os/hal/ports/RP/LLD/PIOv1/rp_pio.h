@@ -648,6 +648,12 @@ __STATIC_INLINE uint32_t pioGpioToRel(const rp_pio_block_t *block,
 #if (RP_PIO_HAS_GPIOBASE == TRUE) || defined(__DOXYGEN__)
   uint32_t base = block->pio->GPIOBASE;
 
+  /* The hardware only implements windows at 0 and 16; any other value
+     read back would mean a misprogrammed or misdeclared register and
+     the arithmetic below would produce a plausible-looking but wrong
+     relative pin.*/
+  osalDbgCheck((base == 0U) || (base == 16U));
+
   /* The line must exist on the package and the result must fit the
      5-bit pin fields, i.e. the GPIO must be in the [base, base + 31]
      window.*/
