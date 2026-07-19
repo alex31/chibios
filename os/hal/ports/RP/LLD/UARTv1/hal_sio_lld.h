@@ -114,7 +114,12 @@
  *          the RT kernel a virtual timer is used to poll for TX-end and
  *          wake up threads suspended in @p sioSynchronizeTXEnd().
  *          Without the RT kernel only the opportunistic detection
- *          performed in the interrupt handler is available.
+ *          performed in the interrupt handler is available, and that
+ *          only runs when a TX interrupt fires on a FIFO level
+ *          crossing: a write too small to cross the threshold produces
+ *          no interrupt and @p sioSynchronizeTXEnd() can then block
+ *          indefinitely.  Reliable TX-end synchronization therefore
+ *          requires the RT kernel.
  */
 #if (defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)) ||       \
     defined(__DOXYGEN__)
