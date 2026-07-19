@@ -138,6 +138,12 @@ void chSysWaitSystemState(system_state_t state) {
 
   while (ch_system.state != state) {
   }
+
+#if defined(PORT_SYSTEM_STATE_ACQUIRE)
+  /* Pairs with the publishing core's release operation so that observing the
+     requested state also makes the preceding system initialization visible.*/
+  PORT_SYSTEM_STATE_ACQUIRE();
+#endif
 }
 
 /**
@@ -185,6 +191,10 @@ void chSysInit(void) {
   chInstanceObjectInit(&ch0, &ch_core0_cfg);
 
   /* It is alive now.*/
+#if defined(PORT_SYSTEM_STATE_RELEASE)
+  /* Publish all preceding initialization before changing the shared state.*/
+  PORT_SYSTEM_STATE_RELEASE();
+#endif
   ch_system.state = ch_sys_running;
   chSysUnlock();
 }

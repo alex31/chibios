@@ -81,6 +81,10 @@ See .devcontainer/README.md for included tools and usage.
 *****************************************************************************
 
 *** Next ***
+- NEW: Hazard3 RISC-V support for RP2350: RT/NIL ports, dual-core SMP,
+       Xh3irq interrupt handling, periodic and tickless MTIME support, PMP
+       stack guards, startup/HAL integration, demo, and hardware validation
+       target (github PR #90).
 - NEW: STM32U5 support extended: EPOD booster clock handling and a generated
        clock tree, the STM32U575ZI-Nucleo144 board and RT-STM32-MULTI demo
        configuration, and the STM32U575xx mcuconf template and updater
