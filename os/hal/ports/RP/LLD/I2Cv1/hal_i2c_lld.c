@@ -155,9 +155,18 @@ static msg_t i2c_lld_abort_transmissionS(I2CDriver *i2cp) {
  */
 static void i2c_lld_handle_errors(I2CDriver *i2cp) {
   I2C_TypeDef *dp = i2cp->i2c;
+  uint32_t abort_source = dp->TXABRTSOURCE;
 
-  if (dp->TXABRTSOURCE & I2C_IC_TX_ABRT_SOURCE_ARB_LOST) {
+  if (abort_source & I2C_IC_TX_ABRT_SOURCE_ARB_LOST) {
     i2cp->errors |= I2C_ARBITRATION_LOST;
+  }
+
+  if (abort_source & (I2C_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK |
+                      I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR1_NOACK |
+                      I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR2_NOACK |
+                      I2C_IC_TX_ABRT_SOURCE_ABRT_GCALL_NOACK   |
+                      I2C_IC_TX_ABRT_SOURCE_ABRT_TXDATA_NOACK)) {
+    i2cp->errors |= I2C_ACK_FAILURE;
   }
 
   if (dp->RAWINTRSTAT & I2C_OVERRUN_ERRORS) {
@@ -275,8 +284,9 @@ static void i2c_lld_transmit_data(I2CDriver *i2cp) {
   while (i2cp->txbytes > 0U && dp->STATUS & I2C_IC_STATUS_TFNF) {
     data = (uint32_t)*i2cp->txptr;
 
-    /* Send STOP after last byte. */
-    if (i2cp->txbytes == 1U) {
+    /* Send STOP after the last byte of a pure write. If a read phase
+       follows, the transfer continues with a repeated START instead. */
+    if ((i2cp->txbytes == 1U) && (i2cp->rxbytes == 0U)) {
       data |= I2C_IC_DATA_CMD_STOP;
     }
     dp->DATACMD = data;
@@ -285,9 +295,20 @@ static void i2c_lld_transmit_data(I2CDriver *i2cp) {
     i2cp->txbytes--;
   }
 
-  /* Nothing more to send, disable TX FIFO empty interrupt. */
   if (i2cp->txbytes == 0U) {
-    dp->CLR.INTRMASK = I2C_IC_INTR_MASK_M_TX_EMPTY;
+    if (i2cp->rxbytes > 0U) {
+      /* All write commands are queued and a read phase follows. Switch to
+         the RX state now, the first read command will carry the RESTART
+         flag producing a repeated START on the wire. The TX_EMPTY
+         interrupt is kept enabled, with TX_EMPTY_CTRL set it fires again
+         only when the last write byte has completed on the wire and the
+         ISR then queues the read commands via i2c_lld_request_data(). */
+      i2cp->state = I2C_ACTIVE_RX;
+      i2cp->send_restart = true;
+    } else {
+      /* Nothing more to send, disable TX FIFO empty interrupt. */
+      dp->CLR.INTRMASK = I2C_IC_INTR_MASK_M_TX_EMPTY;
+    }
   }
 }
 
@@ -336,14 +357,23 @@ static void i2c_lld_serve_interrupt(I2CDriver *i2cp) {
   if (intr & I2C_IC_INTR_STAT_R_STOP_DET) {
     /* Clear irq flag. */
     (void)dp->CLRSTOPDET;
-    if (i2cp->state == I2C_ACTIVE_TX && i2cp->rxbytes > 0U) {
-      /* State change to RX. */
-      i2cp->state = I2C_ACTIVE_RX;
-      /* Restart communication. */
-      i2cp->send_restart = true;
 
-      /* Enable TX FIFO empty IRQ to request more data to be received. */
-      dp->SET.INTRMASK = I2C_IC_INTR_STAT_R_TX_EMPTY;
+    /* The RP silicon hardwires IC_CON.STOP_DET_IF_MASTER_ACTIVE off
+       (the write is inert, verified by register read-back), so this
+       interrupt also fires for STOP conditions issued by other masters
+       on the bus. It only means completion when this driver's own final
+       command has completed on the wire: the byte counters cover bytes
+       not yet queued, TXFLR covers commands (data and read requests
+       alike) still sitting in the TX FIFO waiting for the bus, and the
+       raw TX_EMPTY flag - completion-qualified by TX_EMPTY_CTRL - stays
+       low while a command popped from the FIFO is still executing,
+       which closes the window between the pop and this read. An own
+       STOP can only appear after all of that has drained, so any
+       residue marks the STOP as foreign; the own transfer then
+       continues under hardware arbitration. */
+    if ((i2cp->txbytes > 0U) || (i2cp->rxbytes > 0U) ||
+        (dp->TXFLR != 0U) ||
+        ((dp->RAWINTRSTAT & I2C_IC_INTR_STAT_R_TX_EMPTY) == 0U)) {
       return;
     }
   }
@@ -533,9 +563,19 @@ msg_t i2c_lld_master_receive_timeout(I2CDriver *i2cp, i2caddr_t addr,
   /* Releases the lock from high level driver. */
   osalSysUnlock();
 
-  /* Calculating the time window for the timeout on the busy bus condition. */
+  /* Calculating the time window for the timeout on the busy bus
+     condition. The caller timeout is one absolute deadline for the
+     entire call, so the fixed bus-busy limit only applies where it is
+     shorter. */
   start = osalOsGetSystemTimeX();
-  end = osalTimeAddX(start, OSAL_MS2I(RP_I2C_BUSY_TIMEOUT));
+  {
+    sysinterval_t busy_limit = OSAL_MS2I(RP_I2C_BUSY_TIMEOUT);
+
+    if ((timeout != TIME_INFINITE) && (timeout < busy_limit)) {
+      busy_limit = timeout;
+    }
+    end = osalTimeAddX(start, busy_limit);
+  }
 
   while (true) {
     osalSysLock();
@@ -554,6 +594,18 @@ msg_t i2c_lld_master_receive_timeout(I2CDriver *i2cp, i2caddr_t addr,
     }
 
     osalSysUnlock();
+  }
+
+  /* Remaining share of the caller timeout after the bus-busy wait, the
+     deadline covers the entire call. Nothing is armed yet, returning
+     is safe. */
+  if (timeout != TIME_INFINITE) {
+    sysinterval_t elapsed = osalTimeDiffX(start, osalOsGetSystemTimeX());
+
+    if (elapsed >= timeout) {
+      return MSG_TIMEOUT;
+    }
+    timeout -= elapsed;
   }
 
   i2cp->txbytes = 0U;
@@ -632,9 +684,19 @@ msg_t i2c_lld_master_transmit_timeout(I2CDriver *i2cp, i2caddr_t addr,
   /* Releases the lock from high level driver. */
   osalSysUnlock();
 
-  /* Calculating the time window for the timeout on the busy bus condition. */
+  /* Calculating the time window for the timeout on the busy bus
+     condition. The caller timeout is one absolute deadline for the
+     entire call, so the fixed bus-busy limit only applies where it is
+     shorter. */
   start = osalOsGetSystemTimeX();
-  end = osalTimeAddX(start, OSAL_MS2I(RP_I2C_BUSY_TIMEOUT));
+  {
+    sysinterval_t busy_limit = OSAL_MS2I(RP_I2C_BUSY_TIMEOUT);
+
+    if ((timeout != TIME_INFINITE) && (timeout < busy_limit)) {
+      busy_limit = timeout;
+    }
+    end = osalTimeAddX(start, busy_limit);
+  }
 
   while (true) {
     osalSysLock();
@@ -652,6 +714,18 @@ msg_t i2c_lld_master_transmit_timeout(I2CDriver *i2cp, i2caddr_t addr,
     }
 
     osalSysUnlock();
+  }
+
+  /* Remaining share of the caller timeout after the bus-busy wait, the
+     deadline covers the entire call. Nothing is armed yet, returning
+     is safe. */
+  if (timeout != TIME_INFINITE) {
+    sysinterval_t elapsed = osalTimeDiffX(start, osalOsGetSystemTimeX());
+
+    if (elapsed >= timeout) {
+      return MSG_TIMEOUT;
+    }
+    timeout -= elapsed;
   }
 
   i2cp->txbytes = txbytes;
