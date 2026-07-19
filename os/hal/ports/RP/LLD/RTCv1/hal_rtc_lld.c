@@ -178,11 +178,13 @@ void rtc_lld_set_time(RTCDriver *rtcp, const RTCDateTime *timespec) {
                       (RTC_SETUP_1_MIN(min) & RTC_SETUP_1_MIN_Msk)         |
                       (RTC_SETUP_1_SEC(sec) & RTC_SETUP_1_SEC_Msk);
 
-  /* Move setup values into RTC clock domain. */
-  rtcp->rtc->CTRL = RTC_CTRL_LOAD;
-
-  /* Enable RTC and wait for active. */
-  rtcp->rtc->CTRL = RTC_CTRL_RTC_ENABLE;
+  /* Move the setup values into the RTC clock domain and re-enable the
+     RTC in one write. Writing LOAD and RTC_ENABLE as two separate
+     writes races the slower RTC clock domain: the second write clears
+     the pending LOAD strobe before the date counter has sampled it, so
+     the time of day would take the new value while the date kept the
+     old one. */
+  rtcp->rtc->CTRL = RTC_CTRL_LOAD | RTC_CTRL_RTC_ENABLE;
 
   /* Leaving a reentrant critical zone.*/
   osalSysRestoreStatusX(sts);
