@@ -107,6 +107,15 @@ const halclkcfg_t hal_clkcfg_overclock = {
 static volatile uint32_t rp_clock_points[RP_CLK_COUNT];
 
 /**
+ * @brief   Clock point table sequence counter.
+ * @details Incremented to odd before and to even after every table
+ *          update; lock-free readers on the other core retry while an
+ *          update is in progress or has intervened. The first-switch
+ *          activation is still gated on a non-zero @p RP_CLK_SYS entry.
+ */
+static volatile uint32_t rp_clock_seq;
+
+/**
  * @brief   Effective QMI flash divider the system booted with, 1..256.
  * @details Captured on the first switch, before anything has changed
  *          it; zero means not yet captured (BSS state). The boot value
@@ -164,12 +173,14 @@ void rp_clock_init(void) {
   {
     /* Deactivating the dynamic table explicitly: this code can run
        before CRT0 clears BSS and retained SRAM after a warm reset
-       could otherwise present a stale table to early callers. */
+       could otherwise present a stale table or an odd sequence to
+       early callers. */
     unsigned i;
 
     for (i = 0U; i < RP_CLK_COUNT; i++) {
       rp_clock_points[i] = 0U;
     }
+    rp_clock_seq = 0U;
   }
 #endif
 
@@ -274,12 +285,25 @@ uint32_t rp_clock_get_hz(uint32_t clk_index) {
 #if RP_CLOCK_DYNAMIC == TRUE
   /* The table stays zero (explicitly cleared at rp_clock_init() entry,
      again by the CRT0 BSS clear) until the first successful runtime
-     switch populates every entry and writes RP_CLK_SYS last; falling
-     through to the compile-time constants preserves the documented
-     pre-initialization callability and the constants are correct by
-     definition until that first switch. */
-  if (rp_clock_points[RP_CLK_SYS] != 0U) {
-    return rp_clock_points[clk_index];
+     switch populates every entry; falling through to the compile-time
+     constants preserves the documented pre-initialization callability
+     and the constants are correct by definition until that first
+     switch. Reads are guarded by a sequence counter, a reader racing
+     an update on the other core retries until it holds a consistent
+     snapshot; the writer's update window is a handful of stores. */
+  {
+    uint32_t seq, value, active;
+
+    do {
+      seq = rp_clock_seq;
+      __DMB();
+      active = rp_clock_points[RP_CLK_SYS];
+      value  = rp_clock_points[clk_index];
+      __DMB();
+    } while (((seq & 1U) != 0U) || (seq != rp_clock_seq));
+    if (active != 0U) {
+      return value;
+    }
   }
 #endif
 
@@ -422,6 +446,12 @@ static uint32_t rp_clock_get_vreg_mv(void) {
   uint32_t vsel = (POWMAN->VREG & POWMAN_VREG_VSEL_Msk) >>
                   POWMAN_VREG_VSEL_Pos;
 
+  /* Encodings below 1.10 V exist (down to 0.55 V); reporting them as
+     zero makes any upward request actually raise the regulator instead
+     of underflowing into a nonsensically high reading. */
+  if (vsel < 0x0BU) {
+    return 0U;
+  }
   return 1100U + ((vsel - 0x0BU) * 50U);
 }
 #endif /* RP_ALLOW_OVERCLOCK == TRUE */
@@ -544,18 +574,20 @@ bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp) {
      effective divider 256 is zero. */
   rp_clock_set_qmi_clkdiv(div_new & 0xFFU);
 
-  /* Publishing the new frequencies. Every entry is written on every
-     switch because the table may have been cleared after a partial
-     early population; RP_CLK_SYS is the activation entry and is
-     published last, behind a barrier, so a lock-free reader on the
-     other core that observes it also observes the rest. */
+  /* Publishing the new frequencies under the sequence counter: odd
+     while the table is inconsistent, readers retry across the window.
+     Every entry is written on every switch because the table may have
+     been cleared after a partial early population; RP_CLK_SYS doubles
+     as the first-switch activation entry. */
+  rp_clock_seq = rp_clock_seq + 1U;
+  __DMB();
   rp_clock_points[RP_CLK_REF]  = RP_CLK_REF_FREQ;
   rp_clock_points[RP_CLK_USB]  = RP_CLK_USB_FREQ;
   rp_clock_points[RP_CLK_ADC]  = RP_CLK_ADC_FREQ;
   rp_clock_points[RP_CLK_PERI] = sys_freq;
-  __DMB();
   rp_clock_points[RP_CLK_SYS]  = sys_freq;
   __DMB();
+  rp_clock_seq = rp_clock_seq + 1U;
   SystemCoreClock = sys_freq;
 
   __set_PRIMASK(primask);
