@@ -397,7 +397,8 @@ struct PWMDriver {
  * @notapi
  */
 #define pwm_lld_change_period(pwmp, period) \
-  ((pwmp)->pwm->CH[(pwmp)->timer_id].TOP = (pwmcnt_t)((period) - 1))
+  ((pwmp)->pwm->CH[(pwmp)->timer_id].TOP =                                  \
+    (pwmcnt_t)((((period) >= 1U) ? (period) : 1U) - 1U))
 
 /*===========================================================================*/
 /* External declarations.                                                    */

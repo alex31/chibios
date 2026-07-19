@@ -394,7 +394,12 @@ void pwm_lld_start(PWMDriver *pwmp) {
     div_fp4 = 0x010U;
   }
 
+  /* The 12-bit INT.FRAC divider tops out at 255+15/16; release builds
+     clamp instead of writing a truncated unrelated value. */
   osalDbgAssert(div_fp4 <= 0xFFFU, "PWM frequency too low");
+  if (div_fp4 > 0xFFFU) {
+    div_fp4 = 0xFFFU;
+  }
   osalDbgAssert(pwmp->period >= 1U, "invalid PWM period");
 
   p->CH[pwmp->timer_id].DIV = div_fp4;
@@ -446,7 +451,7 @@ void pwm_lld_stop(PWMDriver *pwmp) {
     /* Disabling this slice wrap interrupt first, the vector is shared
        among all slices and must not be able to fire for a stopped
        driver. */
-    p->IRQ0_INTE &= ~PWM_INTE_CH(pwmp->timer_id);
+    p->CLR.IRQ0_INTE = PWM_INTE_CH(pwmp->timer_id);
 
     p->CH[pwmp->timer_id].CSR = 0U;
     p->CH[pwmp->timer_id].CTR = 0U;
@@ -523,7 +528,7 @@ void pwm_lld_disable_channel(PWMDriver *pwmp, pwmchannel_t channel) {
  * @notapi
  */
 void pwm_lld_enable_periodic_notification(PWMDriver *pwmp) {
-  pwmp->pwm->IRQ0_INTE |= PWM_INTE_CH(pwmp->timer_id);
+  pwmp->pwm->SET.IRQ0_INTE = PWM_INTE_CH(pwmp->timer_id);
 }
 
 /**
@@ -536,7 +541,7 @@ void pwm_lld_enable_periodic_notification(PWMDriver *pwmp) {
  * @notapi
  */
 void pwm_lld_disable_periodic_notification(PWMDriver *pwmp) {
-  pwmp->pwm->IRQ0_INTE &= ~PWM_INTE_CH(pwmp->timer_id);
+  pwmp->pwm->CLR.IRQ0_INTE = PWM_INTE_CH(pwmp->timer_id);
 }
 
 /**
