@@ -361,10 +361,19 @@ static void i2c_lld_serve_interrupt(I2CDriver *i2cp) {
     /* The RP silicon hardwires IC_CON.STOP_DET_IF_MASTER_ACTIVE off
        (the write is inert, verified by register read-back), so this
        interrupt also fires for STOP conditions issued by other masters
-       on the bus. It only means completion when this driver has queued
-       its own final command; a foreign STOP mid-transfer is ignored,
-       the own transfer continues under hardware arbitration. */
-    if ((i2cp->txbytes > 0U) || (i2cp->rxbytes > 0U)) {
+       on the bus. It only means completion when this driver's own final
+       command has completed on the wire: the byte counters cover bytes
+       not yet queued, TXFLR covers commands (data and read requests
+       alike) still sitting in the TX FIFO waiting for the bus, and the
+       raw TX_EMPTY flag - completion-qualified by TX_EMPTY_CTRL - stays
+       low while a command popped from the FIFO is still executing,
+       which closes the window between the pop and this read. An own
+       STOP can only appear after all of that has drained, so any
+       residue marks the STOP as foreign; the own transfer then
+       continues under hardware arbitration. */
+    if ((i2cp->txbytes > 0U) || (i2cp->rxbytes > 0U) ||
+        (dp->TXFLR != 0U) ||
+        ((dp->RAWINTRSTAT & I2C_IC_INTR_STAT_R_TX_EMPTY) == 0U)) {
       return;
     }
   }
