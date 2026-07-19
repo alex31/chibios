@@ -78,6 +78,50 @@
 #endif
 
 /**
+ * @brief   Enables runtime changes of the system clock.
+ * @details When @p TRUE the port advertises the generic clock management
+ *          API (@p halClockSwitchMode()) and clock point queries become
+ *          dynamic. When @p FALSE (default) the clock tree is fixed at
+ *          initialization time and this feature costs nothing.
+ */
+#if !defined(RP_CLOCK_DYNAMIC) || defined(__DOXYGEN__)
+#define RP_CLOCK_DYNAMIC                    FALSE
+#endif
+
+/**
+ * @brief   Allows runtime clock configurations above the rated system
+ *          frequency.
+ * @details Effective only together with @p RP_CLOCK_DYNAMIC. When
+ *          @p FALSE (default) the runtime validation rejects any
+ *          configuration above the rated maximum system frequency
+ *          (@p RP_CLK_SYS_MAX); a boot configuration below the rated
+ *          maximum may still switch up to it.
+ *          Overclocked operation is outside the device specification;
+ *          configurations above the rated frequency must carry an
+ *          explicit QMI flash divider and may require a raised core
+ *          voltage (@p vreg_mv).
+ */
+#if !defined(RP_ALLOW_OVERCLOCK) || defined(__DOXYGEN__)
+#define RP_ALLOW_OVERCLOCK                  FALSE
+#endif
+
+/**
+ * @brief   Rated maximum system frequency of the device.
+ * @note    This is the specification limit, independent of the
+ *          compile-time boot configuration which may be lower.
+ */
+#if !defined(RP_CLK_SYS_MAX) || defined(__DOXYGEN__)
+#define RP_CLK_SYS_MAX                      150000000U
+#endif
+
+/**
+ * @brief   Upper frequency bound admitted when overclocking is enabled.
+ */
+#if !defined(RP_CLK_SYS_OVERCLOCK_MAX) || defined(__DOXYGEN__)
+#define RP_CLK_SYS_OVERCLOCK_MAX            300000000U
+#endif
+
+/**
  * @brief   Starts core 1 after initialization.
  */
 #if !defined(RP_CORE1_START) || defined(__DOXYGEN__)
@@ -202,6 +246,20 @@
 #error "RP2350-E12: clk_sys must be at least 1.1 * clk_usb for reliable USB operation"
 #endif
 
+#if (RP_CLOCK_DYNAMIC == TRUE) && defined(OSAL_ST_MODE) &&                  \
+    (OSAL_ST_MODE == OSAL_ST_MODE_PERIODIC)
+#error "RP_CLOCK_DYNAMIC requires tick-less mode, in periodic mode SysTick counts clk_sys and the kernel tick would scale with every switch"
+#endif
+
+#if (RP_ALLOW_OVERCLOCK == TRUE) && (RP_CLOCK_DYNAMIC == FALSE)
+#error "RP_ALLOW_OVERCLOCK requires RP_CLOCK_DYNAMIC"
+#endif
+
+#if (RP_ALLOW_OVERCLOCK == TRUE) &&                                         \
+    ((RP_CLK_SYS_OVERCLOCK_MAX) < (RP_CLK_SYS_MAX))
+#error "RP_CLK_SYS_OVERCLOCK_MAX below the rated system frequency"
+#endif
+
 /**
  * @name    Various clock points.
  * @{
@@ -223,6 +281,64 @@
 /*===========================================================================*/
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
+
+#if (RP_CLOCK_DYNAMIC == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   The port supports the generic clock management API.
+ */
+#define HAL_LLD_USE_CLOCK_MANAGEMENT
+
+/**
+ * @brief   Type of a clock configuration structure.
+ * @details Describes a PLL_SYS setting reachable at runtime through
+ *          @p halClockSwitchMode(). The reference is always the crystal
+ *          (@p RP_XOSCCLK); clk_peri follows clk_sys, clk_ref, clk_usb
+ *          and clk_adc are not affected by a switch.
+ */
+typedef struct {
+  /**
+   * @brief   PLL_SYS reference divider, 1..63.
+   */
+  uint32_t          pll_sys_refdiv;
+  /**
+   * @brief   PLL_SYS VCO frequency in Hz, 750 MHz..1600 MHz.
+   */
+  uint32_t          pll_sys_vco_freq;
+  /**
+   * @brief   PLL_SYS first post divider, 1..7.
+   */
+  uint32_t          pll_sys_postdiv1;
+  /**
+   * @brief   PLL_SYS second post divider, 1..postdiv1.
+   */
+  uint32_t          pll_sys_postdiv2;
+  /**
+   * @brief   Effective QMI flash clock divider for the new frequency,
+   *          0 or 1..255.
+   * @details Zero selects the divider the system booted with (captured
+   *          before the first switch), accepted only for targets at or
+   *          below the boot frequency where it is known-safe. A
+   *          non-zero value must keep the flash SCK within the device
+   *          rating at the new clk_sys. The switch first widens the
+   *          divider to a value safe at both the old and the new
+   *          frequency, and programs this target value only after the
+   *          new frequency is established, so flash timing stays in
+   *          specification at every instant.
+   */
+  uint32_t          qmi_clkdiv;
+  /**
+   * @brief   Core voltage in millivolts, 0 or 1100..1300 in steps of
+   *          50.
+   * @details Zero leaves the regulator untouched. A non-zero value is
+   *          only accepted when @p RP_ALLOW_OVERCLOCK is enabled; the
+   *          regulator is raised before an upward frequency change and
+   *          lowered after a downward one. Values above 1300 mV are
+   *          not supported (they require the POWMAN voltage-limit
+   *          unlock, deliberately out of scope).
+   */
+  uint32_t          vreg_mv;
+} halclkcfg_t;
+#endif /* RP_CLOCK_DYNAMIC == TRUE */
 
 /*===========================================================================*/
 /* Driver macros.                                                            */
@@ -267,10 +383,23 @@ typedef uint32_t halcnt_t;
 #include "rp_pio.h"
 #include "rp_bootrom.h"
 
+extern uint32_t SystemCoreClock;
+
+#if (RP_CLOCK_DYNAMIC == TRUE) || defined(__DOXYGEN__)
+extern const halclkcfg_t hal_clkcfg_default;
+extern const halclkcfg_t hal_clkcfg_low;
+#if (RP_ALLOW_OVERCLOCK == TRUE) || defined(__DOXYGEN__)
+extern const halclkcfg_t hal_clkcfg_overclock;
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
   void hal_lld_init(void);
+#if (RP_CLOCK_DYNAMIC == TRUE) || defined(__DOXYGEN__)
+  bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp);
+#endif
 #ifdef __cplusplus
 }
 #endif

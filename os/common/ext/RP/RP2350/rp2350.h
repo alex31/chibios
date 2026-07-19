@@ -1481,6 +1481,13 @@ typedef struct {
 } CLOCKS_FC0_TypeDef;
 
 typedef struct {
+  __IO uint32_t         BADPASSWD;
+  __IO uint32_t         VREG_CTRL;
+  __I  uint32_t         VREG_STS;
+  __IO uint32_t         VREG;
+} POWMAN_TypeDef;
+
+typedef struct {
   CLOCKS_CLK_TypeDef    CLK[10];
   __IO uint32_t         DFTCLK_XOSC_CTRL;
   __IO uint32_t         DFTCLK_ROSC_CTRL;
@@ -1686,6 +1693,7 @@ typedef struct {
 #define PLL_USB                           ((PLL_TypeDef *)        __PLL_USB_BASE)
 #define XOSC                              ((XOSC_TypeDef *)       __XOSC_BASE)
 #define CLOCKS                            ((CLOCKS_TypeDef *)     __CLOCKS_BASE)
+#define POWMAN                            ((POWMAN_TypeDef *)     __POWMAN_BASE)
 #define TICKS                             ((TICKS_TypeDef *)      __TICKS_BASE)
 #define XIP_CTRL                          ((XIP_CTRL_TypeDef *)   __XIP_CTRL_BASE)
 #define QMI                               ((QMI_TypeDef *)        __QMI_BASE)
@@ -3059,6 +3067,51 @@ typedef struct {
 #define CLOCKS_CLK_ADC_CTRL_AUXSRC_PLL_SYS (0x1U << CLOCKS_CLK_ADC_CTRL_AUXSRC_Pos)
 #define CLOCKS_CLK_ADC_CTRL_AUXSRC_ROSC   (0x2U << CLOCKS_CLK_ADC_CTRL_AUXSRC_Pos)
 #define CLOCKS_CLK_ADC_CTRL_AUXSRC_XOSC   (0x3U << CLOCKS_CLK_ADC_CTRL_AUXSRC_Pos)
+
+/* FC0 frequency counter */
+#define CLOCKS_FC0_SRC_NULL               0x00U
+#define CLOCKS_FC0_SRC_PLL_SYS            0x01U
+#define CLOCKS_FC0_SRC_PLL_USB            0x02U
+#define CLOCKS_FC0_SRC_ROSC               0x03U
+#define CLOCKS_FC0_SRC_ROSC_PH            0x04U
+#define CLOCKS_FC0_SRC_XOSC               0x05U
+#define CLOCKS_FC0_SRC_GPIN0              0x06U
+#define CLOCKS_FC0_SRC_GPIN1              0x07U
+#define CLOCKS_FC0_SRC_CLK_REF            0x08U
+#define CLOCKS_FC0_SRC_CLK_SYS            0x09U
+#define CLOCKS_FC0_SRC_CLK_PERI           0x0AU
+#define CLOCKS_FC0_SRC_CLK_USB            0x0BU
+#define CLOCKS_FC0_SRC_CLK_ADC            0x0CU
+#define CLOCKS_FC0_SRC_CLK_HSTX           0x0DU
+#define CLOCKS_FC0_SRC_LPOSC              0x0EU
+#define CLOCKS_FC0_SRC_OTP_CLK2FC         0x0FU
+#define CLOCKS_FC0_STATUS_PASS            (1U << 0)
+#define CLOCKS_FC0_STATUS_DONE            (1U << 4)
+#define CLOCKS_FC0_STATUS_RUNNING         (1U << 8)
+#define CLOCKS_FC0_STATUS_WAITING         (1U << 12)
+#define CLOCKS_FC0_STATUS_FAIL            (1U << 16)
+#define CLOCKS_FC0_STATUS_SLOW            (1U << 20)
+#define CLOCKS_FC0_STATUS_FAST            (1U << 24)
+#define CLOCKS_FC0_STATUS_DIED            (1U << 28)
+#define CLOCKS_FC0_RESULT_FRAC_Pos        0U
+#define CLOCKS_FC0_RESULT_FRAC_Msk        (0x1FU << CLOCKS_FC0_RESULT_FRAC_Pos)
+#define CLOCKS_FC0_RESULT_KHZ_Pos         5U
+#define CLOCKS_FC0_RESULT_KHZ_Msk         (0x1FFFFFFU << CLOCKS_FC0_RESULT_KHZ_Pos)
+#define CLOCKS_FC0_MAX_KHZ_Msk            0x1FFFFFFU
+/** @} */
+
+/**
+ * @name    POWMAN bits definitions
+ * @note    Every POWMAN register write requires the password in the
+ *          upper half word.
+ * @{
+ */
+#define POWMAN_PASSWORD                   (0x5AFEU << 16)
+#define POWMAN_VREG_VSEL_Pos              4U
+#define POWMAN_VREG_VSEL_Msk              (0x1FU << POWMAN_VREG_VSEL_Pos)
+#define POWMAN_VREG_VSEL(n)               ((n) << POWMAN_VREG_VSEL_Pos)
+#define POWMAN_VREG_UPDATE_IN_PROGRESS    (1U << 15)
+#define POWMAN_VREG_HIZ                   (1U << 1)
 /** @} */
 
 /**
