@@ -121,6 +121,10 @@ static void test_mem_to_mem(void) {
   tc = *(volatile uint32_t *)(0x50000804U + (0x40U * dmachp->chnidx));
   report("oversized count masked to NORMAL",
          ((tc >> 28) == 0U) && ((tc & 0x0FFFFFFFU) == 0x10U));
+  dmaChannelSetCounterX(dmachp, 0xF0000010U);
+  tc = *(volatile uint32_t *)(0x50000804U + (0x40U * dmachp->chnidx));
+  report("ENDLESS-nibble count masked to NORMAL",
+         ((tc >> 28) == 0U) && ((tc & 0x0FFFFFFFU) == 0x10U));
   dmaChannelSetCounterX(dmachp, M2M_WORDS);
 
   /* Unpaced word copy with incrementing addresses on both sides, then
