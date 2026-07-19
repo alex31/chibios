@@ -128,6 +128,23 @@
 #error "Invalid DMA priority assigned to SPI1"
 #endif
 
+/* Explicitly assigned RX and TX DMA channels must differ, the check is
+   skipped when RP_DMA_CHANNEL_ID_ANY is used because equal sentinel
+   values are legitimate.*/
+#if RP_SPI_USE_SPI0 &&                                                      \
+    (RP_SPI_SPI0_RX_DMA_CHANNEL != RP_DMA_CHANNEL_ID_ANY) &&                \
+    (RP_SPI_SPI0_TX_DMA_CHANNEL != RP_DMA_CHANNEL_ID_ANY) &&                \
+    (RP_SPI_SPI0_RX_DMA_CHANNEL == RP_SPI_SPI0_TX_DMA_CHANNEL)
+#error "SPI0 RX and TX assigned to the same DMA channel"
+#endif
+
+#if RP_SPI_USE_SPI1 &&                                                      \
+    (RP_SPI_SPI1_RX_DMA_CHANNEL != RP_DMA_CHANNEL_ID_ANY) &&                \
+    (RP_SPI_SPI1_TX_DMA_CHANNEL != RP_DMA_CHANNEL_ID_ANY) &&                \
+    (RP_SPI_SPI1_RX_DMA_CHANNEL == RP_SPI_SPI1_TX_DMA_CHANNEL)
+#error "SPI1 RX and TX assigned to the same DMA channel"
+#endif
+
 /* Forcing inclusion of the DMA support driver.*/
 #if !defined(RP_DMA_REQUIRED)
 #define RP_DMA_REQUIRED
