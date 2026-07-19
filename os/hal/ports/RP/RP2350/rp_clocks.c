@@ -55,7 +55,8 @@ const halclkcfg_t hal_clkcfg_default = {
   .pll_sys_vco_freq = RP_PLL_SYS_VCO_FREQ,
   .pll_sys_postdiv1 = RP_PLL_SYS_POSTDIV1,
   .pll_sys_postdiv2 = RP_PLL_SYS_POSTDIV2,
-  .qmi_clkdiv       = 0U
+  .qmi_clkdiv       = 0U,
+  .vreg_mv          = 0U
 };
 
 /**
@@ -68,8 +69,26 @@ const halclkcfg_t hal_clkcfg_low = {
   .pll_sys_vco_freq = 768000000U,
   .pll_sys_postdiv1 = 4U,
   .pll_sys_postdiv2 = 2U,
-  .qmi_clkdiv       = 0U
+  .qmi_clkdiv       = 0U,
+  .vreg_mv          = 0U
 };
+
+#if (RP_ALLOW_OVERCLOCK == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   An overclocked configuration, 200 MHz at 1.15 V.
+ * @note    Outside the device specification. Assumes the default
+ *          12 MHz crystal. The explicit flash divider yields a 50 MHz
+ *          SCK, conservative for common flash devices.
+ */
+const halclkcfg_t hal_clkcfg_overclock = {
+  .pll_sys_refdiv   = RP_PLL_SYS_REFDIV,
+  .pll_sys_vco_freq = 1200000000U,
+  .pll_sys_postdiv1 = 3U,
+  .pll_sys_postdiv2 = 2U,
+  .qmi_clkdiv       = 4U,
+  .vreg_mv          = 1150U
+};
+#endif
 #endif /* RP_CLOCK_DYNAMIC == TRUE */
 
 /*===========================================================================*/
@@ -325,11 +344,32 @@ static bool rp_clock_config_valid(const halclkcfg_t *ccp) {
   }
   sys_freq = ccp->pll_sys_vco_freq / pdiv;
 
-  /* No overclocking support, the port is validated up to the rated
-     system frequency only. */
+#if RP_ALLOW_OVERCLOCK == TRUE
+  if (sys_freq > RP_CLK_SYS_OVERCLOCK_MAX) {
+    return false;
+  }
+  /* Above the rated frequency the boot flash divider is no longer
+     known-safe, an explicit divider is mandatory. */
+  if ((sys_freq > RP_PLL_SYS_CLK) && (ccp->qmi_clkdiv == 0U)) {
+    return false;
+  }
+  /* Regulator range: 1100..1300 mV in 50 mV steps, or untouched. */
+  if (ccp->vreg_mv != 0U) {
+    if ((ccp->vreg_mv < 1100U) || (ccp->vreg_mv > 1300U) ||
+        ((ccp->vreg_mv % 50U) != 0U)) {
+      return false;
+    }
+  }
+#else
+  /* Without overclocking support the port admits configurations up to
+     the rated system frequency only, and the regulator is off limits. */
   if (sys_freq > RP_PLL_SYS_CLK) {
     return false;
   }
+  if (ccp->vreg_mv != 0U) {
+    return false;
+  }
+#endif
 
   /* RP2350-E12: reliable USB operation requires clk_sys >= 1.1 *
      clk_usb; clk_usb stays at its fixed frequency across switches. The
@@ -344,6 +384,44 @@ static bool rp_clock_config_valid(const halclkcfg_t *ccp) {
 
   return true;
 }
+
+#if RP_ALLOW_OVERCLOCK == TRUE
+/**
+ * @brief   Programs the core voltage regulator.
+ * @details Millivolts are mapped onto the VSEL encoding (1100 mV is
+ *          VSEL 0x0B, 50 mV per step); voltages above 1300 mV would
+ *          require the POWMAN voltage-limit unlock and are rejected by
+ *          validation. Every POWMAN write carries the password.
+ *
+ * @param[in] mv        target voltage, 1100..1300 in steps of 50
+ * @return              @p true on regulator update timeout.
+ */
+static bool rp_clock_set_vreg(uint32_t mv) {
+  uint32_t vsel = 0x0BU + ((mv - 1100U) / 50U);
+  uint32_t vreg, start;
+
+  vreg = (POWMAN->VREG & 0xFFFFU & ~POWMAN_VREG_VSEL_Msk) |
+         POWMAN_VREG_VSEL(vsel);
+  POWMAN->VREG = POWMAN_PASSWORD | vreg;
+  start = TIMER0->TIMERAWL;
+  while ((POWMAN->VREG & POWMAN_VREG_UPDATE_IN_PROGRESS) != 0U) {
+    if ((uint32_t)(TIMER0->TIMERAWL - start) > 1000U) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief   Returns the currently programmed regulator voltage in mV.
+ */
+static uint32_t rp_clock_get_vreg_mv(void) {
+  uint32_t vsel = (POWMAN->VREG & POWMAN_VREG_VSEL_Msk) >>
+                  POWMAN_VREG_VSEL_Pos;
+
+  return 1100U + ((vsel - 0x0BU) * 50U);
+}
+#endif /* RP_ALLOW_OVERCLOCK == TRUE */
 
 /**
  * @brief   Reprograms the QMI flash clock divider.
@@ -418,6 +496,16 @@ bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp) {
                                      : rp_clock_boot_qmi_div;
   div_safe = (div_new > div_old) ? div_new : div_old;
 
+#if RP_ALLOW_OVERCLOCK == TRUE
+  /* A raised core voltage must be stable before the frequency goes up;
+     a timeout aborts the switch with the clocks untouched. */
+  if ((ccp->vreg_mv != 0U) && (ccp->vreg_mv > rp_clock_get_vreg_mv())) {
+    if (rp_clock_set_vreg(ccp->vreg_mv)) {
+      return true;
+    }
+  }
+#endif
+
   /* Only local interrupts are masked: the sequence touches no kernel
      state and taking the kernel lock here would stall the other core
      on any kernel entry for the whole PLL relock. */
@@ -467,6 +555,17 @@ bool hal_lld_clock_switch_mode(const halclkcfg_t *ccp) {
   SystemCoreClock = sys_freq;
 
   __set_PRIMASK(primask);
+
+#if RP_ALLOW_OVERCLOCK == TRUE
+  /* A lowered voltage is applied only after the frequency has come
+     down; a late regulator timeout is reported although the clocks
+     are already at the (safe, lower) target. */
+  if ((ccp->vreg_mv != 0U) && (ccp->vreg_mv < rp_clock_get_vreg_mv())) {
+    if (rp_clock_set_vreg(ccp->vreg_mv)) {
+      return true;
+    }
+  }
+#endif
 
   return false;
 }

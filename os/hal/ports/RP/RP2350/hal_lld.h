@@ -89,6 +89,28 @@
 #endif
 
 /**
+ * @brief   Allows runtime clock configurations above the rated system
+ *          frequency.
+ * @details Effective only together with @p RP_CLOCK_DYNAMIC. When
+ *          @p FALSE (default) the runtime validation rejects any
+ *          configuration above the compile-time system frequency.
+ *          Overclocked operation is outside the device specification;
+ *          configurations above the rated frequency must carry an
+ *          explicit QMI flash divider and may require a raised core
+ *          voltage (@p vreg_mv).
+ */
+#if !defined(RP_ALLOW_OVERCLOCK) || defined(__DOXYGEN__)
+#define RP_ALLOW_OVERCLOCK                  FALSE
+#endif
+
+/**
+ * @brief   Upper frequency bound admitted when overclocking is enabled.
+ */
+#if !defined(RP_CLK_SYS_OVERCLOCK_MAX) || defined(__DOXYGEN__)
+#define RP_CLK_SYS_OVERCLOCK_MAX            300000000U
+#endif
+
+/**
  * @brief   Starts core 1 after initialization.
  */
 #if !defined(RP_CORE1_START) || defined(__DOXYGEN__)
@@ -218,6 +240,15 @@
 #error "RP_CLOCK_DYNAMIC requires tick-less mode, in periodic mode SysTick counts clk_sys and the kernel tick would scale with every switch"
 #endif
 
+#if (RP_ALLOW_OVERCLOCK == TRUE) && (RP_CLOCK_DYNAMIC == FALSE)
+#error "RP_ALLOW_OVERCLOCK requires RP_CLOCK_DYNAMIC"
+#endif
+
+#if (RP_ALLOW_OVERCLOCK == TRUE) &&                                         \
+    ((RP_CLK_SYS_OVERCLOCK_MAX) < (RP_CLK_SYS_FREQ))
+#error "RP_CLK_SYS_OVERCLOCK_MAX below the rated system frequency"
+#endif
+
 /**
  * @name    Various clock points.
  * @{
@@ -284,6 +315,17 @@ typedef struct {
    *          specification at every instant.
    */
   uint32_t          qmi_clkdiv;
+  /**
+   * @brief   Core voltage in millivolts, 0 or 1100..1300 in steps of
+   *          50.
+   * @details Zero leaves the regulator untouched. A non-zero value is
+   *          only accepted when @p RP_ALLOW_OVERCLOCK is enabled; the
+   *          regulator is raised before an upward frequency change and
+   *          lowered after a downward one. Values above 1300 mV are
+   *          not supported (they require the POWMAN voltage-limit
+   *          unlock, deliberately out of scope).
+   */
+  uint32_t          vreg_mv;
 } halclkcfg_t;
 #endif /* RP_CLOCK_DYNAMIC == TRUE */
 
@@ -335,6 +377,9 @@ extern uint32_t SystemCoreClock;
 #if (RP_CLOCK_DYNAMIC == TRUE) || defined(__DOXYGEN__)
 extern const halclkcfg_t hal_clkcfg_default;
 extern const halclkcfg_t hal_clkcfg_low;
+#if (RP_ALLOW_OVERCLOCK == TRUE) || defined(__DOXYGEN__)
+extern const halclkcfg_t hal_clkcfg_overclock;
+#endif
 #endif
 
 #ifdef __cplusplus

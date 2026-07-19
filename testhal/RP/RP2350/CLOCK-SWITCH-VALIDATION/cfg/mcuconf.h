@@ -7,6 +7,7 @@
  * HAL driver system settings.
  */
 #define RP_CLOCK_DYNAMIC                    TRUE
+#define RP_ALLOW_OVERCLOCK                  TRUE
 
 /*
  * HAL driver system settings.

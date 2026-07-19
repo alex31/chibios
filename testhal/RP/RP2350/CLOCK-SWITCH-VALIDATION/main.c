@@ -30,8 +30,10 @@
  * 4. Flash execution: code keeps running from XIP across switches (this
  *    program lives there) and a flash-resident pattern must checksum
  *    identically at every frequency.
- * 5. Switch back and stress: return to the default configuration, then
- *    25 low/default round trips with FC0 verification.
+ * 5. Switch back and stress: return to the default configuration, an
+ *    explicit-divider round trip, a gated 200 MHz overclock leg with
+ *    core voltage raise/restore, then 25 low/default round trips with
+ *    FC0 verification.
  *
  * Single core. Output on SIOD0 (GPIO0/GPIO1) at the default 38400.
  */
@@ -230,6 +232,32 @@ int main(void) {
     report("explicit divider applied and boot divider restored",
            ok && (enc == boot_enc));
   }
+
+#if RP_ALLOW_OVERCLOCK == TRUE
+  /* Overclock leg: 200 MHz at 1.15 V with an explicit flash divider,
+     then back to the rated default. Returning with a 1100 mV request
+     exercises the lower-voltage-after-frequency path. */
+  {
+    halclkcfg_t restore = hal_clkcfg_default;
+
+    chThdSleepMilliseconds(20);
+    ok = (halClockSwitchMode(&hal_clkcfg_overclock) == false);
+    khz = fc0_measure_khz(CLOCKS_FC0_SRC_CLK_SYS);
+    ok = ok && freq_close_khz(khz, 200000U);
+    ok = ok && (flash_checksum() == sum_boot);
+    ok = ok && (((POWMAN->VREG & POWMAN_VREG_VSEL_Msk) >>
+                 POWMAN_VREG_VSEL_Pos) == 0x0CU);   /* 1.15 V.*/
+    restore.vreg_mv = 1100U;
+    ok = ok && (halClockSwitchMode(&restore) == false);
+    ok = ok && freq_close_khz(fc0_measure_khz(CLOCKS_FC0_SRC_CLK_SYS),
+                              RP_CLK_SYS_FREQ / 1000U);
+    ok = ok && (((POWMAN->VREG & POWMAN_VREG_VSEL_Msk) >>
+                 POWMAN_VREG_VSEL_Pos) == 0x0BU);   /* 1.10 V.*/
+    console_restart();
+    chprintf(chp, "  overclock leg measured %u kHz\r\n", khz);
+    report("200 MHz overclock round trip with voltage restore", ok);
+  }
+#endif
 
   chThdSleepMilliseconds(20);   /* Drain before the first stress switch.*/
   ok = true;
