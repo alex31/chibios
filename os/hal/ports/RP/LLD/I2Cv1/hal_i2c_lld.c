@@ -563,9 +563,19 @@ msg_t i2c_lld_master_receive_timeout(I2CDriver *i2cp, i2caddr_t addr,
   /* Releases the lock from high level driver. */
   osalSysUnlock();
 
-  /* Calculating the time window for the timeout on the busy bus condition. */
+  /* Calculating the time window for the timeout on the busy bus
+     condition. The caller timeout is one absolute deadline for the
+     entire call, so the fixed bus-busy limit only applies where it is
+     shorter. */
   start = osalOsGetSystemTimeX();
-  end = osalTimeAddX(start, OSAL_MS2I(RP_I2C_BUSY_TIMEOUT));
+  {
+    sysinterval_t busy_limit = OSAL_MS2I(RP_I2C_BUSY_TIMEOUT);
+
+    if ((timeout != TIME_INFINITE) && (timeout < busy_limit)) {
+      busy_limit = timeout;
+    }
+    end = osalTimeAddX(start, busy_limit);
+  }
 
   while (true) {
     osalSysLock();
@@ -584,6 +594,18 @@ msg_t i2c_lld_master_receive_timeout(I2CDriver *i2cp, i2caddr_t addr,
     }
 
     osalSysUnlock();
+  }
+
+  /* Remaining share of the caller timeout after the bus-busy wait, the
+     deadline covers the entire call. Nothing is armed yet, returning
+     is safe. */
+  if (timeout != TIME_INFINITE) {
+    sysinterval_t elapsed = osalTimeDiffX(start, osalOsGetSystemTimeX());
+
+    if (elapsed >= timeout) {
+      return MSG_TIMEOUT;
+    }
+    timeout -= elapsed;
   }
 
   i2cp->txbytes = 0U;
@@ -662,9 +684,19 @@ msg_t i2c_lld_master_transmit_timeout(I2CDriver *i2cp, i2caddr_t addr,
   /* Releases the lock from high level driver. */
   osalSysUnlock();
 
-  /* Calculating the time window for the timeout on the busy bus condition. */
+  /* Calculating the time window for the timeout on the busy bus
+     condition. The caller timeout is one absolute deadline for the
+     entire call, so the fixed bus-busy limit only applies where it is
+     shorter. */
   start = osalOsGetSystemTimeX();
-  end = osalTimeAddX(start, OSAL_MS2I(RP_I2C_BUSY_TIMEOUT));
+  {
+    sysinterval_t busy_limit = OSAL_MS2I(RP_I2C_BUSY_TIMEOUT);
+
+    if ((timeout != TIME_INFINITE) && (timeout < busy_limit)) {
+      busy_limit = timeout;
+    }
+    end = osalTimeAddX(start, busy_limit);
+  }
 
   while (true) {
     osalSysLock();
@@ -682,6 +714,18 @@ msg_t i2c_lld_master_transmit_timeout(I2CDriver *i2cp, i2caddr_t addr,
     }
 
     osalSysUnlock();
+  }
+
+  /* Remaining share of the caller timeout after the bus-busy wait, the
+     deadline covers the entire call. Nothing is armed yet, returning
+     is safe. */
+  if (timeout != TIME_INFINITE) {
+    sysinterval_t elapsed = osalTimeDiffX(start, osalOsGetSystemTimeX());
+
+    if (elapsed >= timeout) {
+      return MSG_TIMEOUT;
+    }
+    timeout -= elapsed;
   }
 
   i2cp->txbytes = txbytes;
