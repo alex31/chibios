@@ -52,10 +52,15 @@ static THD_FUNCTION(Thread1, arg) {
  */
 static void check_ioport2_latch_preservation(void) {
   static const uint8_t sos[] = {1, 1, 1, 3, 3, 3, 1, 1, 1};
-  uint32_t hi_snapshot, saved_latch;
+  uint32_t hi_original, hi_snapshot, saved_latch;
   bool ok = true;
 
   saved_latch = palReadLatch(IOPORT2) & 0xFFFFU;
+
+  /* The upper half is captured before seeding so it can be restored
+     exactly afterwards: the seeded bit may already be owned by earlier
+     firmware and must not be blindly cleared.*/
+  hi_original = SIO->GPIO_HI_OUT & 0xFFFF0000U;
 
   /* Seeding a non-GPIO latch bit so preservation is actually exercised,
      the QSPI/USB output latches are inert while their pads are not on
@@ -75,9 +80,11 @@ static void check_ioport2_latch_preservation(void) {
   ok = ok && ((palReadLatch(IOPORT2) & 0xFFFFU) == 0x0000U);
   ok = ok && ((SIO->GPIO_HI_OUT & 0xFFFF0000U) == hi_snapshot);
 
-  /* Restoring the original latch and clearing the seeded bit.*/
+  /* Restoring both halves exactly as found: the PAL lines through the
+     API, the shared upper half with an atomic masked XOR that cannot
+     disturb the lower half.*/
   palWritePort(IOPORT2, saved_latch);
-  SIO->GPIO_HI_OUT_CLR = 0x00010000U;
+  SIO->GPIO_HI_OUT_XOR = (SIO->GPIO_HI_OUT ^ hi_original) & 0xFFFF0000U;
 
   while (!ok) {
     unsigned i;

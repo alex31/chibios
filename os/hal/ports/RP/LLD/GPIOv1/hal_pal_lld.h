@@ -363,8 +363,8 @@ typedef uint32_t iopadid_t;
  *          ALL concurrent output updates to the SAME port - including
  *          line/group set, clear and toggle - because an update landing
  *          between the read and the XOR write is folded into a value
- *          neither writer requested. The set/clear based APIs are only
- *          atomic among themselves. Different ports are independent.
+ *          neither writer requested. The set, clear and toggle APIs are
+ *          only atomic among themselves. Different ports are independent.
  */
 #define pal_lld_writeport(port, bits)                                       \
   do {                                                                      \
