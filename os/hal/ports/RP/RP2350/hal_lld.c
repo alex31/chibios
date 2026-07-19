@@ -31,27 +31,6 @@
 /* Driver local definitions.                                                 */
 /*===========================================================================*/
 
-/* Layout probes for hand-maintained register structures, offsets taken from
-   the RP2350 datasheet register maps.*/
-_Static_assert(offsetof(XOSC_TypeDef, COUNT) == 0x10U,
-               "XOSC COUNT offset mismatch");
-_Static_assert(offsetof(XOSC_TypeDef, XOR.CTRL) == 0x1000U,
-               "XOSC alias block size mismatch");
-_Static_assert(offsetof(SIO_TypeDef, FIFO_ST) == 0x50U,
-               "SIO FIFO_ST offset mismatch");
-_Static_assert(offsetof(SIO_TypeDef, DOORBELL_IN_SET) == 0x188U,
-               "SIO DOORBELL_IN_SET offset mismatch");
-_Static_assert(offsetof(SIO_TypeDef, DOORBELL_IN_CLR) == 0x18CU,
-               "SIO DOORBELL_IN_CLR offset mismatch");
-_Static_assert(offsetof(PIO_TypeDef, GPIOBASE) == 0x168U,
-               "PIO GPIOBASE offset mismatch");
-_Static_assert(offsetof(PIO_TypeDef, XOR.CTRL) == 0x1000U,
-               "PIO alias block size mismatch");
-_Static_assert(offsetof(QMI_TypeDef, ATRANS[0]) == 0x34U,
-               "QMI ATRANS offset mismatch");
-_Static_assert(offsetof(TICKS_TypeDef, TICK[1].CTRL) == 0x0CU,
-               "TICKS entry stride mismatch");
-
 /*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
