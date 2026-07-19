@@ -41,6 +41,7 @@ void c1_main(void) {
   while (c1_free_go == 0U) {
     c1_heartbeat++;
   }
+  __DMB();                          /* Flag observed, payload follows.*/
 
   /* Cross-core free, I-class under this core's own lock.*/
   chSysLock();

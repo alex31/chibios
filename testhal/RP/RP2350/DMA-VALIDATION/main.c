@@ -113,6 +113,16 @@ static void test_mem_to_mem(void) {
   report("TRANS_COUNT mode nibble is NORMAL", (tc >> 28) == 0U);
   report("TRANS_COUNT count preserved", (tc & 0x0FFFFFFFU) == M2M_WORDS);
 
+  /* Oversized-count discriminator: assertions are disabled in this
+     test's chconf, so the masking path is live. The fixed driver masks
+     the mode nibble away and forces NORMAL (reload reads 0x10); the
+     old plain assignment would leave 0x20000010 with mode 2.*/
+  dmaChannelSetCounterX(dmachp, 0x20000010U);
+  tc = *(volatile uint32_t *)(0x50000804U + (0x40U * dmachp->chnidx));
+  report("oversized count masked to NORMAL",
+         ((tc >> 28) == 0U) && ((tc & 0x0FFFFFFFU) == 0x10U));
+  dmaChannelSetCounterX(dmachp, M2M_WORDS);
+
   /* Unpaced word copy with incrementing addresses on both sides, then
      trigger by setting EN.*/
   dmaChannelSetModeX(dmachp, DMA_CTRL_TRIG_TREQ_PERMANENT |
@@ -124,6 +134,14 @@ static void test_mem_to_mem(void) {
   for (i = 0U; (i < 1000000U) && dmaChannelIsBusyX(dmachp); i++) {
   }
   report("transfer completed", dmaChannelIsBusyX(dmachp) == false);
+  if (dmaChannelIsBusyX(dmachp)) {
+    /* The engine may still be writing; disable before freeing and do
+       not examine the destination.*/
+    dmaChannelDisableX(dmachp);
+    report("data copied correctly", false);
+    dmaChannelFree(dmachp);
+    return;
+  }
 
   ok = true;
   for (i = 0U; i < M2M_WORDS; i++) {
@@ -158,11 +176,17 @@ static void test_cross_core_free(void) {
 
   /* ...and core 1 frees it.*/
   c1_free_chp = dmachp;
+  __DMB();                          /* Payload visible before the flag.*/
   c1_free_go = 1U;
   for (i = 0U; (c1_free_done == 0U) && (i < 500U); i++) {
     chThdSleepMilliseconds(10);
   }
   report("core 1 performed the free", c1_free_done != 0U);
+  if (c1_free_done == 0U) {
+    /* A late free would make the allocation count timing-dependent,
+       the leg needs its prerequisite satisfied.*/
+    return;
+  }
 
   /* Core 0 must now be able to allocate every channel. With the free
      keyed on SIO->CPUID the cross-core free clears nothing and the

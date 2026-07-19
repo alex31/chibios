@@ -324,6 +324,17 @@ void dmaChannelFreeI(const rp_dma_channel_t *dmachp) {
                 "not allocated");
   osalDbgAssert(dmaChannelIsBusyX(dmachp) == false, "channel is busy");
 
+  /* A cross-core free cannot stop an interrupt handler already
+     executing on the owning core; the caller must have disabled the
+     channel's interrupt sources and quiesced its handler first. The
+     assertion catches the enabled-interrupt part of that contract.*/
+  osalDbgAssert(
+      (((dma.c0_allocated_mask & dmachp->chnmask) != 0U) ?
+       (SIO->CPUID == 0U) : (SIO->CPUID == 1U)) ||
+      (((dmachp->dma->INTE0 & dmachp->chnmask) == 0U) &&
+       ((dmachp->dma->INTE1 & dmachp->chnmask) == 0U)),
+      "cross-core free with live interrupts");
+
   /* Putting the stream in a known state.*/
   dmaChannelDisableInterruptX(dmachp);
   dmaChannelDisableX(dmachp);
