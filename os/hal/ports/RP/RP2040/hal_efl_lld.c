@@ -561,13 +561,13 @@ RAMFUNC static bool rp_flash_exit_xip(EFlashDriver *eflp) {
  *          convention will not work with this driver.
  *
  * @param[in] eflp      pointer to the EFlashDriver object
- * @return              @p true on success, @p false on failure (the
- *                      restore still proceeds, XIP must come back no
- *                      matter what).
+ * @return              always @p true, the RP2040 restore sequence has
+ *                      no detectable failure mode. The bool signature
+ *                      mirrors the RP2350 driver, where the final QMI
+ *                      direct-mode idle wait can time out.
  */
 RAMFUNC static bool rp_flash_enter_xip(EFlashDriver *eflp) {
   PADS_QSPI_TypeDef *pads_qspi = PADS_QSPI;
-  bool ok = true;
   (void)eflp;
 
   /* Reset CS control to normal. */
@@ -594,7 +594,7 @@ RAMFUNC static bool rp_flash_enter_xip(EFlashDriver *eflp) {
 
   rp_flash_flush_cache();
 
-  return ok;
+  return true;
 }
 
 /**
