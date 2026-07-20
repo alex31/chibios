@@ -15,7 +15,7 @@
 */
 
 /*
- * CDC-ACM configuration for the RP2350 USB validation test.
+ * CDC-ACM configuration for the RP2040 USB validation test.
  *
  * Descriptor set adapted from testhal/STM32/multi/USB_CDC/source/usbcfg.c,
  * endpoint configurations rewritten for the RP USBv1 USBEndpointConfig

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Host-side checker for the RP2350 USB-VALIDATION CDC echo firmware.
+"""Host-side checker for the RP2040 USB-VALIDATION CDC echo firmware.
 
 Usage:
     python3 host_check.py /dev/ttyACM0

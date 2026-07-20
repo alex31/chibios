@@ -1,7 +1,7 @@
 # RP2040 USB-VALIDATION
 
 CDC-ACM echo test for the RP USBv1 low level driver (shared by RP2040 and
-RP2040). The firmware enumerates as a virtual COM port and echoes back every
+RP2350). The firmware enumerates as a virtual COM port and echoes back every
 byte it receives; a host script drives echo and reset stress legs against it.
 
 The transfer sizes are chosen to exercise the interesting LLD paths:
@@ -18,14 +18,14 @@ Build (requires arm-none-eabi-gcc):
 The build produces `build/ch.elf` and `build/ch.bin`. Flash either with
 openocd:
 
-    openocd -f interface/cmsis-dap.cfg -f target/rp2350.cfg \
+    openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg \
             -c "program build/ch.elf verify reset exit"
 
 or with picotool (device in BOOTSEL mode):
 
     picotool load -u -x build/ch.elf
 
-- USB: CDC-ACM on the Pico 2 micro-USB connector (EP1 bulk IN/OUT, EP2
+- USB: CDC-ACM on the Pico micro-USB connector (EP1 bulk IN/OUT, EP2
   interrupt IN). Shows up as `/dev/ttyACMx` on Linux.
 - Heartbeat/statistics: `usb: bytes=N resets=N state=N` on SIOD0
   (GPIO0 = TX, GPIO1 = RX, 38400-8-N-1) every 2 seconds.
@@ -36,7 +36,7 @@ or with picotool (device in BOOTSEL mode):
 Requires python3 and pyserial, nothing else.
 
 1. Flash the firmware.
-2. Plug the Pico 2 USB into the host, wait for the CDC ACM port to appear
+2. Plug the Pico USB into the host, wait for the CDC ACM port to appear
    (e.g. `/dev/ttyACM0`).
 3. Run:
 
