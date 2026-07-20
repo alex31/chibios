@@ -98,7 +98,7 @@
    this check the mode would compile into silent no-ops and a caller could
    believe chip select was asserted while no pin changed.*/
 #if SPI_SELECT_MODE == SPI_SELECT_MODE_LLD
-#error "SPI_SELECT_MODE_LLD is not implemented by the RP SPI driver, use SPI_SELECT_MODE_LINE, _PORT, _PAD or _NONE"
+#error "SPI_SELECT_MODE_LLD is not implemented by the RP SPI driver, use SPI_SELECT_MODE_LINE, SPI_SELECT_MODE_PORT, SPI_SELECT_MODE_PAD or SPI_SELECT_MODE_NONE"
 #endif
 
 /* Device selection checks.*/
