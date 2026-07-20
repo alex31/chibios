@@ -226,8 +226,8 @@ static uint32_t usb_prepare_out_ep_buffer(USBDriver *usbp, usbep_t ep, uint8_t b
     buf_ctrl |= oesp->next_pid ? USB_BUFFER_BUFFER0_DATA_PID : 0;
     oesp->next_pid ^= 1U;
 
-    /* uint16_t is safe here, the clamp to out_maxsize (a hardware packet
-       size, at most 1023) is what bounds the value. */
+    /* The uint16_t width is safe here, the clamp to out_maxsize (a
+       hardware packet size, at most 1023) is what bounds the value. */
     buf_len = oesp->rxsize < epcp->out_maxsize ? oesp->rxsize : epcp->out_maxsize;
     buf_ctrl |= USB_BUFFER_BUFFER0_AVAILABLE | buf_len;
     buf_ctrl &= ~USB_BUFFER_BUFFER0_FULL;
