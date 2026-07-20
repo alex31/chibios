@@ -69,12 +69,11 @@
 void rp_pll_init(PLL_TypeDef *pll, uint32_t refdiv, uint32_t vco_freq,
                  uint32_t postdiv1, uint32_t postdiv2) {
 
-  uint32_t ref_freq, fbdiv;
-  uint32_t pdiv = PLL_PRIM_POSTDIV1(postdiv1) | PLL_PRIM_POSTDIV2(postdiv2);
+  uint32_t ref_freq, fbdiv, pdiv;
 
-  /* Parameters are asserted before any derived value is computed, a
-     zero or non-dividing REFDIV would otherwise truncate the derived
-     values first and the asserts would misdiagnose the problem. */
+  /* Raw parameters are asserted before anything is derived from them,
+     a zero REFDIV would otherwise fault on the division below before
+     any assert had fired. */
   osalDbgAssert(refdiv >= 1U && refdiv <= 63U, "REFDIV out of range");
   osalDbgAssert((RP_XOSCCLK % refdiv) == 0U, "XOSC not divisible by REFDIV");
   osalDbgAssert(vco_freq >= RP_PLL_VCO_MIN_FREQ &&
@@ -82,6 +81,8 @@ void rp_pll_init(PLL_TypeDef *pll, uint32_t refdiv, uint32_t vco_freq,
                 "VCO frequency out of range");
   osalDbgAssert(postdiv1 >= 1U && postdiv1 <= 7U, "POSTDIV1 out of range");
   osalDbgAssert(postdiv2 >= 1U && postdiv2 <= 7U, "POSTDIV2 out of range");
+
+  pdiv = PLL_PRIM_POSTDIV1(postdiv1) | PLL_PRIM_POSTDIV2(postdiv2);
 
   ref_freq = RP_XOSCCLK / refdiv;
   osalDbgAssert(ref_freq >= 5000000U, "reference frequency below 5 MHz");
