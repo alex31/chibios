@@ -865,9 +865,11 @@ RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
  *
  * @param[in] qmi       pointer to the QMI registers
  * @param[in] offset    logical offset within the XIP address space
+ * @param[in] length    length of the operation starting at @p offset
  * @param[out] physp    translated physical flash offset
- * @return              true on success, false if the offset falls
- *                      outside the mapped size of its 4 MiB window.
+ * @return              true on success, false if any part of the
+ *                      [offset, offset + length) extent falls outside
+ *                      the mapped size of its 4 MiB window.
  */
 static bool rp_flash_translate(QMI_TypeDef *qmi, uint32_t offset,
                                uint32_t length, uint32_t *physp) {
