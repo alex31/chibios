@@ -81,6 +81,7 @@ void rp_pll_init(PLL_TypeDef *pll, uint32_t refdiv, uint32_t vco_freq,
                 "VCO frequency out of range");
   osalDbgAssert(postdiv1 >= 1U && postdiv1 <= 7U, "POSTDIV1 out of range");
   osalDbgAssert(postdiv2 >= 1U && postdiv2 <= 7U, "POSTDIV2 out of range");
+  osalDbgAssert(postdiv1 >= postdiv2, "POSTDIV1 must be >= POSTDIV2");
 
   pdiv = PLL_PRIM_POSTDIV1(postdiv1) | PLL_PRIM_POSTDIV2(postdiv2);
 
@@ -92,6 +93,8 @@ void rp_pll_init(PLL_TypeDef *pll, uint32_t refdiv, uint32_t vco_freq,
 
   fbdiv = vco_freq / ref_freq;
   osalDbgAssert(fbdiv >= 16U && fbdiv <= 320U, "FBDIV out of range");
+  osalDbgAssert((vco_freq % (postdiv1 * postdiv2)) == 0U,
+                "VCO frequency not divisible by POSTDIV1*POSTDIV2");
 
   /* Check if PLL is already configured */
   if ((pll->CS & PLL_CS_LOCK) &&
