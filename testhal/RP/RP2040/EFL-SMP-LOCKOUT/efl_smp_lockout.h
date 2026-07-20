@@ -30,7 +30,6 @@ extern volatile uint32_t c1_cycles;
 extern volatile uint32_t c1_errors;
 extern volatile uint32_t c1_go;
 extern volatile uint32_t c1_done;
-extern volatile uint32_t fastirq_count;
 
 extern semaphore_t c1_ready_sem;
 
