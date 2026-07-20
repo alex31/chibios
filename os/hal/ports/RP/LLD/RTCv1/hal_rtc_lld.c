@@ -236,7 +236,7 @@ void rtc_lld_get_time(RTCDriver *rtcp, RTCDateTime *timespec) {
  * @note    The function can be called from any context.
  *
  * @param[in] rtcp      pointer to RTC driver structure.
- * @param[in] alarm     alarm identifier. Can only be 0.
+ * @param[in] alarm     alarm identifier. Can be 0.
  * @param[in] alarmspec pointer to a @p RTCAlarm structure or @p NULL.
  *
  * @notapi
