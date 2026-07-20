@@ -24,7 +24,7 @@
  * IN transfers and bus reset handling.
  *
  * A heartbeat with transfer statistics is printed on SIOD0 (GPIO0 TX,
- * GPIO1 RX, 38400-8-N-1) once every 2 seconds. The Pico 2 LED toggles on
+ * GPIO1 RX, 38400-8-N-1) once every 2 seconds. The Pico LED toggles on
  * echo activity.
  *
  * Single-core, no SMP.
