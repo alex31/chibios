@@ -56,7 +56,7 @@
 #define STM32_PWR_CR1                       (0U)
 #define STM32_PWR_CR2                       (0U)
 #define STM32_PWR_CR3                       (0U)
-#define STM32_PWR_SVMCR                     (PWR_SVMCR_USV | PWR_SVMCR_UVMEN)
+#define STM32_PWR_SVMCR                     (PWR_SVMCR_ASV | PWR_SVMCR_USV | PWR_SVMCR_UVMEN)
 #define STM32_PWR_WUCR1                     (0U)
 #define STM32_PWR_WUCR2                     (0U)
 #define STM32_PWR_WUCR3                     (0U)
@@ -288,12 +288,10 @@
 #define STM32_ADC_ADC2_DMA3_CHANNEL         STM32_DMA3_MASK_FIFO2
 #define STM32_ADC_ADC1_DMA_PRIORITY         2
 #define STM32_ADC_ADC2_DMA_PRIORITY         2
-#define STM32_ADC_ADC1_IRQ_PRIORITY         5
-#define STM32_ADC_ADC2_IRQ_PRIORITY         5
+#define STM32_ADC_ADC12_IRQ_PRIORITY        5
 #define STM32_ADC_ADC1_DMA_IRQ_PRIORITY     5
 #define STM32_ADC_ADC2_DMA_IRQ_PRIORITY     5
-#define STM32_ADC_ADC12_CLOCK_MODE          ADC_CCR_CKMODE_AHB_DIV4
-#define STM32_ADC_ADC12_PRESC               ADC_CCR_PRESC_DIV2
+#define STM32_ADC_ADC12_PRESC               ADC_CCR_PRESC_DIV4
 
 /*
  * CAN driver system settings.
