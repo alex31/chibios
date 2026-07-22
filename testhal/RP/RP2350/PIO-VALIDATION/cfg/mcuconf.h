@@ -46,6 +46,12 @@
 #define RP_PIO_REQUIRED
 
 /*
+ * DMA driver system settings.
+ * Note: needed by the PIO DMA glue test leg.
+ */
+#define RP_DMA_REQUIRED
+
+/*
  * IRQ system settings.
  */
 #define RP_IRQ_SYSTICK_PRIORITY             2
