@@ -742,9 +742,11 @@ RAMFUNC static flash_error_t rp_flash_erase_cmd(EFlashDriver *eflp,
  */
 CC_FORCE_INLINE static inline uint32_t rp_flash_mask_irqs(void) {
 #if defined(__riscv)
+  /* MSTATUS_MIE is provided by riscv_csr.h via the device header.*/
   uint32_t mstatus;
-  __asm volatile ("csrrci %0, mstatus, 8" : "=r" (mstatus) : : "memory");
-  return mstatus & (1U << 3);
+  __asm volatile ("csrrc %0, mstatus, %1"
+                  : "=r" (mstatus) : "r" (MSTATUS_MIE) : "memory");
+  return mstatus & MSTATUS_MIE;
 #else
   uint32_t primask = __get_PRIMASK();
   __disable_irq();
@@ -763,7 +765,7 @@ CC_FORCE_INLINE static inline uint32_t rp_flash_mask_irqs(void) {
 CC_FORCE_INLINE static inline void rp_flash_restore_irqs(uint32_t state) {
 #if defined(__riscv)
   if (state != 0U) {
-    __asm volatile ("csrsi mstatus, 8" : : : "memory");
+    __asm volatile ("csrs mstatus, %0" : : "r" (MSTATUS_MIE) : "memory");
   }
 #else
   __set_PRIMASK(state);
@@ -785,8 +787,10 @@ RAMFUNC static flash_error_t rp_flash_erase_full(EFlashDriver *eflp,
                                                  uint8_t cmd,
                                                  uint32_t offset) {
   flash_error_t err = FLASH_NO_ERROR;
+  uint32_t irqs;
+
   /* Defer fast interrupts too, their handlers may execute from flash.*/
-  uint32_t irqs = rp_flash_mask_irqs();
+  irqs = rp_flash_mask_irqs();
 
   /* Exit XIP mode. */
   if (!rp_flash_exit_xip(eflp)) {
@@ -826,8 +830,10 @@ RAMFUNC static flash_error_t rp_flash_program_page_full(EFlashDriver *eflp,
                                                         const uint8_t *data,
                                                         size_t len) {
   flash_error_t err = FLASH_NO_ERROR;
+  uint32_t irqs;
+
   /* Defer fast interrupts too, their handlers may execute from flash.*/
-  uint32_t irqs = rp_flash_mask_irqs();
+  irqs = rp_flash_mask_irqs();
 
   /* Exit XIP mode. */
   if (!rp_flash_exit_xip(eflp)) {
@@ -865,8 +871,10 @@ RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
                                                     uint8_t *rx,
                                                     size_t count) {
   flash_error_t err = FLASH_NO_ERROR;
+  uint32_t irqs;
+
   /* Defer fast interrupts too, their handlers may execute from flash.*/
-  uint32_t irqs = rp_flash_mask_irqs();
+  irqs = rp_flash_mask_irqs();
 
   /* Exit XIP mode. */
   if (!rp_flash_exit_xip(eflp)) {
