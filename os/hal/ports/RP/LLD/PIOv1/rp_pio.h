@@ -1186,6 +1186,15 @@ __STATIC_INLINE uint32_t pioGpioToRel(const rp_pio_block_t *block,
  *          disturbed.
  * @pre     The state machine must be disabled: the temporary PINCTRL
  *          would corrupt the pin mapping of a running program.
+ * @note    When the configuration has @p PIO_SM_EXECCTRL_OUT_STICKY set,
+ *          the flag is cleared for the duration of the sequence and the
+ *          state machine is restarted before it is restored: SM_RESTART
+ *          clears "any pin write left asserted due to OUT_STICKY" (per
+ *          datasheet), so the exec'd direction writes cannot be
+ *          re-asserted once the state machine runs. The restart also
+ *          clears transient state (delay counter, IRQ wait, stalled
+ *          instruction), which is harmless on a disabled, not yet
+ *          started state machine.
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
  * @param[in] gpio      absolute GPIO number of the first pin; the whole
@@ -1201,13 +1210,20 @@ __STATIC_INLINE void pioSmSetConsecutivePindirsX(const rp_pio_sm_t *smp,
                                                  bool out) {
   PIO_TypeDef *pio = smp->block->pio;
   uint32_t rel = pioGpioToRel(smp->block, gpio);
-  uint32_t pinctrl;
+  uint32_t pinctrl, execctrl;
 
   osalDbgCheck((count >= 1U) && (count <= 32U) && ((rel + count) <= 32U));
   osalDbgAssert((pio->CTRL & PIO_CTRL_SM_ENABLE(smp->smidx)) == 0U,
                 "state machine enabled");
 
-  pinctrl = pio->SM[smp->smidx].PINCTRL;
+  pinctrl  = pio->SM[smp->smidx].PINCTRL;
+  execctrl = pio->SM[smp->smidx].EXECCTRL;
+
+  /* Sticky output must not capture the exec'd direction writes.*/
+  if ((execctrl & PIO_SM_EXECCTRL_OUT_STICKY) != 0U) {
+    pio->SM[smp->smidx].EXECCTRL = execctrl & ~PIO_SM_EXECCTRL_OUT_STICKY;
+  }
+
   do {
     uint32_t chunk = (count > 5U) ? 5U : count;
 
@@ -1219,7 +1235,14 @@ __STATIC_INLINE void pioSmSetConsecutivePindirsX(const rp_pio_sm_t *smp,
     rel += chunk;
     count -= chunk;
   } while (count > 0U);
+
   pio->SM[smp->smidx].PINCTRL = pinctrl;
+  if ((execctrl & PIO_SM_EXECCTRL_OUT_STICKY) != 0U) {
+    /* Clear any latched sticky pin write before re-enabling the flag,
+       SM_RESTART is documented to clear it.*/
+    pioSmRestartX(smp);
+    pio->SM[smp->smidx].EXECCTRL = execctrl;
+  }
 }
 
 /**

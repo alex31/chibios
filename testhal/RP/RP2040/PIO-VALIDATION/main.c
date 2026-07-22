@@ -661,6 +661,21 @@ int main(void) {
   pinctrl_after = block->pio->SM[smp->smidx].PINCTRL;
   report("PINCTRL restored bit-exact", pinctrl_after == pinctrl_before);
 
+  /* A sticky-output configuration must survive the helper: the direction
+     write sequence must neither lose the configured EXECCTRL nor leave a
+     sticky direction write latched (the helper restarts the SM to clear
+     it).*/
+  pioSmConfigDefault(&cfg);
+  pioSmConfigSetSetPins(&cfg, rel, 1U);
+  pioSmConfigSetOutSpecial(&cfg, true, false, 0U);
+  pioSmSetConfigX(smp, &cfg);
+  pioSmSetConsecutivePindirsX(smp, TEST_GPIO, 1U, true);
+  report("EXECCTRL sticky preserved",
+         (block->pio->SM[smp->smidx].EXECCTRL &
+          PIO_SM_EXECCTRL_OUT_STICKY) != 0U);
+  report("pindir applied with sticky config",
+         ((block->pio->DBG_PADOE >> rel) & 1U) == 1U);
+
   pioSmFree(smp);
 
 #if RP_HAS_PIO2 == TRUE
