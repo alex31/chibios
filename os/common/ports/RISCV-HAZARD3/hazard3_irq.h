@@ -313,6 +313,39 @@ __STATIC_FORCEINLINE void hazard3_irq_context_restore(uint32_t ctx) {
 }
 
 /**
+ * @brief   Disables all maskable interrupts, saving the previous state.
+ * @details Atomically reads mstatus while clearing mstatus.MIE. Unlike
+ *          @p port_disable() this returns the previous enable state so it
+ *          can be restored exactly, which is required by code that must
+ *          run with all interrupts masked but may be reached with them
+ *          already disabled. NMI and fault-class exceptions are not masked.
+ *
+ * @return  An opaque mask cookie to pass to @p hazard3_irq_restore(); the
+ *          caller must not interpret it.
+ */
+__STATIC_FORCEINLINE uint32_t hazard3_irq_disable_save(void) {
+  uint32_t mstatus;
+
+  __asm__ volatile ("csrrc %0, mstatus, %1"
+    : "=r"(mstatus) : "r"(MSTATUS_MIE) : "memory");
+  return mstatus & MSTATUS_MIE;
+}
+
+/**
+ * @brief   Restores the interrupt enable state saved by
+ *          @p hazard3_irq_disable_save().
+ *
+ * @param[in] saved     mask cookie returned by
+ *                      @p hazard3_irq_disable_save()
+ */
+__STATIC_FORCEINLINE void hazard3_irq_restore(uint32_t saved) {
+
+  if (saved != 0U) {
+    __asm__ volatile ("csrs mstatus, %0" : : "r"(MSTATUS_MIE) : "memory");
+  }
+}
+
+/**
  * @brief   Initialize the Xh3irq interrupt controller.
  * @details Puts the controller in a known clean state by disabling all
  *          external interrupts (MEIEA), clearing all forced-pending bits

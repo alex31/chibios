@@ -29,6 +29,12 @@
 #include "hal.h"
 #include "rp_efl_lld.h"
 
+#if defined(__riscv)
+/* Hazard3 mstatus.MIE mask/restore primitives, not in the general HAL
+   include chain.*/
+#include "hazard3_irq.h"
+#endif
+
 #if (HAL_USE_EFL == TRUE) || defined(__DOXYGEN__)
 
 /*===========================================================================*/
@@ -742,11 +748,7 @@ RAMFUNC static flash_error_t rp_flash_erase_cmd(EFlashDriver *eflp,
  */
 CC_FORCE_INLINE static inline uint32_t rp_flash_mask_irqs(void) {
 #if defined(__riscv)
-  /* MSTATUS_MIE is provided by riscv_csr.h via the device header.*/
-  uint32_t mstatus;
-  __asm volatile ("csrrc %0, mstatus, %1"
-                  : "=r" (mstatus) : "r" (MSTATUS_MIE) : "memory");
-  return mstatus & MSTATUS_MIE;
+  return hazard3_irq_disable_save();
 #else
   uint32_t primask = __get_PRIMASK();
   __disable_irq();
@@ -764,9 +766,7 @@ CC_FORCE_INLINE static inline uint32_t rp_flash_mask_irqs(void) {
  */
 CC_FORCE_INLINE static inline void rp_flash_restore_irqs(uint32_t state) {
 #if defined(__riscv)
-  if (state != 0U) {
-    __asm volatile ("csrs mstatus, %0" : : "r" (MSTATUS_MIE) : "memory");
-  }
+  hazard3_irq_restore(state);
 #else
   __set_PRIMASK(state);
 #endif
