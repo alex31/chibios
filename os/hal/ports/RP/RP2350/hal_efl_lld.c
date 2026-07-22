@@ -726,17 +726,18 @@ RAMFUNC static flash_error_t rp_flash_erase_cmd(EFlashDriver *eflp,
 }
 
 /**
- * @brief   Masks all interrupts at the architecture level.
+ * @brief   Masks all maskable interrupts at the architecture level.
  * @details While XIP is disabled every handler is unreachable, including
  *          fast interrupts above the kernel priority ceiling which a
  *          BASEPRI-based lock would leave enabled. PRIMASK is used on ARM
- *          and mstatus.MIE on RISC-V.
+ *          and mstatus.MIE on RISC-V; NMI and fault-class exceptions
+ *          remain unmasked on both architectures.
  * @note    Forced inline so the masking code is guaranteed to reside in
  *          the RAMFUNC callers.
  *
  * @return              The previous interrupt enable state.
  */
-__attribute__((always_inline)) static inline uint32_t rp_flash_mask_irqs(void) {
+CC_FORCE_INLINE static inline uint32_t rp_flash_mask_irqs(void) {
 #if defined(__riscv)
   uint32_t mstatus;
   __asm volatile ("csrrci %0, mstatus, 8" : "=r" (mstatus) : : "memory");
@@ -754,7 +755,7 @@ __attribute__((always_inline)) static inline uint32_t rp_flash_mask_irqs(void) {
  *
  * @param[in] state     saved interrupt enable state
  */
-__attribute__((always_inline)) static inline void rp_flash_restore_irqs(uint32_t state) {
+CC_FORCE_INLINE static inline void rp_flash_restore_irqs(uint32_t state) {
 #if defined(__riscv)
   if (state != 0U) {
     __asm volatile ("csrsi mstatus, 8" : : : "memory");
