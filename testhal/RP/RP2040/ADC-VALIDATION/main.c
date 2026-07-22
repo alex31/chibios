@@ -136,8 +136,16 @@ static void test_start_failure(void) {
   taken = dma_hog_all();
   chprintf(chp, "  DMA channels hogged: %u of %u\r\n",
            taken, (unsigned)RP_DMA_NUM_CHANNELS);
-  report("DMA hog acquired channels (exhaustion proven by next check)",
-         taken > 0U);
+  report("DMA hog acquired channels", taken > 0U);
+
+  /* Explicit exhaustion proof: one more allocation must fail. If it
+     unexpectedly succeeds the channel is returned so the recovery
+     test still starts from a known state.*/
+  probe = dmaChannelAlloc(RP_DMA_CHANNEL_ID_ANY, 3U, NULL, NULL);
+  if (probe != NULL) {
+    dmaChannelFree(probe);
+  }
+  report("DMA pool exhausted (probe allocation fails)", probe == NULL);
 
   msg = adcStart(&ADCD1, NULL);
   chprintf(chp, "  adcStart() returned %d, state %d\r\n",
