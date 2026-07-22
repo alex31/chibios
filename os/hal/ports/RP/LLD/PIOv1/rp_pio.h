@@ -42,6 +42,42 @@
 /** @} */
 
 /**
+ * @name    PADS_BANK0 pad control bits
+ * @note    Raw PADS_BANK0 register bit values for use with
+ *          @p pioGpioInitPadX(). Not interchangeable with the PAL
+ *          @p PAL_RP_PAD_* macros which carry the same bits pre-shifted
+ *          into the iomode word.
+ * @{
+ */
+#define RP_PIO_PAD_SLEWFAST             (1U << 0)
+#define RP_PIO_PAD_SCHMITT              (1U << 1)
+#define RP_PIO_PAD_PDE                  (1U << 2)
+#define RP_PIO_PAD_PUE                  (1U << 3)
+#define RP_PIO_PAD_DRIVE2               (0U << 4)
+#define RP_PIO_PAD_DRIVE4               (1U << 4)
+#define RP_PIO_PAD_DRIVE8               (2U << 4)
+#define RP_PIO_PAD_DRIVE12              (3U << 4)
+#define RP_PIO_PAD_IE                   (1U << 6)
+#define RP_PIO_PAD_OD                   (1U << 7)
+#if defined(RP2350) || defined(__DOXYGEN__)
+/**
+ * @brief   Pad isolation latch, RP2350 only.
+ * @note    Set out of reset on RP2350; while set, the pad is disconnected
+ *          from its peripheral. @p pioGpioInitPadX() clears it last.
+ */
+#define RP_PIO_PAD_ISO                  (1U << 8)
+#endif
+
+/**
+ * @brief   Default pad configuration for PIO pins.
+ * @details Input enabled with schmitt trigger, 4mA drive, no pulls.
+ */
+#define RP_PIO_PAD_DEFAULT              (RP_PIO_PAD_IE |                    \
+                                         RP_PIO_PAD_SCHMITT |               \
+                                         RP_PIO_PAD_DRIVE4)
+/** @} */
+
+/**
  * @name    PIO resource constants
  * @{
  */
@@ -84,6 +120,14 @@
 /** @} */
 
 /**
+ * @name    PIO FLEVEL register fields
+ * @{
+ */
+#define PIO_FLEVEL_TX(n, flevel)        (((flevel) >> ((n) * 8U)) & 0xFU)
+#define PIO_FLEVEL_RX(n, flevel)        (((flevel) >> (((n) * 8U) + 4U)) & 0xFU)
+/** @} */
+
+/**
  * @name    PIO state machine CLKDIV register bits
  * @{
  */
@@ -103,9 +147,19 @@
  * @name    PIO state machine EXECCTRL register bits
  * @{
  */
+#if defined(RP2350)
+/* The RP2350 widens STATUS_N to 5 bits and STATUS_SEL to 2 bits (adding
+   the IRQ comparison source).*/
+#define PIO_SM_EXECCTRL_STATUS_N_Pos    0U
+#define PIO_SM_EXECCTRL_STATUS_N_Msk    (0x1FU << PIO_SM_EXECCTRL_STATUS_N_Pos)
+#define PIO_SM_EXECCTRL_STATUS_SEL_Pos  5U
+#define PIO_SM_EXECCTRL_STATUS_SEL_Msk  (0x3U << PIO_SM_EXECCTRL_STATUS_SEL_Pos)
+#else
 #define PIO_SM_EXECCTRL_STATUS_N_Pos    0U
 #define PIO_SM_EXECCTRL_STATUS_N_Msk    (0xFU << PIO_SM_EXECCTRL_STATUS_N_Pos)
-#define PIO_SM_EXECCTRL_STATUS_SEL      (1U << 4U)
+#define PIO_SM_EXECCTRL_STATUS_SEL_Pos  4U
+#define PIO_SM_EXECCTRL_STATUS_SEL_Msk  (0x1U << PIO_SM_EXECCTRL_STATUS_SEL_Pos)
+#endif
 #define PIO_SM_EXECCTRL_WRAP_BOTTOM_Pos 7U
 #define PIO_SM_EXECCTRL_WRAP_BOTTOM_Msk (0x1FU << PIO_SM_EXECCTRL_WRAP_BOTTOM_Pos)
 #define PIO_SM_EXECCTRL_WRAP_TOP_Pos    12U
