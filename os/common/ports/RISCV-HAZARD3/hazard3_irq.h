@@ -339,10 +339,9 @@ __STATIC_FORCEINLINE uint32_t hazard3_irq_disable_save(void) {
  *                      @p hazard3_irq_disable_save()
  */
 __STATIC_FORCEINLINE void hazard3_irq_restore(uint32_t saved) {
-
-  if (saved != 0U) {
-    __asm__ volatile ("csrs mstatus, %0" : : "r"(MSTATUS_MIE) : "memory");
-  }
+  /* The cookie holds exactly the previous mstatus.MIE bit (or zero), so a
+     plain set restores it: zero sets nothing and leaves MIE disabled.*/
+  __asm__ volatile ("csrs mstatus, %0" : : "r"(saved) : "memory");
 }
 
 /**
