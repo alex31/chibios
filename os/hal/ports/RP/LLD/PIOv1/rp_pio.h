@@ -574,17 +574,20 @@ __STATIC_INLINE void pioSmConfigSetClkdiv(rp_pio_sm_config_t *cfgp,
  */
 __STATIC_INLINE void pioSmConfigSetFrequency(rp_pio_sm_config_t *cfgp,
                                              uint32_t freq_hz) {
-  uint32_t div_fp8;
+  uint64_t div_fp8;
 
   osalDbgCheck((cfgp != NULL) && (freq_hz > 0U));
 
+  /* Wide intermediate: narrowing before the range check could let a
+     truncated out-of-range divider pass it.*/
   div_fp8 = ((uint64_t)RP_CLK_SYS_FREQ << 8) / freq_hz;
 
   /* Divider must be in [1.0, 65536.0]: the target frequency can neither
      exceed the system clock nor undershoot sysclk / 65536.*/
   osalDbgCheck((div_fp8 >= 0x100U) && (div_fp8 <= 0x1000000U));
 
-  cfgp->clkdiv = PIO_SM_CLKDIV(div_fp8 >> 8, div_fp8 & 0xFFU);
+  cfgp->clkdiv = PIO_SM_CLKDIV((uint32_t)(div_fp8 >> 8),
+                               (uint32_t)(div_fp8 & 0xFFU));
 }
 
 /**
