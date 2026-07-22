@@ -507,10 +507,10 @@ int main(void) {
   }
 
   rel = pioGpioToRel(block, TEST_GPIO);
-  pioSmConfigDefault(&cfg);
-  pioSmConfigSetFrequency(&cfg, SM_TEST_FREQ);
-  pioSmConfigSetWrap(&cfg, 0U, 31U);
-  pioSmConfigSetSetPins(&cfg, rel, 1U);
+  pioSmConfigDefaultX(&cfg);
+  pioSmConfigSetFrequencyX(&cfg, SM_TEST_FREQ);
+  pioSmConfigSetWrapX(&cfg, 0U, 31U);
+  pioSmConfigSetSetPinsX(&cfg, rel, 1U);
 
   /* The builder output must equal the values sqwave_start() assembles by
      hand from the _Pos/_Msk macros.*/
@@ -580,11 +580,11 @@ int main(void) {
     goto summary;
   }
 
-  pioSmConfigDefault(&cfg);
-  pioSmConfigSetFrequency(&cfg, SM_TEST_FREQ);
-  pioSmConfigSetWrap(&cfg, (uint32_t)out_off, (uint32_t)out_off);
-  pioSmConfigSetOutPins(&cfg, rel, 1U);
-  pioSmConfigSetOutShift(&cfg, true, true, 32U);
+  pioSmConfigDefaultX(&cfg);
+  pioSmConfigSetFrequencyX(&cfg, SM_TEST_FREQ);
+  pioSmConfigSetWrapX(&cfg, (uint32_t)out_off, (uint32_t)out_off);
+  pioSmConfigSetOutPinsX(&cfg, rel, 1U);
+  pioSmConfigSetOutShiftX(&cfg, true, true, 32U);
   pioSmInit(smp, (uint32_t)out_off, &cfg);
 
   pioSmSetConsecutivePindirsX(smp, TEST_GPIO, 1U, true);
@@ -665,9 +665,9 @@ int main(void) {
      write sequence must neither lose the configured EXECCTRL nor leave a
      sticky direction write latched (the helper restarts the SM to clear
      it).*/
-  pioSmConfigDefault(&cfg);
-  pioSmConfigSetSetPins(&cfg, rel, 1U);
-  pioSmConfigSetOutSpecial(&cfg, true, false, 0U);
+  pioSmConfigDefaultX(&cfg);
+  pioSmConfigSetSetPinsX(&cfg, rel, 1U);
+  pioSmConfigSetOutSpecialX(&cfg, true, false, 0U);
   pioSmSetConfigX(smp, &cfg);
   pioSmSetConsecutivePindirsX(smp, TEST_GPIO, 1U, true);
   report("EXECCTRL sticky preserved",
@@ -697,9 +697,9 @@ int main(void) {
   }
 
   rel = pioGpioToRel(RP_PIO2_BLOCK, TEST_GPIO);
-  pioSmConfigDefault(&cfg);
-  pioSmConfigSetFrequency(&cfg, SM_TEST_FREQ);
-  pioSmConfigSetSetPins(&cfg, rel, 1U);
+  pioSmConfigDefaultX(&cfg);
+  pioSmConfigSetFrequencyX(&cfg, SM_TEST_FREQ);
+  pioSmConfigSetSetPinsX(&cfg, rel, 1U);
   pioSmInit(smp, (uint32_t)sq_off, &cfg);
   pioSmSetConsecutivePindirsX(smp, TEST_GPIO, 1U, true);
   pioGpioInitX(smp, TEST_GPIO);
@@ -739,9 +739,9 @@ int main(void) {
   rel = pioGpioToRel(RP_PIO1_BLOCK, WINDOW_GPIO);
   report("GPIO lowered into window", rel == (WINDOW_GPIO - 16U));
 
-  pioSmConfigDefault(&cfg);
-  pioSmConfigSetFrequency(&cfg, SM_TEST_FREQ);
-  pioSmConfigSetSetPins(&cfg, rel, 1U);
+  pioSmConfigDefaultX(&cfg);
+  pioSmConfigSetFrequencyX(&cfg, SM_TEST_FREQ);
+  pioSmConfigSetSetPinsX(&cfg, rel, 1U);
   pioSmInit(smp, (uint32_t)sq_off, &cfg);
   pioSmSetConsecutivePindirsX(smp, WINDOW_GPIO, 1U, true);
   pioGpioInitX(smp, WINDOW_GPIO);

@@ -386,9 +386,9 @@ extern "C" {
  *
  * @param[out] cfgp     pointer to a rp_pio_sm_config_t structure
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigDefault(rp_pio_sm_config_t *cfgp) {
+__STATIC_INLINE void pioSmConfigDefaultX(rp_pio_sm_config_t *cfgp) {
 
   osalDbgCheck(cfgp != NULL);
 
@@ -411,9 +411,9 @@ __STATIC_INLINE void pioSmConfigDefault(rp_pio_sm_config_t *cfgp) {
  * @param[in] bottom    address to wrap from, i.e. wrap_target (0..31)
  * @param[in] top       address to wrap after, i.e. wrap (0..31)
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetWrap(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetWrapX(rp_pio_sm_config_t *cfgp,
                                         uint32_t bottom, uint32_t top) {
 
   osalDbgCheck((cfgp != NULL) && (bottom < 32U) && (top < 32U));
@@ -433,9 +433,9 @@ __STATIC_INLINE void pioSmConfigSetWrap(rp_pio_sm_config_t *cfgp,
  *                      bit)
  * @param[in] pindirs   side-set affects pin directions instead of values
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetSideset(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetSidesetX(rp_pio_sm_config_t *cfgp,
                                            uint32_t count, bool optional,
                                            bool pindirs) {
 
@@ -456,9 +456,9 @@ __STATIC_INLINE void pioSmConfigSetSideset(rp_pio_sm_config_t *cfgp,
  * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
  * @param[in] pin_base  first pin, window-relative (0..31)
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetSidesetPins(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetSidesetPinsX(rp_pio_sm_config_t *cfgp,
                                                uint32_t pin_base) {
 
   osalDbgCheck((cfgp != NULL) && (pin_base < 32U));
@@ -474,9 +474,9 @@ __STATIC_INLINE void pioSmConfigSetSidesetPins(rp_pio_sm_config_t *cfgp,
  * @param[in] pin_base  first pin, window-relative (0..31)
  * @param[in] count     number of pins (0..32)
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetOutPins(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetOutPinsX(rp_pio_sm_config_t *cfgp,
                                            uint32_t pin_base,
                                            uint32_t count) {
 
@@ -495,9 +495,9 @@ __STATIC_INLINE void pioSmConfigSetOutPins(rp_pio_sm_config_t *cfgp,
  * @param[in] pin_base  first pin, window-relative (0..31)
  * @param[in] count     number of pins (0..5)
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetSetPins(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetSetPinsX(rp_pio_sm_config_t *cfgp,
                                            uint32_t pin_base,
                                            uint32_t count) {
 
@@ -515,9 +515,9 @@ __STATIC_INLINE void pioSmConfigSetSetPins(rp_pio_sm_config_t *cfgp,
  * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
  * @param[in] pin_base  first pin, window-relative (0..31)
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetInPins(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetInPinsX(rp_pio_sm_config_t *cfgp,
                                           uint32_t pin_base) {
 
   osalDbgCheck((cfgp != NULL) && (pin_base < 32U));
@@ -532,9 +532,9 @@ __STATIC_INLINE void pioSmConfigSetInPins(rp_pio_sm_config_t *cfgp,
  * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
  * @param[in] pin       pin to test, window-relative (0..31)
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetJmpPin(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetJmpPinX(rp_pio_sm_config_t *cfgp,
                                           uint32_t pin) {
 
   osalDbgCheck((cfgp != NULL) && (pin < 32U));
@@ -551,9 +551,9 @@ __STATIC_INLINE void pioSmConfigSetJmpPin(rp_pio_sm_config_t *cfgp,
  * @param[in] intdiv    integer part (0..65535, 0 means 65536)
  * @param[in] frac      fractional part in 1/256 units (0..255)
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetClkdiv(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetClkdivX(rp_pio_sm_config_t *cfgp,
                                           uint32_t intdiv, uint32_t frac) {
 
   osalDbgCheck((cfgp != NULL) && (intdiv <= 0xFFFFU) && (frac <= 0xFFU) &&
@@ -570,9 +570,9 @@ __STATIC_INLINE void pioSmConfigSetClkdiv(rp_pio_sm_config_t *cfgp,
  * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
  * @param[in] freq_hz   desired PIO clock frequency in Hz
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetFrequency(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetFrequencyX(rp_pio_sm_config_t *cfgp,
                                              uint32_t freq_hz) {
   uint64_t div_fp8;
 
@@ -598,9 +598,9 @@ __STATIC_INLINE void pioSmConfigSetFrequency(rp_pio_sm_config_t *cfgp,
  * @param[in] autopush  enable automatic push on threshold
  * @param[in] threshold push threshold in bits (1..32)
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetInShift(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetInShiftX(rp_pio_sm_config_t *cfgp,
                                            bool shift_right, bool autopush,
                                            uint32_t threshold) {
 
@@ -622,9 +622,9 @@ __STATIC_INLINE void pioSmConfigSetInShift(rp_pio_sm_config_t *cfgp,
  * @param[in] autopull  enable automatic pull on threshold
  * @param[in] threshold pull threshold in bits (1..32)
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetOutShift(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetOutShiftX(rp_pio_sm_config_t *cfgp,
                                             bool shift_right, bool autopull,
                                             uint32_t threshold) {
 
@@ -646,9 +646,9 @@ __STATIC_INLINE void pioSmConfigSetOutShift(rp_pio_sm_config_t *cfgp,
  * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
  * @param[in] join      joining mode
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetFifoJoin(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetFifoJoinX(rp_pio_sm_config_t *cfgp,
                                             rp_pio_fifo_join_t join) {
 
   osalDbgCheck((cfgp != NULL) && ((uint32_t)join <= RP_PIO_FIFO_JOIN_RX));
@@ -666,9 +666,9 @@ __STATIC_INLINE void pioSmConfigSetFifoJoin(rp_pio_sm_config_t *cfgp,
  * @param[in] sel       comparison source
  * @param[in] n         comparison level or IRQ index
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetMovStatus(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetMovStatusX(rp_pio_sm_config_t *cfgp,
                                              rp_pio_mov_status_t sel,
                                              uint32_t n) {
 
@@ -694,9 +694,9 @@ __STATIC_INLINE void pioSmConfigSetMovStatus(rp_pio_sm_config_t *cfgp,
  * @param[in] enable_pin_index data bit index used as the enable
  *                      (0..31)
  *
- * @api
+ * @xclass
  */
-__STATIC_INLINE void pioSmConfigSetOutSpecial(rp_pio_sm_config_t *cfgp,
+__STATIC_INLINE void pioSmConfigSetOutSpecialX(rp_pio_sm_config_t *cfgp,
                                               bool sticky,
                                               bool has_enable_pin,
                                               uint32_t enable_pin_index) {
