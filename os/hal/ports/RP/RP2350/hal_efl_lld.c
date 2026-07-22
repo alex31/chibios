@@ -735,7 +735,10 @@ RAMFUNC static flash_error_t rp_flash_erase_cmd(EFlashDriver *eflp,
  * @note    Forced inline so the masking code is guaranteed to reside in
  *          the RAMFUNC callers.
  *
- * @return              The previous interrupt enable state.
+ * @return              An opaque, architecture-specific mask state (the
+ *                      PRIMASK value on ARM, the saved mstatus.MIE bit
+ *                      on RISC-V), only meaningful as the argument to
+ *                      @p rp_flash_restore_irqs().
  */
 CC_FORCE_INLINE static inline uint32_t rp_flash_mask_irqs(void) {
 #if defined(__riscv)
@@ -753,7 +756,9 @@ CC_FORCE_INLINE static inline uint32_t rp_flash_mask_irqs(void) {
  * @brief   Restores the interrupt enable state saved by
  *          @p rp_flash_mask_irqs().
  *
- * @param[in] state     saved interrupt enable state
+ * @param[in] state     opaque mask state returned by
+ *                      @p rp_flash_mask_irqs(), not interpretable by the
+ *                      caller
  */
 CC_FORCE_INLINE static inline void rp_flash_restore_irqs(uint32_t state) {
 #if defined(__riscv)
