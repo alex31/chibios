@@ -26,9 +26,9 @@
  *    machine jumps to absolute address 0 and sticks there, the pin
  *    never toggles.
  * 2. Instruction memory allocation masks for a full 32-instruction
- *    program (1U << 32 is undefined behavior, evaluating to 1 on ARM,
- *    so an unfixed driver tracks a full-memory program with an empty
- *    mask and lets further loads overlap it).
+ *    program (1U << 32 is undefined behavior; depending on compiler
+ *    and target an unfixed driver can track a full-memory program with
+ *    a wrong mask and let further loads overlap it).
  * 3. Block reset lifetime: loaded programs must survive freeing the
  *    last state machine and loading must work before the first state
  *    machine allocation (unfixed, the block is still held in reset and
