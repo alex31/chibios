@@ -274,6 +274,39 @@ typedef struct {
   int32_t               origin;         /**< @brief Load offset, -1 = any. */
 } rp_pio_program_t;
 
+/**
+ * @brief   PIO state machine configuration.
+ * @details Images of the four per-SM configuration registers, composed
+ *          with the @p pioSmConfig*() builder functions and applied with
+ *          @p pioSmSetConfigX() or @p pioSmInit().
+ */
+typedef struct {
+  uint32_t              clkdiv;         /**< @brief CLKDIV register image.  */
+  uint32_t              execctrl;       /**< @brief EXECCTRL register image.*/
+  uint32_t              shiftctrl;      /**< @brief SHIFTCTRL register image.*/
+  uint32_t              pinctrl;        /**< @brief PINCTRL register image. */
+} rp_pio_sm_config_t;
+
+/**
+ * @brief   FIFO joining modes.
+ */
+typedef enum {
+  RP_PIO_FIFO_JOIN_NONE = 0,            /**< @brief Two 4-deep FIFOs.      */
+  RP_PIO_FIFO_JOIN_TX   = 1,            /**< @brief 8-deep TX, no RX.      */
+  RP_PIO_FIFO_JOIN_RX   = 2             /**< @brief 8-deep RX, no TX.      */
+} rp_pio_fifo_join_t;
+
+/**
+ * @brief   MOV STATUS comparison sources.
+ */
+typedef enum {
+  RP_PIO_MOV_STATUS_TX_LESSTHAN = 0,    /**< @brief TX FIFO level < N.     */
+  RP_PIO_MOV_STATUS_RX_LESSTHAN = 1,    /**< @brief RX FIFO level < N.     */
+#if defined(RP2350) || defined(__DOXYGEN__)
+  RP_PIO_MOV_STATUS_IRQ_SET     = 2     /**< @brief IRQ flag N set.        */
+#endif
+} rp_pio_mov_status_t;
+
 /*===========================================================================*/
 /* Driver macros.                                                            */
 /*===========================================================================*/
@@ -321,6 +354,8 @@ extern "C" {
                           const rp_pio_program_t *program);
   void pioProgramUnload(const rp_pio_block_t *block,
                          int32_t offset, uint32_t length);
+  void pioSmInit(const rp_pio_sm_t *smp, uint32_t initial_pc,
+                 const rp_pio_sm_config_t *cfgp);
 #if (RP_PIO_HAS_GPIOBASE == TRUE) || defined(__DOXYGEN__)
   void pioSetGpioBase(const rp_pio_block_t *block, uint32_t base);
 #endif
@@ -331,6 +366,367 @@ extern "C" {
 /*===========================================================================*/
 /* Driver inline functions.                                                  */
 /*===========================================================================*/
+
+/**
+ * @name    State machine configuration builders
+ * @details Pure data manipulation on a @p rp_pio_sm_config_t, callable
+ *          from any context; no hardware is accessed. Pin base fields are
+ *          window-relative (0..31): on devices with the
+ *          @p RP_PIO_HAS_GPIOBASE capability lower absolute GPIO numbers
+ *          with @p pioGpioToRel() first, elsewhere relative equals
+ *          absolute.
+ * @{
+ */
+
+/**
+ * @brief   Initializes a configuration with default values.
+ * @details Clock divider 1.0, wrap over the whole instruction memory,
+ *          both shift directions right, no autopush/autopull, FIFOs not
+ *          joined, no pins mapped.
+ *
+ * @param[out] cfgp     pointer to a rp_pio_sm_config_t structure
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigDefault(rp_pio_sm_config_t *cfgp) {
+
+  osalDbgCheck(cfgp != NULL);
+
+  cfgp->clkdiv    = PIO_SM_CLKDIV(1U, 0U);
+  cfgp->execctrl  = PIO_SM_EXECCTRL_WRAP(0U, 31U);
+  cfgp->shiftctrl = PIO_SM_SHIFTCTRL_IN_SHIFTDIR |
+                    PIO_SM_SHIFTCTRL_OUT_SHIFTDIR;
+  cfgp->pinctrl   = 0U;
+}
+
+/**
+ * @brief   Sets the program wrap range.
+ * @note    Both values are absolute instruction memory addresses: when the
+ *          program is loaded at a non-zero offset add the value returned
+ *          by @p pioProgramLoad() to the program's wrap_target/wrap
+ *          labels. JMP targets inside the program are relocated by the
+ *          loader but the wrap range is part of the SM configuration.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] bottom    address to wrap from, i.e. wrap_target (0..31)
+ * @param[in] top       address to wrap after, i.e. wrap (0..31)
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetWrap(rp_pio_sm_config_t *cfgp,
+                                        uint32_t bottom, uint32_t top) {
+
+  osalDbgCheck((cfgp != NULL) && (bottom < 32U) && (top < 32U));
+
+  cfgp->execctrl = (cfgp->execctrl & ~(PIO_SM_EXECCTRL_WRAP_BOTTOM_Msk |
+                                       PIO_SM_EXECCTRL_WRAP_TOP_Msk)) |
+                   PIO_SM_EXECCTRL_WRAP(bottom, top);
+}
+
+/**
+ * @brief   Sets the side-set configuration.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] count     number of side-set bits, including the enable bit
+ *                      when @p optional is true (0..5)
+ * @param[in] optional  side-set is optional (instructions carry an enable
+ *                      bit)
+ * @param[in] pindirs   side-set affects pin directions instead of values
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetSideset(rp_pio_sm_config_t *cfgp,
+                                           uint32_t count, bool optional,
+                                           bool pindirs) {
+
+  osalDbgCheck((cfgp != NULL) && (count <= 5U) &&
+               (!optional || (count >= 1U)));
+
+  cfgp->pinctrl = (cfgp->pinctrl & ~PIO_SM_PINCTRL_SIDESET_COUNT_Msk) |
+                  (count << PIO_SM_PINCTRL_SIDESET_COUNT_Pos);
+  cfgp->execctrl = (cfgp->execctrl & ~(PIO_SM_EXECCTRL_SIDE_EN |
+                                       PIO_SM_EXECCTRL_SIDE_PINDIR)) |
+                   (optional ? PIO_SM_EXECCTRL_SIDE_EN : 0U) |
+                   (pindirs ? PIO_SM_EXECCTRL_SIDE_PINDIR : 0U);
+}
+
+/**
+ * @brief   Sets the first side-set pin.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] pin_base  first pin, window-relative (0..31)
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetSidesetPins(rp_pio_sm_config_t *cfgp,
+                                               uint32_t pin_base) {
+
+  osalDbgCheck((cfgp != NULL) && (pin_base < 32U));
+
+  cfgp->pinctrl = (cfgp->pinctrl & ~PIO_SM_PINCTRL_SIDESET_BASE_Msk) |
+                  (pin_base << PIO_SM_PINCTRL_SIDESET_BASE_Pos);
+}
+
+/**
+ * @brief   Sets the OUT pin group.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] pin_base  first pin, window-relative (0..31)
+ * @param[in] count     number of pins (0..32)
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetOutPins(rp_pio_sm_config_t *cfgp,
+                                           uint32_t pin_base,
+                                           uint32_t count) {
+
+  osalDbgCheck((cfgp != NULL) && (pin_base < 32U) && (count <= 32U));
+
+  cfgp->pinctrl = (cfgp->pinctrl & ~(PIO_SM_PINCTRL_OUT_BASE_Msk |
+                                     PIO_SM_PINCTRL_OUT_COUNT_Msk)) |
+                  (pin_base << PIO_SM_PINCTRL_OUT_BASE_Pos) |
+                  (count << PIO_SM_PINCTRL_OUT_COUNT_Pos);
+}
+
+/**
+ * @brief   Sets the SET pin group.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] pin_base  first pin, window-relative (0..31)
+ * @param[in] count     number of pins (0..5)
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetSetPins(rp_pio_sm_config_t *cfgp,
+                                           uint32_t pin_base,
+                                           uint32_t count) {
+
+  osalDbgCheck((cfgp != NULL) && (pin_base < 32U) && (count <= 5U));
+
+  cfgp->pinctrl = (cfgp->pinctrl & ~(PIO_SM_PINCTRL_SET_BASE_Msk |
+                                     PIO_SM_PINCTRL_SET_COUNT_Msk)) |
+                  (pin_base << PIO_SM_PINCTRL_SET_BASE_Pos) |
+                  (count << PIO_SM_PINCTRL_SET_COUNT_Pos);
+}
+
+/**
+ * @brief   Sets the first IN pin.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] pin_base  first pin, window-relative (0..31)
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetInPins(rp_pio_sm_config_t *cfgp,
+                                          uint32_t pin_base) {
+
+  osalDbgCheck((cfgp != NULL) && (pin_base < 32U));
+
+  cfgp->pinctrl = (cfgp->pinctrl & ~PIO_SM_PINCTRL_IN_BASE_Msk) |
+                  (pin_base << PIO_SM_PINCTRL_IN_BASE_Pos);
+}
+
+/**
+ * @brief   Sets the pin tested by JMP PIN instructions.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] pin       pin to test, window-relative (0..31)
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetJmpPin(rp_pio_sm_config_t *cfgp,
+                                          uint32_t pin) {
+
+  osalDbgCheck((cfgp != NULL) && (pin < 32U));
+
+  cfgp->execctrl = (cfgp->execctrl & ~PIO_SM_EXECCTRL_JMP_PIN_Msk) |
+                   (pin << PIO_SM_EXECCTRL_JMP_PIN_Pos);
+}
+
+/**
+ * @brief   Sets the clock divider from integer and fractional parts.
+ * @note    An integer part of zero selects the maximum divider of 65536.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] intdiv    integer part (0..65535, 0 means 65536)
+ * @param[in] frac      fractional part in 1/256 units (0..255)
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetClkdiv(rp_pio_sm_config_t *cfgp,
+                                          uint32_t intdiv, uint32_t frac) {
+
+  osalDbgCheck((cfgp != NULL) && (intdiv <= 0xFFFFU) && (frac <= 0xFFU) &&
+               !((intdiv == 0U) && (frac != 0U)));
+
+  cfgp->clkdiv = PIO_SM_CLKDIV(intdiv, frac);
+}
+
+/**
+ * @brief   Sets the clock divider from a target frequency.
+ * @details Computes the 16.8 fixed point divider from the system clock
+ *          frequency, same arithmetic as @p pioSmSetFrequencyX().
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] freq_hz   desired PIO clock frequency in Hz
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetFrequency(rp_pio_sm_config_t *cfgp,
+                                             uint32_t freq_hz) {
+  uint32_t div_fp8;
+
+  osalDbgCheck((cfgp != NULL) && (freq_hz > 0U));
+
+  div_fp8 = ((uint64_t)RP_CLK_SYS_FREQ << 8) / freq_hz;
+
+  /* Divider must be in [1.0, 65536.0]: the target frequency can neither
+     exceed the system clock nor undershoot sysclk / 65536.*/
+  osalDbgCheck((div_fp8 >= 0x100U) && (div_fp8 <= 0x1000000U));
+
+  cfgp->clkdiv = PIO_SM_CLKDIV(div_fp8 >> 8, div_fp8 & 0xFFU);
+}
+
+/**
+ * @brief   Sets the input shift register configuration.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] shift_right shift ISR to the right
+ * @param[in] autopush  enable automatic push on threshold
+ * @param[in] threshold push threshold in bits (1..32)
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetInShift(rp_pio_sm_config_t *cfgp,
+                                           bool shift_right, bool autopush,
+                                           uint32_t threshold) {
+
+  osalDbgCheck((cfgp != NULL) && (threshold >= 1U) && (threshold <= 32U));
+
+  cfgp->shiftctrl = (cfgp->shiftctrl & ~(PIO_SM_SHIFTCTRL_IN_SHIFTDIR |
+                                         PIO_SM_SHIFTCTRL_AUTOPUSH |
+                                         PIO_SM_SHIFTCTRL_PUSH_THRESH_Msk)) |
+                    (shift_right ? PIO_SM_SHIFTCTRL_IN_SHIFTDIR : 0U) |
+                    (autopush ? PIO_SM_SHIFTCTRL_AUTOPUSH : 0U) |
+                    ((threshold & 0x1FU) << PIO_SM_SHIFTCTRL_PUSH_THRESH_Pos);
+}
+
+/**
+ * @brief   Sets the output shift register configuration.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] shift_right shift OSR to the right
+ * @param[in] autopull  enable automatic pull on threshold
+ * @param[in] threshold pull threshold in bits (1..32)
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetOutShift(rp_pio_sm_config_t *cfgp,
+                                            bool shift_right, bool autopull,
+                                            uint32_t threshold) {
+
+  osalDbgCheck((cfgp != NULL) && (threshold >= 1U) && (threshold <= 32U));
+
+  cfgp->shiftctrl = (cfgp->shiftctrl & ~(PIO_SM_SHIFTCTRL_OUT_SHIFTDIR |
+                                         PIO_SM_SHIFTCTRL_AUTOPULL |
+                                         PIO_SM_SHIFTCTRL_PULL_THRESH_Msk)) |
+                    (shift_right ? PIO_SM_SHIFTCTRL_OUT_SHIFTDIR : 0U) |
+                    (autopull ? PIO_SM_SHIFTCTRL_AUTOPULL : 0U) |
+                    ((threshold & 0x1FU) << PIO_SM_SHIFTCTRL_PULL_THRESH_Pos);
+}
+
+/**
+ * @brief   Sets the FIFO joining mode.
+ * @note    The hardware flushes both FIFOs whenever the joining mode
+ *          changes.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] join      joining mode
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetFifoJoin(rp_pio_sm_config_t *cfgp,
+                                            rp_pio_fifo_join_t join) {
+
+  osalDbgCheck((cfgp != NULL) && ((uint32_t)join <= RP_PIO_FIFO_JOIN_RX));
+
+  cfgp->shiftctrl = (cfgp->shiftctrl & ~(PIO_SM_SHIFTCTRL_FJOIN_TX |
+                                         PIO_SM_SHIFTCTRL_FJOIN_RX)) |
+                    ((join == RP_PIO_FIFO_JOIN_TX) ? PIO_SM_SHIFTCTRL_FJOIN_TX : 0U) |
+                    ((join == RP_PIO_FIFO_JOIN_RX) ? PIO_SM_SHIFTCTRL_FJOIN_RX : 0U);
+}
+
+/**
+ * @brief   Sets the MOV STATUS comparison.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] sel       comparison source
+ * @param[in] n         comparison level or IRQ index
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetMovStatus(rp_pio_sm_config_t *cfgp,
+                                             rp_pio_mov_status_t sel,
+                                             uint32_t n) {
+
+  osalDbgCheck((cfgp != NULL) &&
+               ((((uint32_t)sel << PIO_SM_EXECCTRL_STATUS_SEL_Pos) &
+                 ~PIO_SM_EXECCTRL_STATUS_SEL_Msk) == 0U) &&
+               (((n << PIO_SM_EXECCTRL_STATUS_N_Pos) &
+                 ~PIO_SM_EXECCTRL_STATUS_N_Msk) == 0U));
+
+  cfgp->execctrl = (cfgp->execctrl & ~(PIO_SM_EXECCTRL_STATUS_SEL_Msk |
+                                       PIO_SM_EXECCTRL_STATUS_N_Msk)) |
+                   ((uint32_t)sel << PIO_SM_EXECCTRL_STATUS_SEL_Pos) |
+                   (n << PIO_SM_EXECCTRL_STATUS_N_Pos);
+}
+
+/**
+ * @brief   Sets the special OUT behaviors.
+ *
+ * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
+ * @param[in] sticky    re-assert the most recent OUT/SET pin values on
+ *                      every instruction
+ * @param[in] has_enable_pin use a data bit as an inline output enable
+ * @param[in] enable_pin_index data bit index used as the enable
+ *                      (0..31)
+ *
+ * @api
+ */
+__STATIC_INLINE void pioSmConfigSetOutSpecial(rp_pio_sm_config_t *cfgp,
+                                              bool sticky,
+                                              bool has_enable_pin,
+                                              uint32_t enable_pin_index) {
+
+  osalDbgCheck((cfgp != NULL) && (enable_pin_index < 32U));
+
+  cfgp->execctrl = (cfgp->execctrl & ~(PIO_SM_EXECCTRL_OUT_STICKY |
+                                       PIO_SM_EXECCTRL_INLINE_OUT_EN |
+                                       PIO_SM_EXECCTRL_OUT_EN_SEL_Msk)) |
+                   (sticky ? PIO_SM_EXECCTRL_OUT_STICKY : 0U) |
+                   (has_enable_pin ? PIO_SM_EXECCTRL_INLINE_OUT_EN : 0U) |
+                   (enable_pin_index << PIO_SM_EXECCTRL_OUT_EN_SEL_Pos);
+}
+/** @} */
+
+/**
+ * @brief   Applies a configuration to a state machine.
+ * @note    The state machine should be disabled; use @p pioSmInit() for
+ *          the full initialization sequence.
+ *
+ * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @param[in] cfgp      pointer to a rp_pio_sm_config_t structure
+ *
+ * @special
+ */
+__STATIC_INLINE void pioSmSetConfigX(const rp_pio_sm_t *smp,
+                                     const rp_pio_sm_config_t *cfgp) {
+
+  smp->block->pio->SM[smp->smidx].CLKDIV    = cfgp->clkdiv;
+  smp->block->pio->SM[smp->smidx].EXECCTRL  = cfgp->execctrl;
+  smp->block->pio->SM[smp->smidx].SHIFTCTRL = cfgp->shiftctrl;
+  smp->block->pio->SM[smp->smidx].PINCTRL   = cfgp->pinctrl;
+}
 
 /**
  * @brief   Enables a state machine.
