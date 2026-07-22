@@ -29,6 +29,12 @@
 #include "hal.h"
 #include "rp_efl_lld.h"
 
+#if defined(__riscv)
+/* Hazard3 mstatus.MIE mask/restore primitives, not in the general HAL
+   include chain.*/
+#include "hazard3_irq.h"
+#endif
+
 #if (HAL_USE_EFL == TRUE) || defined(__DOXYGEN__)
 
 /*===========================================================================*/
@@ -726,6 +732,47 @@ RAMFUNC static flash_error_t rp_flash_erase_cmd(EFlashDriver *eflp,
 }
 
 /**
+ * @brief   Masks all maskable interrupts at the architecture level.
+ * @details While XIP is disabled every handler is unreachable, including
+ *          fast interrupts above the kernel priority ceiling which a
+ *          BASEPRI-based lock would leave enabled. PRIMASK is used on ARM
+ *          and mstatus.MIE on RISC-V; NMI and fault-class exceptions
+ *          remain unmasked on both architectures.
+ * @note    Forced inline so the masking code is guaranteed to reside in
+ *          the RAMFUNC callers.
+ *
+ * @return              An opaque, architecture-specific mask state (the
+ *                      PRIMASK value on ARM, the saved mstatus.MIE bit
+ *                      on RISC-V), only meaningful as the argument to
+ *                      @p rp_flash_restore_irqs().
+ */
+CC_FORCE_INLINE static inline uint32_t rp_flash_mask_irqs(void) {
+#if defined(__riscv)
+  return hazard3_irq_disable_save();
+#else
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  return primask;
+#endif
+}
+
+/**
+ * @brief   Restores the interrupt enable state saved by
+ *          @p rp_flash_mask_irqs().
+ *
+ * @param[in] state     opaque mask state returned by
+ *                      @p rp_flash_mask_irqs(), not interpretable by the
+ *                      caller
+ */
+CC_FORCE_INLINE static inline void rp_flash_restore_irqs(uint32_t state) {
+#if defined(__riscv)
+  hazard3_irq_restore(state);
+#else
+  __set_PRIMASK(state);
+#endif
+}
+
+/**
  * @brief   Complete erase operation (runs entirely in RAM).
  * @note    This function MUST be in RAM. It handles the entire sequence
  *          from exit XIP to enter XIP so no flash code executes while
@@ -740,10 +787,10 @@ RAMFUNC static flash_error_t rp_flash_erase_full(EFlashDriver *eflp,
                                                  uint8_t cmd,
                                                  uint32_t offset) {
   flash_error_t err = FLASH_NO_ERROR;
-  uint32_t primask = __get_PRIMASK();
+  uint32_t irqs;
 
   /* Defer fast interrupts too, their handlers may execute from flash.*/
-  __disable_irq();
+  irqs = rp_flash_mask_irqs();
 
   /* Exit XIP mode. */
   if (!rp_flash_exit_xip(eflp)) {
@@ -761,7 +808,7 @@ RAMFUNC static flash_error_t rp_flash_erase_full(EFlashDriver *eflp,
     err = FLASH_ERROR_HW_FAILURE;
   }
 
-  __set_PRIMASK(primask);
+  rp_flash_restore_irqs(irqs);
 
   return err;
 }
@@ -783,10 +830,10 @@ RAMFUNC static flash_error_t rp_flash_program_page_full(EFlashDriver *eflp,
                                                         const uint8_t *data,
                                                         size_t len) {
   flash_error_t err = FLASH_NO_ERROR;
-  uint32_t primask = __get_PRIMASK();
+  uint32_t irqs;
 
   /* Defer fast interrupts too, their handlers may execute from flash.*/
-  __disable_irq();
+  irqs = rp_flash_mask_irqs();
 
   /* Exit XIP mode. */
   if (!rp_flash_exit_xip(eflp)) {
@@ -804,7 +851,7 @@ RAMFUNC static flash_error_t rp_flash_program_page_full(EFlashDriver *eflp,
     err = FLASH_ERROR_HW_FAILURE;
   }
 
-  __set_PRIMASK(primask);
+  rp_flash_restore_irqs(irqs);
 
   return err;
 }
@@ -824,10 +871,10 @@ RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
                                                     uint8_t *rx,
                                                     size_t count) {
   flash_error_t err = FLASH_NO_ERROR;
-  uint32_t primask = __get_PRIMASK();
+  uint32_t irqs;
 
   /* Defer fast interrupts too, their handlers may execute from flash.*/
-  __disable_irq();
+  irqs = rp_flash_mask_irqs();
 
   /* Exit XIP mode. */
   if (!rp_flash_exit_xip(eflp)) {
@@ -845,7 +892,7 @@ RAMFUNC static flash_error_t rp_flash_read_uid_full(EFlashDriver *eflp,
     err = FLASH_ERROR_HW_FAILURE;
   }
 
-  __set_PRIMASK(primask);
+  rp_flash_restore_irqs(irqs);
 
   return err;
 }
