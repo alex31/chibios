@@ -40,14 +40,14 @@ void c1_main(void) {
      this core.*/
   while (c1_do_free == 0U) {
   }
-  __DMB();
+  pio_validation_barrier();
 
   /* Cross-core free of a state machine allocated by core 0.*/
   chSysLock();
   pioSmFreeI(xcore_smp);
   chSysUnlock();
 
-  __DMB();                          /* Free's effects before the flag.*/
+  pio_validation_barrier();         /* Free's effects before the flag.*/
   c1_free_done = 1U;
 
   while (true) {

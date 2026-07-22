@@ -21,6 +21,12 @@
 #ifndef PIO_VALIDATION_H
 #define PIO_VALIDATION_H
 
+/*
+ * Full memory barrier usable from both the ARM and RISC-V builds of the
+ * shared sources (__DMB is CMSIS, ARM only).
+ */
+#define pio_validation_barrier()    __sync_synchronize()
+
 extern volatile uint32_t c1_ready;
 extern volatile uint32_t c1_do_free;
 extern volatile uint32_t c1_free_done;

@@ -470,7 +470,7 @@ int main(void) {
   chprintf(chp, "--- Test 4: cross-core free\r\n");
 
   xcore_smp = smp;                      /* SM0, allocated by core 0.*/
-  __DMB();
+  pio_validation_barrier();
   c1_do_free = 1U;
 
   for (i = 0U; (c1_free_done == 0U) && (i < 1000U); i++) {
