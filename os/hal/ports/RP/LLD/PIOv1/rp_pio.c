@@ -653,6 +653,41 @@ void pioProgramUnload(const rp_pio_block_t *block,
   osalSysUnlock();
 }
 
+/**
+ * @brief   Initializes a state machine with a configuration.
+ * @details Disables the state machine, applies the configuration, clears
+ *          the FIFOs and the FDEBUG flags, restarts the state machine and
+ *          its clock divider, then jumps to @p initial_pc. The FIFOs are
+ *          cleared after the configuration is applied so the configured
+ *          joining mode is preserved.
+ * @post    The state machine is left disabled; route pins and set pin
+ *          directions, then start it with @p pioSmEnableX().
+ * @note    Only registers private to the allocated state machine and the
+ *          atomic CTRL set/clear aliases are touched, so no locking is
+ *          required.
+ *
+ * @param[in] smp        pointer to a rp_pio_sm_t structure
+ * @param[in] initial_pc initial program counter, typically the offset
+ *                       returned by @p pioProgramLoad() (0..31)
+ * @param[in] cfgp       pointer to a rp_pio_sm_config_t structure
+ *
+ * @api
+ */
+void pioSmInit(const rp_pio_sm_t *smp, uint32_t initial_pc,
+               const rp_pio_sm_config_t *cfgp) {
+
+  osalDbgCheck((smp != NULL) && (cfgp != NULL) &&
+               (initial_pc < RP_PIO_NUM_INSTR_MEM));
+
+  pioSmDisableX(smp);
+  pioSmSetConfigX(smp, cfgp);
+  pioSmClearFifosX(smp);
+  pioClearDebugX(smp);
+  pioSmRestartX(smp);
+  pioSmClkdivRestartX(smp);
+  pioSmSetPCX(smp, initial_pc);
+}
+
 #if (RP_PIO_HAS_GPIOBASE == TRUE) || defined(__DOXYGEN__)
 /**
  * @brief   Selects the GPIO window of a PIO block.

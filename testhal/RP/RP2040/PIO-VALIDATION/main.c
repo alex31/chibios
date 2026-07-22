@@ -36,6 +36,22 @@
  * 4. Cross-core free: a state machine allocated by core 0 and freed by
  *    core 1 must actually be released so that all four state machines
  *    of the block can be allocated again.
+ * 5. sm_config builder: a configuration composed with the pioSmConfig*
+ *    builders must equal the hand-assembled register values, survive
+ *    the pioSmInit sequence into the hardware registers, and produce
+ *    the same square wave through pioGpioInitX and
+ *    pioSmSetConsecutivePindirsX.
+ * 6. DMA glue: a DMA channel paced by pioSmTxDreqX feeds the TX FIFO
+ *    of an autopull OUT program at a nonzero load offset; the DREQ
+ *    number must match the chip's named TREQ macro and the streamed
+ *    alternating bit pattern must appear on the pin.
+ * 7. Consecutive pindirs: an 8-pin range crosses the 5-pin SET chunk
+ *    limit; the direct pad output enable view (DBG_PADOE) must follow
+ *    and PINCTRL must be restored bit-exact.
+ * 8. (RP2350) PIO2 routing: pioGpioInitX must select FUNCSEL 8 and
+ *    clear the pad isolation latch left set by the pad reset state.
+ * 9. (RP2350) GPIOBASE window: the builder flow must work with the
+ *    GPIO16..47 window through pioGpioToRel.
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default
@@ -74,6 +90,17 @@ const rp_pio_sm_t * volatile xcore_smp;
 #define EXPECTED_EDGES      ((SM_TEST_FREQ / 10U) * 2U / 3U)
 #define EDGES_LO            ((EXPECTED_EDGES * 7U) / 10U)
 #define EDGES_HI            ((EXPECTED_EDGES * 13U) / 10U)
+
+/* The DMA test streams an alternating bit pattern at one bit per SM cycle,
+   expected edge count in the 100 ms window with a +/-30% margin. The stream
+   must outlast the window: 64 words x 32 bits at 10 kHz is 204.8 ms.*/
+#define DMA_WORDS           64U
+#define EXPECTED_DMA_EDGES  (SM_TEST_FREQ / 10U)
+#define DMA_EDGES_LO        ((EXPECTED_DMA_EDGES * 7U) / 10U)
+#define DMA_EDGES_HI        ((EXPECTED_DMA_EDGES * 13U) / 10U)
+
+/* Test 9 pin inside the GPIO16..47 window, free on the Pico boards.*/
+#define WINDOW_GPIO         22U
 
 /*===========================================================================*/
 /* PIO programs.                                                             */
@@ -137,6 +164,26 @@ static const rp_pio_program_t single_program = {
   .origin       = -1
 };
 
+/*
+ * Single-instruction DMA feed program: "out pins, 1" shifts one bit per
+ * cycle from the OSR to the OUT pin group; with autopull enabled the OSR
+ * refills from the TX FIFO and the state machine stalls when the FIFO
+ * runs empty.
+ *   out pins, 1     ; 0x6001  011_00000_000_00001 (dest pins, bitcount 1)
+ */
+static const uint16_t outpin_instructions[] = {
+  0x6001U
+};
+
+static const rp_pio_program_t outpin_program = {
+  .instructions = outpin_instructions,
+  .length       = 1U,
+  .origin       = -1
+};
+
+/* DMA source pattern, filled at run time with alternating bits.*/
+static uint32_t dma_pattern[DMA_WORDS];
+
 /*===========================================================================*/
 /* Report helpers.                                                           */
 /*===========================================================================*/
@@ -169,15 +216,15 @@ static void delay_us(uint32_t us) {
 }
 
 /**
- * @brief   Counts edges on TEST_GPIO by sampling SIO GPIO_IN for 100 ms.
+ * @brief   Counts edges on a GPIO by sampling SIO GPIO_IN for 100 ms.
  */
-static uint32_t count_edges(void) {
+static uint32_t count_edges(uint32_t gpio) {
   uint32_t edges = 0U;
   uint32_t start = TIMER0->TIMERAWL;
-  uint32_t prev = (SIO->GPIO_IN >> TEST_GPIO) & 1U;
+  uint32_t prev = (SIO->GPIO_IN >> gpio) & 1U;
 
   while ((uint32_t)(TIMER0->TIMERAWL - start) < MEASURE_US) {
-    uint32_t cur = (SIO->GPIO_IN >> TEST_GPIO) & 1U;
+    uint32_t cur = (SIO->GPIO_IN >> gpio) & 1U;
 
     if (cur != prev) {
       edges++;
@@ -258,8 +305,10 @@ int main(void) {
   const rp_pio_block_t *block = RP_PIO0_BLOCK;
   const rp_pio_sm_t *smp;
   const rp_pio_sm_t *sms[RP_PIO_NUM_STATE_MACHINES];
-  int32_t park_off, sq_off, off32, off1;
-  uint32_t edges;
+  const rp_dma_channel_t *dmachp;
+  rp_pio_sm_config_t cfg;
+  int32_t park_off, sq_off, off32, off1, out_off;
+  uint32_t edges, rel, lvl, div_fp8, pinctrl_before, pinctrl_after;
   unsigned i;
   bool ok;
 
@@ -305,7 +354,7 @@ int main(void) {
      offset.*/
   if ((smp != NULL) && (park_off == 0) && (sq_off >= 1)) {
     sqwave_start(smp, (uint32_t)sq_off);
-    edges = count_edges();
+    edges = count_edges(TEST_GPIO);
     chprintf(chp, "      edges: %u\r\n", edges);
     report("edge count in window", (edges >= EDGES_LO) && (edges <= EDGES_HI));
     report("PC stays within program",
@@ -369,7 +418,7 @@ int main(void) {
   }
 
   sqwave_start(smp, (uint32_t)sq_off);
-  edges = count_edges();
+  edges = count_edges(TEST_GPIO);
   chprintf(chp, "      edges before free: %u\r\n", edges);
   report("running before free", (edges >= EDGES_LO) && (edges <= EDGES_HI));
 
@@ -382,7 +431,7 @@ int main(void) {
 
   /* Restart without reloading the program.*/
   sqwave_start(smp, (uint32_t)sq_off);
-  edges = count_edges();
+  edges = count_edges(TEST_GPIO);
   chprintf(chp, "      edges after realloc: %u\r\n", edges);
   report("imem survives last SM free",
          (edges >= EDGES_LO) && (edges <= EDGES_HI));
@@ -406,7 +455,7 @@ int main(void) {
   }
 
   sqwave_start(smp, (uint32_t)sq_off);
-  edges = count_edges();
+  edges = count_edges(TEST_GPIO);
   chprintf(chp, "      edges after early load: %u\r\n", edges);
   report("load before first alloc works",
          (edges >= EDGES_LO) && (edges <= EDGES_HI));
@@ -421,7 +470,7 @@ int main(void) {
   chprintf(chp, "--- Test 4: cross-core free\r\n");
 
   xcore_smp = smp;                      /* SM0, allocated by core 0.*/
-  __DMB();
+  pio_validation_barrier();
   c1_do_free = 1U;
 
   for (i = 0U; (c1_free_done == 0U) && (i < 1000U); i++) {
@@ -444,6 +493,271 @@ int main(void) {
       pioSmFree(sms[i]);
     }
   }
+
+  /*
+   * Test 5: sm_config builder and pioSmInit.
+   */
+  chprintf(chp, "--- Test 5: sm_config builder\r\n");
+
+  sq_off = pioProgramLoad(block, &sqwave_program);
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("program loaded and SM0 allocated", (sq_off >= 0) && (smp != NULL));
+  if ((sq_off < 0) || (smp == NULL)) {
+    goto summary;
+  }
+
+  rel = pioGpioToRel(block, TEST_GPIO);
+  pioSmConfigDefaultX(&cfg);
+  pioSmConfigSetFrequencyX(&cfg, SM_TEST_FREQ);
+  pioSmConfigSetWrapX(&cfg, 0U, 31U);
+  pioSmConfigSetSetPinsX(&cfg, rel, 1U);
+
+  /* The builder output must equal the values sqwave_start() assembles by
+     hand from the _Pos/_Msk macros.*/
+  div_fp8 = (uint32_t)(((uint64_t)RP_CLK_SYS_FREQ << 8) / SM_TEST_FREQ);
+  report("clkdiv equals hand-assembled value",
+         cfg.clkdiv == PIO_SM_CLKDIV(div_fp8 >> 8, div_fp8 & 0xFFU));
+  report("execctrl equals hand-assembled value",
+         cfg.execctrl == PIO_SM_EXECCTRL_WRAP(0U, 31U));
+  report("shiftctrl equals hand-assembled value",
+         cfg.shiftctrl == (PIO_SM_SHIFTCTRL_IN_SHIFTDIR |
+                           PIO_SM_SHIFTCTRL_OUT_SHIFTDIR));
+  report("pinctrl equals hand-assembled value",
+         cfg.pinctrl == ((1U << PIO_SM_PINCTRL_SET_COUNT_Pos) |
+                         (rel << PIO_SM_PINCTRL_SET_BASE_Pos)));
+
+  pioSmInit(smp, (uint32_t)sq_off, &cfg);
+
+  /* EXEC_STALLED is read-only status, masked from the comparison.*/
+  report("configuration applied to hardware",
+         (block->pio->SM[smp->smidx].CLKDIV == cfg.clkdiv) &&
+         ((block->pio->SM[smp->smidx].EXECCTRL &
+           ~PIO_SM_EXECCTRL_EXEC_STALLED) == cfg.execctrl) &&
+         (block->pio->SM[smp->smidx].SHIFTCTRL == cfg.shiftctrl) &&
+         (block->pio->SM[smp->smidx].PINCTRL == cfg.pinctrl));
+  report("FIFOs empty after init",
+         (block->pio->FSTAT & (PIO_FSTAT_TXEMPTY(smp->smidx) |
+                               PIO_FSTAT_RXEMPTY(smp->smidx))) ==
+         (PIO_FSTAT_TXEMPTY(smp->smidx) | PIO_FSTAT_RXEMPTY(smp->smidx)));
+  report("FDEBUG clear after init",
+         (block->pio->FDEBUG & (PIO_FDEBUG_RXSTALL(smp->smidx) |
+                                PIO_FDEBUG_RXUNDER(smp->smidx) |
+                                PIO_FDEBUG_TXOVER(smp->smidx) |
+                                PIO_FDEBUG_TXSTALL(smp->smidx))) == 0U);
+
+  pioSmSetConsecutivePindirsX(smp, TEST_GPIO, 1U, true);
+  pioGpioInitX(smp, TEST_GPIO);
+  report("pad routed with default control",
+         PADS_BANK0->GPIO[TEST_GPIO] == RP_PIO_PAD_DEFAULT);
+
+  pioSmEnableX(smp);
+  edges = count_edges(TEST_GPIO);
+  chprintf(chp, "      edges: %u\r\n", edges);
+  report("builder square wave in window",
+         (edges >= EDGES_LO) && (edges <= EDGES_HI));
+
+  pioSmDisableX(smp);
+  pioProgramUnload(block, sq_off, sqwave_program.length);
+
+  /*
+   * Test 6: DMA-fed TX FIFO through the DREQ and FIFO address glue.
+   */
+  chprintf(chp, "--- Test 6: DMA glue\r\n");
+
+  /* The raw DREQ numbers wrapped by the chip's TREQ_SEL macro must match
+     the chip's named TREQ macros (SM0 of PIO0 here).*/
+  report("TX DREQ matches named TREQ macro",
+         DMA_CTRL_TRIG_TREQ_SEL(pioSmTxDreqX(smp)) ==
+         DMA_CTRL_TRIG_TREQ_PIO0_TX0);
+  report("RX DREQ matches named TREQ macro",
+         DMA_CTRL_TRIG_TREQ_SEL(pioSmRxDreqX(smp)) ==
+         DMA_CTRL_TRIG_TREQ_PIO0_RX0);
+
+  park_off = pioProgramLoad(block, &park_program);
+  out_off = pioProgramLoad(block, &outpin_program);
+  report("OUT program at nonzero offset", (park_off == 0) && (out_off >= 1));
+  if (out_off < 1) {
+    goto summary;
+  }
+
+  pioSmConfigDefaultX(&cfg);
+  pioSmConfigSetFrequencyX(&cfg, SM_TEST_FREQ);
+  pioSmConfigSetWrapX(&cfg, (uint32_t)out_off, (uint32_t)out_off);
+  pioSmConfigSetOutPinsX(&cfg, rel, 1U);
+  pioSmConfigSetOutShiftX(&cfg, true, true, 32U);
+  pioSmInit(smp, (uint32_t)out_off, &cfg);
+
+  pioSmSetConsecutivePindirsX(smp, TEST_GPIO, 1U, true);
+  pioGpioInitX(smp, TEST_GPIO);
+  pioSmEnableX(smp);                    /* Stalls on the empty TX FIFO.*/
+
+  for (i = 0U; i < DMA_WORDS; i++) {
+    dma_pattern[i] = 0x55555555U;
+  }
+
+  dmachp = dmaChannelAlloc(RP_DMA_CHANNEL_ID_ANY, TEST_IRQ_PRIORITY,
+                           NULL, NULL);
+  report("DMA channel allocated", dmachp != NULL);
+  if (dmachp == NULL) {
+    goto summary;
+  }
+
+  dmaChannelSetSourceX(dmachp, (uint32_t)dma_pattern);
+  dmaChannelSetDestinationX(dmachp, (uint32_t)pioSmTxFifoAddrX(smp));
+  dmaChannelSetCounterX(dmachp, DMA_WORDS);
+  dmaChannelSetModeX(dmachp,
+                     DMA_CTRL_TRIG_TREQ_SEL(pioSmTxDreqX(smp)) |
+                     DMA_CTRL_TRIG_DATA_SIZE_WORD |
+                     DMA_CTRL_TRIG_INCR_READ);
+  dmaChannelEnableX(dmachp);
+
+  /* The DMA fills the FIFO within microseconds while the SM drains one
+     word per 3.2 ms.*/
+  delay_us(200U);
+  lvl = pioSmTxFifoLevelX(smp);
+  chprintf(chp, "      level: %u\r\n", lvl);
+  report("TX FIFO fills", lvl >= 1U);
+
+  edges = count_edges(TEST_GPIO);
+  chprintf(chp, "      edges: %u\r\n", edges);
+  report("DMA-paced pattern in window",
+         (edges >= DMA_EDGES_LO) && (edges <= DMA_EDGES_HI));
+
+  /* The whole stream lasts 204.8 ms, wait out the tail with a generous
+     timeout: channel idle, FIFO drained, SM stalled on empty.*/
+  for (i = 0U; i < 3000U; i++) {
+    if (!dmaChannelIsBusyX(dmachp) &&
+        (pioSmTxFifoLevelX(smp) == 0U) &&
+        ((block->pio->FDEBUG & PIO_FDEBUG_TXSTALL(smp->smidx)) != 0U)) {
+      break;
+    }
+    delay_us(100U);
+  }
+  report("stream drains to stall",
+         !dmaChannelIsBusyX(dmachp) &&
+         (pioSmTxFifoLevelX(smp) == 0U) &&
+         ((block->pio->FDEBUG & PIO_FDEBUG_TXSTALL(smp->smidx)) != 0U));
+
+  dmaChannelFree(dmachp);
+  pioSmDisableX(smp);
+  pioProgramUnload(block, out_off, outpin_program.length);
+  pioProgramUnload(block, park_off, park_program.length);
+
+  /*
+   * Test 7: consecutive pindirs across the 5-pin SET chunk limit.
+   */
+  chprintf(chp, "--- Test 7: consecutive pindirs\r\n");
+
+  pinctrl_before = block->pio->SM[smp->smidx].PINCTRL;
+
+  pioSmSetConsecutivePindirsX(smp, TEST_GPIO, 8U, true);
+  ok = ((block->pio->DBG_PADOE >> rel) & 0xFFU) == 0xFFU;
+  report("8-pin range set to output", ok);
+
+  pioSmSetConsecutivePindirsX(smp, TEST_GPIO, 8U, false);
+  ok = ((block->pio->DBG_PADOE >> rel) & 0xFFU) == 0U;
+  report("8-pin range set to input", ok);
+
+  pinctrl_after = block->pio->SM[smp->smidx].PINCTRL;
+  report("PINCTRL restored bit-exact", pinctrl_after == pinctrl_before);
+
+  /* A sticky-output configuration must survive the helper: the direction
+     write sequence must neither lose the configured EXECCTRL nor leave a
+     sticky direction write latched (the helper restarts the SM to clear
+     it).*/
+  pioSmConfigDefaultX(&cfg);
+  pioSmConfigSetSetPinsX(&cfg, rel, 1U);
+  pioSmConfigSetOutSpecialX(&cfg, true, false, 0U);
+  pioSmSetConfigX(smp, &cfg);
+  pioSmSetConsecutivePindirsX(smp, TEST_GPIO, 1U, true);
+  report("EXECCTRL sticky preserved",
+         (block->pio->SM[smp->smidx].EXECCTRL &
+          PIO_SM_EXECCTRL_OUT_STICKY) != 0U);
+  report("pindir applied with sticky config",
+         ((block->pio->DBG_PADOE >> rel) & 1U) == 1U);
+
+  pioSmFree(smp);
+
+#if RP_HAS_PIO2 == TRUE
+  /*
+   * Test 8: PIO2 routing and pad isolation handling.
+   */
+  chprintf(chp, "--- Test 8: PIO2 routing\r\n");
+
+  /* Pad back to its RP2350 reset state: isolated, input-disabled.*/
+  PADS_BANK0->GPIO[TEST_GPIO] = RP_PIO_PAD_ISO | RP_PIO_PAD_PDE |
+                                RP_PIO_PAD_SCHMITT | RP_PIO_PAD_DRIVE4;
+
+  sq_off = pioProgramLoad(RP_PIO2_BLOCK, &sqwave_program);
+  smp = pioSmAlloc(RP_PIO2_BLOCK, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("PIO2 program loaded and SM0 allocated",
+         (sq_off >= 0) && (smp != NULL));
+  if ((sq_off < 0) || (smp == NULL)) {
+    goto summary;
+  }
+
+  rel = pioGpioToRel(RP_PIO2_BLOCK, TEST_GPIO);
+  pioSmConfigDefaultX(&cfg);
+  pioSmConfigSetFrequencyX(&cfg, SM_TEST_FREQ);
+  pioSmConfigSetSetPinsX(&cfg, rel, 1U);
+  pioSmInit(smp, (uint32_t)sq_off, &cfg);
+  pioSmSetConsecutivePindirsX(smp, TEST_GPIO, 1U, true);
+  pioGpioInitX(smp, TEST_GPIO);
+
+  report("FUNCSEL selects PIO2",
+         (IO_BANK0->GPIO[TEST_GPIO].CTRL & 0x1FU) == RP_PIO_FUNCSEL_PIO2);
+  report("pad de-isolated with default control",
+         PADS_BANK0->GPIO[TEST_GPIO] == RP_PIO_PAD_DEFAULT);
+
+  pioSmEnableX(smp);
+  edges = count_edges(TEST_GPIO);
+  chprintf(chp, "      edges: %u\r\n", edges);
+  report("PIO2 square wave in window",
+         (edges >= EDGES_LO) && (edges <= EDGES_HI));
+
+  pioSmDisableX(smp);
+  pioSmFree(smp);
+  pioProgramUnload(RP_PIO2_BLOCK, sq_off, sqwave_program.length);
+#endif /* RP_HAS_PIO2 == TRUE */
+
+#if RP_PIO_HAS_GPIOBASE == TRUE
+  /*
+   * Test 9: GPIOBASE=16 window through the builder flow.
+   */
+  chprintf(chp, "--- Test 9: GPIOBASE window\r\n");
+
+  pioSetGpioBase(RP_PIO1_BLOCK, 16U);
+
+  sq_off = pioProgramLoad(RP_PIO1_BLOCK, &sqwave_program);
+  smp = pioSmAlloc(RP_PIO1_BLOCK, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("PIO1 program loaded and SM0 allocated",
+         (sq_off >= 0) && (smp != NULL));
+  if ((sq_off < 0) || (smp == NULL)) {
+    goto summary;
+  }
+
+  rel = pioGpioToRel(RP_PIO1_BLOCK, WINDOW_GPIO);
+  report("GPIO lowered into window", rel == (WINDOW_GPIO - 16U));
+
+  pioSmConfigDefaultX(&cfg);
+  pioSmConfigSetFrequencyX(&cfg, SM_TEST_FREQ);
+  pioSmConfigSetSetPinsX(&cfg, rel, 1U);
+  pioSmInit(smp, (uint32_t)sq_off, &cfg);
+  pioSmSetConsecutivePindirsX(smp, WINDOW_GPIO, 1U, true);
+  pioGpioInitX(smp, WINDOW_GPIO);
+
+  pioSmEnableX(smp);
+  edges = count_edges(WINDOW_GPIO);
+  chprintf(chp, "      edges: %u\r\n", edges);
+  report("windowed square wave in window",
+         (edges >= EDGES_LO) && (edges <= EDGES_HI));
+
+  /* Full teardown, the block reset on the last release clears
+     GPIOBASE.*/
+  pioSmDisableX(smp);
+  pioSmFree(smp);
+  pioProgramUnload(RP_PIO1_BLOCK, sq_off, sqwave_program.length);
+#endif /* RP_PIO_HAS_GPIOBASE == TRUE */
 
   /*
    * Summary.
