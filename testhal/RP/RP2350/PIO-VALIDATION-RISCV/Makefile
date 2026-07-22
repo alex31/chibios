@@ -59,7 +59,7 @@ ifeq ($(USE_PROCESS_STACKSIZE),)
   USE_PROCESS_STACKSIZE = 0x600
 endif
 
-# Stack size to the allocated to the RISC-V main/exceptions stack. This
+# Stack size to be allocated to the RISC-V main/exceptions stack. This
 # stack is used for processing interrupts and exceptions.
 ifeq ($(USE_EXCEPTIONS_STACKSIZE),)
   USE_EXCEPTIONS_STACKSIZE = 0x600
