@@ -1047,6 +1047,10 @@ __STATIC_INLINE uint32_t pioSmGet(const rp_pio_sm_t *smp) {
  * @brief   Routes a GPIO pin to the PIO block that owns this state machine.
  * @details Sets IO_BANK0 FUNCSEL for the given pin to PIO0, PIO1, or PIO2
  *          based on the block index of the state machine.
+ * @note    Only the pin multiplexer is programmed; the pad control
+ *          register (input enable, schmitt trigger, drive strength, and
+ *          on the RP2350 the isolation latch) is left untouched. Use
+ *          @p pioGpioInitX() for complete pin routing.
  * @note    The @p gpio parameter is an absolute GPIO number. On devices
  *          with the @p RP_PIO_HAS_GPIOBASE capability (RP2350) the pin
  *          fields written into PINCTRL/EXECCTRL are instead relative to
@@ -1071,6 +1075,56 @@ __STATIC_INLINE void pioSmSetPinFunctionX(const rp_pio_sm_t *smp,
   osalDbgCheck(gpio < RP_GPIO_NUM_LINES);
 
   IO_BANK0->GPIO[gpio].CTRL = funcsel[smp->block->pioidx];
+}
+
+/**
+ * @brief   Routes a GPIO pin to the PIO block with explicit pad control.
+ * @details Programs both the pin multiplexer and the pad control register.
+ *          On the RP2350 the pad is reprogrammed while still isolated and
+ *          the isolation latch is cleared only after the multiplexer
+ *          selects the PIO function, so the pin transitions glitch-free
+ *          from its reset state.
+ * @note    The pad control register is written as a whole: pulls, drive
+ *          strength and every other pad option not present in
+ *          @p padbits are cleared. Pass the required pulls explicitly,
+ *          e.g. @p RP_PIO_PAD_DEFAULT | @p RP_PIO_PAD_PUE for an
+ *          open-drain bus with pull-up.
+ *
+ * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @param[in] gpio      absolute GPIO pin number
+ * @param[in] padbits   pad control value, combination of @p RP_PIO_PAD_*
+ *                      bits (excluding @p RP_PIO_PAD_ISO)
+ *
+ * @special
+ */
+__STATIC_INLINE void pioGpioInitPadX(const rp_pio_sm_t *smp,
+                                     uint32_t gpio, uint32_t padbits) {
+
+  osalDbgCheck((gpio < RP_GPIO_NUM_LINES) && (padbits <= 0xFFU));
+
+#if defined(RP2350)
+  PADS_BANK0->GPIO[gpio] = padbits | RP_PIO_PAD_ISO;
+  pioSmSetPinFunctionX(smp, gpio);
+  PADS_BANK0->GPIO[gpio] = padbits;
+#else
+  PADS_BANK0->GPIO[gpio] = padbits;
+  pioSmSetPinFunctionX(smp, gpio);
+#endif
+}
+
+/**
+ * @brief   Routes a GPIO pin to the PIO block with default pad control.
+ * @details Equivalent to @p pioGpioInitPadX() with @p RP_PIO_PAD_DEFAULT:
+ *          input enabled with schmitt trigger, 4mA drive, no pulls.
+ *
+ * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @param[in] gpio      absolute GPIO pin number
+ *
+ * @special
+ */
+__STATIC_INLINE void pioGpioInitX(const rp_pio_sm_t *smp, uint32_t gpio) {
+
+  pioGpioInitPadX(smp, gpio, RP_PIO_PAD_DEFAULT);
 }
 
 /**
@@ -1121,6 +1175,51 @@ __STATIC_INLINE uint32_t pioGpioToRel(const rp_pio_block_t *block,
 }
 
 /**
+ * @brief   Sets the direction of a range of consecutive pins.
+ * @details Executes SET PINDIRS instructions on the state machine using a
+ *          temporary PINCTRL configuration, in chunks of up to five pins,
+ *          then restores the original PINCTRL value. The temporary
+ *          PINCTRL has a zero side-set count so no side-set pins are
+ *          disturbed.
+ * @pre     The state machine must be disabled: the temporary PINCTRL
+ *          would corrupt the pin mapping of a running program.
+ *
+ * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @param[in] gpio      absolute GPIO number of the first pin; the whole
+ *                      range must fall within the block's GPIO window
+ * @param[in] count     number of consecutive pins (1..32)
+ * @param[in] out       true for outputs, false for inputs
+ *
+ * @special
+ */
+__STATIC_INLINE void pioSmSetConsecutivePindirsX(const rp_pio_sm_t *smp,
+                                                 uint32_t gpio,
+                                                 uint32_t count,
+                                                 bool out) {
+  PIO_TypeDef *pio = smp->block->pio;
+  uint32_t rel = pioGpioToRel(smp->block, gpio);
+  uint32_t pinctrl;
+
+  osalDbgCheck((count >= 1U) && (count <= 32U) && ((rel + count) <= 32U));
+  osalDbgAssert((pio->CTRL & PIO_CTRL_SM_ENABLE(smp->smidx)) == 0U,
+                "state machine enabled");
+
+  pinctrl = pio->SM[smp->smidx].PINCTRL;
+  do {
+    uint32_t chunk = (count > 5U) ? 5U : count;
+
+    pio->SM[smp->smidx].PINCTRL = (chunk << PIO_SM_PINCTRL_SET_COUNT_Pos) |
+                                  (rel << PIO_SM_PINCTRL_SET_BASE_Pos);
+    /* SET PINDIRS, all ones for outputs or all zeros for inputs; only the
+       low "chunk" bits take effect.*/
+    pioSmExecX(smp, (uint16_t)(0xE080U | (out ? 0x1FU : 0x00U)));
+    rel += chunk;
+    count -= chunk;
+  } while (count > 0U);
+  pio->SM[smp->smidx].PINCTRL = pinctrl;
+}
+
+/**
  * @brief   Sets the program counter of a state machine.
  * @details Executes a JMP instruction to the given address.
  *
@@ -1149,6 +1248,95 @@ __STATIC_INLINE void pioSmSetFrequencyX(const rp_pio_sm_t *smp, uint32_t freq_hz
   uint32_t frac_part = div_fp8 & 0xFFU;
 
   pioSmSetClkdivX(smp, PIO_SM_CLKDIV(int_part, frac_part));
+}
+
+/**
+ * @brief   Returns the TX DREQ number of a state machine.
+ * @note    The raw DREQ number must be wrapped with the chip's
+ *          @p DMA_CTRL_TRIG_TREQ_SEL() macro when composing a DMA mode
+ *          word, e.g.
+ *          @p DMA_CTRL_TRIG_TREQ_SEL(pioSmTxDreqX(smp)).
+ *
+ * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @return              The DREQ number for TX FIFO pacing.
+ *
+ * @special
+ */
+__STATIC_INLINE uint32_t pioSmTxDreqX(const rp_pio_sm_t *smp) {
+
+  return (smp->block->pioidx * 8U) + smp->smidx;
+}
+
+/**
+ * @brief   Returns the RX DREQ number of a state machine.
+ * @note    The raw DREQ number must be wrapped with the chip's
+ *          @p DMA_CTRL_TRIG_TREQ_SEL() macro when composing a DMA mode
+ *          word.
+ *
+ * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @return              The DREQ number for RX FIFO pacing.
+ *
+ * @special
+ */
+__STATIC_INLINE uint32_t pioSmRxDreqX(const rp_pio_sm_t *smp) {
+
+  return (smp->block->pioidx * 8U) + 4U + smp->smidx;
+}
+
+/**
+ * @brief   Returns the address of a state machine's TX FIFO register.
+ * @note    Intended as a DMA write target, e.g.
+ *          @p dmaChannelSetDestinationX(dmachp, (uint32_t)pioSmTxFifoAddrX(smp)).
+ *
+ * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @return              The TX FIFO register address.
+ *
+ * @special
+ */
+__STATIC_INLINE volatile uint32_t *pioSmTxFifoAddrX(const rp_pio_sm_t *smp) {
+
+  return &smp->block->pio->TXF[smp->smidx];
+}
+
+/**
+ * @brief   Returns the address of a state machine's RX FIFO register.
+ * @note    Intended as a DMA read source, e.g.
+ *          @p dmaChannelSetSourceX(dmachp, (uint32_t)pioSmRxFifoAddrX(smp)).
+ *
+ * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @return              The RX FIFO register address.
+ *
+ * @special
+ */
+__STATIC_INLINE volatile const uint32_t *pioSmRxFifoAddrX(const rp_pio_sm_t *smp) {
+
+  return &smp->block->pio->RXF[smp->smidx];
+}
+
+/**
+ * @brief   Returns the TX FIFO fill level of a state machine.
+ *
+ * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @return              The number of words in the TX FIFO.
+ *
+ * @special
+ */
+__STATIC_INLINE uint32_t pioSmTxFifoLevelX(const rp_pio_sm_t *smp) {
+
+  return PIO_FLEVEL_TX(smp->smidx, smp->block->pio->FLEVEL);
+}
+
+/**
+ * @brief   Returns the RX FIFO fill level of a state machine.
+ *
+ * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @return              The number of words in the RX FIFO.
+ *
+ * @special
+ */
+__STATIC_INLINE uint32_t pioSmRxFifoLevelX(const rp_pio_sm_t *smp) {
+
+  return PIO_FLEVEL_RX(smp->smidx, smp->block->pio->FLEVEL);
 }
 
 #endif /* RP_PIO_H */
