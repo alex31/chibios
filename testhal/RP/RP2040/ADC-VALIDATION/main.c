@@ -129,6 +129,7 @@ static adcsample_t samples[1];
  * leave the driver in ADC_STOP.
  */
 static void test_start_failure(void) {
+  const rp_dma_channel_t *probe;
   unsigned taken;
   msg_t msg;
 
