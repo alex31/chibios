@@ -267,6 +267,21 @@ typedef struct {
 
 /**
  * @brief   PIO program descriptor.
+ * @note    Directly consumable from pioasm-generated headers compiled with
+ *          @p PICO_NO_HARDWARE=1: the generated instruction array becomes
+ *          @p instructions and the generated wrap defines are applied with
+ *          @p pioSmConfigSetWrapX() as "offset + name_wrap_target,
+ *          offset + name_wrap" where offset is the @p pioProgramLoad()
+ *          return value. What the stripped output does not carry must be
+ *          transcribed from the .pio source: the side-set parameters (one
+ *          @p pioSmConfigSetSidesetX() call mirroring the .side_set
+ *          directive) and a non-default .origin, which only appear in the
+ *          pico-sdk-only section of the generated header.
+ * @note    On devices with the @p RP_PIO_HAS_GPIOBASE capability a program
+ *          encoding absolute GPIO operands (notably WAIT GPIO) must be
+ *          assembled window-relative if the block runs with a non-zero
+ *          base, see @p pioGpioToRel(). This is a property of the
+ *          instruction encoding, no load-time adjustment can compensate.
  */
 typedef struct {
   const uint16_t        *instructions;  /**< @brief Instruction array.     */
