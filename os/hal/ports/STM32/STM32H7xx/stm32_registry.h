@@ -182,6 +182,7 @@
 
 /* BDMA attributes.*/
 #define STM32_HAS_BDMA1                     TRUE
+#define STM32_ADC3_BDMA_CAN_ACCESS_FMAC     FALSE
 
 /* DMA attributes.*/
 #define STM32_ADVANCED_DMA                  TRUE
@@ -450,6 +451,7 @@
 
 /* BDMA attributes.*/
 #define STM32_HAS_BDMA1                     TRUE
+#define STM32_ADC3_BDMA_CAN_ACCESS_FMAC     FALSE
 
 /* DMA attributes.*/
 #define STM32_ADVANCED_DMA                  TRUE
@@ -713,6 +715,7 @@
 
 /* BDMA attributes.*/
 #define STM32_HAS_BDMA1                     TRUE
+#define STM32_ADC3_BDMA_CAN_ACCESS_FMAC     FALSE
 
 /* DMA attributes.*/
 #define STM32_ADVANCED_DMA                  TRUE
@@ -966,6 +969,7 @@
 
 /* BDMA attributes.*/
 #define STM32_HAS_BDMA1                     TRUE
+#define STM32_ADC3_BDMA_CAN_ACCESS_FMAC     FALSE
 
 /* DMA attributes.*/
 #define STM32_ADVANCED_DMA                  TRUE

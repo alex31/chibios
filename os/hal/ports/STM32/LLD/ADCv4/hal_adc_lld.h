@@ -37,8 +37,8 @@
  * @brief   ADC-to-FMAC DMA extension availability.
  * @details The extension is only exposed for STM32H7 devices whose CMSIS
  *          device header declares the plain memory-mapped FMAC instance.
- * @note    ADC3-to-FMAC is not supported when ADC3 uses BDMA because BDMA
- *          cannot access the D2 domain containing FMAC.
+ * @note    ADC3-to-FMAC is rejected at build time when the registry does not
+ *          explicitly declare that ADC3 BDMA can access FMAC.
  */
 #if defined(FMAC) || defined(__DOXYGEN__)
 #define STM32_ADC_SUPPORTS_FMAC          TRUE
@@ -301,6 +301,10 @@
 #error "STM32_HAS_ADCx not defined in registry"
 #endif
 
+#if !defined(STM32_ADC3_BDMA_CAN_ACCESS_FMAC)
+#error "STM32_ADC3_BDMA_CAN_ACCESS_FMAC not defined in registry"
+#endif
+
 /* Units checks.*/
 #if STM32_ADC_USE_ADC12 && !STM32_HAS_ADC1
 #error "ADC1 not present in the selected device"
@@ -312,6 +316,12 @@
 
 #if STM32_ADC_USE_ADC3 && !STM32_HAS_ADC3
 #error "ADC3 not present in the selected device"
+#endif
+
+/* ADC3 BDMA-to-FMAC reachability check.*/
+#if STM32_ADC_SUPPORTS_FMAC && STM32_HAS_ADC3 && STM32_ADC_USE_ADC3 &&      \
+    STM32_ADC_ADC3_USE_BDMA && !STM32_ADC3_BDMA_CAN_ACCESS_FMAC
+#error "ADC3 BDMA cannot access FMAC on the selected device"
 #endif
 
 /* IRQ handlers checks.*/

@@ -719,15 +719,15 @@ static void adc_lld_start_conversion_common(ADCDriver *adcp, bool fmac) {
   if (&ADCD3 == adcp) {
     dmamode = adcp->dmamode;
 #if STM32_ADC_ADC3_USE_BDMA == TRUE
-    /* BDMA is limited to D3-domain targets while FMAC is in D2. Refuse this
-       unsupported topology even when debug checks are disabled.*/
-#if STM32_ADC_SUPPORTS_FMAC
-    if (fmac) {
-      osalSysHalt("ADC3 BDMA cannot reach FMAC");
-    }
-#endif
-
     /* Calculating control registers values.*/
+#if STM32_ADC_SUPPORTS_FMAC && STM32_ADC3_BDMA_CAN_ACCESS_FMAC
+    if (fmac) {
+      dmamode &= ~(STM32_BDMA_CR_MINC | STM32_BDMA_CR_SIZE_MASK);
+      dmamode |= STM32_BDMA_CR_PSIZE_HWORD | STM32_BDMA_CR_MSIZE_WORD;
+      cfgr = grpp->cfgr | ADC_CFGR_DMNGT_ONESHOT;
+    }
+    else
+#endif
     if (grpp->circular) {
       dmamode |= STM32_BDMA_CR_CIRC;
       cfgr = grpp->cfgr | ADC_CFGR_DMNGT_CIRCULAR;
@@ -742,9 +742,18 @@ static void adc_lld_start_conversion_common(ADCDriver *adcp, bool fmac) {
     }
 
     /* DMA setup.*/
-    bdmaStreamSetMemory(adcp->data.bdma, adcp->samples);
-    transaction_size = (uint32_t)grpp->num_channels *
-                       (uint32_t)adcp->depth;
+#if STM32_ADC_SUPPORTS_FMAC && STM32_ADC3_BDMA_CAN_ACCESS_FMAC
+    if (fmac) {
+      bdmaStreamSetMemory(adcp->data.bdma, &FMAC->WDATA);
+      transaction_size = (uint32_t)adcp->depth;
+    }
+    else
+#endif
+    {
+      bdmaStreamSetMemory(adcp->data.bdma, adcp->samples);
+      transaction_size = (uint32_t)grpp->num_channels *
+                         (uint32_t)adcp->depth;
+    }
     bdmaStreamSetTransactionSize(adcp->data.bdma, transaction_size);
     bdmaStreamSetMode(adcp->data.bdma, dmamode);
     bdmaStreamEnable(adcp->data.bdma);
