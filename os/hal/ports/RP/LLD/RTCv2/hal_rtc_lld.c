@@ -349,6 +349,9 @@ static bool date_matches(const RTCDateTime *candidate,
  * @details Searches strictly after @p from_ms for the next POWMAN
  *          timestamp (ms since RTC_BASE_YEAR) that satisfies the alarm
  *          mask against @p wanted_time.
+ * @note    The search is limited to the current day plus the following
+ *          366 days; alarm specifications that would next match farther
+ *          than one year ahead are treated as unsatisfiable.
  *
  * @return              The next matching timestamp, or zero if the
  *                      mask can never match again (e.g. a requested
@@ -575,6 +578,9 @@ void rtc_lld_get_time(RTCDriver *rtcp, RTCDateTime *timespec) {
  * @brief   Set alarm time.
  * @note    The alarm time can be partially specified by leaving fields as
  *          zero and excluding them from the mask.
+ * @note    Alarm matching is limited to the current day plus the following
+ *          366 days; specifications that would next match farther than one
+ *          year ahead are not armed.
  * @note    A specification with no matching fields enabled disables the
  *          alarm.
  * @note    The function can be called from any context.
@@ -588,13 +594,12 @@ void rtc_lld_get_time(RTCDriver *rtcp, RTCDateTime *timespec) {
 void rtc_lld_set_alarm(RTCDriver *rtcp,
                        rtcalarm_t alarm,
                        const RTCAlarm *alarmspec) {
-  rtcdtmask_t dtmask;
+
   uint64_t next_alarm_ms;
 
   (void)alarm;
-  dtmask = alarmspec->mask;
 
-  if (dtmask == RTC_ALARM_DISABLE_ALL_MATCHING) {
+  if ((alarmspec == NULL) || (alarmspec->dtmask == RTC_ALARM_DISABLE_ALL_MATCHING)) {
     /* Entering a reentrant critical zone.*/
     syssts_t sts = osalSysGetStatusAndLockX();
 
@@ -606,7 +611,7 @@ void rtc_lld_set_alarm(RTCDriver *rtcp,
     return;
   }
 
-  next_alarm_ms = next_match_ms(&alarmspec->alarm, dtmask, powman_now_ms());
+  next_alarm_ms = next_match_ms(&alarmspec->alarm, alarmspec->mask, powman_now_ms());
 
   /* Entering a reentrant critical zone.*/
   syssts_t sts = osalSysGetStatusAndLockX();
@@ -619,7 +624,7 @@ void rtc_lld_set_alarm(RTCDriver *rtcp,
   }
 
   rtcp->alarm = alarmspec->alarm;
-  rtcp->mask = dtmask;
+  rtcp->mask = alarmspec->mask;
 
   /* Leaving a reentrant critical zone.*/
   osalSysRestoreStatusX(sts);
