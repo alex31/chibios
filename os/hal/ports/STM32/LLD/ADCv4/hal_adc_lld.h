@@ -37,6 +37,8 @@
  * @brief   ADC-to-FMAC DMA extension availability.
  * @details The extension is only exposed for STM32H7 devices whose CMSIS
  *          device header declares the plain memory-mapped FMAC instance.
+ * @note    ADC3-to-FMAC is not supported when ADC3 uses BDMA because BDMA
+ *          cannot access the D2 domain containing FMAC.
  */
 #if defined(FMAC) || defined(__DOXYGEN__)
 #define STM32_ADC_SUPPORTS_FMAC          TRUE
