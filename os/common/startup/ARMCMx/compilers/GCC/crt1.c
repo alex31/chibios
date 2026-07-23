@@ -188,6 +188,7 @@ void __default_exit(void) {
 /*lint -restore*/
 
   while (true) {
+     asm volatile ("nop");
   }
 }
 

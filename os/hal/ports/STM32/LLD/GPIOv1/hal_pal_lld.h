@@ -71,6 +71,13 @@
  * @{
  */
 /**
+ * @brief   Magic bit to identify a valid line.
+ */
+#if !defined(PAL_LINE_IS_LINE)
+#define PAL_LINE_IS_LINE                0x80000000U
+#endif
+
+/**
  * @brief   Forms a line identifier.
  * @details A port/pad pair are encoded into an @p ioline_t type. The encoding
  *          of this type is platform-dependent.
@@ -78,19 +85,27 @@
  *          the GPIO address which are guaranteed to be zero.
  */
 #define PAL_LINE(port, pad)                                                 \
-  ((ioline_t)((uint32_t)(port)) | ((uint32_t)(pad)))
+  ((ioline_t)((uint32_t)(port)) | ((uint32_t)(pad)) | PAL_LINE_IS_LINE)
 
 /**
  * @brief   Decodes a port identifier from a line identifier.
  */
 #define PAL_PORT(line)                                                      \
-  ((GPIO_TypeDef *)(((uint32_t)(line)) & 0xFFFFFFF0U))
+  ((GPIO_TypeDef *)(((uint32_t)(line)) & 0x7FFFFFF0U))
 
 /**
  * @brief   Decodes a pad identifier from a line identifier.
  */
 #define PAL_PAD(line)                                                       \
   ((uint32_t)((uint32_t)(line) & 0x0000000FU))
+
+/**
+ * @brief   Checks if an encoded line looks valid.
+ */
+#define PAL_LINE_IS_VALID(line)                                             \
+  ((((uint32_t)(line) & PAL_LINE_IS_LINE) != 0U) &&                         \
+   (((uint32_t)PAL_PORT(line)) >= ((uint32_t)GPIOA)) &&                     \
+   ((unsigned)PAL_PAD(line) < PAL_IOPORTS_WIDTH))
 
 /**
  * @brief   Value identifying an invalid line.

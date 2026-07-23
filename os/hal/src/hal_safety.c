@@ -92,7 +92,9 @@ void halSftFail(const char *message) {
     HAL_SAFETY_HANDLER(message);
 #else
     osalSysHalt(message);
-    while (true) {} /* TODO: Temporary, suppresses a warning.*/
+    while (true) {
+        asm volatile ("nop");
+    } /* TODO: Temporary, suppresses a warning.*/
 #endif
 }
 

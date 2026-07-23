@@ -171,11 +171,14 @@ extern "C" {
  *
  * @init
  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wanalyzer-allocation-size"
+
 static inline void chEvtObjectInit(event_source_t *esp) {
 
   esp->next = (event_listener_t *)esp;
 }
-
+#pragma GCC diagnostic pop
 /**
  * @brief   Registers an Event Listener on an Event Source.
  * @details Once a thread has registered as listener on an event source it

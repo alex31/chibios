@@ -91,6 +91,11 @@ SPI_SPID6_MEMORY SPIDriver SPID6;
 /*===========================================================================*/
 /* Driver local variables and types.                                         */
 /*===========================================================================*/
+#if defined(STM32_SPI_BDMA_REQUIRED)
+/* bdma is connected to Domain3 ram, .ram4 in H7 linker scripts */
+__attribute__((section(".ram4")))
+static uint32_t dummyrx_d3;
+#endif
 
 /*===========================================================================*/
 /* Driver local functions.                                                   */
@@ -1103,7 +1108,7 @@ msg_t spi_lld_ignore(SPIDriver *spip, size_t n) {
 #endif
 #if defined(STM32_SPI_BDMA_REQUIRED)
   {
-    bdmaStreamSetMemory(spip->rx.bdma, &spip->rxsink);
+    bdmaStreamSetMemory(spip->rx.bdma, &dummyrx_d3);
     bdmaStreamSetTransactionSize(spip->rx.bdma, n);
     bdmaStreamSetMode(spip->rx.bdma, spip->rxdmamode);
 
@@ -1222,7 +1227,7 @@ msg_t spi_lld_send(SPIDriver *spip, size_t n, const void *txbuf) {
 #endif
 #if defined(STM32_SPI_BDMA_REQUIRED)
   {
-    bdmaStreamSetMemory(spip->rx.bdma, &spip->rxsink);
+    bdmaStreamSetMemory(spip->rx.bdma, &dummyrx_d3);
     bdmaStreamSetTransactionSize(spip->rx.bdma, n);
     bdmaStreamSetMode(spip->rx.bdma, spip->rxdmamode);
 

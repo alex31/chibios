@@ -150,6 +150,7 @@ void gptChangeInterval(GPTDriver *gptp, gptcnt_t interval) {
   osalDbgCheck(gptp != NULL);
 
   osalSysLock();
+  osalDbgAssert(interval > 1, "interval must be > 1");
   osalDbgAssert(gptp->state == GPT_CONTINUOUS,
                 "invalid state");
   gptChangeIntervalI(gptp, interval);
@@ -183,6 +184,7 @@ void gptStartContinuousI(GPTDriver *gptp, gptcnt_t interval) {
 
   osalDbgCheckClassI();
   osalDbgCheck(gptp != NULL);
+  osalDbgAssert(interval > 1, "interval must be > 1");
   osalDbgAssert(gptp->state == GPT_READY,
                 "invalid state");
 
@@ -218,6 +220,7 @@ void gptStartOneShotI(GPTDriver *gptp, gptcnt_t interval) {
   osalDbgCheckClassI();
   osalDbgCheck(gptp != NULL);
   osalDbgCheck(gptp->config->callback != NULL);
+  osalDbgAssert(interval > 1, "interval must be > 1");
   osalDbgAssert(gptp->state == GPT_READY,
                 "invalid state");
 

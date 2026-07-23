@@ -149,10 +149,10 @@ static bool test_execute_inner(const testsuite_t *tsp) {
                    __data_base__,   __data_end__,
                    __bss_base__,    __bss_end__;
     test_printf("***"TEST_CFG_EOL_STRING);
-    test_printf("*** Text size:    %u bytes"TEST_CFG_EOL_STRING, &__text_end__   - &__text_base__);
-    test_printf("*** RO data size: %u bytes"TEST_CFG_EOL_STRING, &__rodata_end__ - &__rodata_base__);
-    test_printf("*** Data size:    %u bytes"TEST_CFG_EOL_STRING, &__data_end__   - &__data_base__);
-    test_printf("*** BSS size:     %u bytes"TEST_CFG_EOL_STRING, &__bss_end__    - &__bss_base__);
+    test_printf("*** Text size:    %u bytes"TEST_CFG_EOL_STRING, (uint32_t)&__text_end__   - (uint32_t)&__text_base__);
+    test_printf("*** RO data size: %u bytes"TEST_CFG_EOL_STRING, (uint32_t)&__rodata_end__ - (uint32_t)&__rodata_base__);
+    test_printf("*** Data size:    %u bytes"TEST_CFG_EOL_STRING, (uint32_t)&__data_end__   - (uint32_t)&__data_base__);
+    test_printf("*** BSS size:     %u bytes"TEST_CFG_EOL_STRING, (uint32_t)&__bss_end__    - (uint32_t)&__bss_base__);
   }
 #endif
 #if defined(TEST_REPORT_HOOK_HEADER)

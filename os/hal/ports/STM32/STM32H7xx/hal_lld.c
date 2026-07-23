@@ -57,9 +57,6 @@ uint32_t SystemCoreClock = STM32_CORE_CK;
  */
 static inline void init_bkp_domain(void) {
 
-  /* Backup domain access enabled and left open.*/
-  PWR->CR1 |= PWR_CR1_DBP;
-
   /* Reset BKP domain if different clock source selected.*/
   if ((RCC->BDCR & STM32_RTCSEL_MASK) != STM32_RTCSEL) {
     /* Backup domain reset.*/
@@ -100,14 +97,15 @@ static inline void init_pwr(void) {
   PWR_TypeDef *pwr = PWR; /* For inspection.*/
   (void)pwr;
 #endif
-
   /* Lower C3 byte, it must be programmed at very first, then waiting for
      power supply to stabilize.*/
   PWR->CR3   = STM32_PWR_CR3 & 0x000000FFU;
   while ((PWR->CSR1 & PWR_CSR1_ACTVOSRDY) == 0)
     ; /* CHTODO timeout handling.*/
 
-  PWR->CR1   = STM32_PWR_CR1 | 0xF0000000U;
+  /* Backup domain access enabled and left open.*/
+  PWR->CR1   = STM32_PWR_CR1 | 0xF0000000U | PWR_CR1_DBP;
+
   PWR->CR2   = STM32_PWR_CR2;
   PWR->CR3   = STM32_PWR_CR3;   /* Other bits, lower byte is not changed.   */
   PWR->CPUCR = STM32_PWR_CPUCR;
@@ -126,9 +124,9 @@ static inline void init_pwr(void) {
 #endif
     ; /* CHTODO timeout handling.*/
 #if STM32_PWR_CR2 & PWR_CR2_BREN
-//  while ((PWR->CR2 & PWR_CR2_BRRDY) == 0)
-//    ;
-//  rccEnableBKPRAM(true);
+  while ((PWR->CR2 & PWR_CR2_BRRDY) == 0)
+    ;
+  rccEnableBKPRAM(true);
 #endif
 }
 
