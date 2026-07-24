@@ -1498,7 +1498,8 @@ typedef struct {
   __IO uint32_t         STATE;                  /* 0x038 */
   __IO uint32_t         POW_FASTDIV;            /* 0x03C */
   __IO uint32_t         POW_DELAY;              /* 0x040 */
-  __IO uint32_t         EXT_CTRL[2];            /* 0x044-0x048 */
+  __IO uint32_t         EXT_CTRL0;              /* 0x044 */
+  __IO uint32_t         EXT_CTRL1;              /* 0x048 */
   __IO uint32_t         EXT_TIME_REF;           /* 0x04C */
   __IO uint32_t         LPOSC_FREQ_KHZ_INT;     /* 0x050 */
   __IO uint32_t         LPOSC_FREQ_KHZ_FRAC;    /* 0x054 */
@@ -1546,7 +1547,8 @@ typedef struct {
     __IO uint32_t       STATE;
     __IO uint32_t       POW_FASTDIV;
     __IO uint32_t       POW_DELAY;
-    __IO uint32_t       EXT_CTRL[2];
+    __IO uint32_t       EXT_CTRL0;
+    __IO uint32_t       EXT_CTRL1;
     __IO uint32_t       EXT_TIME_REF;
     __IO uint32_t       LPOSC_FREQ_KHZ_INT;
     __IO uint32_t       LPOSC_FREQ_KHZ_FRAC;
@@ -1595,7 +1597,8 @@ typedef struct {
     __IO uint32_t       STATE;
     __IO uint32_t       POW_FASTDIV;
     __IO uint32_t       POW_DELAY;
-    __IO uint32_t       EXT_CTRL[2];
+    __IO uint32_t       EXT_CTRL0;
+    __IO uint32_t       EXT_CTRL1;
     __IO uint32_t       EXT_TIME_REF;
     __IO uint32_t       LPOSC_FREQ_KHZ_INT;
     __IO uint32_t       LPOSC_FREQ_KHZ_FRAC;
@@ -1644,7 +1647,8 @@ typedef struct {
     __IO uint32_t       STATE;
     __IO uint32_t       POW_FASTDIV;
     __IO uint32_t       POW_DELAY;
-    __IO uint32_t       EXT_CTRL[2];
+    __IO uint32_t       EXT_CTRL0;
+    __IO uint32_t       EXT_CTRL1;
     __IO uint32_t       EXT_TIME_REF;
     __IO uint32_t       LPOSC_FREQ_KHZ_INT;
     __IO uint32_t       LPOSC_FREQ_KHZ_FRAC;
