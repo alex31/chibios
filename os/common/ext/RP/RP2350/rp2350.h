@@ -3304,6 +3304,10 @@ typedef struct {
  *          XOR/SET/CLR aliases as well, the password is not part of the
  *          register state. SCRATCH, BOOT and the interrupt registers
  *          are unprotected and have plain 32-bit write access.
+ * @note    The interrupt registers implement bits 3:0 only, so a
+ *          password in the upper half word is discarded and including
+ *          one is harmless. SCRATCH and BOOT are full 32-bit storage:
+ *          never OR @p POWMAN_PASSWORD into writes to those.
  * @{
  */
 #define POWMAN_PASSWORD                   (0x5AFEU << 16)
