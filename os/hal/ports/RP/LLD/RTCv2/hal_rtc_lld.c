@@ -599,7 +599,7 @@ void rtc_lld_set_alarm(RTCDriver *rtcp,
 
   (void)alarm;
 
-  if ((alarmspec == NULL) || (alarmspec->dtmask == RTC_ALARM_DISABLE_ALL_MATCHING)) {
+  if ((alarmspec == NULL) || (alarmspec->mask == RTC_ALARM_DISABLE_ALL_MATCHING)) {
     /* Entering a reentrant critical zone.*/
     syssts_t sts = osalSysGetStatusAndLockX();
 
