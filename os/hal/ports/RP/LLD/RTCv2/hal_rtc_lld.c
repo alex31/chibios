@@ -348,7 +348,7 @@ static uint64_t next_match_ms(const RTCDateTime *wanted_time,
 static void rtc_disable_alarm(RTCDriver *rtcp) {
 
   (void)rtcp;
-  POWMAN->CLR.INTE  = POWMAN_PASSWORD | POWMAN_INT_TIMER;
+  POWMAN->CLR.INTE  = POWMAN_PASSWORD | POWMAN_INTE_TIMER;
   POWMAN->CLR.TIMER = POWMAN_PASSWORD | POWMAN_TIMER_ALARM_ENAB;
 }
 
@@ -372,7 +372,7 @@ static void rtc_arm_alarm(uint64_t alarm_ms) {
                               (uint32_t)((alarm_ms >> 48) & 0xFFFFUL);
 
   POWMAN->CLR.TIMER = POWMAN_PASSWORD | POWMAN_TIMER_ALARM;
-  POWMAN->SET.INTE  = POWMAN_PASSWORD | POWMAN_INT_TIMER;
+  POWMAN->SET.INTE  = POWMAN_PASSWORD | POWMAN_INTE_TIMER;
   POWMAN->SET.TIMER = POWMAN_PASSWORD | POWMAN_TIMER_ALARM_ENAB;
 }
 #endif /* RTC_ALARMS > 0 */
