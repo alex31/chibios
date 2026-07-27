@@ -635,16 +635,16 @@ extern "C" {
   void usbDisableEndpointsI(USBDriver *usbp);
   OSAL_ACCESS_WO_PTR(3) /* Setup is always 8 bytes */
   void usbReadSetupI(USBDriver *usbp, usbep_t ep, uint8_t *buf);
-  OSAL_ACCESS_WO(3, 4)
+  OSAL_ACCESS_WO(3, 4) OSAL_NONNULL_IF_NONZERO(3, 4)
   void usbStartReceiveI(USBDriver *usbp, usbep_t ep,
                         uint8_t *buf, size_t n);
-  OSAL_ACCESS_RO(3, 4)
+  OSAL_ACCESS_RO(3, 4) OSAL_NONNULL_IF_NONZERO(3, 4)
   void usbStartTransmitI(USBDriver *usbp, usbep_t ep,
                          const uint8_t *buf, size_t n);
 #if USB_USE_WAIT == TRUE
-  OSAL_ACCESS_WO(3, 4)
+  OSAL_ACCESS_WO(3, 4) OSAL_NONNULL_IF_NONZERO(3, 4)
   msg_t usbReceive(USBDriver *usbp, usbep_t ep, uint8_t *buf, size_t n);
-  OSAL_ACCESS_RO(3, 4)
+  OSAL_ACCESS_RO(3, 4) OSAL_NONNULL_IF_NONZERO(3, 4)
   msg_t usbTransmit(USBDriver *usbp, usbep_t ep, const uint8_t *buf, size_t n);
 #endif
   bool usbStallReceiveI(USBDriver *usbp, usbep_t ep);

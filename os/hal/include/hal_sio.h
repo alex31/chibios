@@ -587,7 +587,9 @@ extern "C" {
   sioevents_t sioGetAndClearErrors(SIODriver *siop);
   sioevents_t sioGetAndClearEvents(SIODriver *siop);
   sioevents_t sioGetEvents(SIODriver *siop);
+  OSAL_ACCESS_WO(2, 3) OSAL_NONNULL_IF_NONZERO(2, 3)
   size_t sioAsyncRead(SIODriver *siop, uint8_t *buffer, size_t n);
+  OSAL_ACCESS_RO(2, 3) OSAL_NONNULL_IF_NONZERO(2, 3)
   size_t sioAsyncWrite(SIODriver *siop, const uint8_t *buffer, size_t n);
 #if (SIO_USE_SYNCHRONIZATION == TRUE) || defined(__DOXYGEN__)
   msg_t sioSynchronizeRX(SIODriver *siop, sysinterval_t timeout);

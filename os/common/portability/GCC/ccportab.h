@@ -115,6 +115,33 @@
 #define CC_NO_RETURN        __attribute__((noreturn))
 
 /**
+ * @brief   Describes a read-only pointer argument and its size argument.
+ * @note    Can be implemented as an empty macro if not supported by the
+ *          compiler.
+ */
+#if (__GNUC__ >= 10)
+#define CC_ACCESS_RO(ptr, size) __attribute__((access (read_only, ptr, size)))
+#define CC_ACCESS_WO(ptr, size) __attribute__((access (write_only, ptr, size)))
+#define CC_ACCESS_RW(ptr, size) __attribute__((access (read_write, ptr, size)))
+#else
+#define CC_ACCESS_RO(ptr, size)
+#define CC_ACCESS_WO(ptr, size)
+#define CC_ACCESS_RW(ptr, size)
+#endif
+
+/**
+ * @brief   Requires a pointer argument when associated sizes are nonzero.
+ * @note    The three-argument form requires both size arguments to be
+ *          nonzero before the pointer becomes mandatory.
+ */
+#if !defined(__clang__) && (__GNUC__ >= 15)
+#define CC_NONNULL_IF_NONZERO(...)                                         \
+  __attribute__((nonnull_if_nonzero (__VA_ARGS__)))
+#else
+#define CC_NONNULL_IF_NONZERO(...)
+#endif
+
+/**
  * @brief   Enforces a variable in a ROM area.
  * @note    Can be implemented as an empty macro if not supported by the
  *          compiler.

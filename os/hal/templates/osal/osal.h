@@ -323,6 +323,13 @@ typedef struct {
 #define OSAL_ACCESS_WO_PTR(ptr)
 #define OSAL_ACCESS_RW_PTR(ptr)
 #endif
+#if defined(__GNUC__) && !defined(__clang__) && !defined(__DOXYGEN__) &&    \
+    (__GNUC__ >= 15)
+#define OSAL_NONNULL_IF_NONZERO(...)                                        \
+  __attribute__((nonnull_if_nonzero (__VA_ARGS__)))
+#else
+#define OSAL_NONNULL_IF_NONZERO(...)
+#endif
 /** @} */
 /** @} */
 

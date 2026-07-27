@@ -176,11 +176,11 @@ typedef struct {
   /* Get flash device attributes.*/                                         \
   const flash_descriptor_t *(*get_descriptor)(void *instance);              \
   /* Read operation.*/                                                      \
-  OSAL_ACCESS_WO(4, 3)                                                      \
+  OSAL_ACCESS_WO(4, 3) OSAL_NONNULL_IF_NONZERO(4, 3)                       \
   flash_error_t (*read)(void *instance, flash_offset_t offset,              \
                         size_t n, uint8_t *rp);                             \
   /* Program operation.*/                                                   \
-  OSAL_ACCESS_RO(4, 3)                                                      \
+  OSAL_ACCESS_RO(4, 3) OSAL_NONNULL_IF_NONZERO(4, 3)                       \
   flash_error_t (*program)(void *instance, flash_offset_t offset,           \
                            size_t n, const uint8_t *pp);                    \
   /* Erase whole flash device.*/                                            \

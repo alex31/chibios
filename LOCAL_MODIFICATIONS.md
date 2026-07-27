@@ -55,11 +55,22 @@ This document explains the differences between the clean upstream branch and our
 
 ### 1. GCC Buffer Overflow Protection (Access Attributes)
 *   **Files:**
-    *   `os/hal/include/hal_i2c.h`
-    *   `os/hal/include/hal_queues.h`
-    *   `os/hal/include/hal_spi_v2.h`
-*   **Change:** Added `__attribute__((access (...)))` and `[[nodiscard]]` to I2C, SPI, and Queue functions. Changed buffer pointers to `void *`.
-*   **Rationale:** **Highly valuable for students.** Allows the compiler to catch basic buffer overflow errors at compile-time. Giovanni usually avoids these to maintain multi-compiler compatibility (unless heavily guarded).
+    *   `os/common/portability/*/ccportab.h`
+    *   `os/hal/osal/*/osal.h` and `os/hal/templates/osal/osal.h`
+    *   HAL buffer APIs (ADC, buffers, channels/streams, DAC, flash, I2C,
+        queues, SDC, SIO, SPIv1/v2, TRNG, UART, USB and WSPI)
+    *   `os/rt/include/chthreads.h` for static thread working areas
+*   **Change:** Added guarded `access(...)` and `nonnull_if_nonzero(...)`
+    attributes to buffer APIs, plus `[[nodiscard]]` to I2C operations. A null
+    buffer remains valid for a zero-length operation but is diagnosed when
+    the associated size (or both dimensions) is nonzero. Some byte buffer
+    pointers were changed to `void *` where the transfer unit is expressed in
+    bytes.
+*   **Rationale:** **Highly valuable for students.** GCC can diagnose null
+    buffers, undersized buffers, invalid thread working areas and ignored I2C
+    status values at compile time.
+    `access` is enabled for GCC 10 and newer; `nonnull_if_nonzero` is enabled
+    for GCC 15 and newer. Other compilers receive empty compatibility macros.
 
 ### 2. STM32G4 Enhanced Flash (EFL) Fast Programming
 *   **Files:**

@@ -366,13 +366,16 @@ extern "C" {
   msg_t dacPutChannelX(DACDriver *dacp,
                       dacchannel_t channel,
                       dacsample_t sample);
+  OSAL_ACCESS_RO(3, 4) OSAL_NONNULL_IF_NONZERO(3, 4)
   msg_t dacStartConversion(DACDriver *dacp, const DACConversionGroup *grpp,
                           dacsample_t *samples, size_t depth);
+  OSAL_ACCESS_RO(3, 4) OSAL_NONNULL_IF_NONZERO(3, 4)
   msg_t dacStartConversionI(DACDriver *dacp, const DACConversionGroup *grpp,
                            dacsample_t *samples, size_t depth);
   void  dacStopConversion(DACDriver *dacp);
   void  dacStopConversionI(DACDriver *dacp);
 #if DAC_USE_SYNCHRONIZATION
+  OSAL_ACCESS_RO(3, 4) OSAL_NONNULL_IF_NONZERO(3, 4)
   msg_t dacConvert(DACDriver *dacp, const DACConversionGroup *grpp,
                    dacsample_t *samples, size_t depth);
   msg_t dacSynchronizeS(DACDriver *dacp, sysinterval_t timeout);

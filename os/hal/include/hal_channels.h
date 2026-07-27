@@ -55,9 +55,11 @@
   /* Channel get method with timeout specification.*/                       \
   msg_t (*gett)(void *instance, sysinterval_t time);                        \
   /* Channel write method with timeout specification.*/                     \
+  OSAL_ACCESS_RO(2, 3) OSAL_NONNULL_IF_NONZERO(2, 3)                        \
   size_t (*writet)(void *instance, const uint8_t *bp,                       \
                    size_t n, sysinterval_t time);                           \
   /* Channel read method with timeout specification.*/                      \
+  OSAL_ACCESS_WO(2, 3) OSAL_NONNULL_IF_NONZERO(2, 3)                        \
   size_t (*readt)(void *instance, uint8_t *bp, size_t n,                    \
                   sysinterval_t time);                                      \
   /* Channel control method.*/                                              \

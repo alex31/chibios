@@ -110,6 +110,7 @@ extern "C" {
   void trngObjectInit(TRNGDriver *trngp);
   msg_t trngStart(TRNGDriver *trngp, const TRNGConfig *config);
   void trngStop(TRNGDriver *trngp);
+  OSAL_ACCESS_WO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
   bool trngGenerate(TRNGDriver *trngp, size_t size, uint8_t *out);
 #ifdef __cplusplus
 }

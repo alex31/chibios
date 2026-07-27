@@ -189,8 +189,10 @@ extern "C" {
   void sdcStop(SDCDriver *sdcp);
   bool sdcConnect(SDCDriver *sdcp);
   bool sdcDisconnect(SDCDriver *sdcp);
+  OSAL_NONNULL_IF_NONZERO(3, 4)
   bool sdcRead(SDCDriver *sdcp, uint32_t startblk,
                uint8_t *buf, uint32_t n);
+  OSAL_NONNULL_IF_NONZERO(3, 4)
   bool sdcWrite(SDCDriver *sdcp, uint32_t startblk,
                 const uint8_t *buf, uint32_t n);
   sdcflags_t sdcGetAndClearErrors(SDCDriver *sdcp);

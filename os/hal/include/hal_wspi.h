@@ -436,14 +436,18 @@ extern "C" {
   msg_t wspiStart(WSPIDriver *wspip, const WSPIConfig *config);
   void wspiStop(WSPIDriver *wspip);
   void wspiStartCommand(WSPIDriver *wspip, const wspi_command_t *cmdp);
+  OSAL_ACCESS_RO(4, 3) OSAL_NONNULL_IF_NONZERO(4, 3)
   void wspiStartSend(WSPIDriver *wspip, const wspi_command_t *cmdp,
                      size_t n, const uint8_t *txbuf);
+  OSAL_ACCESS_WO(4, 3) OSAL_NONNULL_IF_NONZERO(4, 3)
   void wspiStartReceive(WSPIDriver *wspip, const wspi_command_t *cmdp,
                         size_t n, uint8_t *rxbuf);
 #if WSPI_USE_WAIT == TRUE
   bool wspiCommand(WSPIDriver *wspip, const wspi_command_t *cmdp);
+  OSAL_ACCESS_RO(4, 3) OSAL_NONNULL_IF_NONZERO(4, 3)
   bool wspiSend(WSPIDriver *wspip, const wspi_command_t *cmdp,
                 size_t n, const uint8_t *txbuf);
+  OSAL_ACCESS_WO(4, 3) OSAL_NONNULL_IF_NONZERO(4, 3)
   bool wspiReceive(WSPIDriver *wspip, const wspi_command_t *cmdp,
                    size_t n, uint8_t *rxbuf);
 #endif

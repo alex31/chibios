@@ -304,6 +304,7 @@ typedef io_buffers_queue_t output_buffers_queue_t;
 #ifdef __cplusplus
 extern "C" {
 #endif
+  OSAL_ACCESS_WO(3, 4) OSAL_NONNULL_IF_NONZERO(3, 4, 5)
   void ibqObjectInit(input_buffers_queue_t *ibqp, bool suspended, uint8_t *bp,
                      size_t size, size_t n, bqnotify_t infy, void *link);
   void ibqResetI(input_buffers_queue_t *ibqp);
@@ -316,8 +317,10 @@ extern "C" {
   void ibqReleaseEmptyBuffer(input_buffers_queue_t *ibqp);
   void ibqReleaseEmptyBufferS(input_buffers_queue_t *ibqp);
   msg_t ibqGetTimeout(input_buffers_queue_t *ibqp, sysinterval_t timeout);
+  OSAL_ACCESS_WO(2, 3) OSAL_NONNULL_IF_NONZERO(2, 3)
   size_t ibqReadTimeout(input_buffers_queue_t *ibqp, uint8_t *bp,
                         size_t n, sysinterval_t timeout);
+  OSAL_ACCESS_WO(3, 4) OSAL_NONNULL_IF_NONZERO(3, 4, 5)
   void obqObjectInit(output_buffers_queue_t *obqp, bool suspended, uint8_t *bp,
                      size_t size, size_t n, bqnotify_t onfy, void *link);
   void obqResetI(output_buffers_queue_t *obqp);
@@ -332,6 +335,7 @@ extern "C" {
   void obqPostFullBufferS(output_buffers_queue_t *obqp, size_t size);
   msg_t obqPutTimeout(output_buffers_queue_t *obqp, uint8_t b,
                       sysinterval_t timeout);
+  OSAL_ACCESS_RO(2, 3) OSAL_NONNULL_IF_NONZERO(2, 3)
   size_t obqWriteTimeout(output_buffers_queue_t *obqp, const uint8_t *bp,
                          size_t n, sysinterval_t timeout);
   bool obqTryFlushI(output_buffers_queue_t *obqp);

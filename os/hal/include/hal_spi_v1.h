@@ -502,9 +502,13 @@ extern "C" {
   void spiSelect(SPIDriver *spip);
   void spiUnselect(SPIDriver *spip);
   void spiStartIgnore(SPIDriver *spip, size_t n);
+  OSAL_ACCESS_RO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
+  OSAL_ACCESS_WO(4, 2) OSAL_NONNULL_IF_NONZERO(4, 2)
   void spiStartExchange(SPIDriver *spip, size_t n,
                         const void *txbuf, void *rxbuf);
+  OSAL_ACCESS_RO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
   void spiStartSend(SPIDriver *spip, size_t n, const void *txbuf);
+  OSAL_ACCESS_WO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
   void spiStartReceive(SPIDriver *spip, size_t n, void *rxbuf);
 #if SPI_SUPPORTS_CIRCULAR == TRUE
   void spiAbortI(SPIDriver *spip);
@@ -512,8 +516,13 @@ extern "C" {
 #endif
 #if SPI_USE_WAIT == TRUE
   void spiIgnore(SPIDriver *spip, size_t n);
-  void spiExchange(SPIDriver *spip, size_t n, const void *txbuf, void *rxbuf);
+  OSAL_ACCESS_RO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
+  OSAL_ACCESS_WO(4, 2) OSAL_NONNULL_IF_NONZERO(4, 2)
+  void spiExchange(SPIDriver *spip, size_t n,
+                   const void *txbuf, void *rxbuf);
+  OSAL_ACCESS_RO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
   void spiSend(SPIDriver *spip, size_t n, const void *txbuf);
+  OSAL_ACCESS_WO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
   void spiReceive(SPIDriver *spip, size_t n, void *rxbuf);
 #endif
 #if SPI_USE_MUTUAL_EXCLUSION == TRUE

@@ -386,15 +386,15 @@ extern "C" {
   void uartObjectInit(UARTDriver *uartp);
   msg_t uartStart(UARTDriver *uartp, const UARTConfig *config);
   void uartStop(UARTDriver *uartp);
-  OSAL_ACCESS_RO(3, 2)
+  OSAL_ACCESS_RO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
   void uartStartSend(UARTDriver *uartp, size_t n, const void *txbuf);
-  OSAL_ACCESS_RO(3, 2)
+  OSAL_ACCESS_RO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
   void uartStartSendI(UARTDriver *uartp, size_t n, const void *txbuf);
   size_t uartStopSend(UARTDriver *uartp);
   size_t uartStopSendI(UARTDriver *uartp);
-  OSAL_ACCESS_WO(3, 2)
+  OSAL_ACCESS_WO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
   void uartStartReceive(UARTDriver *uartp, size_t n, void *rxbuf);
-  OSAL_ACCESS_WO(3, 2)
+  OSAL_ACCESS_WO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
   void uartStartReceiveI(UARTDriver *uartp, size_t n, void *rxbuf);
   size_t uartStopReceive(UARTDriver *uartp);
   size_t uartStopReceiveI(UARTDriver *uartp);

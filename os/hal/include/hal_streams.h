@@ -56,8 +56,10 @@
 #define _base_sequential_stream_methods                                     \
   _base_object_methods                                                      \
   /* Stream write buffer method.*/                                          \
+  OSAL_ACCESS_RO(2, 3) OSAL_NONNULL_IF_NONZERO(2, 3)                        \
   size_t (*write)(void *instance, const uint8_t *bp, size_t n);             \
   /* Stream read buffer method.*/                                           \
+  OSAL_ACCESS_WO(2, 3) OSAL_NONNULL_IF_NONZERO(2, 3)                        \
   size_t (*read)(void *instance, uint8_t *bp, size_t n);                    \
   /* Channel put method, blocking.*/                                        \
   msg_t (*put)(void *instance, uint8_t b);                                  \

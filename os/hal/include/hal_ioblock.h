@@ -71,9 +71,11 @@ typedef struct {
   /* Disconnection from the block device.*/                                 \
   bool (*disconnect)(void *instance);                                       \
   /* Reads one or more blocks.*/                                            \
+  OSAL_NONNULL_IF_NONZERO(3, 4)                                             \
   bool (*read)(void *instance, uint32_t startblk,                           \
                  uint8_t *buffer, uint32_t n);                              \
   /* Writes one or more blocks.*/                                           \
+  OSAL_NONNULL_IF_NONZERO(3, 4)                                             \
   bool (*write)(void *instance, uint32_t startblk,                          \
                   const uint8_t *buffer, uint32_t n);                       \
   /* Write operations synchronization.*/                                    \

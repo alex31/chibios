@@ -114,6 +114,11 @@
  */
 #define CC_NO_RETURN        __attribute__((noreturn))
 
+#define CC_ACCESS_RO(ptr, size)
+#define CC_ACCESS_WO(ptr, size)
+#define CC_ACCESS_RW(ptr, size)
+#define CC_NONNULL_IF_NONZERO(...)
+
 /**
  * @brief   Enforces a variable in a ROM area.
  * @note    Can be implemented as an empty macro if not supported by the

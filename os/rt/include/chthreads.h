@@ -296,6 +296,7 @@ extern "C" {
   thread_t *chThdCreateSuspended(const thread_descriptor_t *tdp);
   thread_t *chThdCreateI(const thread_descriptor_t *tdp);
   thread_t *chThdCreate(const thread_descriptor_t *tdp);
+  CC_ACCESS_RW(1, 2) CC_NONNULL_IF_NONZERO(1, 2)
   thread_t *chThdCreateStatic(void *wsp, size_t size,
                               tprio_t prio, tfunc_t pf, void *arg);
   thread_t *chThdStart(thread_t *tp);
