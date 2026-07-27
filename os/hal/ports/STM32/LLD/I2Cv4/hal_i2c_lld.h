@@ -123,7 +123,7 @@
 #define i2c_lld_is_config_matching(config)                              \
   (((config)->cr2 & I2C_CR2_ADD10) != 0U)
 #else
-#define I2C_LLD_MAX_ADDRESS                  0x7FU
+#define I2C_LLD_MAX_ADDRESS                  0x77U
 #define i2c_lld_is_config_matching(config)                              \
   (((config)->cr2 & I2C_CR2_ADD10) == 0U)
 #endif

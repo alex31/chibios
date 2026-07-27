@@ -94,11 +94,9 @@
 #endif
 
 #if STM32_I2C_USE_10BIT_ADDRESSING
-#define I2C_LLD_MIN_ADDRESS                  0x80U
 #define I2C_LLD_MAX_ADDRESS                  0x3FFU
 #else
-#define I2C_LLD_MIN_ADDRESS                  0U
-#define I2C_LLD_MAX_ADDRESS                  0x7FU
+#define I2C_LLD_MAX_ADDRESS                  0x77U
 #endif
 
 #define i2c_lld_is_config_matching(config)   true
@@ -469,6 +467,12 @@ struct hal_i2c_driver {
    * @brief     Current slave address without R/W bit.
    */
   i2caddr_t                 addr;
+#if STM32_I2C_USE_10BIT_ADDRESSING
+  /**
+   * @brief     A direct 10-bit receive still needs its write-address phase.
+   */
+  bool                      addr10_rx_restart;
+#endif
   /**
    * @brief RX DMA mode bit mask.
    */

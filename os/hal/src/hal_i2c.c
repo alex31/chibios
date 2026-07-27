@@ -171,7 +171,7 @@ i2cflags_t i2cGetErrors(I2CDriver *i2cp) {
  *          than set @b rxbytes field to 0.
  *
  * @param[in] i2cp      pointer to the @p I2CDriver object
- * @param[in] addr      slave device address (7 bits) without R/W bit
+ * @param[in] addr      slave device address, using the configured width
  * @param[in] txbuf     pointer to transmit buffer
  * @param[in] txbytes   number of bytes to be transmitted
  * @param[out] rxbuf    pointer to receive buffer
@@ -229,7 +229,7 @@ msg_t (i2cMasterTransmitTimeout)(I2CDriver *i2cp,
  * @brief   Receives data from the I2C bus.
  *
  * @param[in] i2cp      pointer to the @p I2CDriver object
- * @param[in] addr      slave device address (7 bits) without R/W bit
+ * @param[in] addr      slave device address, using the configured width
  * @param[out] rxbuf    pointer to receive buffer
  * @param[in] rxbytes   number of bytes to be received
  * @param[in] timeout   the number of ticks before the operation timeouts,
@@ -252,12 +252,12 @@ msg_t (i2cMasterReceiveTimeout)(I2CDriver *i2cp,
 
   msg_t rdymsg;
 
-  osalDbgCheck((i2cp != NULL) && (addr != 0U) &&
-               i2c_lld_is_address_valid(addr) &&
+  osalDbgCheck((i2cp != NULL) &&
+               i2c_lld_is_receive_address_valid(addr) &&
                (rxbytes > 0U) && (rxbuf != NULL) &&
                (timeout != TIME_IMMEDIATE));
 
-  if ((addr == 0U) || !i2c_lld_is_address_valid(addr)) {
+  if (!i2c_lld_is_receive_address_valid(addr)) {
     return HAL_RET_CONFIG_ERROR;
   }
 

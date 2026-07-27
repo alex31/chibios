@@ -77,8 +77,11 @@ This document explains the differences between the clean upstream branch and our
     `STM32_I2C_USE_10BIT_ADDRESSING` in `mcuconf.h`. Dynamic addresses are
     checked at run time; on STM32 I2Cv2/v3/v4, `i2cStart()` also verifies that
     `I2CConfig.cr2` uses the matching `I2C_CR2_ADD10` setting. On STM32
-    I2Cv1, 10-bit mode rejects addresses below `0x80`, because that LLD would
-    otherwise encode them as 7-bit transfers.
+    I2Cv1, the selected mode now explicitly controls the address header, so
+    the whole 10-bit range `0x000..0x3FF` is supported without silently
+    falling back to a 7-bit transfer; direct reads also generate the required
+    write-address phase and repeated START. STM32 7-bit mode rejects the
+    reserved `0x78..0x7F` range used by 10-bit address headers.
 *   **Rationale:** **Highly valuable for students.** GCC can diagnose null
     buffers, undersized buffers, invalid thread working areas and ignored
     status values at compile time.

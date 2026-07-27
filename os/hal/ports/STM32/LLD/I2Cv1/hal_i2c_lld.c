@@ -295,12 +295,13 @@ static void i2c_lld_serve_event_interrupt(I2CDriver *i2cp) {
   switch (I2C_EV_MASK & (event | (regSR2 << 16))) {
   case I2C_EV5_MASTER_MODE_SELECT:
   case I2C_EV5_MASTER_MODE_SELECT_NO_BUSY:
-    if ((i2cp->addr >> 8) > 0) {
-      /* 10-bit address: 1 1 1 1 0 X X R/W */
-      dp->DR = 0xF0 | (0x6 & (i2cp->addr >> 8)) | (0x1 & i2cp->addr);
-    } else {
-      dp->DR = i2cp->addr;
-    }
+#if STM32_I2C_USE_10BIT_ADDRESSING
+    /* 10-bit address: 1 1 1 1 0 X X R/W. */
+    dp->DR = 0xF0 | (0x6 & (i2cp->addr >> 8)) |
+             (i2cp->addr10_rx_restart ? 0U : (0x1 & i2cp->addr));
+#else
+    dp->DR = i2cp->addr;
+#endif
     break;
   case I2C_EV9_MASTER_ADD10:
     /* Set second addr byte (10-bit addressing)*/
@@ -314,6 +315,15 @@ static void i2c_lld_serve_event_interrupt(I2CDriver *i2cp) {
       dp->CR1 &= ~I2C_CR1_ACK;
     break;
   case I2C_EV6_MASTER_TRA_MODE_SELECTED:
+#if STM32_I2C_USE_10BIT_ADDRESSING
+    if (i2cp->addr10_rx_restart) {
+      /* A 10-bit read starts in transmitter mode, then restarts with R/W=1. */
+      (void)dp->SR2;
+      i2cp->addr10_rx_restart = false;
+      dp->CR1 |= I2C_CR1_START | I2C_CR1_ACK;
+      break;
+    }
+#endif
     dp->CR2 &= ~I2C_CR2_ITEVTEN;
     dmaStreamEnable(i2cp->dmatx);
     break;
@@ -631,6 +641,9 @@ void i2c_lld_init(void) {
 #if STM32_I2C_USE_I2C1
   i2cObjectInit(&I2CD1);
   I2CD1.thread = NULL;
+#if STM32_I2C_USE_10BIT_ADDRESSING
+  I2CD1.addr10_rx_restart = false;
+#endif
   I2CD1.i2c    = I2C1;
   I2CD1.dmarx  = NULL;
   I2CD1.dmatx  = NULL;
@@ -639,6 +652,9 @@ void i2c_lld_init(void) {
 #if STM32_I2C_USE_I2C2
   i2cObjectInit(&I2CD2);
   I2CD2.thread = NULL;
+#if STM32_I2C_USE_10BIT_ADDRESSING
+  I2CD2.addr10_rx_restart = false;
+#endif
   I2CD2.i2c    = I2C2;
   I2CD2.dmarx  = NULL;
   I2CD2.dmatx  = NULL;
@@ -647,6 +663,9 @@ void i2c_lld_init(void) {
 #if STM32_I2C_USE_I2C3
   i2cObjectInit(&I2CD3);
   I2CD3.thread = NULL;
+#if STM32_I2C_USE_10BIT_ADDRESSING
+  I2CD3.addr10_rx_restart = false;
+#endif
   I2CD3.i2c    = I2C3;
   I2CD3.dmarx  = NULL;
   I2CD3.dmatx  = NULL;
@@ -868,6 +887,9 @@ msg_t i2c_lld_master_receive_timeout(I2CDriver *i2cp, i2caddr_t addr,
 
   /* Initializes driver fields, LSB = 1 -> receive.*/
   i2cp->addr = (addr << 1) | 0x01;
+#if STM32_I2C_USE_10BIT_ADDRESSING
+  i2cp->addr10_rx_restart = true;
+#endif
 
   /* Releases the lock from high level driver.*/
   osalSysUnlock();
@@ -960,6 +982,9 @@ msg_t i2c_lld_master_transmit_timeout(I2CDriver *i2cp, i2caddr_t addr,
 
   /* Initializes driver fields, LSB = 0 -> transmit.*/
   i2cp->addr = (addr << 1);
+#if STM32_I2C_USE_10BIT_ADDRESSING
+  i2cp->addr10_rx_restart = false;
+#endif
 
   /* Releases the lock from high level driver.*/
   osalSysUnlock();
