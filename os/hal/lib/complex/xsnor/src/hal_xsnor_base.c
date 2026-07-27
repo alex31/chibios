@@ -30,6 +30,17 @@
 /* Module local definitions.                                                 */
 /*===========================================================================*/
 
+/*
+ * The low-level XSNOR bus helpers have no status return channel. A failed
+ * synchronous transfer invalidates the current flash command, so it cannot be
+ * recovered at this layer.
+ */
+#define XSNOR_SPI_CHECK(operation) do {                                   \
+  if ((operation) != MSG_OK) {                                            \
+    osalSysHalt("XSNOR SPI failure");                                     \
+  }                                                                       \
+} while (false)
+
 /*===========================================================================*/
 /* Module local macros.                                                      */
 /*===========================================================================*/
@@ -434,13 +445,15 @@ void __xsnor_spi_cmd_addr(void *ip, uint32_t cmd, flash_offset_t offset) {
     config->buffers->spibuf[2] = (uint8_t)(offset >> 16);
     config->buffers->spibuf[3] = (uint8_t)(offset >> 8);
     config->buffers->spibuf[4] = (uint8_t)(offset >> 0);
-    spiSend(config->bus.spi.drv, 5, config->buffers->spibuf);
+    XSNOR_SPI_CHECK(spiSend(config->bus.spi.drv, 5,
+                            config->buffers->spibuf));
   }
   else {
     config->buffers->spibuf[1] = (uint8_t)(offset >> 16);
     config->buffers->spibuf[2] = (uint8_t)(offset >> 8);
     config->buffers->spibuf[3] = (uint8_t)(offset >> 0);
-    spiSend(config->bus.spi.drv, 4, config->buffers->spibuf);
+    XSNOR_SPI_CHECK(spiSend(config->bus.spi.drv, 4,
+                            config->buffers->spibuf));
   }
 }
 #endif /* XSNOR_USE_SPI == TRUE */
@@ -536,7 +549,8 @@ void __xsnor_bus_cmd(void *ip, uint32_t cmd) {
 
     spiSelect(config->bus.spi.drv);
     config->buffers->spibuf[0] = cmd;
-    spiSend(config->bus.spi.drv, 1, config->buffers->spibuf);
+    XSNOR_SPI_CHECK(spiSend(config->bus.spi.drv, 1,
+                            config->buffers->spibuf));
     spiUnselect(config->bus.spi.drv);
 #endif
 #if XSNOR_USE_BOTH == TRUE
@@ -577,8 +591,9 @@ void __xsnor_bus_cmd_send(void *ip, uint32_t cmd, size_t n, const uint8_t *p) {
 
     spiSelect(config->bus.spi.drv);
     config->buffers->spibuf[0] = cmd;
-    spiSend(config->bus.spi.drv, 1, config->buffers->spibuf);
-    spiSend(config->bus.spi.drv, n, p);
+    XSNOR_SPI_CHECK(spiSend(config->bus.spi.drv, 1,
+                            config->buffers->spibuf));
+    XSNOR_SPI_CHECK(spiSend(config->bus.spi.drv, n, p));
     spiUnselect(config->bus.spi.drv);
 #endif
 #if XSNOR_USE_BOTH == TRUE
@@ -619,8 +634,9 @@ void __xsnor_bus_cmd_receive(void *ip, uint32_t cmd, size_t n, uint8_t *p) {
 
     spiSelect(config->bus.spi.drv);
     config->buffers->spibuf[0] = cmd;
-    spiSend(config->bus.spi.drv, 1, config->buffers->spibuf);
-    spiReceive(config->bus.spi.drv, n, p);
+    XSNOR_SPI_CHECK(spiSend(config->bus.spi.drv, 1,
+                            config->buffers->spibuf));
+    XSNOR_SPI_CHECK(spiReceive(config->bus.spi.drv, n, p));
     spiUnselect(config->bus.spi.drv);
 #endif
 #if XSNOR_USE_BOTH == TRUE
@@ -703,7 +719,7 @@ void __xsnor_bus_cmd_addr_send(void *ip, uint32_t cmd, flash_offset_t offset,
 
     spiSelect(config->bus.spi.drv);
     __xsnor_spi_cmd_addr(self, cmd, offset);
-    spiSend(config->bus.spi.drv, n, p);
+    XSNOR_SPI_CHECK(spiSend(config->bus.spi.drv, n, p));
     spiUnselect(config->bus.spi.drv);
 #endif
 #if XSNOR_USE_BOTH == TRUE
@@ -747,7 +763,7 @@ void __xsnor_bus_cmd_addr_receive(void *ip, uint32_t cmd,
 
     spiSelect(config->bus.spi.drv);
     __xsnor_spi_cmd_addr(self, cmd, offset);
-    spiReceive(config->bus.spi.drv, n, p);
+    XSNOR_SPI_CHECK(spiReceive(config->bus.spi.drv, n, p));
     spiUnselect(config->bus.spi.drv);
 #endif
 #if XSNOR_USE_BOTH == TRUE
@@ -792,11 +808,12 @@ void __xsnor_bus_cmd_dummy_receive(void *ip, uint32_t cmd, uint32_t dummy,
 
     spiSelect(config->bus.spi.drv);
     config->buffers->spibuf[0] = cmd;
-    spiSend(config->bus.spi.drv, 1, config->buffers->spibuf);
+    XSNOR_SPI_CHECK(spiSend(config->bus.spi.drv, 1,
+                            config->buffers->spibuf));
     if (dummy != 0U) {
-      spiIgnore(config->bus.spi.drv, dummy / 8U);
+      XSNOR_SPI_CHECK(spiIgnore(config->bus.spi.drv, dummy / 8U));
     }
-    spiReceive(config->bus.spi.drv, n, p);
+    XSNOR_SPI_CHECK(spiReceive(config->bus.spi.drv, n, p));
     spiUnselect(config->bus.spi.drv);
 #endif
 #if XSNOR_USE_BOTH == TRUE
@@ -843,9 +860,9 @@ void __xsnor_bus_cmd_addr_dummy_receive(void *ip, uint32_t cmd,
     spiSelect(config->bus.spi.drv);
     __xsnor_spi_cmd_addr(self, cmd, offset);
     if (dummy != 0U) {
-      spiIgnore(config->bus.spi.drv, dummy / 8U);
+      XSNOR_SPI_CHECK(spiIgnore(config->bus.spi.drv, dummy / 8U));
     }
-    spiReceive(config->bus.spi.drv, n, p);
+    XSNOR_SPI_CHECK(spiReceive(config->bus.spi.drv, n, p));
     spiUnselect(config->bus.spi.drv);
 #endif
 #if XSNOR_USE_BOTH == TRUE
