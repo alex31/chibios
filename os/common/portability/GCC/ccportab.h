@@ -142,6 +142,16 @@
 #endif
 
 /**
+ * @brief   Warns when a function result is ignored, with a diagnostic message.
+ * @note    C23 syntax is also accepted by GCC as an extension in older C modes.
+ */
+#if !defined(__clang__) && (__GNUC__ >= 15)
+#define CC_NODISCARD_MSG(msg) [[nodiscard(msg)]]
+#else
+#define CC_NODISCARD_MSG(msg)
+#endif
+
+/**
  * @brief   Enforces a variable in a ROM area.
  * @note    Can be implemented as an empty macro if not supported by the
  *          compiler.

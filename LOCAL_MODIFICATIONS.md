@@ -61,13 +61,16 @@ This document explains the differences between the clean upstream branch and our
         queues, SDC, SIO, SPIv1/v2, TRNG, UART, USB and WSPI)
     *   `os/rt/include/chthreads.h` for static thread working areas
 *   **Change:** Added guarded `access(...)` and `nonnull_if_nonzero(...)`
-    attributes to buffer APIs, plus `[[nodiscard]]` to I2C operations. A null
+    attributes to buffer APIs, plus a GCC 15+ `CC_NODISCARD_MSG(...)` macro
+    carrying pedagogical messages. It is used by blocking I2C and SPIv2
+    transfers and by timeout waits on semaphores, condition variables and
+    events. A null
     buffer remains valid for a zero-length operation but is diagnosed when
     the associated size (or both dimensions) is nonzero. Some byte buffer
     pointers were changed to `void *` where the transfer unit is expressed in
     bytes.
 *   **Rationale:** **Highly valuable for students.** GCC can diagnose null
-    buffers, undersized buffers, invalid thread working areas and ignored I2C
+    buffers, undersized buffers, invalid thread working areas and ignored
     status values at compile time.
     `access` is enabled for GCC 10 and newer; `nonnull_if_nonzero` is enabled
     for GCC 15 and newer. Other compilers receive empty compatibility macros.

@@ -145,6 +145,7 @@ extern "C" {
 #endif
 #if CH_CFG_USE_EVENTS_TIMEOUT == TRUE
   eventmask_t chEvtWaitOneTimeout(eventmask_t events, sysinterval_t timeout);
+  CC_NODISCARD_MSG("Evenements : utilisez le masque retourne")
   eventmask_t chEvtWaitAnyTimeout(eventmask_t events, sysinterval_t timeout);
   eventmask_t chEvtWaitAllTimeout(eventmask_t events, sysinterval_t timeout);
 #endif

@@ -118,6 +118,7 @@
 #define CC_ACCESS_WO(ptr, size)
 #define CC_ACCESS_RW(ptr, size)
 #define CC_NONNULL_IF_NONZERO(...)
+#define CC_NODISCARD_MSG(msg)
 
 /**
  * @brief   Enforces a variable in a ROM area.

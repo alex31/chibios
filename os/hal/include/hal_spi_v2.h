@@ -514,11 +514,14 @@ extern "C" {
   msg_t spiSynchronizeS(SPIDriver *spip, sysinterval_t timeout);
   msg_t spiSynchronize(SPIDriver *spip, sysinterval_t timeout);
   msg_t spiIgnore(SPIDriver *spip, size_t n);
+  CC_NODISCARD_MSG("SPI : testez le msg_t retourne")
   OSAL_ACCESS_RO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
   OSAL_ACCESS_WO(4, 2) OSAL_NONNULL_IF_NONZERO(4, 2)
   msg_t spiExchange(SPIDriver *spip, size_t n, const void *txbuf, void *rxbuf);
+  CC_NODISCARD_MSG("SPI : testez le msg_t retourne")
   OSAL_ACCESS_RO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
   msg_t spiSend(SPIDriver *spip, size_t n, const void *txbuf);
+  CC_NODISCARD_MSG("SPI : testez le msg_t retourne")
   OSAL_ACCESS_WO(3, 2) OSAL_NONNULL_IF_NONZERO(3, 2)
   msg_t spiReceive(SPIDriver *spip, size_t n, void *rxbuf);
 #endif

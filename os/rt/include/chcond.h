@@ -97,6 +97,7 @@ extern "C" {
   msg_t chCondWait(condition_variable_t *cp);
   msg_t chCondWaitS(condition_variable_t *cp);
 #if CH_CFG_USE_CONDVARS_TIMEOUT == TRUE
+  CC_NODISCARD_MSG("Variable de condition : testez le msg_t retourne")
   msg_t chCondWaitTimeout(condition_variable_t *cp, sysinterval_t timeout);
   msg_t chCondWaitTimeoutS(condition_variable_t *cp, sysinterval_t timeout);
 #endif

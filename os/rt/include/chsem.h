@@ -92,6 +92,7 @@ extern "C" {
   void chSemResetWithMessageI(semaphore_t *sp, cnt_t n, msg_t msg);
   msg_t chSemWait(semaphore_t *sp);
   msg_t chSemWaitS(semaphore_t *sp);
+  CC_NODISCARD_MSG("Semaphore : testez le msg_t retourne")
   msg_t chSemWaitTimeout(semaphore_t *sp, sysinterval_t timeout);
   msg_t chSemWaitTimeoutS(semaphore_t *sp, sysinterval_t timeout);
   void chSemSignal(semaphore_t *sp);

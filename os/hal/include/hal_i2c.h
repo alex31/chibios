@@ -179,7 +179,7 @@ extern "C" {
   void i2cStop(I2CDriver *i2cp);
   i2cflags_t i2cGetErrors(I2CDriver *i2cp);
 
-  [[nodiscard]]
+  CC_NODISCARD_MSG("I2C : testez le msg_t retourne (MSG_OK, MSG_TIMEOUT, etc.)")
   OSAL_ACCESS_WO(5, 6) OSAL_NONNULL_IF_NONZERO(5, 6)
   OSAL_ACCESS_RO(3, 4) OSAL_NONNULL_IF_NONZERO(3, 4)
   msg_t i2cMasterTransmitTimeout(I2CDriver *i2cp,
@@ -188,7 +188,7 @@ extern "C" {
                                  void *rxbuf, size_t rxbytes,
                                  sysinterval_t timeout);
 
-  [[nodiscard]]
+  CC_NODISCARD_MSG("I2C : testez le msg_t retourne (MSG_OK, MSG_TIMEOUT, etc.)")
   OSAL_ACCESS_WO(3, 4) OSAL_NONNULL_IF_NONZERO(3, 4)
   msg_t i2cMasterReceiveTimeout(I2CDriver *i2cp,
                                 i2caddr_t addr,
