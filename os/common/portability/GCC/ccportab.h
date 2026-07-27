@@ -152,6 +152,25 @@
 #endif
 
 /**
+ * @brief   Declares and invokes compile-time checks with a custom error.
+ * @note    Intended for public API wrappers validating constant arguments.
+ */
+#if !defined(__clang__) && !defined(__cplusplus)
+#define CC_HAS_CONSTEXPR_ERROR 1
+#define CC_CONSTEXPR_ERROR(name, msg)                                      \
+  void name(void) __attribute__((error(msg)))
+#define CC_CONSTEXPR_VALUE(value, fallback)                                \
+  __builtin_choose_expr(__builtin_constant_p(value), (value), (fallback))
+#define CC_CONSTEXPR_CHECK(value, invalid, handler)                        \
+  ((void)((__builtin_constant_p(value) && (invalid)) ? (handler)() : 0))
+#else
+#define CC_HAS_CONSTEXPR_ERROR 0
+#define CC_CONSTEXPR_ERROR(name, msg)
+#define CC_CONSTEXPR_VALUE(value, fallback) (fallback)
+#define CC_CONSTEXPR_CHECK(value, invalid, handler) ((void)0)
+#endif
+
+/**
  * @brief   Enforces a variable in a ROM area.
  * @note    Can be implemented as an empty macro if not supported by the
  *          compiler.

@@ -389,6 +389,26 @@ extern "C" {
 }
 #endif
 
+#if CC_HAS_CONSTEXPR_ERROR
+CC_CONSTEXPR_ERROR(__dac_invalid_depth_constant,
+                   "profondeur DAC invalide : valeur attendue 1 ou paire");
+#define dacDbgCheckDepthX(depth)                                            \
+  CC_CONSTEXPR_CHECK(depth,                                                \
+                     ((size_t)(depth) != 1U) &&                            \
+                     (((size_t)(depth) & 1U) != 0U),                       \
+                     __dac_invalid_depth_constant)
+#define dacStartConversion(dacp, grpp, samples, depth)                     \
+  (dacDbgCheckDepthX(depth),                                               \
+   (dacStartConversion)(dacp, grpp, samples, depth))
+#define dacStartConversionI(dacp, grpp, samples, depth)                    \
+  (dacDbgCheckDepthX(depth),                                               \
+   (dacStartConversionI)(dacp, grpp, samples, depth))
+#if DAC_USE_SYNCHRONIZATION
+#define dacConvert(dacp, grpp, samples, depth)                             \
+  (dacDbgCheckDepthX(depth), (dacConvert)(dacp, grpp, samples, depth))
+#endif
+#endif
+
 #endif /* HAL_USE_DAC == TRUE */
 
 #endif /* HAL_DAC_H */

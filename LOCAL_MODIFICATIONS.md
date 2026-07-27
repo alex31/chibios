@@ -68,12 +68,18 @@ This document explains the differences between the clean upstream branch and our
     buffer remains valid for a zero-length operation but is diagnosed when
     the associated size (or both dimensions) is nonzero. Some byte buffer
     pointers were changed to `void *` where the transfer unit is expressed in
-    bytes.
+    bytes. GCC-only API wrappers also reject constant arguments that violate
+    existing ChibiOS preconditions: undersized or misaligned static thread
+    working areas, invalid ADC/DAC depths, PWM channels beyond the hardware
+    maximum, and invalid I2C addresses, zero mandatory transfer sizes or
+    `TIME_IMMEDIATE` timeouts.
 *   **Rationale:** **Highly valuable for students.** GCC can diagnose null
     buffers, undersized buffers, invalid thread working areas and ignored
     status values at compile time.
     `access` is enabled for GCC 10 and newer; `nonnull_if_nonzero` is enabled
-    for GCC 15 and newer. Other compilers receive empty compatibility macros.
+    for GCC 15 and newer. Constant checks use `__builtin_constant_p` and the
+    `error` function attribute, and are disabled for C++ and non-GCC
+    compilers. Other compilers receive empty compatibility macros.
 
 ### 2. STM32G4 Enhanced Flash (EFL) Fast Programming
 *   **Files:**

@@ -322,8 +322,8 @@ thread_t *chThdCreate(const thread_descriptor_t *tdp) {
  *
  * @api
  */
-thread_t *chThdCreateStatic(void *wsp, size_t size,
-                            tprio_t prio, tfunc_t pf, void *arg) {
+thread_t *(chThdCreateStatic)(void *wsp, size_t size,
+                              tprio_t prio, tfunc_t pf, void *arg) {
   thread_t *tp;
 
   chDbgCheck((wsp != NULL) &&

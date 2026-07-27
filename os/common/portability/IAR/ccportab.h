@@ -119,6 +119,10 @@
 #define CC_ACCESS_RW(ptr, size)
 #define CC_NONNULL_IF_NONZERO(...)
 #define CC_NODISCARD_MSG(msg)
+#define CC_HAS_CONSTEXPR_ERROR 0
+#define CC_CONSTEXPR_ERROR(name, msg)
+#define CC_CONSTEXPR_VALUE(value, fallback) (fallback)
+#define CC_CONSTEXPR_CHECK(value, invalid, handler) ((void)0)
 
 /**
  * @brief   Enforces a variable in a ROM area.

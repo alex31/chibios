@@ -182,9 +182,9 @@ void pwmChangePeriod(PWMDriver *pwmp, pwmcnt_t period) {
  *
  * @api
  */
-void pwmEnableChannel(PWMDriver *pwmp,
-                      pwmchannel_t channel,
-                      pwmcnt_t width) {
+void (pwmEnableChannel)(PWMDriver *pwmp,
+                        pwmchannel_t channel,
+                        pwmcnt_t width) {
 
   osalDbgCheck((pwmp != NULL) && (channel < pwmp->channels));
 
@@ -211,7 +211,7 @@ void pwmEnableChannel(PWMDriver *pwmp,
  *
  * @api
  */
-void pwmDisableChannel(PWMDriver *pwmp, pwmchannel_t channel) {
+void (pwmDisableChannel)(PWMDriver *pwmp, pwmchannel_t channel) {
 
   osalDbgCheck((pwmp != NULL) && (channel < pwmp->channels));
 
@@ -281,7 +281,8 @@ void pwmDisablePeriodicNotification(PWMDriver *pwmp) {
  *
  * @api
  */
-void pwmEnableChannelNotification(PWMDriver *pwmp, pwmchannel_t channel) {
+void (pwmEnableChannelNotification)(PWMDriver *pwmp,
+                                    pwmchannel_t channel) {
 
   osalDbgCheck((pwmp != NULL) && (channel < pwmp->channels));
 
@@ -309,7 +310,8 @@ void pwmEnableChannelNotification(PWMDriver *pwmp, pwmchannel_t channel) {
  *
  * @api
  */
-void pwmDisableChannelNotification(PWMDriver *pwmp, pwmchannel_t channel) {
+void (pwmDisableChannelNotification)(PWMDriver *pwmp,
+                                     pwmchannel_t channel) {
 
   osalDbgCheck((pwmp != NULL) && (channel < pwmp->channels));
 

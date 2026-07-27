@@ -441,6 +441,37 @@ extern "C" {
 }
 #endif
 
+#if CC_HAS_CONSTEXPR_ERROR
+CC_CONSTEXPR_ERROR(__adc_invalid_depth_constant,
+                   "profondeur ADC invalide : valeur attendue 1 ou paire positive");
+#define adcDbgCheckDepthX(depth)                                            \
+  CC_CONSTEXPR_CHECK(depth,                                                \
+                     ((size_t)(depth) == 0U) ||                            \
+                     (((size_t)(depth) != 1U) &&                           \
+                      (((size_t)(depth) & 1U) != 0U)),                     \
+                     __adc_invalid_depth_constant)
+#define adcStartConversion(adcp, grpp, samples, depth)                     \
+  (adcDbgCheckDepthX(depth),                                               \
+   (adcStartConversion)(adcp, grpp, samples, depth))
+#define adcStartConversionI(adcp, grpp, samples, depth)                    \
+  (adcDbgCheckDepthX(depth),                                               \
+   (adcStartConversionI)(adcp, grpp, samples, depth))
+#if STM32_ADC_SUPPORTS_FMAC
+#define adcStartConversionFmac(adcp, grpp, depth)                          \
+  (adcDbgCheckDepthX(depth), (adcStartConversionFmac)(adcp, grpp, depth))
+#define adcStartConversionFmacI(adcp, grpp, depth)                         \
+  (adcDbgCheckDepthX(depth), (adcStartConversionFmacI)(adcp, grpp, depth))
+#endif
+#if ADC_USE_WAIT == TRUE
+#define adcConvert(adcp, grpp, samples, depth)                             \
+  (adcDbgCheckDepthX(depth), (adcConvert)(adcp, grpp, samples, depth))
+#if STM32_ADC_SUPPORTS_FMAC
+#define adcConvertFmac(adcp, grpp, depth)                                  \
+  (adcDbgCheckDepthX(depth), (adcConvertFmac)(adcp, grpp, depth))
+#endif
+#endif
+#endif
+
 #endif /* HAL_USE_ADC == TRUE */
 
 #endif /* HAL_ADC_H */

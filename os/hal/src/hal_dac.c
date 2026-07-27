@@ -189,10 +189,10 @@ msg_t dacPutChannelX(DACDriver *dacp, dacchannel_t channel, dacsample_t sample) 
  *
  * @api
  */
-msg_t dacStartConversion(DACDriver *dacp,
-                        const DACConversionGroup *grpp,
-                        dacsample_t *samples,
-                        size_t depth) {
+msg_t (dacStartConversion)(DACDriver *dacp,
+                          const DACConversionGroup *grpp,
+                          dacsample_t *samples,
+                          size_t depth) {
   msg_t msg;
   osalSysLock();
 #if defined(DAC_LLD_ENHANCED_API)
@@ -227,10 +227,10 @@ msg_t dacStartConversion(DACDriver *dacp,
  *
  * @iclass
  */
-msg_t dacStartConversionI(DACDriver *dacp,
-                         const DACConversionGroup *grpp,
-                         dacsample_t *samples,
-                         size_t depth) {
+msg_t (dacStartConversionI)(DACDriver *dacp,
+                           const DACConversionGroup *grpp,
+                           dacsample_t *samples,
+                           size_t depth) {
   msg_t msg;
 
   osalDbgCheckClassI();
@@ -343,10 +343,10 @@ void dacStopConversionI(DACDriver *dacp) {
  *
  * @api
  */
-msg_t dacConvert(DACDriver *dacp,
-                 const DACConversionGroup *grpp,
-                 dacsample_t *samples,
-                 size_t depth) {
+msg_t (dacConvert)(DACDriver *dacp,
+                   const DACConversionGroup *grpp,
+                   dacsample_t *samples,
+                   size_t depth) {
   msg_t msg;
 
   osalSysLock();

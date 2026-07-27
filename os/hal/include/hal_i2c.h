@@ -215,6 +215,46 @@ extern "C" {
 }
 #endif
 
+#if CC_HAS_CONSTEXPR_ERROR
+CC_CONSTEXPR_ERROR(__i2c_invalid_master_address_constant,
+                   "adresse I2C invalide : adresse 7 ou 10 bits attendue");
+CC_CONSTEXPR_ERROR(__i2c_zero_transfer_size_constant,
+                   "taille I2C invalide : au moins un octet attendu");
+CC_CONSTEXPR_ERROR(__i2c_immediate_timeout_constant,
+                   "timeout I2C invalide : TIME_IMMEDIATE est interdit");
+#define i2cDbgCheckMasterTransmitX(addr, txbytes, timeout)                  \
+  (CC_CONSTEXPR_CHECK(addr,                                                \
+                      (((uint32_t)CC_CONSTEXPR_VALUE(addr, 0U) &           \
+                        ~0x3FFU) != 0U),                                   \
+                      __i2c_invalid_master_address_constant),              \
+   CC_CONSTEXPR_CHECK(txbytes,                                             \
+                      (size_t)(txbytes) == 0U,                             \
+                      __i2c_zero_transfer_size_constant),                  \
+   CC_CONSTEXPR_CHECK(timeout,                                             \
+                      (sysinterval_t)(timeout) == TIME_IMMEDIATE,          \
+                      __i2c_immediate_timeout_constant))
+#define i2cDbgCheckMasterReceiveX(addr, rxbytes, timeout)                   \
+  (CC_CONSTEXPR_CHECK(addr,                                                \
+                      ((uint32_t)CC_CONSTEXPR_VALUE(addr, 1U) == 0U) ||    \
+                      ((((uint32_t)CC_CONSTEXPR_VALUE(addr, 1U)) &         \
+                        ~0x3FFU) != 0U),                                   \
+                      __i2c_invalid_master_address_constant),              \
+   CC_CONSTEXPR_CHECK(rxbytes,                                             \
+                      (size_t)(rxbytes) == 0U,                             \
+                      __i2c_zero_transfer_size_constant),                  \
+   CC_CONSTEXPR_CHECK(timeout,                                             \
+                      (sysinterval_t)(timeout) == TIME_IMMEDIATE,          \
+                      __i2c_immediate_timeout_constant))
+#define i2cMasterTransmitTimeout(i2cp, addr, txbuf, txbytes,                \
+                                 rxbuf, rxbytes, timeout)                   \
+  (i2cDbgCheckMasterTransmitX(addr, txbytes, timeout),                     \
+   (i2cMasterTransmitTimeout)(i2cp, addr, txbuf, txbytes,                  \
+                              rxbuf, rxbytes, timeout))
+#define i2cMasterReceiveTimeout(i2cp, addr, rxbuf, rxbytes, timeout)        \
+  (i2cDbgCheckMasterReceiveX(addr, rxbytes, timeout),                      \
+   (i2cMasterReceiveTimeout)(i2cp, addr, rxbuf, rxbytes, timeout))
+#endif
+
 #endif /* HAL_USE_I2C == TRUE */
 
 #endif /* HAL_I2C_H */

@@ -91,6 +91,17 @@ typedef void (*pwmcallback_t)(PWMDriver *pwmp);
 
 #include "hal_pwm_lld.h"
 
+#if CC_HAS_CONSTEXPR_ERROR
+CC_CONSTEXPR_ERROR(__pwm_invalid_channel_constant,
+                   "canal PWM invalide : depasse le maximum materiel");
+#define pwmDbgCheckChannelX(channel)                                        \
+  CC_CONSTEXPR_CHECK(channel,                                              \
+                     (pwmchannel_t)(channel) >= PWM_CHANNELS,              \
+                     __pwm_invalid_channel_constant)
+#else
+#define pwmDbgCheckChannelX(channel) ((void)0)
+#endif
+
 /*===========================================================================*/
 /* Driver macros.                                                            */
 /*===========================================================================*/
@@ -189,6 +200,7 @@ typedef void (*pwmcallback_t)(PWMDriver *pwmp);
  * @iclass
  */
 #define pwmEnableChannelI(pwmp, channel, width) do {                        \
+  pwmDbgCheckChannelX(channel);                                             \
   (pwmp)->enabled |= ((pwmchnmsk_t)1U << (pwmchnmsk_t)(channel));           \
   pwm_lld_enable_channel(pwmp, channel, width);                             \
 } while (false)
@@ -208,6 +220,7 @@ typedef void (*pwmcallback_t)(PWMDriver *pwmp);
  * @iclass
  */
 #define pwmDisableChannelI(pwmp, channel) do {                              \
+  pwmDbgCheckChannelX(channel);                                             \
   (pwmp)->enabled &= ~((pwmchnmsk_t)1U << (pwmchnmsk_t)(channel));          \
   pwm_lld_disable_channel(pwmp, channel);                                   \
 } while (false)
@@ -222,7 +235,8 @@ typedef void (*pwmcallback_t)(PWMDriver *pwmp);
  * @iclass
  */
 #define pwmIsChannelEnabledI(pwmp, channel)                                 \
-  (((pwmp)->enabled & ((pwmchnmsk_t)1U << (pwmchnmsk_t)(channel))) != 0U)
+  (pwmDbgCheckChannelX(channel),                                            \
+   (((pwmp)->enabled & ((pwmchnmsk_t)1U << (pwmchnmsk_t)(channel))) != 0U))
 
 /**
  * @brief   Enables the periodic activation edge notification.
@@ -260,7 +274,8 @@ typedef void (*pwmcallback_t)(PWMDriver *pwmp);
  * @iclass
  */
 #define pwmEnableChannelNotificationI(pwmp, channel)                        \
-  pwm_lld_enable_channel_notification(pwmp, channel)
+  (pwmDbgCheckChannelX(channel),                                            \
+   pwm_lld_enable_channel_notification(pwmp, channel))
 
 /**
  * @brief   Disables a channel de-activation edge notification.
@@ -274,7 +289,8 @@ typedef void (*pwmcallback_t)(PWMDriver *pwmp);
  * @iclass
  */
 #define pwmDisableChannelNotificationI(pwmp, channel)                       \
-  pwm_lld_disable_channel_notification(pwmp, channel)
+  (pwmDbgCheckChannelX(channel),                                            \
+   pwm_lld_disable_channel_notification(pwmp, channel))
 /** @} */
 
 /*===========================================================================*/
@@ -299,6 +315,20 @@ extern "C" {
   void pwmDisableChannelNotification(PWMDriver *pwmp, pwmchannel_t channel);
 #ifdef __cplusplus
 }
+#endif
+
+#if CC_HAS_CONSTEXPR_ERROR
+#define pwmEnableChannel(pwmp, channel, width)                              \
+  (pwmDbgCheckChannelX(channel),                                            \
+   (pwmEnableChannel)(pwmp, channel, width))
+#define pwmDisableChannel(pwmp, channel)                                    \
+  (pwmDbgCheckChannelX(channel), (pwmDisableChannel)(pwmp, channel))
+#define pwmEnableChannelNotification(pwmp, channel)                         \
+  (pwmDbgCheckChannelX(channel),                                            \
+   (pwmEnableChannelNotification)(pwmp, channel))
+#define pwmDisableChannelNotification(pwmp, channel)                        \
+  (pwmDbgCheckChannelX(channel),                                            \
+   (pwmDisableChannelNotification)(pwmp, channel))
 #endif
 
 #endif /* HAL_USE_PWM == TRUE */

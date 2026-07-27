@@ -161,10 +161,10 @@ void adcStop(ADCDriver *adcp) {
  *
  * @api
  */
-void adcStartConversion(ADCDriver *adcp,
-                        const ADCConversionGroup *grpp,
-                        adcsample_t *samples,
-                        size_t depth) {
+void (adcStartConversion)(ADCDriver *adcp,
+                          const ADCConversionGroup *grpp,
+                          adcsample_t *samples,
+                          size_t depth) {
 
   osalSysLock();
   adcStartConversionI(adcp, grpp, samples, depth);
@@ -189,10 +189,10 @@ void adcStartConversion(ADCDriver *adcp,
  *
  * @iclass
  */
-void adcStartConversionI(ADCDriver *adcp,
-                         const ADCConversionGroup *grpp,
-                         adcsample_t *samples,
-                         size_t depth) {
+void (adcStartConversionI)(ADCDriver *adcp,
+                           const ADCConversionGroup *grpp,
+                           adcsample_t *samples,
+                           size_t depth) {
 
   osalDbgCheckClassI();
   osalDbgCheck((adcp != NULL) && (grpp != NULL) && (samples != NULL) &&
@@ -222,9 +222,9 @@ void adcStartConversionI(ADCDriver *adcp,
  *
  * @api
  */
-void adcStartConversionFmac(ADCDriver *adcp,
-                            const ADCConversionGroup *grpp,
-                            size_t depth) {
+void (adcStartConversionFmac)(ADCDriver *adcp,
+                              const ADCConversionGroup *grpp,
+                              size_t depth) {
 
   osalSysLock();
   adcStartConversionFmacI(adcp, grpp, depth);
@@ -241,9 +241,9 @@ void adcStartConversionFmac(ADCDriver *adcp,
  *
  * @iclass
  */
-void adcStartConversionFmacI(ADCDriver *adcp,
-                             const ADCConversionGroup *grpp,
-                             size_t depth) {
+void (adcStartConversionFmacI)(ADCDriver *adcp,
+                               const ADCConversionGroup *grpp,
+                               size_t depth) {
 
   osalDbgCheckClassI();
   osalDbgCheck((adcp != NULL) && (grpp != NULL) &&
@@ -340,10 +340,10 @@ void adcStopConversionI(ADCDriver *adcp) {
  *
  * @api
  */
-msg_t adcConvert(ADCDriver *adcp,
-                 const ADCConversionGroup *grpp,
-                 adcsample_t *samples,
-                 size_t depth) {
+msg_t (adcConvert)(ADCDriver *adcp,
+                   const ADCConversionGroup *grpp,
+                   adcsample_t *samples,
+                   size_t depth) {
   msg_t msg;
 
   osalSysLock();
@@ -374,9 +374,9 @@ msg_t adcConvert(ADCDriver *adcp,
  *
  * @api
  */
-msg_t adcConvertFmac(ADCDriver *adcp,
-                     const ADCConversionGroup *grpp,
-                     size_t depth) {
+msg_t (adcConvertFmac)(ADCDriver *adcp,
+                       const ADCConversionGroup *grpp,
+                       size_t depth) {
   msg_t msg;
 
   osalSysLock();

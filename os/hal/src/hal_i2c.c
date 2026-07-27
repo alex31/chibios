@@ -184,13 +184,13 @@ i2cflags_t i2cGetErrors(I2CDriver *i2cp) {
  *
  * @api
  */
-msg_t i2cMasterTransmitTimeout(I2CDriver *i2cp,
-                               i2caddr_t addr,
-                               const void *txbuf,
-                               size_t txbytes,
-                               void *rxbuf,
-                               size_t rxbytes,
-                               sysinterval_t timeout) {
+msg_t (i2cMasterTransmitTimeout)(I2CDriver *i2cp,
+                                 i2caddr_t addr,
+                                 const void *txbuf,
+                                 size_t txbytes,
+                                 void *rxbuf,
+                                 size_t rxbytes,
+                                 sysinterval_t timeout) {
   msg_t rdymsg;
 
   osalDbgCheck((i2cp != NULL) &&
@@ -234,11 +234,11 @@ msg_t i2cMasterTransmitTimeout(I2CDriver *i2cp,
  *
  * @api
  */
-msg_t i2cMasterReceiveTimeout(I2CDriver *i2cp,
-                              i2caddr_t addr,
-                              void *rxbuf,
-                              size_t rxbytes,
-                              sysinterval_t timeout) {
+msg_t (i2cMasterReceiveTimeout)(I2CDriver *i2cp,
+                                i2caddr_t addr,
+                                void *rxbuf,
+                                size_t rxbytes,
+                                sysinterval_t timeout) {
 
   msg_t rdymsg;
 

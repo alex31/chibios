@@ -299,6 +299,22 @@ extern "C" {
   CC_ACCESS_RW(1, 2) CC_NONNULL_IF_NONZERO(1, 2)
   thread_t *chThdCreateStatic(void *wsp, size_t size,
                               tprio_t prio, tfunc_t pf, void *arg);
+#if CC_HAS_CONSTEXPR_ERROR
+  CC_CONSTEXPR_ERROR(__ch_invalid_static_wa_size,
+                     "working area de thread invalide : taille nulle ou trop petite");
+  CC_CONSTEXPR_ERROR(__ch_unaligned_static_wa_size,
+                     "working area de thread invalide : taille non alignee");
+#define chDbgCheckStaticWorkingAreaSizeX(size)                              \
+  (CC_CONSTEXPR_CHECK(size,                                                \
+                      (size_t)(size) < THD_WORKING_AREA_SIZE(0),            \
+                      __ch_invalid_static_wa_size),                         \
+   CC_CONSTEXPR_CHECK(size,                                                \
+                      ((size_t)(size) % PORT_STACK_ALIGN) != 0U,            \
+                      __ch_unaligned_static_wa_size))
+#define chThdCreateStatic(wsp, size, prio, pf, arg)                         \
+  (chDbgCheckStaticWorkingAreaSizeX(size),                                 \
+   (chThdCreateStatic)(wsp, size, prio, pf, arg))
+#endif
   thread_t *chThdStart(thread_t *tp);
 #if CH_CFG_USE_REGISTRY == TRUE
   thread_t *chThdAddRef(thread_t *tp);
