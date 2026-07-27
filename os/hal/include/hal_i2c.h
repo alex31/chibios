@@ -97,6 +97,36 @@ typedef enum {
 #define I2C_SUPPORTS_SLAVE_MODE             FALSE
 #endif
 
+/* For compatibility, LLDs default to 7-bit addressing. */
+#if !defined(I2C_LLD_MIN_ADDRESS)
+#define I2C_LLD_MIN_ADDRESS                 0U
+#endif
+
+#if !defined(I2C_LLD_MAX_ADDRESS)
+#define I2C_LLD_MAX_ADDRESS                 0x7FU
+#endif
+
+#if (I2C_LLD_MAX_ADDRESS != 0x7FU) && (I2C_LLD_MAX_ADDRESS != 0x3FFU)
+#error "I2C_LLD_MAX_ADDRESS must select 7-bit or 10-bit addressing"
+#endif
+
+#if I2C_LLD_MIN_ADDRESS > I2C_LLD_MAX_ADDRESS
+#error "I2C_LLD_MIN_ADDRESS must not exceed I2C_LLD_MAX_ADDRESS"
+#endif
+
+#if !defined(i2c_lld_is_config_matching)
+#define i2c_lld_is_config_matching(config)  true
+#endif
+
+#if I2C_LLD_MIN_ADDRESS == 0U
+#define i2c_lld_is_address_valid(addr)                                  \
+  ((uint32_t)(addr) <= (uint32_t)I2C_LLD_MAX_ADDRESS)
+#else
+#define i2c_lld_is_address_valid(addr)                                  \
+  (((uint32_t)(addr) >= (uint32_t)I2C_LLD_MIN_ADDRESS) &&               \
+   ((uint32_t)(addr) <= (uint32_t)I2C_LLD_MAX_ADDRESS))
+#endif
+
 #if (I2C_SUPPORTS_SLAVE_MODE == FALSE) && (I2C_ENABLE_SLAVE_MODE == TRUE)
 #error "I2C slave mode not supported"
 #endif
@@ -216,16 +246,21 @@ extern "C" {
 #endif
 
 #if CC_HAS_CONSTEXPR_ERROR
+#if I2C_LLD_MAX_ADDRESS == 0x7FU
 CC_CONSTEXPR_ERROR(__i2c_invalid_master_address_constant,
-                   "adresse I2C invalide : adresse 7 ou 10 bits attendue");
+                   "adresse I2C invalide : adresse 7 bits attendue");
+#else
+CC_CONSTEXPR_ERROR(__i2c_invalid_master_address_constant,
+                   "adresse I2C invalide : adresse 10 bits attendue");
+#endif
 CC_CONSTEXPR_ERROR(__i2c_zero_transfer_size_constant,
                    "taille I2C invalide : au moins un octet attendu");
 CC_CONSTEXPR_ERROR(__i2c_immediate_timeout_constant,
                    "timeout I2C invalide : TIME_IMMEDIATE est interdit");
 #define i2cDbgCheckMasterTransmitX(addr, txbytes, timeout)                  \
   (CC_CONSTEXPR_CHECK(addr,                                                \
-                      (((uint32_t)CC_CONSTEXPR_VALUE(addr, 0U) &           \
-                        ~0x3FFU) != 0U),                                   \
+                      !i2c_lld_is_address_valid(                           \
+                        CC_CONSTEXPR_VALUE(addr, I2C_LLD_MIN_ADDRESS)),    \
                       __i2c_invalid_master_address_constant),              \
    CC_CONSTEXPR_CHECK(txbytes,                                             \
                       (size_t)(txbytes) == 0U,                             \
@@ -236,8 +271,8 @@ CC_CONSTEXPR_ERROR(__i2c_immediate_timeout_constant,
 #define i2cDbgCheckMasterReceiveX(addr, rxbytes, timeout)                   \
   (CC_CONSTEXPR_CHECK(addr,                                                \
                       ((uint32_t)CC_CONSTEXPR_VALUE(addr, 1U) == 0U) ||    \
-                      ((((uint32_t)CC_CONSTEXPR_VALUE(addr, 1U)) &         \
-                        ~0x3FFU) != 0U),                                   \
+                      !i2c_lld_is_address_valid(                           \
+                        CC_CONSTEXPR_VALUE(addr, I2C_LLD_MIN_ADDRESS)),    \
                       __i2c_invalid_master_address_constant),              \
    CC_CONSTEXPR_CHECK(rxbytes,                                             \
                       (size_t)(rxbytes) == 0U,                             \

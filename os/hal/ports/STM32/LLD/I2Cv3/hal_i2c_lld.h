@@ -110,6 +110,29 @@
 #endif
 
 /**
+ * @brief   Enables 10-bit master addresses.
+ * @note    The default is 7-bit addressing.
+ */
+#if !defined(STM32_I2C_USE_10BIT_ADDRESSING) || defined(__DOXYGEN__)
+#define STM32_I2C_USE_10BIT_ADDRESSING       FALSE
+#endif
+
+#if (STM32_I2C_USE_10BIT_ADDRESSING != FALSE) &&                           \
+    (STM32_I2C_USE_10BIT_ADDRESSING != TRUE)
+#error "STM32_I2C_USE_10BIT_ADDRESSING must be TRUE or FALSE"
+#endif
+
+#if STM32_I2C_USE_10BIT_ADDRESSING
+#define I2C_LLD_MAX_ADDRESS                  0x3FFU
+#define i2c_lld_is_config_matching(config)                              \
+  (((config)->cr2 & I2C_CR2_ADD10) != 0U)
+#else
+#define I2C_LLD_MAX_ADDRESS                  0x7FU
+#define i2c_lld_is_config_matching(config)                              \
+  (((config)->cr2 & I2C_CR2_ADD10) == 0U)
+#endif
+
+/**
  * @brief   I2C timeout on busy condition in milliseconds.
  */
 #if !defined(STM32_I2C_BUSY_TIMEOUT) || defined(__DOXYGEN__)

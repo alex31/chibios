@@ -72,7 +72,13 @@ This document explains the differences between the clean upstream branch and our
     existing ChibiOS preconditions: undersized or misaligned static thread
     working areas, invalid ADC/DAC depths, PWM channels beyond the hardware
     maximum, and invalid I2C addresses, zero mandatory transfer sizes or
-    `TIME_IMMEDIATE` timeouts.
+    `TIME_IMMEDIATE` timeouts. I2C master addresses default to 7 bits and can
+    be switched globally to 10 bits using
+    `STM32_I2C_USE_10BIT_ADDRESSING` in `mcuconf.h`. Dynamic addresses are
+    checked at run time; on STM32 I2Cv2/v3/v4, `i2cStart()` also verifies that
+    `I2CConfig.cr2` uses the matching `I2C_CR2_ADD10` setting. On STM32
+    I2Cv1, 10-bit mode rejects addresses below `0x80`, because that LLD would
+    otherwise encode them as 7-bit transfers.
 *   **Rationale:** **Highly valuable for students.** GCC can diagnose null
     buffers, undersized buffers, invalid thread working areas and ignored
     status values at compile time.

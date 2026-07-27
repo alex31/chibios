@@ -94,7 +94,12 @@ void i2cObjectInit(I2CDriver *i2cp) {
 msg_t i2cStart(I2CDriver *i2cp, const I2CConfig *config) {
   msg_t msg;
 
-  osalDbgCheck((i2cp != NULL) && (config != NULL));
+  osalDbgCheck((i2cp != NULL) && (config != NULL) &&
+               i2c_lld_is_config_matching(config));
+
+  if ((config == NULL) || !i2c_lld_is_config_matching(config)) {
+    return HAL_RET_CONFIG_ERROR;
+  }
 
   osalSysLock();
   osalDbgAssert((i2cp->state == I2C_STOP) || (i2cp->state == I2C_READY) ||
@@ -194,9 +199,14 @@ msg_t (i2cMasterTransmitTimeout)(I2CDriver *i2cp,
   msg_t rdymsg;
 
   osalDbgCheck((i2cp != NULL) &&
+               i2c_lld_is_address_valid(addr) &&
                (txbytes > 0U) && (txbuf != NULL) &&
                ((rxbytes == 0U) || ((rxbytes > 0U) && (rxbuf != NULL))) &&
                (timeout != TIME_IMMEDIATE));
+
+  if (!i2c_lld_is_address_valid(addr)) {
+    return HAL_RET_CONFIG_ERROR;
+  }
 
   osalDbgAssert(i2cp->state == I2C_READY, "not ready");
 
@@ -243,8 +253,13 @@ msg_t (i2cMasterReceiveTimeout)(I2CDriver *i2cp,
   msg_t rdymsg;
 
   osalDbgCheck((i2cp != NULL) && (addr != 0U) &&
+               i2c_lld_is_address_valid(addr) &&
                (rxbytes > 0U) && (rxbuf != NULL) &&
                (timeout != TIME_IMMEDIATE));
+
+  if ((addr == 0U) || !i2c_lld_is_address_valid(addr)) {
+    return HAL_RET_CONFIG_ERROR;
+  }
 
   osalDbgAssert(i2cp->state == I2C_READY, "not ready");
 
