@@ -259,6 +259,29 @@ __STATIC_INLINE void dmaChannelSetCounterX(const rp_dma_channel_t *dmachp,
 }
 
 /**
+ * @brief   Returns the DMA transfer counter.
+ * @details The @p TRANS_COUNT register reads back as the number of
+ *          transfers remaining in the current sequence, or as the last
+ *          programmed value once the sequence has completed.
+ * @note    On a busy channel the value is a moving snapshot.
+ * @note    On the RP2350 the @p TRANS_COUNT bits [31:28] are the count
+ *          MODE field; it is masked off so only the count is returned.
+ *
+ * @param[in] dmachp    pointer to a rp_dma_channel_t structure
+ * @return              The remaining transfer count.
+ *
+ * @special
+ */
+__STATIC_INLINE uint32_t dmaChannelGetCounterX(const rp_dma_channel_t *dmachp) {
+
+#if defined(RP2350)
+  return dmachp->channel->TRANS_COUNT & ~DMA_TRANS_COUNT_MODE_Msk;
+#else
+  return dmachp->channel->TRANS_COUNT;
+#endif
+}
+
+/**
  * @brief   Setup of the DMA transfer mode without linking.
  * @note    The link field is enforced to "self" meaning no linking.
  *
