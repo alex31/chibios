@@ -227,6 +227,23 @@
 #define PIO_IRQ_SM(n)                   (1U << ((n) + 8U))
 /** @} */
 
+/**
+ * @name    PIO instruction encodings
+ * @details Pre-encoded instructions for host-side @p pioSmExecX() use,
+ *          not an assembler.
+ * @{
+ */
+/**
+ * @brief   Encoding of "pull noblock".
+ */
+#define PIO_INSTR_PULL_NOBLOCK          0x8080U
+
+/**
+ * @brief   Encoding of "out null, 32".
+ */
+#define PIO_INSTR_OUT_NULL_32           0x6060U
+/** @} */
+
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -979,6 +996,50 @@ __STATIC_INLINE void pioSmClearFifosX(const rp_pio_sm_t *smp) {
   /* Toggle FJOIN_TX to flush, then restore.*/
   smp->block->pio->SM[smp->smidx].SHIFTCTRL = shiftctrl ^ PIO_SM_SHIFTCTRL_FJOIN_TX;
   smp->block->pio->SM[smp->smidx].SHIFTCTRL = shiftctrl;
+}
+
+/**
+ * @brief   Drains the TX FIFO of a state machine.
+ * @details Discards the TX FIFO content by executing instructions on
+ *          the state machine: an "out null, 32" per word with autopull
+ *          enabled, a "pull noblock" per word otherwise (the pico-sdk
+ *          drain sequence). The OSR content is disturbed either way.
+ * @note    Unlike @p pioSmClearFifosX() the RX FIFO and the FIFO
+ *          joining state are not touched.
+ * @note    A running state machine program, or another agent writing
+ *          the FIFO, can refill it while draining; the iteration limit
+ *          turns that into a @p false return instead of a hang.
+ *
+ * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @param[in] limit     maximum number of exec iterations; roughly one
+ *                      word is consumed per iteration, so a few more
+ *                      than the FIFO depth covers the quiesced case
+ * @return              The drain result.
+ * @retval true         if the TX FIFO is empty.
+ * @retval false        if the limit was reached with the FIFO not
+ *                      empty.
+ *
+ * @special
+ */
+__STATIC_INLINE bool pioSmDrainTxFifoX(const rp_pio_sm_t *smp,
+                                       uint32_t limit) {
+  uint16_t instr;
+
+  osalDbgCheck(smp != NULL);
+
+  instr = (uint16_t)(((smp->block->pio->SM[smp->smidx].SHIFTCTRL &
+                       PIO_SM_SHIFTCTRL_AUTOPULL) != 0U) ?
+                     PIO_INSTR_OUT_NULL_32 : PIO_INSTR_PULL_NOBLOCK);
+
+  while (!pioSmIsTxEmptyX(smp)) {
+    if (limit == 0U) {
+      return false;
+    }
+    limit--;
+    pioSmExecX(smp, instr);
+  }
+
+  return true;
 }
 
 /**
