@@ -316,8 +316,10 @@ typedef struct {
  * @note    In the RP2350-only modes the RX FIFO is disabled and its
  *          storage becomes a 4-entry register file; the TX FIFO stays
  *          4 entries deep. "Get" and "put" name the state machine side
- *          of the access, the processor side uses the RXFx_PUTGETy
- *          window registers.
+ *          of the access; the processor reaches the storage through
+ *          the RXFx_PUTGETy window registers in the TXGET and TXPUT
+ *          modes only, in PUTGET the storage is state-machine-private
+ *          with no processor access.
  */
 typedef enum {
   RP_PIO_FIFO_JOIN_NONE   = 0,          /**< @brief Two 4-deep FIFOs.      */
