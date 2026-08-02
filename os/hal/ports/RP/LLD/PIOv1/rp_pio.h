@@ -242,6 +242,13 @@
  * @brief   Encoding of "out null, 32".
  */
 #define PIO_INSTR_OUT_NULL_32           0x6060U
+
+/**
+ * @brief   Encoding of "mov y, y", the canonical PIO no-operation.
+ * @note    Never stalls; also usable to displace a stalled instruction
+ *          latched by a previous @p pioSmExecX().
+ */
+#define PIO_INSTR_NOP                   0xA042U
 /** @} */
 
 /*===========================================================================*/
@@ -1008,7 +1015,15 @@ __STATIC_INLINE void pioSmClearFifosX(const rp_pio_sm_t *smp) {
  *          joining state are not touched.
  * @note    A running state machine program, or another agent writing
  *          the FIFO, can refill it while draining; the iteration limit
- *          turns that into a @p false return instead of a hang.
+ *          turns that into a @p false return instead of a hang. In the
+ *          opposite race, the state machine consuming the last word
+ *          right before an exec can leave the drain instruction
+ *          stalled on the empty FIFO; such a leftover is displaced
+ *          with @p PIO_INSTR_NOP before returning so it cannot fire
+ *          later and consume a newly written word.
+ * @note    Every exec'd instruction executes in place of the state
+ *          machine's next fetch. For a fully deterministic drain call
+ *          this function with the state machine disabled.
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
  * @param[in] limit     maximum number of exec iterations; roughly one
@@ -1024,6 +1039,8 @@ __STATIC_INLINE void pioSmClearFifosX(const rp_pio_sm_t *smp) {
 __STATIC_INLINE bool pioSmDrainTxFifoX(const rp_pio_sm_t *smp,
                                        uint32_t limit) {
   uint16_t instr;
+  bool drained = true;
+  bool exec_used = false;
 
   osalDbgCheck(smp != NULL);
 
@@ -1033,13 +1050,26 @@ __STATIC_INLINE bool pioSmDrainTxFifoX(const rp_pio_sm_t *smp,
 
   while (!pioSmIsTxEmptyX(smp)) {
     if (limit == 0U) {
-      return false;
+      drained = false;
+      break;
     }
     limit--;
     pioSmExecX(smp, instr);
+    exec_used = true;
   }
 
-  return true;
+  /* A drain instruction that lost the race for the last word against
+     the running program stays latched with EXEC_STALLED set, "pull
+     noblock" never stalls so this only concerns the autopull path.
+     Only a stall caused here is displaced, a stalled instruction
+     exec'd by the caller before entry is left alone.*/
+  if (exec_used &&
+      ((smp->block->pio->SM[smp->smidx].EXECCTRL &
+        PIO_SM_EXECCTRL_EXEC_STALLED) != 0U)) {
+    pioSmExecX(smp, PIO_INSTR_NOP);
+  }
+
+  return drained;
 }
 
 /**
