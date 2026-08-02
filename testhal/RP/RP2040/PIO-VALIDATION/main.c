@@ -52,6 +52,10 @@
  *    clear the pad isolation latch left set by the pad reset state.
  * 9. (RP2350) GPIOBASE window: the builder flow must work with the
  *    GPIO16..47 window through pioGpioToRel.
+ * 12. DMA counter: dmaChannelGetCounterX must read back the programmed
+ *    count on an idle channel, a deterministic residual on a stalled
+ *    paced transfer (surviving the abort), zero after completion and
+ *    (RP2350) mask the TRANS_COUNT MODE field out of the readback.
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default
@@ -758,6 +762,76 @@ int main(void) {
   pioSmFree(smp);
   pioProgramUnload(RP_PIO1_BLOCK, sq_off, sqwave_program.length);
 #endif /* RP_PIO_HAS_GPIOBASE == TRUE */
+
+  /*
+   * Test 12: DMA transfer counter readback.
+   */
+  chprintf(chp, "--- Test 12: DMA counter\r\n");
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  dmachp = dmaChannelAlloc(RP_DMA_CHANNEL_ID_ANY, TEST_IRQ_PRIORITY,
+                           NULL, NULL);
+  report("SM0 and DMA channel allocated",
+         (smp != NULL) && (dmachp != NULL));
+  if ((smp == NULL) || (dmachp == NULL)) {
+    goto summary;
+  }
+
+  /* Idle channel: the getter reads back the programmed count.*/
+  dmaChannelSetCounterX(dmachp, DMA_WORDS);
+  report("programmed count reads back",
+         dmaChannelGetCounterX(dmachp) == DMA_WORDS);
+
+  /* Paced partial transfer: the TX DREQ of a disabled state machine
+     stops after filling the 4-deep FIFO, leaving a deterministic
+     residual.*/
+  for (i = 0U; i < DMA_WORDS; i++) {
+    dma_pattern[i] = i;
+  }
+  pioSmClearFifosX(smp);
+  dmaChannelSetSourceX(dmachp, (uint32_t)dma_pattern);
+  dmaChannelSetDestinationX(dmachp, (uint32_t)pioSmTxFifoAddrX(smp));
+  dmaChannelSetModeX(dmachp,
+                     DMA_CTRL_TRIG_TREQ_SEL(pioSmTxDreqX(smp)) |
+                     DMA_CTRL_TRIG_DATA_SIZE_WORD |
+                     DMA_CTRL_TRIG_INCR_READ);
+  dmaChannelEnableX(dmachp);
+  delay_us(200U);
+  lvl = dmaChannelGetCounterX(dmachp);
+  chprintf(chp, "      residual: %u\r\n", lvl);
+  report("residual equals words minus FIFO depth",
+         lvl == (DMA_WORDS - 4U));
+
+  dmaChannelDisableX(dmachp);
+  report("residual survives the abort",
+         dmaChannelGetCounterX(dmachp) == (DMA_WORDS - 4U));
+
+  /* Completed sequence: free the FIFO space and run 4 words to the
+     end, the live counter reads zero.*/
+  pioSmClearFifosX(smp);
+  dmaChannelSetSourceX(dmachp, (uint32_t)dma_pattern);
+  dmaChannelSetCounterX(dmachp, 4U);
+  dmaChannelEnableX(dmachp);
+  for (i = 0U; (i < 1000U) && dmaChannelIsBusyX(dmachp); i++) {
+    delay_us(100U);
+  }
+  report("sequence completes", !dmaChannelIsBusyX(dmachp));
+  report("completed sequence reads zero",
+         dmaChannelGetCounterX(dmachp) == 0U);
+
+#if defined(RP2350)
+  /* The MODE field (bits 31:28) must be masked out of the readback: a
+     raw ENDLESS-mode write on the idle channel still reads back as the
+     bare count.*/
+  dmachp->channel->TRANS_COUNT = DMA_TRANS_COUNT_MODE_Msk | 123U;
+  report("MODE field masked out of the readback",
+         dmaChannelGetCounterX(dmachp) == 123U);
+  dmaChannelSetCounterX(dmachp, 0U);
+#endif /* defined(RP2350) */
+
+  dmaChannelFree(dmachp);
+  pioSmClearFifosX(smp);
+  pioSmFree(smp);
 
   /*
    * Summary.
