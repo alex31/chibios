@@ -186,6 +186,12 @@
  * @name    PIO state machine SHIFTCTRL register bits
  * @{
  */
+#if defined(RP2350) || defined(__DOXYGEN__)
+/* The RP2350 adds modes repurposing the RX FIFO storage for random
+   access, see the additional rp_pio_fifo_join_t modes.*/
+#define PIO_SM_SHIFTCTRL_FJOIN_RX_GET   (1U << 14U)
+#define PIO_SM_SHIFTCTRL_FJOIN_RX_PUT   (1U << 15U)
+#endif
 #define PIO_SM_SHIFTCTRL_AUTOPUSH       (1U << 16U)
 #define PIO_SM_SHIFTCTRL_AUTOPULL       (1U << 17U)
 #define PIO_SM_SHIFTCTRL_IN_SHIFTDIR    (1U << 18U)
@@ -304,11 +310,29 @@ typedef struct {
 
 /**
  * @brief   FIFO joining modes.
+ * @note    The values match the pico-sdk @p pio_fifo_join encoding:
+ *          bit 2 maps onto @p PIO_SM_SHIFTCTRL_FJOIN_RX_GET and bit 3
+ *          onto @p PIO_SM_SHIFTCTRL_FJOIN_RX_PUT.
+ * @note    In the RP2350-only modes the RX FIFO is disabled and its
+ *          storage becomes a 4-entry register file; the TX FIFO stays
+ *          4 entries deep. "Get" and "put" name the state machine side
+ *          of the access; the processor reaches the storage through
+ *          the RXFx_PUTGETy window registers in the TXGET and TXPUT
+ *          modes only, in PUTGET the storage is state-machine-private
+ *          with no processor access.
  */
 typedef enum {
-  RP_PIO_FIFO_JOIN_NONE = 0,            /**< @brief Two 4-deep FIFOs.      */
-  RP_PIO_FIFO_JOIN_TX   = 1,            /**< @brief 8-deep TX, no RX.      */
-  RP_PIO_FIFO_JOIN_RX   = 2             /**< @brief 8-deep RX, no TX.      */
+  RP_PIO_FIFO_JOIN_NONE   = 0,          /**< @brief Two 4-deep FIFOs.      */
+  RP_PIO_FIFO_JOIN_TX     = 1,          /**< @brief 8-deep TX, no RX.      */
+  RP_PIO_FIFO_JOIN_RX     = 2,          /**< @brief 8-deep RX, no TX.      */
+#if defined(RP2350) || defined(__DOXYGEN__)
+  RP_PIO_FIFO_JOIN_TXGET  = 4,          /**< @brief RX storage read by the
+                                             SM, written by the processor.*/
+  RP_PIO_FIFO_JOIN_TXPUT  = 8,          /**< @brief RX storage written by
+                                             the SM, read by the processor.*/
+  RP_PIO_FIFO_JOIN_PUTGET = 12          /**< @brief RX storage as SM-private
+                                             scratch, no processor access.*/
+#endif
 } rp_pio_fifo_join_t;
 
 /**
@@ -685,6 +709,8 @@ __STATIC_INLINE void pioSmConfigSetOutShiftX(rp_pio_sm_config_t *cfgp,
  * @brief   Sets the FIFO joining mode.
  * @note    The hardware flushes both FIFOs whenever the joining mode
  *          changes.
+ * @note    The RP2350-only modes are rejected by the debug check on the
+ *          RP2040, see @p rp_pio_fifo_join_t.
  *
  * @param[in,out] cfgp  pointer to a rp_pio_sm_config_t structure
  * @param[in] join      joining mode
@@ -694,12 +720,30 @@ __STATIC_INLINE void pioSmConfigSetOutShiftX(rp_pio_sm_config_t *cfgp,
 __STATIC_INLINE void pioSmConfigSetFifoJoinX(rp_pio_sm_config_t *cfgp,
                                             rp_pio_fifo_join_t join) {
 
+#if defined(RP2350) || defined(__DOXYGEN__)
+  osalDbgCheck((cfgp != NULL) &&
+               (((uint32_t)join <= RP_PIO_FIFO_JOIN_RX) ||
+                (join == RP_PIO_FIFO_JOIN_TXGET) ||
+                (join == RP_PIO_FIFO_JOIN_TXPUT) ||
+                (join == RP_PIO_FIFO_JOIN_PUTGET)));
+
+  /* Enum bit 2 is FJOIN_RX_GET, bit 3 is FJOIN_RX_PUT.*/
+  cfgp->shiftctrl = (cfgp->shiftctrl & ~(PIO_SM_SHIFTCTRL_FJOIN_TX |
+                                         PIO_SM_SHIFTCTRL_FJOIN_RX |
+                                         PIO_SM_SHIFTCTRL_FJOIN_RX_GET |
+                                         PIO_SM_SHIFTCTRL_FJOIN_RX_PUT)) |
+                    ((join == RP_PIO_FIFO_JOIN_TX) ? PIO_SM_SHIFTCTRL_FJOIN_TX : 0U) |
+                    ((join == RP_PIO_FIFO_JOIN_RX) ? PIO_SM_SHIFTCTRL_FJOIN_RX : 0U) |
+                    ((((uint32_t)join & 4U) != 0U) ? PIO_SM_SHIFTCTRL_FJOIN_RX_GET : 0U) |
+                    ((((uint32_t)join & 8U) != 0U) ? PIO_SM_SHIFTCTRL_FJOIN_RX_PUT : 0U);
+#else
   osalDbgCheck((cfgp != NULL) && ((uint32_t)join <= RP_PIO_FIFO_JOIN_RX));
 
   cfgp->shiftctrl = (cfgp->shiftctrl & ~(PIO_SM_SHIFTCTRL_FJOIN_TX |
                                          PIO_SM_SHIFTCTRL_FJOIN_RX)) |
                     ((join == RP_PIO_FIFO_JOIN_TX) ? PIO_SM_SHIFTCTRL_FJOIN_TX : 0U) |
                     ((join == RP_PIO_FIFO_JOIN_RX) ? PIO_SM_SHIFTCTRL_FJOIN_RX : 0U);
+#endif
 }
 
 /**
