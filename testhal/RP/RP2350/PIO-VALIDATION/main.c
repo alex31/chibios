@@ -59,6 +59,12 @@
  * 11. PIO IRQ flags: pioIrqForceX and pioIrqClearX must assert and
  *    clear the flags pioIrqGetX reads, for host-forced and SM-raised
  *    flags alike.
+ * 12. FIFO join modes: the builder must produce the documented TX FIFO
+ *    depths for the classic modes and (RP2350) program exactly the
+ *    FJOIN_RX_GET/FJOIN_RX_PUT bits for the register-file modes.
+ *    (Test numbers 11..14 are allocated across the four parallel API
+ *    PRs; this branch carries only its own test, the siblings land
+ *    with theirs.)
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default
@@ -869,6 +875,84 @@ int main(void) {
   pioIrqClearX(block, 0x08U);
   report("SM-raised flag cleared", pioIrqGetX(block) == 0U);
 
+  pioSmFree(smp);
+
+  /*
+   * Test 12: FIFO joining modes.
+   */
+  chprintf(chp, "--- Test 12: FIFO join modes\r\n");
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  /* Classic modes, the SM stays disabled so puts only fill the FIFO:
+     4 words unjoined, 8 words joined.*/
+  pioSmConfigDefaultX(&cfg);
+  pioSmConfigSetFifoJoinX(&cfg, RP_PIO_FIFO_JOIN_NONE);
+  pioSmSetConfigX(smp, &cfg);
+  pioSmClearFifosX(smp);
+  for (i = 0U; (i < 16U) && !pioSmIsTxFullX(smp); i++) {
+    pioSmPutX(smp, i);
+  }
+  report("unjoined TX FIFO holds 4 words", i == 4U);
+
+  pioSmConfigSetFifoJoinX(&cfg, RP_PIO_FIFO_JOIN_TX);
+  pioSmSetConfigX(smp, &cfg);           /* Mode change flushes.*/
+  for (i = 0U; (i < 16U) && !pioSmIsTxFullX(smp); i++) {
+    pioSmPutX(smp, i);
+  }
+  report("joined TX FIFO holds 8 words", i == 8U);
+
+#if defined(RP2350)
+  /* RP2350 register-file modes: the builder must program exactly the
+     matching FJOIN bits and the TX FIFO depth returns to 4.*/
+  pioSmConfigSetFifoJoinX(&cfg, RP_PIO_FIFO_JOIN_TXGET);
+  pioSmSetConfigX(smp, &cfg);
+  report("TXGET programs FJOIN_RX_GET only",
+         (block->pio->SM[smp->smidx].SHIFTCTRL &
+          (PIO_SM_SHIFTCTRL_FJOIN_TX | PIO_SM_SHIFTCTRL_FJOIN_RX |
+           PIO_SM_SHIFTCTRL_FJOIN_RX_GET |
+           PIO_SM_SHIFTCTRL_FJOIN_RX_PUT)) ==
+         PIO_SM_SHIFTCTRL_FJOIN_RX_GET);
+
+  pioSmConfigSetFifoJoinX(&cfg, RP_PIO_FIFO_JOIN_TXPUT);
+  pioSmSetConfigX(smp, &cfg);
+  report("TXPUT programs FJOIN_RX_PUT only",
+         (block->pio->SM[smp->smidx].SHIFTCTRL &
+          (PIO_SM_SHIFTCTRL_FJOIN_TX | PIO_SM_SHIFTCTRL_FJOIN_RX |
+           PIO_SM_SHIFTCTRL_FJOIN_RX_GET |
+           PIO_SM_SHIFTCTRL_FJOIN_RX_PUT)) ==
+         PIO_SM_SHIFTCTRL_FJOIN_RX_PUT);
+
+  pioSmConfigSetFifoJoinX(&cfg, RP_PIO_FIFO_JOIN_PUTGET);
+  pioSmSetConfigX(smp, &cfg);
+  report("PUTGET programs both RX bits",
+         (block->pio->SM[smp->smidx].SHIFTCTRL &
+          (PIO_SM_SHIFTCTRL_FJOIN_TX | PIO_SM_SHIFTCTRL_FJOIN_RX |
+           PIO_SM_SHIFTCTRL_FJOIN_RX_GET |
+           PIO_SM_SHIFTCTRL_FJOIN_RX_PUT)) ==
+         (PIO_SM_SHIFTCTRL_FJOIN_RX_GET |
+          PIO_SM_SHIFTCTRL_FJOIN_RX_PUT));
+
+  for (i = 0U; (i < 16U) && !pioSmIsTxFullX(smp); i++) {
+    pioSmPutX(smp, i);
+  }
+  report("register-file mode keeps TX at 4 words", i == 4U);
+
+  /* Back to a classic mode, the bits must clear again.*/
+  pioSmConfigSetFifoJoinX(&cfg, RP_PIO_FIFO_JOIN_NONE);
+  pioSmSetConfigX(smp, &cfg);
+  report("return to NONE clears all FJOIN bits",
+         (block->pio->SM[smp->smidx].SHIFTCTRL &
+          (PIO_SM_SHIFTCTRL_FJOIN_TX | PIO_SM_SHIFTCTRL_FJOIN_RX |
+           PIO_SM_SHIFTCTRL_FJOIN_RX_GET |
+           PIO_SM_SHIFTCTRL_FJOIN_RX_PUT)) == 0U);
+#endif /* defined(RP2350) */
+
+  pioSmClearFifosX(smp);
   pioSmFree(smp);
 
   /*
