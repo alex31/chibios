@@ -1035,8 +1035,8 @@ __STATIC_INLINE void pioSmDisableInterruptX(const rp_pio_sm_t *smp,
  * @brief   Returns the state of the PIO IRQ flags of a block.
  * @details The eight flags are shared by all state machines of the
  *          block and can be set, cleared and waited on by them.
- * @note    A flag is routed to a system interrupt by enabling its
- *          @p PIO_IRQ_SM() source bit in the per-core IRQn_INTE
+ * @note    Flag @p n is routed to a system interrupt by enabling its
+ *          @p PIO_IRQ_SM(n) source bit in the per-core IRQn_INTE
  *          register, e.g. via @p pioSmEnableInterruptX(). Source bits
  *          exist for flags 0..3 on the RP2040 (INTE bits 11:8) and for
  *          all eight flags on the RP2350 (INTE bits 15:8).
@@ -1050,7 +1050,7 @@ __STATIC_INLINE uint32_t pioIrqGetX(const rp_pio_block_t *block) {
 
   osalDbgCheck(block != NULL);
 
-  return block->pio->IRQ;
+  return block->pio->IRQ & 0xFFU;
 }
 
 /**

@@ -55,6 +55,9 @@
  * 10. PIO IRQ flags: pioIrqForceX and pioIrqClearX must assert and
  *    clear the flags pioIrqGetX reads, for host-forced and SM-raised
  *    flags alike.
+ *    (Test numbers 10..13 are allocated across the four parallel API
+ *    PRs; this branch carries only its own test, the siblings land
+ *    with theirs.)
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default
