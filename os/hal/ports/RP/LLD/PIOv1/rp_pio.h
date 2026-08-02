@@ -310,8 +310,9 @@ typedef struct {
 
 /**
  * @brief   FIFO joining modes.
- * @note    The values match the pico-sdk @p pio_fifo_join encoding: bit 2
- *          maps onto @p FJOIN_RX_GET and bit 3 onto @p FJOIN_RX_PUT.
+ * @note    The values match the pico-sdk @p pio_fifo_join encoding:
+ *          bit 2 maps onto @p PIO_SM_SHIFTCTRL_FJOIN_RX_GET and bit 3
+ *          onto @p PIO_SM_SHIFTCTRL_FJOIN_RX_PUT.
  * @note    In the RP2350-only modes the RX FIFO is disabled and its
  *          storage becomes a 4-entry register file; the TX FIFO stays
  *          4 entries deep. "Get" and "put" name the state machine side
