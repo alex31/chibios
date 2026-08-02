@@ -1058,11 +1058,15 @@ __STATIC_INLINE bool pioSmDrainTxFifoX(const rp_pio_sm_t *smp,
     exec_used = true;
   }
 
-  /* A drain instruction that lost the race for the last word against
-     the running program stays latched with EXEC_STALLED set, "pull
-     noblock" never stalls so this only concerns the autopull path.
-     Only a stall caused here is displaced, a stalled instruction
-     exec'd by the caller before entry is left alone.*/
+  /* Exec-based draining inherently overwrites the single INSTR latch,
+     so an instruction the caller had left stalled is already gone
+     after the first drain exec; what can remain latched here is this
+     call's own drain instruction, stalled if the running program won
+     the race for the last word ("pull noblock" never stalls, only the
+     autopull path is concerned). Displace it with a NOP so it cannot
+     fire later and eat a newly written word. The exec_used gate keeps
+     the FIFO-already-empty case from disturbing an unrelated stalled
+     exec, the only case where that is possible.*/
   if (exec_used &&
       ((smp->block->pio->SM[smp->smidx].EXECCTRL &
         PIO_SM_EXECCTRL_EXEC_STALLED) != 0U)) {
