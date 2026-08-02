@@ -856,8 +856,14 @@ int main(void) {
   report("full clear empties the flags", pioIrqGetX(block) == 0U);
 
   /* A flag raised by the state machine ("irq set 3" = 0xC003 exec'd)
-     lands in the same state and clears the same way.*/
+     lands in the same state and clears the same way. The effect of an
+     exec'd instruction is not instantaneous relative to the bus (the
+     latency depends on prior state machine activity), so poll briefly
+     instead of sampling once.*/
   pioSmExecX(smp, 0xC003U);
+  for (i = 0U; (i < 1000U) && ((pioIrqGetX(block) & 0x08U) == 0U); i++) {
+    delay_us(1U);
+  }
   report("SM-raised flag visible", pioIrqGetX(block) == 0x08U);
 
   pioIrqClearX(block, 0x08U);
