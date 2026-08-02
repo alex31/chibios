@@ -56,6 +56,9 @@
  *    autopull states without touching SHIFTCTRL, leave no stalled exec
  *    behind, keep its hands off a stall it did not cause, and
  *    PIO_INSTR_NOP must displace a stalled exec'd instruction.
+ *    (Test numbers 10..13 are allocated across the four parallel API
+ *    PRs; this branch carries only its own test, the siblings land
+ *    with theirs.)
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default
