@@ -52,6 +52,9 @@
  *    clear the pad isolation latch left set by the pad reset state.
  * 9. (RP2350) GPIOBASE window: the builder flow must work with the
  *    GPIO16..47 window through pioGpioToRel.
+ * 10. PIO IRQ flags: pioIrqForceX and pioIrqClearX must assert and
+ *    clear the flags pioIrqGetX reads, for host-forced and SM-raised
+ *    flags alike.
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default
@@ -758,6 +761,41 @@ int main(void) {
   pioSmFree(smp);
   pioProgramUnload(RP_PIO1_BLOCK, sq_off, sqwave_program.length);
 #endif /* RP_PIO_HAS_GPIOBASE == TRUE */
+
+  /*
+   * Test 10: PIO IRQ flag get, clear and force.
+   */
+  chprintf(chp, "--- Test 10: PIO IRQ flags\r\n");
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  report("flags idle on entry", pioIrqGetX(block) == 0U);
+
+  /* Host-forced flags assert into the readable state and clear through
+     the W1C register, selectively and in full.*/
+  pioIrqForceX(block, 0x21U);
+  report("forced flags read back", pioIrqGetX(block) == 0x21U);
+
+  pioIrqClearX(block, 0x01U);
+  report("selective clear leaves the other flag",
+         pioIrqGetX(block) == 0x20U);
+
+  pioIrqClearX(block, 0xFFU);
+  report("full clear empties the flags", pioIrqGetX(block) == 0U);
+
+  /* A flag raised by the state machine ("irq set 3" = 0xC003 exec'd)
+     lands in the same state and clears the same way.*/
+  pioSmExecX(smp, 0xC003U);
+  report("SM-raised flag visible", pioIrqGetX(block) == 0x08U);
+
+  pioIrqClearX(block, 0x08U);
+  report("SM-raised flag cleared", pioIrqGetX(block) == 0U);
+
+  pioSmFree(smp);
 
   /*
    * Summary.
