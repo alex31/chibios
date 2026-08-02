@@ -55,6 +55,9 @@
  * 11. FIFO join modes: the builder must produce the documented TX FIFO
  *    depths for the classic modes and (RP2350) program exactly the
  *    FJOIN_RX_GET/FJOIN_RX_PUT bits for the register-file modes.
+ *    (Test numbers 10..13 are allocated across the four parallel API
+ *    PRs; this branch carries only its own test, the siblings land
+ *    with theirs.)
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default

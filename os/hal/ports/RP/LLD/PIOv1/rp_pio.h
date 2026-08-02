@@ -689,7 +689,7 @@ __STATIC_INLINE void pioSmConfigSetOutShiftX(rp_pio_sm_config_t *cfgp,
 __STATIC_INLINE void pioSmConfigSetFifoJoinX(rp_pio_sm_config_t *cfgp,
                                             rp_pio_fifo_join_t join) {
 
-#if defined(RP2350)
+#if defined(RP2350) || defined(__DOXYGEN__)
   osalDbgCheck((cfgp != NULL) &&
                (((uint32_t)join <= RP_PIO_FIFO_JOIN_RX) ||
                 (join == RP_PIO_FIFO_JOIN_TXGET) ||
