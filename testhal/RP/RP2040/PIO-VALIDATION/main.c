@@ -57,6 +57,9 @@
  *    trigger), a deterministic residual on a stalled paced transfer,
  *    zero after completion and (RP2350) mask the TRANS_COUNT MODE
  *    field out of a live ENDLESS-mode readback.
+ *    (Test numbers 10..13 are allocated across the four parallel API
+ *    PRs; this branch carries only its own test, the siblings land
+ *    with theirs.)
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default
