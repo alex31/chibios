@@ -52,19 +52,13 @@
  *    clear the pad isolation latch left set by the pad reset state.
  * 9. (RP2350) GPIOBASE window: the builder flow must work with the
  *    GPIO16..47 window through pioGpioToRel.
-<<<<<<< HEAD
- * 10. PIO IRQ flags: pioIrqForceX and pioIrqClearX must assert and
- *    clear the flags pioIrqGetX reads, for host-forced and SM-raised
- *    flags alike.
- *    (Test numbers 10..13 are allocated across the four parallel API
- *    PRs; this branch carries only its own test, the siblings land
- *    with theirs.)
-=======
  * 10. Allocation masks and handles: pioGetSmAllocatedMask must report
  *    the union of both cores' allocations, pioGetImemAllocatedMask
  *    must track program load and unload, and pioGetSmHandleX must
  *    return the same descriptor pointer pioSmAlloc returned.
->>>>>>> origin/master
+ * 11. PIO IRQ flags: pioIrqForceX and pioIrqClearX must assert and
+ *    clear the flags pioIrqGetX reads, for host-forced and SM-raised
+ *    flags alike.
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default
@@ -775,17 +769,11 @@ int main(void) {
 #endif /* RP_PIO_HAS_GPIOBASE == TRUE */
 
   /*
-<<<<<<< HEAD
-   * Test 10: PIO IRQ flag get, clear and force.
-   */
-  chprintf(chp, "--- Test 10: PIO IRQ flags\r\n");
-=======
    * Test 10: allocation masks and state machine handle access.
    */
   chprintf(chp, "--- Test 10: allocation masks and handles\r\n");
 
   report("SM mask empty on idle block", pioGetSmAllocatedMask(block) == 0U);
->>>>>>> origin/master
 
   smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
   report("SM0 allocated", smp != NULL);
@@ -793,31 +781,6 @@ int main(void) {
     goto summary;
   }
 
-<<<<<<< HEAD
-  report("flags idle on entry", pioIrqGetX(block) == 0U);
-
-  /* Host-forced flags assert into the readable state and clear through
-     the W1C register, selectively and in full.*/
-  pioIrqForceX(block, 0x21U);
-  report("forced flags read back", pioIrqGetX(block) == 0x21U);
-
-  pioIrqClearX(block, 0x01U);
-  report("selective clear leaves the other flag",
-         pioIrqGetX(block) == 0x20U);
-
-  pioIrqClearX(block, 0xFFU);
-  report("full clear empties the flags", pioIrqGetX(block) == 0U);
-
-  /* A flag raised by the state machine ("irq set 3" = 0xC003 exec'd)
-     lands in the same state and clears the same way.*/
-  pioSmExecX(smp, 0xC003U);
-  report("SM-raised flag visible", pioIrqGetX(block) == 0x08U);
-
-  pioIrqClearX(block, 0x08U);
-  report("SM-raised flag cleared", pioIrqGetX(block) == 0U);
-
-  pioSmFree(smp);
-=======
   report("SM mask reports the core 0 allocation",
          pioGetSmAllocatedMask(block) == 1U);
   report("handle equals the allocation-time pointer",
@@ -866,7 +829,41 @@ int main(void) {
   pioSmFree(xcore_alloc_smp);
   pioSmFree(smp);
   report("SM mask empty after the frees", pioGetSmAllocatedMask(block) == 0U);
->>>>>>> origin/master
+
+  /*
+   * Test 11: PIO IRQ flag get, clear and force.
+   */
+  chprintf(chp, "--- Test 11: PIO IRQ flags\r\n");
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  report("flags idle on entry", pioIrqGetX(block) == 0U);
+
+  /* Host-forced flags assert into the readable state and clear through
+     the W1C register, selectively and in full.*/
+  pioIrqForceX(block, 0x21U);
+  report("forced flags read back", pioIrqGetX(block) == 0x21U);
+
+  pioIrqClearX(block, 0x01U);
+  report("selective clear leaves the other flag",
+         pioIrqGetX(block) == 0x20U);
+
+  pioIrqClearX(block, 0xFFU);
+  report("full clear empties the flags", pioIrqGetX(block) == 0U);
+
+  /* A flag raised by the state machine ("irq set 3" = 0xC003 exec'd)
+     lands in the same state and clears the same way.*/
+  pioSmExecX(smp, 0xC003U);
+  report("SM-raised flag visible", pioIrqGetX(block) == 0x08U);
+
+  pioIrqClearX(block, 0x08U);
+  report("SM-raised flag cleared", pioIrqGetX(block) == 0U);
+
+  pioSmFree(smp);
 
   /*
    * Summary.
