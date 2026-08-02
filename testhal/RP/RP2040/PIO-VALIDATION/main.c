@@ -56,6 +56,9 @@
  *    the union of both cores' allocations, pioGetImemAllocatedMask
  *    must track program load and unload, and pioGetSmHandleX must
  *    return the same descriptor pointer pioSmAlloc returned.
+ * 11. PIO IRQ flags: pioIrqForceX and pioIrqClearX must assert and
+ *    clear the flags pioIrqGetX reads, for host-forced and SM-raised
+ *    flags alike.
  * 12. FIFO join modes: the builder must produce the documented TX FIFO
  *    depths for the classic modes and (RP2350) program exactly the
  *    FJOIN_RX_GET/FJOIN_RX_PUT bits for the register-file modes.
@@ -841,6 +844,47 @@ int main(void) {
   pioSmFree(xcore_alloc_smp);
   pioSmFree(smp);
   report("SM mask empty after the frees", pioGetSmAllocatedMask(block) == 0U);
+
+  /*
+   * Test 11: PIO IRQ flag get, clear and force.
+   */
+  chprintf(chp, "--- Test 11: PIO IRQ flags\r\n");
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  report("flags idle on entry", pioIrqGetX(block) == 0U);
+
+  /* Host-forced flags assert into the readable state and clear through
+     the W1C register, selectively and in full.*/
+  pioIrqForceX(block, 0x21U);
+  report("forced flags read back", pioIrqGetX(block) == 0x21U);
+
+  pioIrqClearX(block, 0x01U);
+  report("selective clear leaves the other flag",
+         pioIrqGetX(block) == 0x20U);
+
+  pioIrqClearX(block, 0xFFU);
+  report("full clear empties the flags", pioIrqGetX(block) == 0U);
+
+  /* A flag raised by the state machine ("irq set 3" = 0xC003 exec'd)
+     lands in the same state and clears the same way. The effect of an
+     exec'd instruction is not instantaneous relative to the bus (the
+     latency depends on prior state machine activity), so poll briefly
+     instead of sampling once.*/
+  pioSmExecX(smp, 0xC003U);
+  for (i = 0U; (i < 1000U) && ((pioIrqGetX(block) & 0x08U) == 0U); i++) {
+    delay_us(1U);
+  }
+  report("SM-raised flag visible", pioIrqGetX(block) == 0x08U);
+
+  pioIrqClearX(block, 0x08U);
+  report("SM-raised flag cleared", pioIrqGetX(block) == 0U);
+
+  pioSmFree(smp);
 
   /*
    * Test 12: FIFO joining modes.

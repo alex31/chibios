@@ -1201,6 +1201,68 @@ __STATIC_INLINE void pioSmDisableInterruptX(const rp_pio_sm_t *smp,
 }
 
 /**
+ * @brief   Returns the state of the PIO IRQ flags of a block.
+ * @details The eight flags are shared by all state machines of the
+ *          block and can be set, cleared and waited on by them.
+ * @note    Flag @p n is routed to a system interrupt by enabling its
+ *          @p PIO_IRQ_SM(n) source bit in the per-core IRQn_INTE
+ *          register, e.g. via @p pioSmEnableInterruptX(). Source bits
+ *          exist for flags 0..3 on the RP2040 (INTE bits 11:8) and for
+ *          all eight flags on the RP2350 (INTE bits 15:8).
+ *
+ * @param[in] block     pointer to the PIO block descriptor
+ * @return              The IRQ flags state in bits 0..7.
+ *
+ * @special
+ */
+__STATIC_INLINE uint32_t pioIrqGetX(const rp_pio_block_t *block) {
+
+  osalDbgCheck(block != NULL);
+
+  return block->pio->IRQ & 0xFFU;
+}
+
+/**
+ * @brief   Clears PIO IRQ flags of a block.
+ * @note    Flags asserted by @p pioIrqForceX() live in the same
+ *          internal state as flags raised by a state machine and are
+ *          cleared the same way.
+ *
+ * @param[in] block     pointer to the PIO block descriptor
+ * @param[in] mask      mask of flags to be cleared, bits 0..7
+ *
+ * @special
+ */
+__STATIC_INLINE void pioIrqClearX(const rp_pio_block_t *block,
+                                  uint32_t mask) {
+
+  osalDbgCheck((block != NULL) && ((mask & ~0xFFU) == 0U));
+
+  block->pio->IRQ = mask;
+}
+
+/**
+ * @brief   Forces PIO IRQ flags of a block.
+ * @details Asserts the flags in the PIO internal state: they become
+ *          visible to WAIT and IRQ instructions and, where routed, to
+ *          the system interrupts, exactly as if raised by a state
+ *          machine. This is distinct from the INTF test facility which
+ *          only asserts the processor-facing interrupt signal.
+ *
+ * @param[in] block     pointer to the PIO block descriptor
+ * @param[in] mask      mask of flags to be forced, bits 0..7
+ *
+ * @special
+ */
+__STATIC_INLINE void pioIrqForceX(const rp_pio_block_t *block,
+                                  uint32_t mask) {
+
+  osalDbgCheck((block != NULL) && ((mask & ~0xFFU) == 0U));
+
+  block->pio->IRQ_FORCE = mask;
+}
+
+/**
  * @brief   Writes a word to the TX FIFO, blocking while full.
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
