@@ -62,9 +62,18 @@
  * 12. FIFO join modes: the builder must produce the documented TX FIFO
  *    depths for the classic modes and (RP2350) program exactly the
  *    FJOIN_RX_GET/FJOIN_RX_PUT bits for the register-file modes.
+ * 13. DMA counter: dmaChannelGetCounterX must read the live transfer
+ *    counter (a write is reload-only and must not show before the next
+ *    trigger), a deterministic residual on a stalled paced transfer,
+ *    zero after completion and (RP2350) mask the TRANS_COUNT MODE
+ *    field out of a live ENDLESS-mode readback.
  *    (Test numbers 11..14 are allocated across the four parallel API
  *    PRs; this branch carries only its own test, the siblings land
  *    with theirs.)
+ * 14. TX FIFO drain: pioSmDrainTxFifoX must empty the TX FIFO in both
+ *    autopull states without touching SHIFTCTRL, leave no stalled exec
+ *    behind, keep its hands off a stall it did not cause, and
+ *    PIO_INSTR_NOP must displace a stalled exec'd instruction.
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default
@@ -952,6 +961,152 @@ int main(void) {
            PIO_SM_SHIFTCTRL_FJOIN_RX_PUT)) == 0U);
 #endif /* defined(RP2350) */
 
+  pioSmClearFifosX(smp);
+  pioSmFree(smp);
+
+  /*
+   * Test 13: DMA transfer counter readback.
+   */
+  chprintf(chp, "--- Test 13: DMA counter\r\n");
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  dmachp = dmaChannelAlloc(RP_DMA_CHANNEL_ID_ANY, TEST_IRQ_PRIORITY,
+                           NULL, NULL);
+  report("SM0 and DMA channel allocated",
+         (smp != NULL) && (dmachp != NULL));
+  if ((smp == NULL) || (dmachp == NULL)) {
+    goto summary;
+  }
+
+  /* Idle channel: a write sets the reload value only, the live counter
+     the getter reads must not move until the next trigger.*/
+  lvl = dmaChannelGetCounterX(dmachp);
+  dmaChannelSetCounterX(dmachp, DMA_WORDS);
+  report("write leaves the live counter untouched",
+         dmaChannelGetCounterX(dmachp) == lvl);
+
+  /* Paced partial transfer: the TX DREQ of a disabled state machine
+     stops after filling the 4-deep FIFO, leaving a deterministic
+     residual.*/
+  for (i = 0U; i < DMA_WORDS; i++) {
+    dma_pattern[i] = i;
+  }
+  pioSmClearFifosX(smp);
+  dmaChannelSetSourceX(dmachp, (uint32_t)dma_pattern);
+  dmaChannelSetDestinationX(dmachp, (uint32_t)pioSmTxFifoAddrX(smp));
+  dmaChannelSetModeX(dmachp,
+                     DMA_CTRL_TRIG_TREQ_SEL(pioSmTxDreqX(smp)) |
+                     DMA_CTRL_TRIG_DATA_SIZE_WORD |
+                     DMA_CTRL_TRIG_INCR_READ);
+  dmaChannelEnableX(dmachp);
+  delay_us(200U);
+  lvl = dmaChannelGetCounterX(dmachp);
+  chprintf(chp, "      residual: %u\r\n", lvl);
+  report("residual equals words minus FIFO depth",
+         lvl == (DMA_WORDS - 4U));
+
+  /* The abort must terminate the sequence; the post-abort counter value
+     is hardware policy, printed for the record only.*/
+  dmaChannelDisableX(dmachp);
+  chprintf(chp, "      after abort: %u\r\n", dmaChannelGetCounterX(dmachp));
+  report("abort leaves the channel idle", !dmaChannelIsBusyX(dmachp));
+
+  /* Completed sequence: free the FIFO space and run 4 words to the
+     end, the live counter reads zero.*/
+  pioSmClearFifosX(smp);
+  dmaChannelSetSourceX(dmachp, (uint32_t)dma_pattern);
+  dmaChannelSetCounterX(dmachp, 4U);
+  dmaChannelEnableX(dmachp);
+  for (i = 0U; (i < 1000U) && dmaChannelIsBusyX(dmachp); i++) {
+    delay_us(100U);
+  }
+  report("sequence completes", !dmaChannelIsBusyX(dmachp));
+  report("completed sequence reads zero",
+         dmaChannelGetCounterX(dmachp) == 0U);
+
+#if defined(RP2350)
+  /* MODE-field masking on a live value: reload ENDLESS mode plus a
+     count and trigger against the full FIFO of the disabled state
+     machine. No DREQ credit exists, so no transfer happens and the
+     loaded value stays live with the MODE bits set; the getter must
+     return the bare count.*/
+  for (i = 0U; (i < 8U) && !pioSmIsTxFullX(smp); i++) {
+    pioSmPutX(smp, 0U);
+  }
+  dmachp->channel->TRANS_COUNT = DMA_TRANS_COUNT_MODE_Msk | 123U;
+  dmaChannelEnableX(dmachp);
+  report("live MODE bits are set",
+         (dmachp->channel->TRANS_COUNT & DMA_TRANS_COUNT_MODE_Msk) ==
+         DMA_TRANS_COUNT_MODE_Msk);
+  report("MODE field masked out of the readback",
+         dmaChannelGetCounterX(dmachp) == 123U);
+  dmaChannelDisableX(dmachp);
+  dmaChannelSetCounterX(dmachp, 0U);
+#endif /* defined(RP2350) */
+
+  dmaChannelFree(dmachp);
+  pioSmClearFifosX(smp);
+  pioSmFree(smp);
+
+  /*
+   * Test 14: TX FIFO drain.
+   */
+  chprintf(chp, "--- Test 14: TX FIFO drain\r\n");
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  /* Non-autopull path: "pull noblock" per word, SM disabled.*/
+  pioSmConfigDefaultX(&cfg);
+  pioSmSetConfigX(smp, &cfg);
+  pioSmClearFifosX(smp);
+  pioSmRestartX(smp);
+  for (i = 0U; i < 4U; i++) {
+    pioSmPutX(smp, i);
+  }
+  lvl = block->pio->SM[smp->smidx].SHIFTCTRL;
+  report("plain drain returns true", pioSmDrainTxFifoX(smp, 16U));
+  report("TX FIFO empty after plain drain", pioSmIsTxEmptyX(smp));
+  report("SHIFTCTRL untouched by the drain",
+         block->pio->SM[smp->smidx].SHIFTCTRL == lvl);
+
+  /* Autopull path: "out null, 32" per word.*/
+  pioSmConfigSetOutShiftX(&cfg, true, true, 32U);
+  pioSmSetConfigX(smp, &cfg);
+  pioSmRestartX(smp);
+  for (i = 0U; i < 4U; i++) {
+    pioSmPutX(smp, 0xA5A5A5A5U);
+  }
+  report("autopull drain returns true", pioSmDrainTxFifoX(smp, 16U));
+  report("TX FIFO empty after autopull drain", pioSmIsTxEmptyX(smp));
+  report("no stalled exec left behind",
+         (block->pio->SM[smp->smidx].EXECCTRL &
+          PIO_SM_EXECCTRL_EXEC_STALLED) == 0U);
+
+  /* Stall handling primitives: on an empty FIFO with an empty OSR a
+     manually exec'd "out null, 32" stalls; the empty-FIFO drain leaves
+     the caller's stall alone (exec_used gate) and PIO_INSTR_NOP
+     displaces it.*/
+  pioSmClearFifosX(smp);
+  pioSmRestartX(smp);
+  pioSmExecX(smp, PIO_INSTR_OUT_NULL_32);
+  report("manual out stalls on the empty FIFO",
+         (block->pio->SM[smp->smidx].EXECCTRL &
+          PIO_SM_EXECCTRL_EXEC_STALLED) != 0U);
+  report("empty-FIFO drain succeeds trivially",
+         pioSmDrainTxFifoX(smp, 4U));
+  report("caller's stall left alone",
+         (block->pio->SM[smp->smidx].EXECCTRL &
+          PIO_SM_EXECCTRL_EXEC_STALLED) != 0U);
+  pioSmExecX(smp, PIO_INSTR_NOP);
+  report("NOP displaces the stalled exec",
+         (block->pio->SM[smp->smidx].EXECCTRL &
+          PIO_SM_EXECCTRL_EXEC_STALLED) == 0U);
+
+  pioSmRestartX(smp);
   pioSmClearFifosX(smp);
   pioSmFree(smp);
 
