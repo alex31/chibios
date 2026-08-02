@@ -52,6 +52,10 @@
  *    clear the pad isolation latch left set by the pad reset state.
  * 9. (RP2350) GPIOBASE window: the builder flow must work with the
  *    GPIO16..47 window through pioGpioToRel.
+ * 13. TX FIFO drain: pioSmDrainTxFifoX must empty the TX FIFO in both
+ *    autopull states without touching SHIFTCTRL, leave no stalled exec
+ *    behind, keep its hands off a stall it did not cause, and
+ *    PIO_INSTR_NOP must displace a stalled exec'd instruction.
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default
@@ -758,6 +762,68 @@ int main(void) {
   pioSmFree(smp);
   pioProgramUnload(RP_PIO1_BLOCK, sq_off, sqwave_program.length);
 #endif /* RP_PIO_HAS_GPIOBASE == TRUE */
+
+  /*
+   * Test 13: TX FIFO drain.
+   */
+  chprintf(chp, "--- Test 13: TX FIFO drain\r\n");
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  /* Non-autopull path: "pull noblock" per word, SM disabled.*/
+  pioSmConfigDefaultX(&cfg);
+  pioSmSetConfigX(smp, &cfg);
+  pioSmClearFifosX(smp);
+  pioSmRestartX(smp);
+  for (i = 0U; i < 4U; i++) {
+    pioSmPutX(smp, i);
+  }
+  lvl = block->pio->SM[smp->smidx].SHIFTCTRL;
+  report("plain drain returns true", pioSmDrainTxFifoX(smp, 16U));
+  report("TX FIFO empty after plain drain", pioSmIsTxEmptyX(smp));
+  report("SHIFTCTRL untouched by the drain",
+         block->pio->SM[smp->smidx].SHIFTCTRL == lvl);
+
+  /* Autopull path: "out null, 32" per word.*/
+  pioSmConfigSetOutShiftX(&cfg, true, true, 32U);
+  pioSmSetConfigX(smp, &cfg);
+  pioSmRestartX(smp);
+  for (i = 0U; i < 4U; i++) {
+    pioSmPutX(smp, 0xA5A5A5A5U);
+  }
+  report("autopull drain returns true", pioSmDrainTxFifoX(smp, 16U));
+  report("TX FIFO empty after autopull drain", pioSmIsTxEmptyX(smp));
+  report("no stalled exec left behind",
+         (block->pio->SM[smp->smidx].EXECCTRL &
+          PIO_SM_EXECCTRL_EXEC_STALLED) == 0U);
+
+  /* Stall handling primitives: on an empty FIFO with an empty OSR a
+     manually exec'd "out null, 32" stalls; the empty-FIFO drain leaves
+     the caller's stall alone (exec_used gate) and PIO_INSTR_NOP
+     displaces it.*/
+  pioSmClearFifosX(smp);
+  pioSmRestartX(smp);
+  pioSmExecX(smp, PIO_INSTR_OUT_NULL_32);
+  report("manual out stalls on the empty FIFO",
+         (block->pio->SM[smp->smidx].EXECCTRL &
+          PIO_SM_EXECCTRL_EXEC_STALLED) != 0U);
+  report("empty-FIFO drain succeeds trivially",
+         pioSmDrainTxFifoX(smp, 4U));
+  report("caller's stall left alone",
+         (block->pio->SM[smp->smidx].EXECCTRL &
+          PIO_SM_EXECCTRL_EXEC_STALLED) != 0U);
+  pioSmExecX(smp, PIO_INSTR_NOP);
+  report("NOP displaces the stalled exec",
+         (block->pio->SM[smp->smidx].EXECCTRL &
+          PIO_SM_EXECCTRL_EXEC_STALLED) == 0U);
+
+  pioSmRestartX(smp);
+  pioSmClearFifosX(smp);
+  pioSmFree(smp);
 
   /*
    * Summary.
