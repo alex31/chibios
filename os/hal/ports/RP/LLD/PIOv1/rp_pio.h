@@ -1010,7 +1010,9 @@ __STATIC_INLINE void pioSmClearFifosX(const rp_pio_sm_t *smp) {
  * @details Discards the TX FIFO content by executing instructions on
  *          the state machine: an "out null, 32" per word with autopull
  *          enabled, a "pull noblock" per word otherwise (the pico-sdk
- *          drain sequence). The OSR content is disturbed either way.
+ *          drain sequence). Any executed drain instruction disturbs
+ *          the OSR content; a call finding the FIFO already empty
+ *          executes nothing and leaves the OSR alone.
  * @note    Unlike @p pioSmClearFifosX() the RX FIFO and the FIFO
  *          joining state are not touched.
  * @note    A running state machine program, or another agent writing
