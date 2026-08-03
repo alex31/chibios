@@ -166,6 +166,10 @@ typedef void (*thread_dispose_t)(thread_t *tp);
 struct ch_thread {
   /**
    * @brief   Shared list headers.
+   * @note    This union must remain the first field in @p thread_t because
+   *          queue and list pointers are converted by @p threadref().
+   * @note    The @p pqueue priority field must not overlap the @p queue link
+   *          fields because the priority remains valid in all queued states.
    */
   union {
     /**
@@ -284,16 +288,24 @@ struct ch_thread {
     thread_reference_t          *wttrp;
 #if (CH_CFG_USE_SEMAPHORES == TRUE) || defined(__DOXYGEN__)
     /**
-     * @brief   Pointer to a generic semaphore object.
+     * @brief   Pointer to a semaphore object.
      * @note    This field is used to get a pointer to a synchronization
      *          object and is valid when the thread is in @p CH_STATE_WTSEM
      *          state.
      */
     struct ch_semaphore         *wtsemp;
 #endif
+#if (CH_CFG_USE_CONDVARS == TRUE) || defined(__DOXYGEN__)
+    /**
+     * @brief   Pointer to a condition variable object.
+     * @note    This field is valid when the thread is in @p CH_STATE_WTCOND
+     *          state.
+     */
+    struct condition_variable   *wtcondp;
+#endif
 #if (CH_CFG_USE_MUTEXES == TRUE) || defined(__DOXYGEN__)
     /**
-     * @brief   Pointer to a generic mutex object.
+     * @brief   Pointer to a mutex object.
      * @note    This field is used to get a pointer to a synchronization
      *          object and is valid when the thread is in @p CH_STATE_WTMTX
      *          state.
