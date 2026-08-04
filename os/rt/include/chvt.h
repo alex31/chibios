@@ -212,7 +212,7 @@ static inline bool chVTIsSystemTimeWithin(systime_t start, systime_t end) {
 /**
  * @brief   Returns the time interval until the next timer event.
  * @note    The return value is not perfectly accurate and can report values
- *          in excess of @p CH_CFG_ST_TIMEDELTA ticks.
+ *          in excess of the current tickless delta setting.
  * @note    The interval returned by this function is only meaningful if
  *          more timers are not added to the list until the returned time.
  *
@@ -239,8 +239,27 @@ static inline bool chVTGetTimersStateI(sysinterval_t *timep) {
 #if CH_CFG_ST_TIMEDELTA == 0
     *timep = dlp->next->delta;
 #else
-    *timep = (dlp->next->delta + (sysinterval_t)CH_CFG_ST_TIMEDELTA) -
-             chTimeDiffX(vtlp->lasttime, chVTGetSystemTimeX());
+    sysinterval_t delta;
+    sysinterval_t nowdelta;
+
+    /* Tolerated deadline with saturation at the maximum interval.*/
+    if (dlp->next->delta > TIME_INFINITE - vtlp->lastdelta) {
+      delta = TIME_INFINITE;
+    }
+    else {
+      delta = dlp->next->delta + vtlp->lastdelta;
+    }
+
+    /* Remaining interval with saturation at zero.*/
+    nowdelta = chTimeDiffX(vtlp->lasttime, chVTGetSystemTimeX());
+    if (nowdelta >= delta) {
+      delta = (sysinterval_t)0;
+    }
+    else {
+      delta -= nowdelta;
+    }
+
+    *timep = delta;
 #endif
   }
 
@@ -324,6 +343,12 @@ static inline void chVTReset(virtual_timer_t *vtp) {
  *          using the new parameters.
  * @pre     The timer must have been initialized using @p chVTObjectInit()
  *          or @p chVTDoSetI().
+ * @note    In tickless mode, a delay that cannot be represented relative to
+ *          the current timer-list base reports
+ *          @p CH_RFCU_VT_INTERVAL_OVERFLOW and saturates the deadline at
+ *          @p TIME_INFINITE from that base.
+ *          If VT RFCU collection is disabled, a debug assertion is used
+ *          instead.
  *
  * @param[in] vtp       pointer to a @p virtual_timer_t object
  * @param[in] delay     the number of ticks before the operation times out, the
@@ -352,6 +377,12 @@ static inline void chVTSetI(virtual_timer_t *vtp, sysinterval_t delay,
  *          using the new parameters.
  * @pre     The timer must have been initialized using @p chVTObjectInit()
  *          or @p chVTDoSetI().
+ * @note    In tickless mode, a delay that cannot be represented relative to
+ *          the current timer-list base reports
+ *          @p CH_RFCU_VT_INTERVAL_OVERFLOW and saturates the deadline at
+ *          @p TIME_INFINITE from that base.
+ *          If VT RFCU collection is disabled, a debug assertion is used
+ *          instead.
  *
  * @param[in] vtp       pointer to a @p virtual_timer_t object
  * @param[in] delay     the number of ticks before the operation times out, the
@@ -381,6 +412,12 @@ static inline void chVTSet(virtual_timer_t *vtp, sysinterval_t delay,
  *          using the new parameters.
  * @pre     The timer must have been initialized using @p chVTObjectInit()
  *          or @p chVTDoSetI().
+ * @note    In tickless mode, a delay that cannot be represented relative to
+ *          the current timer-list base reports
+ *          @p CH_RFCU_VT_INTERVAL_OVERFLOW and saturates the deadline at
+ *          @p TIME_INFINITE from that base.
+ *          If VT RFCU collection is disabled, a debug assertion is used
+ *          instead.
  *
  * @param[in] vtp       pointer to a @p virtual_timer_t object
  * @param[in] delay     the number of ticks before the operation times out, the
@@ -389,8 +426,7 @@ static inline void chVTSet(virtual_timer_t *vtp, sysinterval_t delay,
  *                        normal time specification.
  *                      - @a TIME_IMMEDIATE this value is not allowed.
  * @param[in] vtfunc    the timer callback function. After invoking the
- *                      callback the timer is disabled and the structure can
- *                      be disposed or reused.
+ *                      callback the timer is restarted.
  * @param[in] par       a parameter that will be passed to the callback
  *                      function
  *
@@ -409,6 +445,12 @@ static inline void chVTSetContinuousI(virtual_timer_t *vtp, sysinterval_t delay,
  *          using the new parameters.
  * @pre     The timer must have been initialized using @p chVTObjectInit()
  *          or @p chVTDoSetI().
+ * @note    In tickless mode, a delay that cannot be represented relative to
+ *          the current timer-list base reports
+ *          @p CH_RFCU_VT_INTERVAL_OVERFLOW and saturates the deadline at
+ *          @p TIME_INFINITE from that base.
+ *          If VT RFCU collection is disabled, a debug assertion is used
+ *          instead.
  *
  * @param[in] vtp       pointer to a @p virtual_timer_t object
  * @param[in] delay     the number of ticks before the operation times out, the
@@ -417,8 +459,7 @@ static inline void chVTSetContinuousI(virtual_timer_t *vtp, sysinterval_t delay,
  *                        normal time specification.
  *                      - @a TIME_IMMEDIATE this value is not allowed.
  * @param[in] vtfunc    the timer callback function. After invoking the
- *                      callback the timer is disabled and the structure can
- *                      be disposed or reused.
+ *                      callback the timer is restarted.
  * @param[in] par       a parameter that will be passed to the callback
  *                      function
  *
@@ -447,8 +488,10 @@ static inline sysinterval_t chVTGetReloadIntervalX(virtual_timer_t *vtp) {
 
 /**
  * @brief   Changes a timer reload time interval.
- * @note    This function is meant to be called from a timer callback, it
- *          does nothing in any other context.
+ * @pre     This function must only be called from the callback invoked for
+ *          @p vtp.
+ * @note    A zero reload value suppresses automatic reload when the callback
+ *          returns.
  * @note    Calling this function from a one-shot timer callback turns it
  *          into a continuous timer.
  *
@@ -513,15 +556,21 @@ static inline void chVTResetTimeStamp(void) {
  *          condition is also reported in the RFCU.
  *
  * @return              The current delta setting.
+ *
+ * @api
  */
 static inline sysinterval_t chVTGetCurrentDelta(void) {
 
 #if CH_CFG_ST_TIMEDELTA == 0
   return (sysinterval_t)CH_CFG_ST_TIMEDELTA;
 #else
-  virtual_timers_list_t *vtlp = &currcore->vtlist;
+  sysinterval_t delta;
 
-  return vtlp->lastdelta;
+  chSysLock();
+  delta = currcore->vtlist.lastdelta;
+  chSysUnlock();
+
+  return delta;
 #endif
 }
 
