@@ -467,6 +467,14 @@
 #define rccEnableI2C4(lp) rccEnableAPB1R2(RCC_APB1ENR2_I2C4EN, lp)
 #define rccDisableI2C4() rccDisableAPB1R2(RCC_APB1ENR2_I2C4EN)
 #define rccResetI2C4() rccResetAPB1R2(RCC_APB1RSTR2_I2C4RST)
+
+#define rccEnableI2C5(lp) rccEnableAPB1R2(RCC_APB1ENR2_I2C5EN, lp)
+#define rccDisableI2C5() rccDisableAPB1R2(RCC_APB1ENR2_I2C5EN)
+#define rccResetI2C5() rccResetAPB1R2(RCC_APB1RSTR2_I2C5RST)
+
+#define rccEnableI2C6(lp) rccEnableAPB1R2(RCC_APB1ENR2_I2C6EN, lp)
+#define rccDisableI2C6() rccDisableAPB1R2(RCC_APB1ENR2_I2C6EN)
+#define rccResetI2C6() rccResetAPB1R2(RCC_APB1RSTR2_I2C6RST)
 /** @} */
 
 /**

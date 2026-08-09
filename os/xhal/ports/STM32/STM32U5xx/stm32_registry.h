@@ -181,12 +181,22 @@
 #define STM32_DMA3_REQ_LPTIM3_IC2           112U
 #define STM32_DMA3_REQ_LPTIM3_UE            113U
 #define STM32_DMA3_REQ_RESERVED114          114U
+#if defined(STM32U595xx) || defined(STM32U599xx) || defined(STM32U5A5xx) || \
+    defined(STM32U5A9xx) || defined(__DOXYGEN__)
+#define STM32_DMA3_REQ_I2C5_RX              115U
+#define STM32_DMA3_REQ_I2C5_TX              116U
+#define STM32_DMA3_REQ_I2C5_EVC             117U
+#define STM32_DMA3_REQ_I2C6_RX              118U
+#define STM32_DMA3_REQ_I2C6_TX              119U
+#define STM32_DMA3_REQ_I2C6_EVC             120U
+#else
 #define STM32_DMA3_REQ_RESERVED115          115U
 #define STM32_DMA3_REQ_RESERVED116          116U
 #define STM32_DMA3_REQ_RESERVED117          117U
 #define STM32_DMA3_REQ_RESERVED118          118U
 #define STM32_DMA3_REQ_RESERVED119          119U
 #define STM32_DMA3_REQ_RESERVED120          120U
+#endif
 #define STM32_DMA3_REQ_RESERVED121          121U
 #define STM32_DMA3_REQ_RESERVED122          122U
 #if defined(STM32U595xx) || defined(STM32U599xx) || defined(STM32U5A5xx) || \

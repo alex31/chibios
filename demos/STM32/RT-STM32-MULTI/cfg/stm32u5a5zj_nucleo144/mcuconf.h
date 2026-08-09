@@ -260,6 +260,8 @@
 #define STM32_IRQ_I2C2_PRIORITY             5
 #define STM32_IRQ_I2C3_PRIORITY             5
 #define STM32_IRQ_I2C4_PRIORITY             5
+#define STM32_IRQ_I2C5_PRIORITY             5
+#define STM32_IRQ_I2C6_PRIORITY             5
 
 #define STM32_IRQ_SPI1_PRIORITY             10
 #define STM32_IRQ_SPI2_PRIORITY             10
@@ -348,16 +350,22 @@
 #define STM32_I2C_USE_I2C2                  FALSE
 #define STM32_I2C_USE_I2C3                  FALSE
 #define STM32_I2C_USE_I2C4                  FALSE
+#define STM32_I2C_USE_I2C5                  FALSE
+#define STM32_I2C_USE_I2C6                  FALSE
 #define STM32_I2C_BUSY_TIMEOUT              50
 #define STM32_I2C_USE_DMA                   TRUE
 #define STM32_I2C_I2C1_DMA_PRIORITY         1
 #define STM32_I2C_I2C2_DMA_PRIORITY         1
 #define STM32_I2C_I2C3_DMA_PRIORITY         1
 #define STM32_I2C_I2C4_DMA_PRIORITY         1
+#define STM32_I2C_I2C5_DMA_PRIORITY         1
+#define STM32_I2C_I2C6_DMA_PRIORITY         1
 #define STM32_I2C_I2C1_DMA3_CHANNEL         STM32_DMA3_MASK_FIFO2
 #define STM32_I2C_I2C2_DMA3_CHANNEL         STM32_DMA3_MASK_FIFO2
 #define STM32_I2C_I2C3_DMA3_CHANNEL         STM32_DMA3_MASK_FIFO2
 #define STM32_I2C_I2C4_DMA3_CHANNEL         STM32_DMA3_MASK_FIFO2
+#define STM32_I2C_I2C5_DMA3_CHANNEL         STM32_DMA3_MASK_FIFO2
+#define STM32_I2C_I2C6_DMA3_CHANNEL         STM32_DMA3_MASK_FIFO2
 #define STM32_I2C_DMA_ERROR_HOOK(i2cp)      osalSysHalt("DMA failure")
 
 /*
