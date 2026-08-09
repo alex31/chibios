@@ -19,20 +19,20 @@
 [@pp.dropOutputFile /]
 [#import "/@lib/libutils.ftl" as utils /]
 [#import "/@lib/liblicense.ftl" as license /]
-[@pp.changeOutputFile name="mcuconf.h" /]
+[@pp.changeOutputFile name="xmcuconf.h" /]
 /*
 [@license.EmitLicenseAsText /]
 */
 
-#ifndef MCUCONF_H
-#define MCUCONF_H
+#ifndef XMCUCONF_H
+#define XMCUCONF_H
 
 /*
  * STM32U5xx drivers configuration.
  * The following settings override the default settings present in
  * the various device driver implementation headers.
  * Note that the settings for each driver only have effect if the whole
- * driver is enabled in halconf.h.
+ * driver is enabled in xhalconf.h.
  *
  * IRQ priorities:
  * 15...0       Lowest...Highest.
@@ -41,11 +41,11 @@
  * 0...3        Lowest...Highest.
  */
 
-#define STM32U5xx_MCUCONF
-#define STM32U595_MCUCONF
-#define STM32U599_MCUCONF
-#define STM32U5A5_MCUCONF
-#define STM32U5A9_MCUCONF
+#define STM32U5xx_XMCUCONF
+#define STM32U595_XMCUCONF
+#define STM32U599_XMCUCONF
+#define STM32U5A5_XMCUCONF
+#define STM32U5A9_XMCUCONF
 
 /*
  * HAL driver general settings.
@@ -273,6 +273,8 @@
 #define STM32_IRQ_I2C5_PRIORITY             ${doc.STM32_IRQ_I2C5_PRIORITY!"5"}
 #define STM32_IRQ_I2C6_PRIORITY             ${doc.STM32_IRQ_I2C6_PRIORITY!"5"}
 
+#define STM32_IRQ_ADC1_2_PRIORITY           ${doc.STM32_IRQ_ADC1_2_PRIORITY!"5"}
+
 #define STM32_IRQ_SPI1_PRIORITY             ${doc.STM32_IRQ_SPI1_PRIORITY!"10"}
 #define STM32_IRQ_SPI2_PRIORITY             ${doc.STM32_IRQ_SPI2_PRIORITY!"10"}
 #define STM32_IRQ_SPI3_PRIORITY             ${doc.STM32_IRQ_SPI3_PRIORITY!"10"}
@@ -316,9 +318,6 @@
 #define STM32_ADC_ADC2_DMA3_CHANNEL         ${doc.STM32_ADC_ADC2_DMA3_CHANNEL!"STM32_DMA3_MASK_FIFO2"}
 #define STM32_ADC_ADC1_DMA_PRIORITY         ${doc.STM32_ADC_ADC1_DMA_PRIORITY!"2"}
 #define STM32_ADC_ADC2_DMA_PRIORITY         ${doc.STM32_ADC_ADC2_DMA_PRIORITY!"2"}
-#define STM32_ADC_ADC12_IRQ_PRIORITY        ${doc.STM32_ADC_ADC12_IRQ_PRIORITY!"5"}
-#define STM32_ADC_ADC1_DMA_IRQ_PRIORITY     ${doc.STM32_ADC_ADC1_DMA_IRQ_PRIORITY!"5"}
-#define STM32_ADC_ADC2_DMA_IRQ_PRIORITY     ${doc.STM32_ADC_ADC2_DMA_IRQ_PRIORITY!"5"}
 #define STM32_ADC_ADC12_PRESC               ${doc.STM32_ADC_ADC12_PRESC!"ADC_CCR_PRESC_DIV4"}
 
 /*
@@ -376,7 +375,7 @@
 #define STM32_I2C_I2C4_DMA3_CHANNEL         ${doc.STM32_I2C_I2C4_DMA3_CHANNEL!"STM32_DMA3_MASK_FIFO2"}
 #define STM32_I2C_I2C5_DMA3_CHANNEL         ${doc.STM32_I2C_I2C5_DMA3_CHANNEL!"STM32_DMA3_MASK_FIFO2"}
 #define STM32_I2C_I2C6_DMA3_CHANNEL         ${doc.STM32_I2C_I2C6_DMA3_CHANNEL!"STM32_DMA3_MASK_FIFO2"}
-#define STM32_I2C_DMA_ERROR_HOOK(i2cp)      ${doc.STM32_I2C_DMA_ERROR_HOOK!"osalSysHalt(\"DMA failure\")"}
+#define STM32_I2C_DMA_ERROR_HOOK(i2cp)      ${doc.STM32_I2C_DMA_ERROR_HOOK!"chSysHalt(\"DMA failure\")"}
 
 /*
  * ICU driver system settings.
@@ -485,7 +484,7 @@
 #define STM32_SPI_SPI1_DMA_PRIORITY         ${doc.STM32_SPI_SPI1_DMA_PRIORITY!"1"}
 #define STM32_SPI_SPI2_DMA_PRIORITY         ${doc.STM32_SPI_SPI2_DMA_PRIORITY!"1"}
 #define STM32_SPI_SPI3_DMA_PRIORITY         ${doc.STM32_SPI_SPI3_DMA_PRIORITY!"1"}
-#define STM32_SPI_DMA_ERROR_HOOK(spip)      ${doc.STM32_SPI_DMA_ERROR_HOOK!"osalSysHalt(\"DMA failure\")"}
+#define STM32_SPI_DMA_ERROR_HOOK(spip)      ${doc.STM32_SPI_DMA_ERROR_HOOK!"chSysHalt(\"DMA failure\")"}
 
 /*
  * ST driver system settings.
@@ -522,7 +521,7 @@
 #define STM32_UART_UART4_DMA_PRIORITY       ${doc.STM32_UART_UART4_DMA_PRIORITY!"0"}
 #define STM32_UART_UART5_DMA_PRIORITY       ${doc.STM32_UART_UART5_DMA_PRIORITY!"0"}
 #define STM32_UART_USART6_DMA_PRIORITY      ${doc.STM32_UART_USART6_DMA_PRIORITY!"0"}
-#define STM32_UART_DMA_ERROR_HOOK(uartp)    ${doc.STM32_UART_DMA_ERROR_HOOK!"osalSysHalt(\"DMA failure\")"}
+#define STM32_UART_DMA_ERROR_HOOK(uartp)    ${doc.STM32_UART_DMA_ERROR_HOOK!"chSysHalt(\"DMA failure\")"}
 
 /*
  * USB driver system settings.
@@ -543,4 +542,4 @@
 #define STM32_WSPI_USE_OCTOSPI1             ${doc.STM32_WSPI_USE_OCTOSPI1!"FALSE"}
 #define STM32_WSPI_USE_OCTOSPI2             ${doc.STM32_WSPI_USE_OCTOSPI2!"FALSE"}
 
-#endif /* MCUCONF_H */
+#endif /* XMCUCONF_H */
