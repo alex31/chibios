@@ -156,12 +156,33 @@
  *          again when the transfer terminal event is claimed, its value
  *          is therefore odd exactly while a transfer is in flight with
  *          an unclaimed terminal event. Every terminal path (STOP
- *          completion, transmission abort, transfer stop) claims the
- *          event in a critical section against the live counter and the
- *          raw interrupt state, only the single winner performs the
- *          driver state transition and invokes the wakeup machinery.
- *          This serializes completions, errors and aborts across both
- *          cores, mirroring the SPI driver of this port.
+ *          completion, transmission error, transfer stop, driver stop)
+ *          claims the event in a critical section against the live
+ *          counter, only the single winner terminates the transfer.
+ *          The interrupt service winners perform the driver state
+ *          transition and the waiter resumption inside the claim
+ *          critical section itself, atomically with the claim: the
+ *          shared I-class stop path decides on the driver state and
+ *          wakes the waiter unconditionally under the lock it holds,
+ *          state and generation must therefore never disagree, a
+ *          driver state observed as active always carries an unclaimed
+ *          generation. Losing paths never touch the driver state, the
+ *          buffers or the waiter, they only silence hardware flags.
+ *          This serializes completions, errors and stops across both
+ *          cores.
+ * @note    The @p stop_expected flag is set under the system lock when
+ *          the command carrying the STOP bit is queued, it anchors the
+ *          own-completion evidence used by the STOP detection service:
+ *          the RP silicon latches foreign STOP conditions into the same
+ *          coalescing STOP_DET flag, completion is therefore decided on
+ *          hardware progress evidence and never on the flag itself.
+ * @note    The @p abort_pending flag tracks the asynchronous abort of a
+ *          stopped transfer from its initiation until the abort
+ *          completion interrupt is observed or the ABORT request is
+ *          read back as self-cleared, transfer starts are rejected in
+ *          between: the ACTIVITY status only reflects the current
+ *          transfer state machine state and can read idle while the
+ *          abort is still flushing the FIFO engine.
  */
 #define i2c_lld_driver_fields                                               \
   /* Pointer to the I2Cx registers block.*/                                 \
@@ -176,6 +197,10 @@
   size_t                    rxbytes;                                        \
   /* A repeated START is carried by the next queued read command.*/         \
   bool                      send_restart;                                   \
+  /* The command carrying the STOP bit has been queued.*/                   \
+  bool                      stop_expected;                                  \
+  /* An asynchronous abort is still flushing, starts are gated.*/           \
+  bool                      abort_pending;                                  \
   /* Transfer generation counter, see the structure notes.*/                \
   uint32_t                  tgen
 

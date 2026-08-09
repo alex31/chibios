@@ -47,6 +47,32 @@
  */
 #define I2C_BUS_CLEAR_HALF_PERIOD_US        10U
 
+/**
+ * @brief   Bound of a single SCL rise wait of the bus clear procedure,
+ *          in half period sleeps.
+ * @details A device may legally stretch the SCL low phase, the wait
+ *          therefore paces bounded sleeps instead of sampling once. A
+ *          clock line that does not rise within the bound is considered
+ *          held by a failed device, such a bus cannot be recovered by
+ *          pulsing SCL from this side.
+ */
+#define I2C_BUS_CLEAR_SCL_RISE_CYCLES       100U
+
+/**
+ * @brief   Bound of the controller enable handshake, in status polling
+ *          iterations.
+ * @details The databook bounds the propagation of an enable or disable
+ *          request to the ENABLE_STATUS register to two ic_clk cycles
+ *          for an idle controller, ic_clk being clk_sys on the RP
+ *          ports. The handshake is only ever performed with the
+ *          controller idle, enforced by the transfer start gate. Each
+ *          polling iteration costs at least one APB status read of
+ *          several clk_sys cycles, the bound is therefore orders of
+ *          magnitude above the documented latency and only exhausted by
+ *          misbehaving hardware.
+ */
+#define I2C_ENABLE_HANDSHAKE_ITERATIONS     32U
+
 /*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
@@ -152,13 +178,45 @@ static void i2c_lld_deactivate(hal_i2c_driver_c *i2cp) {
 }
 
 /**
+ * @brief   Waits for the controller enable state to settle.
+ * @details The ENABLE register only carries the request, the effective
+ *          state is reported by the ENABLE_STATUS register after the
+ *          documented propagation latency. Register accesses gated on
+ *          the enable state, first of all the target address register,
+ *          are only legal after the status has confirmed the requested
+ *          state.
+ * @note    Called with the system lock held, the poll is bounded, see
+ *          @p I2C_ENABLE_HANDSHAKE_ITERATIONS.
+ *
+ * @param[in] dp        pointer to the registers block
+ * @param[in] state     expected IC_EN state of the ENABLE_STATUS
+ *                      register
+ * @return              The handshake outcome.
+ * @retval true         if the controller reached the expected state.
+ * @retval false        if the poll bound was exhausted.
+ */
+static bool i2c_lld_wait_enable_state(I2C_TypeDef *dp, uint32_t state) {
+  unsigned i;
+
+  for (i = 0U; i < I2C_ENABLE_HANDSHAKE_ITERATIONS; i++) {
+    if ((dp->ENABLESTATUS & I2C_IC_ENABLE_STATUS_IC_EN) == state) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * @brief   Programs the target address and starts the transfer engine.
  * @details The target address register is gated on the ENABLE register
  *          bit, cycling the enable also flushes both FIFOs from any
- *          residue of a previously aborted transfer. The RP DW_apb_i2c
- *          applies the enable state within two clk_sys cycles, hidden
- *          behind the following register accesses, therefore no
- *          settling wait is required with the controller idle.
+ *          residue of a previously aborted transfer. Both edges of the
+ *          enable cycle are confirmed through the ENABLE_STATUS
+ *          handshake mandated by the databook before the dependent
+ *          accesses are performed: the target address is written only
+ *          on a confirmed disable, the interrupt sources are armed only
+ *          on a confirmed enable.
  * @note    Called with the system lock held. The FIFO engine runs
  *          entirely in the interrupt service: with TX_EMPTY_CTRL
  *          selected the first TX_EMPTY interrupt fires as soon as the
@@ -167,14 +225,31 @@ static void i2c_lld_deactivate(hal_i2c_driver_c *i2cp) {
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
  * @param[in] addr      slave device address
+ * @return              The operation status.
+ * @retval HAL_RET_SUCCESS     if the transfer engine has been started.
+ * @retval HAL_RET_HW_BUSY     if an enable handshake bound was
+ *                             exhausted, the peripheral is left masked
+ *                             and the caller propagates the busy
+ *                             condition.
  */
-static void i2c_lld_setup_transfer(hal_i2c_driver_c *i2cp, i2caddr_t addr) {
+static msg_t i2c_lld_setup_transfer(hal_i2c_driver_c *i2cp, i2caddr_t addr) {
   I2C_TypeDef *dp = i2cp->i2c;
 
-  dp->ENABLE = 0U;
-  dp->TAR = (uint32_t)addr & I2C_IC_TAR_IC_TAR;
+  /* All interrupt sources masked during the setup, this is also the
+     state left behind on a failed handshake.*/
   dp->INTRMASK = 0U;
+
+  dp->ENABLE = 0U;
+  if (!i2c_lld_wait_enable_state(dp, 0U)) {
+    return HAL_RET_HW_BUSY;
+  }
+
+  dp->TAR = (uint32_t)addr & I2C_IC_TAR_IC_TAR;
+
   dp->ENABLE = I2C_IC_ENABLE_ENABLE;
+  if (!i2c_lld_wait_enable_state(dp, I2C_IC_ENABLE_STATUS_IC_EN)) {
+    return HAL_RET_HW_BUSY;
+  }
 
   /* Stale flags cleared, this also releases the TX FIFO from the
      flushed state following an abort.*/
@@ -185,11 +260,58 @@ static void i2c_lld_setup_transfer(hal_i2c_driver_c *i2cp, i2caddr_t addr) {
   dp->INTRMASK = I2C_IC_INTR_MASK_M_STOP_DET |
                  I2C_IC_INTR_MASK_M_TX_EMPTY |
                  I2C_ERROR_INTERRUPTS;
+
+  return HAL_RET_SUCCESS;
+}
+
+/**
+ * @brief   Transfer start gate.
+ * @details A transfer start is rejected while the controller can still
+ *          be processing a previous operation. The asynchronous abort
+ *          initiated by a transfer stop is tracked in software because
+ *          the ACTIVITY status only reflects the current state of the
+ *          transfer state machine: it can read idle after the aborted
+ *          transfer left the wire while the ABORT request is still
+ *          flushing the FIFO engine. The tracking is released when the
+ *          abort completion interrupt has been observed or, here, when
+ *          the ABORT request is read back as self-cleared, whichever
+ *          comes first.
+ * @note    Called with the system lock held from I-class context,
+ *          waiting is not allowed, a busy condition is reported to the
+ *          caller.
+ *
+ * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
+ * @return              The gate status.
+ * @retval HAL_RET_SUCCESS     if a transfer can be started.
+ * @retval HAL_RET_HW_BUSY     if the controller is busy.
+ */
+static msg_t i2c_lld_check_startable(hal_i2c_driver_c *i2cp) {
+  I2C_TypeDef *dp = i2cp->i2c;
+
+  if (i2cp->abort_pending) {
+    if ((dp->ENABLE & I2C_IC_ENABLE_ABORT) != 0U) {
+      return HAL_RET_HW_BUSY;
+    }
+
+    /* The abort request self-cleared, the latched abort flags are
+       consumed by the enable cycle of the transfer setup or silenced
+       by the error service which finds the generation closed.*/
+    i2cp->abort_pending = false;
+  }
+
+  if ((dp->STATUS & I2C_IC_STATUS_ACTIVITY) != 0U) {
+    return HAL_RET_HW_BUSY;
+  }
+
+  return HAL_RET_SUCCESS;
 }
 
 /**
  * @brief   Requests data to be received, actual reception is done in the
  *          interrupt handler.
+ * @details The read command queued last carries the STOP bit and marks
+ *          the transfer as stop-expected, anchoring the own-completion
+ *          evidence used by the STOP detection service.
  * @note    Called with the system lock held from ISR context.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
@@ -217,6 +339,7 @@ static void i2c_lld_request_data(hal_i2c_driver_c *i2cp) {
     /* Send STOP after last byte.*/
     if (i2cp->rxbytes == 1U) {
       data |= I2C_IC_DATA_CMD_STOP;
+      i2cp->stop_expected = true;
     }
     dp->DATACMD = data;
 
@@ -234,6 +357,9 @@ static void i2c_lld_request_data(hal_i2c_driver_c *i2cp) {
 
 /**
  * @brief   Fills TX FIFO with data to be sent.
+ * @details The data byte queued last in a pure write carries the STOP
+ *          bit and marks the transfer as stop-expected, anchoring the
+ *          own-completion evidence used by the STOP detection service.
  * @note    Called with the system lock held from ISR context.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
@@ -250,6 +376,7 @@ static void i2c_lld_transmit_data(hal_i2c_driver_c *i2cp) {
        follows, the transfer continues with a repeated START instead.*/
     if ((i2cp->txbytes == 1U) && (i2cp->rxbytes == 0U)) {
       data |= I2C_IC_DATA_CMD_STOP;
+      i2cp->stop_expected = true;
     }
     dp->DATACMD = data;
 
@@ -277,15 +404,113 @@ static void i2c_lld_transmit_data(hal_i2c_driver_c *i2cp) {
 }
 
 /**
+ * @brief   Drains the receive FIFO into the transfer buffer.
+ * @note    Called with the system lock held while the transfer
+ *          generation is open, the buffer belongs to the driver only
+ *          until the terminal event is claimed.
+ *
+ * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
+ */
+static void i2c_lld_drain_rx(hal_i2c_driver_c *i2cp) {
+  I2C_TypeDef *dp = i2cp->i2c;
+
+  while ((dp->STATUS & I2C_IC_STATUS_RFNE) != 0U) {
+    /* Read out received data.*/
+    *i2cp->rxptr = (uint8_t)dp->DATACMD;
+    i2cp->rxptr++;
+  }
+}
+
+/**
+ * @brief   Evaluates the own transfer completion evidence.
+ * @details The own transfer has completed on the wire when all of the
+ *          following holds, evaluated on live hardware state:
+ *          - The command carrying the STOP bit has been queued. Foreign
+ *            STOP conditions can only be observed before this point or
+ *            while own commands are still queued or executing, once the
+ *            controller owns the bus every STOP is its own.
+ *          - The TX FIFO has fully drained, no own command is waiting
+ *            for the bus.
+ *          - The raw TX_EMPTY flag is set. With TX_EMPTY_CTRL selected
+ *            this flag is completion qualified: it only rises after the
+ *            command popped last, here the STOP carrying one, has
+ *            completed on the wire.
+ *          For an open generation the evidence is stable once true, it
+ *          is only invalidated by the next transfer start.
+ * @note    Called with the system lock held.
+ *
+ * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
+ * @return              The completion evidence state.
+ */
+static bool i2c_lld_transfer_ended(hal_i2c_driver_c *i2cp) {
+  I2C_TypeDef *dp = i2cp->i2c;
+
+  return i2cp->stop_expected &&
+         (dp->TXFLR == 0U) &&
+         ((dp->RAWINTRSTAT & I2C_IC_INTR_STAT_R_TX_EMPTY) != 0U);
+}
+
+/**
+ * @brief   Claims the terminal event and terminates the transfer.
+ * @details This is the single point where an interrupt service wins the
+ *          terminal event of an open transfer generation. The claim,
+ *          the peripheral quiescing, the driver state transition and
+ *          the waiter resumption form one atomic unit inside the
+ *          caller's critical section. This replicates the I-class core
+ *          of the shared @p __i2c_complete_isr() and @p __i2c_error_isr()
+ *          helpers which cannot be used here: they open a critical
+ *          section of their own after the claim section has closed,
+ *          leaving a window in which @p i2cStopTransferI() on the other
+ *          core observes a still active driver state on an already
+ *          claimed generation and wakes the waiter for a transfer that
+ *          has terminated, unconditionally, its wakeup is not gated on
+ *          the low level stop result. The user callback, the only piece
+ *          which must run outside the critical section, remains with
+ *          the caller.
+ * @note    Must be kept semantically aligned with the shared helpers in
+ *          hal_i2c.h: same terminal driver state, same wakeup messages,
+ *          waiter resumption only with the synchronization API enabled.
+ * @note    Called with the system lock held.
+ *
+ * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
+ * @param[in] msg       the wakeup message
+ */
+static void i2c_lld_claim_terminal(hal_i2c_driver_c *i2cp, msg_t msg) {
+  I2C_TypeDef *dp = i2cp->i2c;
+
+  chDbgAssert((i2cp->tgen & 1U) != 0U, "generation already claimed");
+
+  /* Terminal event claimed, the generation counter becomes even, every
+     other terminal path loses from here.*/
+  i2cp->tgen++;
+
+  /* Peripheral quiesced within the claim critical section, no start
+     can interleave because starts run under the same lock.*/
+  dp->INTRMASK = 0U;
+  (void)dp->CLRINTR;
+
+  /* Driver state transition and waiter resumption, atomic with the
+     claim above.*/
+  i2cp->state = HAL_DRV_STATE_READY;
+#if I2C_USE_SYNCHRONIZATION == TRUE
+  chThdResumeI(&i2cp->sync_transfer, msg);
+#else
+  (void)msg;
+#endif
+}
+
+/**
  * @brief   Transmission errors service.
  * @details The terminal event is claimed against the transfer generation
- *          counter and the raw interrupt state before any driver state
- *          transition, see the notes in the driver header. An error made
- *          stale by a concurrent stop or already consumed by a new
- *          transfer start loses the claim and is silenced without side
- *          effects. The abort completion following a transfer stop takes
- *          this same path: the stop already claimed the terminal event,
- *          the service only clears the flags.
+ *          counter and the raw interrupt state, the error decoding and
+ *          the whole transfer termination are performed in one critical
+ *          section, see @p i2c_lld_claim_terminal(). An error made stale
+ *          by a concurrent stop or already consumed by a new transfer
+ *          start loses the claim and is silenced without side effects.
+ *          The abort completion following a transfer stop takes the
+ *          losing path: the stop already claimed the terminal event,
+ *          the service only clears the flags and releases the abort
+ *          tracking.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
  */
@@ -296,13 +521,19 @@ static void i2c_lld_serve_errors(hal_i2c_driver_c *i2cp) {
 
   chSysLockFromISR();
   raw = dp->RAWINTRSTAT;
+
+  /* A raw abort event doubles as the completion notification of the
+     asynchronous abort initiated by a transfer stop, the hardware
+     raises it only after the ABORT request has finished flushing.*/
+  if ((raw & I2C_IC_INTR_STAT_R_TX_ABRT) != 0U) {
+    i2cp->abort_pending = false;
+  }
+
   claimed = ((i2cp->tgen & 1U) != 0U) &&
             ((raw & (I2C_IC_INTR_STAT_R_TX_ABRT | I2C_OVERRUN_ERRORS)) != 0U);
   if (claimed) {
-    i2cp->tgen++;
-
     /* Abort cause decoding, the source register is cleared together
-       with the interrupt flags below.*/
+       with the interrupt flags by the claim below.*/
     abort_source = dp->TXABRTSOURCE;
     if ((abort_source & I2C_IC_TX_ABRT_SOURCE_ARB_LOST) != 0U) {
       i2cp->errors |= I2C_ARBITRATION_LOST;
@@ -318,10 +549,9 @@ static void i2c_lld_serve_errors(hal_i2c_driver_c *i2cp) {
       i2cp->errors |= I2C_OVERRUN;
     }
 
-    /* Quiescing the peripheral within the claim critical section, no
-       start can interleave because starts run under the same lock.*/
-    dp->INTRMASK = 0U;
-    (void)dp->CLRINTR;
+    /* Claim, quiescing, driver state transition and waiter resumption,
+       one atomic unit.*/
+    i2c_lld_claim_terminal(i2cp, MSG_RESET);
   }
   else {
     if ((i2cp->tgen & 1U) == 0U) {
@@ -336,10 +566,9 @@ static void i2c_lld_serve_errors(hal_i2c_driver_c *i2cp) {
   chSysUnlockFromISR();
 
   if (claimed) {
-    /* The wakeup machinery is invoked outside the critical section by
-       the single terminal-event winner, the callback runs outside any
-       lock.*/
-    __i2c_error_isr(i2cp);
+    /* The user callback is the only piece running outside the critical
+       section, invoked by the single terminal-event winner.*/
+    __cbdrv_invoke_cb(i2cp);
   }
 }
 
@@ -389,11 +618,7 @@ static void i2c_lld_serve_rx_full(hal_i2c_driver_c *i2cp) {
 
   chSysLockFromISR();
   if ((i2cp->tgen & 1U) != 0U) {
-    while ((dp->STATUS & I2C_IC_STATUS_RFNE) != 0U) {
-      /* Read out received data.*/
-      *i2cp->rxptr = (uint8_t)dp->DATACMD;
-      i2cp->rxptr++;
-    }
+    i2c_lld_drain_rx(i2cp);
 
     if (i2cp->rxbytes == 0U) {
       /* Everything is received, therefore disable all FIFO IRQs.*/
@@ -416,64 +641,66 @@ static void i2c_lld_serve_rx_full(hal_i2c_driver_c *i2cp) {
 
 /**
  * @brief   STOP detection service.
- * @details Completion arbitration: the terminal event is claimed against
- *          the transfer generation counter and the current hardware
- *          state, all evaluated in one critical section. The RP silicon
- *          hardwires IC_CON.STOP_DET_IF_MASTER_ACTIVE off (the write is
- *          inert, verified by register read-back), so this interrupt
- *          also fires for STOP conditions issued by other masters on the
- *          bus. It only means completion when this driver's own final
- *          command has completed on the wire: the byte counters cover
- *          bytes not yet queued, TXFLR covers commands (data and read
- *          requests alike) still sitting in the TX FIFO waiting for the
- *          bus, and the raw TX_EMPTY flag - completion-qualified by
- *          TX_EMPTY_CTRL - stays low while a command popped from the
- *          FIFO is still executing. An own STOP can only appear after
- *          all of that has drained, so any residue marks the STOP as
- *          foreign; the own transfer then continues under hardware
- *          arbitration.
+ * @details Completion arbitration. The RP silicon hardwires the
+ *          IC_CON.STOP_DET_IF_MASTER_ACTIVE feature off (the write is
+ *          inert, verified by register read-back), the STOP_DET flag
+ *          therefore also latches STOP conditions issued by other
+ *          masters and, being a single flag, coalesces multiple STOP
+ *          events. Completion is consequently decided only on the
+ *          own-completion evidence evaluated by
+ *          @p i2c_lld_transfer_ended() on live hardware state, never on
+ *          the flag itself. A foreign STOP must still be consumed or
+ *          the level-triggered interrupt storms, but the engine can
+ *          complete the own transfer between any evaluation and the
+ *          clear, the coalescing flag would then swallow the own STOP
+ *          event. The evidence is therefore reevaluated after every
+ *          clear within the same critical section: evidence appearing
+ *          after the clear is the swallowed own STOP and is claimed as
+ *          the completion, an own STOP arriving after the reevaluation
+ *          latches the flag again and redispatches this service,
+ *          nothing is lost. With the evidence positive the final read
+ *          data, if any, is already complete in the RX FIFO, it is
+ *          drained here while the generation is still open.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
  */
 static void i2c_lld_serve_stop(hal_i2c_driver_c *i2cp) {
   I2C_TypeDef *dp = i2cp->i2c;
-  uint32_t raw;
   bool claimed = false;
 
   chSysLockFromISR();
-  raw = dp->RAWINTRSTAT;
   if (((i2cp->tgen & 1U) != 0U) &&
-      ((raw & I2C_IC_INTR_STAT_R_STOP_DET) != 0U) &&
-      ((raw & (I2C_IC_INTR_STAT_R_TX_ABRT | I2C_OVERRUN_ERRORS)) == 0U) &&
-      (i2cp->txbytes == 0U) && (i2cp->rxbytes == 0U) &&
-      (dp->TXFLR == 0U) &&
-      ((raw & I2C_IC_INTR_STAT_R_TX_EMPTY) != 0U)) {
-    if (dp->RXFLR == 0U) {
-      /* Own STOP with everything drained, the completion is claimed
-         and the peripheral quiesced within the critical section.*/
-      claimed = true;
-      i2cp->tgen++;
-      dp->INTRMASK = 0U;
-      (void)dp->CLRINTR;
+      ((dp->RAWINTRSTAT & (I2C_IC_INTR_STAT_R_TX_ABRT |
+                           I2C_OVERRUN_ERRORS)) == 0U)) {
+    if (!i2c_lld_transfer_ended(i2cp)) {
+      /* Foreign STOP so far, consumed and immediately reevaluated, see
+         the details above.*/
+      (void)dp->CLRSTOPDET;
     }
-    /* Otherwise this is an own STOP racing the final RX batch: the
-       flag is left pending, the pending RX FULL service drains the
-       FIFO first and the STOP is then reevaluated on the next
-       dispatch of this level interrupt.*/
+
+    if (i2c_lld_transfer_ended(i2cp)) {
+      /* Own STOP, the receive buffer is completed while the generation
+         is still open, then the transfer is terminated.*/
+      chDbgAssert((i2cp->txbytes == 0U) && (i2cp->rxbytes == 0U),
+                  "counters not drained");
+
+      i2c_lld_drain_rx(i2cp);
+      i2c_lld_claim_terminal(i2cp, MSG_OK);
+      claimed = true;
+    }
   }
   else {
-    /* Foreign or stale STOP condition, or a STOP trailing an abort
-       which is terminal through the error service: dropped without
-       touching the rest of the peripheral state.*/
+    /* Stale STOP with no transfer in flight, or a STOP trailing an
+       abort or overrun which is terminal through the error service:
+       dropped without touching the rest of the peripheral state.*/
     (void)dp->CLRSTOPDET;
   }
   chSysUnlockFromISR();
 
   if (claimed) {
-    /* The wakeup machinery is invoked outside the critical section by
-       the single terminal-event winner, the callback runs outside any
-       lock.*/
-    __i2c_complete_isr(i2cp);
+    /* The user callback is the only piece running outside the critical
+       section, invoked by the single terminal-event winner.*/
+    __cbdrv_invoke_cb(i2cp);
   }
 }
 
@@ -510,6 +737,33 @@ static void i2c_lld_serve_interrupt(hal_i2c_driver_c *i2cp) {
     i2c_lld_serve_stop(i2cp);
   }
 }
+
+#if (HAL_USE_PAL == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   Waits for a line to read high.
+ * @details The line is sampled at the bus clear half period pace, the
+ *          wait is bounded, see @p I2C_BUS_CLEAR_SCL_RISE_CYCLES.
+ * @note    Thread context only, this function sleeps between samples.
+ *
+ * @param[in] line      line identifier
+ * @return              The line state.
+ * @retval true         if the line reads high within the bound.
+ * @retval false        if the line never rose.
+ */
+static bool i2c_lld_wait_line_high(ioline_t line) {
+  unsigned i;
+
+  for (i = 0U; i < I2C_BUS_CLEAR_SCL_RISE_CYCLES; i++) {
+    if (palReadLine(line) == PAL_HIGH) {
+      return true;
+    }
+
+    chThdSleep(TIME_US2I(I2C_BUS_CLEAR_HALF_PERIOD_US));
+  }
+
+  return false;
+}
+#endif /* HAL_USE_PAL == TRUE */
 
 /*===========================================================================*/
 /* Driver interrupt handlers.                                                */
@@ -560,8 +814,10 @@ void i2c_lld_init(void) {
 
 #if RP_I2C_USE_I2C0 == TRUE
   i2cObjectInit(&I2CD0);
-  I2CD0.i2c  = I2C0;
-  I2CD0.tgen = 0U;
+  I2CD0.i2c           = I2C0;
+  I2CD0.tgen          = 0U;
+  I2CD0.stop_expected = false;
+  I2CD0.abort_pending = false;
 
   /* Reset I2C.*/
   rp_peripheral_reset(RESETS_ALLREG_I2C0);
@@ -569,8 +825,10 @@ void i2c_lld_init(void) {
 
 #if RP_I2C_USE_I2C1 == TRUE
   i2cObjectInit(&I2CD1);
-  I2CD1.i2c  = I2C1;
-  I2CD1.tgen = 0U;
+  I2CD1.i2c           = I2C1;
+  I2CD1.tgen          = 0U;
+  I2CD1.stop_expected = false;
+  I2CD1.abort_pending = false;
 
   /* Reset I2C.*/
   rp_peripheral_reset(RESETS_ALLREG_I2C1);
@@ -633,11 +891,14 @@ void i2c_lld_stop(hal_i2c_driver_c *i2cp) {
 
   if (i2cp->state != HAL_DRV_STATE_STOP) {
     /* Any late terminal event loses its claim before the peripheral
-       goes away, interrupt sources are silenced under the same lock.*/
+       goes away, interrupt sources are silenced under the same lock.
+       The peripheral reset below also cancels a still flushing
+       asynchronous abort, the software tracking is released with it.*/
     chSysLock();
     if ((i2cp->tgen & 1U) != 0U) {
       i2cp->tgen++;
     }
+    i2cp->abort_pending = false;
     i2cp->i2c->INTRMASK = 0U;
     chSysUnlock();
 
@@ -647,13 +908,15 @@ void i2c_lld_stop(hal_i2c_driver_c *i2cp) {
 
 /**
  * @brief   I2C configuration.
- * @details The SCL counts are derived from the requested rate and the
- *          current system clock using the classic timing ratios,
- *          configurations the divider fields cannot honor are rejected.
- *          The peripheral is reprogrammed only while no transfer is in
- *          flight: the controller disable performed for reprogramming
- *          settles within two clk_sys cycles on an idle controller, the
- *          bounded status poll below is a formality.
+ * @details The SCL counts and the spike suppression length are derived
+ *          from the requested rate and the current system clock using
+ *          the classic timing ratios, configurations violating the
+ *          field ranges or the databook relations between the counts
+ *          and the suppression length are rejected. The peripheral is
+ *          reprogrammed only while no transfer is in flight and no
+ *          abort is still flushing: the controller disable performed
+ *          for reprogramming then settles within the documented two
+ *          clock cycles, the bounded handshake is a formality.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
  * @param[in] config    pointer to the @p hal_i2c_config_t structure
@@ -665,15 +928,15 @@ void i2c_lld_stop(hal_i2c_driver_c *i2cp) {
 const hal_i2c_config_t *i2c_lld_setcfg(hal_i2c_driver_c *i2cp,
                                        const hal_i2c_config_t *config) {
   I2C_TypeDef *dp = i2cp->i2c;
-  uint32_t freq_in, baudrate, period, lcnt, hcnt, sda_tx_hold;
+  uint32_t freq_in, baudrate, period, lcnt, hcnt, spklen, sda_tx_hold;
 
   if (config == NULL) {
     config = &i2c_default_config;
   }
 
   /* A configuration change is only legal while no transfer is in
-     flight.*/
-  if ((i2cp->tgen & 1U) != 0U) {
+     flight and no asynchronous abort is still flushing.*/
+  if (((i2cp->tgen & 1U) != 0U) || i2cp->abort_pending) {
     return NULL;
   }
 
@@ -709,8 +972,24 @@ const hal_i2c_config_t *i2c_lld_setcfg(hal_i2c_driver_c *i2cp,
   }
   hcnt = period - lcnt;
 
-  if ((lcnt < 8U) || (lcnt > I2C_IC_FS_SCL_LCNT) ||
-      (hcnt < 8U) || (hcnt > I2C_IC_FS_SCL_HCNT)) {
+  if ((lcnt > I2C_IC_FS_SCL_LCNT) || (hcnt > I2C_IC_FS_SCL_HCNT)) {
+    return NULL;
+  }
+
+  /* Spike suppression length derived as one sixteenth of the low
+     count, mirroring the reference implementation. Values beyond the
+     8-bit field are clamped: a longer than nominal suppression window
+     is harmless at the correspondingly slow SCL rates while silent
+     truncation would program a meaningless length.*/
+  spklen = lcnt < 16U ? 1U : lcnt / 16U;
+  if (spklen > I2C_IC_FS_SPKLEN_IC_FS_SPKLEN) {
+    spklen = I2C_IC_FS_SPKLEN_IC_FS_SPKLEN;
+  }
+
+  /* Databook validity relations between the SCL counts and the spike
+     suppression length: LCNT must exceed SPKLEN + 7 and HCNT must
+     exceed SPKLEN + 5.*/
+  if ((lcnt <= (spklen + 7U)) || (hcnt <= (spklen + 5U))) {
     return NULL;
   }
 
@@ -742,10 +1021,12 @@ const hal_i2c_config_t *i2c_lld_setcfg(hal_i2c_driver_c *i2cp,
     return config;
   }
 
-  /* Controller disabled during reprogramming, with no transfer in
-     flight this settles within two clk_sys cycles.*/
+  /* Controller disabled during reprogramming, the disable is confirmed
+     through the ENABLE_STATUS handshake before touching the enable
+     gated registers.*/
   dp->ENABLE = 0U;
-  while ((dp->ENABLESTATUS & I2C_IC_ENABLE_STATUS_IC_EN) != 0U) {
+  if (!i2c_lld_wait_enable_state(dp, 0U)) {
+    return NULL;
   }
 
   dp->CON = I2C_IC_CON_IC_SLAVE_DISABLE |
@@ -761,17 +1042,21 @@ const hal_i2c_config_t *i2c_lld_setcfg(hal_i2c_driver_c *i2cp,
   dp->RXTL = 0U;
   dp->TXTL = 0U;
 
-  dp->FSSCLHCNT = hcnt & I2C_IC_FS_SCL_HCNT;
-  dp->FSSCLLCNT = lcnt & I2C_IC_FS_SCL_LCNT;
-  dp->FSSPKLEN = (lcnt < 16U ? 1U : lcnt / 16U) &
-                 I2C_IC_FS_SPKLEN_IC_FS_SPKLEN;
-  dp->SDAHOLD = sda_tx_hold & I2C_IC_SDA_HOLD_IC_SDA_TX_HOLD;
+  /* All timing values validated above, written as derived.*/
+  dp->FSSCLHCNT = hcnt;
+  dp->FSSCLLCNT = lcnt;
+  dp->FSSPKLEN = spklen;
+  dp->SDAHOLD = sda_tx_hold;
 
   /* Interrupt sources masked until a transfer starts.*/
   dp->INTRMASK = 0U;
 
-  /* Peripheral enabled again, flags cleared.*/
+  /* Peripheral enabled again with the enable confirmed, flags
+     cleared.*/
   dp->ENABLE = I2C_IC_ENABLE_ENABLE;
+  if (!i2c_lld_wait_enable_state(dp, I2C_IC_ENABLE_STATUS_IC_EN)) {
+    return NULL;
+  }
   (void)dp->CLRINTR;
 
   return config;
@@ -825,11 +1110,17 @@ void i2c_lld_set_callback(hal_i2c_driver_c *i2cp, drv_cb_t cb) {
  * @details The terminal event is claimed synchronously, this function is
  *          invoked with the system lock held so the claim is atomic with
  *          respect to the completion and error services on either core.
- *          The hardware abort is only initiated, its completion arrives
- *          later as the TX_ABRT interrupt which finds the generation
- *          already even and silently clears the flags. Until the abort
- *          completes the ACTIVITY status keeps the busy gate in the
- *          transfer start methods closed.
+ *          Those services terminate the driver state inside their own
+ *          claim critical section, a driver state still reported as
+ *          active to the caller therefore implies an unclaimed
+ *          generation: this claim then always wins and the shared layer
+ *          performs the state transition and the waiter wakeup under
+ *          the same lock it already holds. The hardware abort is only
+ *          initiated here and tracked by the abort-pending flag, its
+ *          completion arrives later as the TX_ABRT interrupt which
+ *          finds the generation already even, clears the flags and
+ *          releases the tracking. Transfer starts are rejected while
+ *          the abort is pending, see @p i2c_lld_check_startable().
  * @note    If a slave holds SCL low indefinitely the abort cannot
  *          complete and the controller remains busy, recovery requires
  *          @p i2cRPBusClear() followed by a driver restart.
@@ -849,8 +1140,11 @@ msg_t i2c_lld_stop_transfer(hal_i2c_driver_c *i2cp) {
        completion event is left enabled.*/
     dp->INTRMASK = I2C_IC_INTR_MASK_M_TX_ABRT;
 
-    /* Abort initiation, the bit self-clears when the hardware has
-       flushed the TX FIFO and terminated the transfer on the wire.*/
+    /* Abort initiation, the request self-clears when the hardware has
+       flushed the TX FIFO and terminated the transfer on the wire.
+       Tracked in software because the ACTIVITY status alone does not
+       cover the whole flush.*/
+    i2cp->abort_pending = true;
     dp->ENABLE |= I2C_IC_ENABLE_ABORT;
   }
 
@@ -869,37 +1163,43 @@ msg_t i2c_lld_stop_transfer(hal_i2c_driver_c *i2cp) {
  * @param[in] rxbytes   number of bytes to be received
  * @return              The operation status.
  * @retval HAL_RET_SUCCESS     if the function succeeded.
- * @retval HAL_RET_HW_BUSY     if the controller or the bus is busy, no
- *                             waiting is performed, the caller retries
- *                             or fails the operation.
+ * @retval HAL_RET_HW_BUSY     if the controller is busy or an abort is
+ *                             still flushing, no waiting is performed,
+ *                             the caller retries or fails the
+ *                             operation.
  *
  * @notapi
  */
 msg_t i2c_lld_start_master_receive(hal_i2c_driver_c *i2cp, i2caddr_t addr,
                                    uint8_t *rxbuf, size_t rxbytes) {
-  I2C_TypeDef *dp = i2cp->i2c;
+  msg_t msg;
 
-  /* The controller is busy while a previous transfer, an abort or
-     another bus master is still active, this is an I-class context and
-     waiting is not allowed.*/
-  (void)dp->CLRACTIVITY;
-  if ((dp->STATUS & I2C_IC_STATUS_ACTIVITY) != 0U) {
-    return HAL_RET_HW_BUSY;
+  /* Start gate, a busy controller or a still flushing abort rejects
+     the start, this is an I-class context and waiting is not
+     allowed.*/
+  msg = i2c_lld_check_startable(i2cp);
+  if (msg != HAL_RET_SUCCESS) {
+    return msg;
   }
 
   /* Transaction setup.*/
-  i2cp->txptr        = NULL;
-  i2cp->txbytes      = (size_t)0;
-  i2cp->rxptr        = rxbuf;
-  i2cp->rxbytes      = rxbytes;
-  i2cp->send_restart = false;
+  i2cp->txptr         = NULL;
+  i2cp->txbytes       = (size_t)0;
+  i2cp->rxptr         = rxbuf;
+  i2cp->rxbytes       = rxbytes;
+  i2cp->send_restart  = false;
+  i2cp->stop_expected = false;
+
+  /* Hardware programming and start, a failed enable handshake rejects
+     the start before the transfer generation is opened.*/
+  msg = i2c_lld_setup_transfer(i2cp, addr);
+  if (msg != HAL_RET_SUCCESS) {
+    return msg;
+  }
 
   /* Transfer generation opened, from here the terminal event belongs
      to a single winner among the completion, error and stop paths.*/
   i2c_lld_tgen_open(i2cp);
-
-  /* Hardware programming and start.*/
-  i2c_lld_setup_transfer(i2cp, addr);
 
   return HAL_RET_SUCCESS;
 }
@@ -920,38 +1220,44 @@ msg_t i2c_lld_start_master_receive(hal_i2c_driver_c *i2cp, i2caddr_t addr,
  * @param[in] rxbytes   number of bytes to be received
  * @return              The operation status.
  * @retval HAL_RET_SUCCESS     if the function succeeded.
- * @retval HAL_RET_HW_BUSY     if the controller or the bus is busy, no
- *                             waiting is performed, the caller retries
- *                             or fails the operation.
+ * @retval HAL_RET_HW_BUSY     if the controller is busy or an abort is
+ *                             still flushing, no waiting is performed,
+ *                             the caller retries or fails the
+ *                             operation.
  *
  * @notapi
  */
 msg_t i2c_lld_start_master_transmit(hal_i2c_driver_c *i2cp, i2caddr_t addr,
                                     const uint8_t *txbuf, size_t txbytes,
                                     uint8_t *rxbuf, size_t rxbytes) {
-  I2C_TypeDef *dp = i2cp->i2c;
+  msg_t msg;
 
-  /* The controller is busy while a previous transfer, an abort or
-     another bus master is still active, this is an I-class context and
-     waiting is not allowed.*/
-  (void)dp->CLRACTIVITY;
-  if ((dp->STATUS & I2C_IC_STATUS_ACTIVITY) != 0U) {
-    return HAL_RET_HW_BUSY;
+  /* Start gate, a busy controller or a still flushing abort rejects
+     the start, this is an I-class context and waiting is not
+     allowed.*/
+  msg = i2c_lld_check_startable(i2cp);
+  if (msg != HAL_RET_SUCCESS) {
+    return msg;
   }
 
   /* Transaction setup.*/
-  i2cp->txptr        = txbuf;
-  i2cp->txbytes      = txbytes;
-  i2cp->rxptr        = rxbuf;
-  i2cp->rxbytes      = rxbytes;
-  i2cp->send_restart = false;
+  i2cp->txptr         = txbuf;
+  i2cp->txbytes       = txbytes;
+  i2cp->rxptr         = rxbuf;
+  i2cp->rxbytes       = rxbytes;
+  i2cp->send_restart  = false;
+  i2cp->stop_expected = false;
+
+  /* Hardware programming and start, a failed enable handshake rejects
+     the start before the transfer generation is opened.*/
+  msg = i2c_lld_setup_transfer(i2cp, addr);
+  if (msg != HAL_RET_SUCCESS) {
+    return msg;
+  }
 
   /* Transfer generation opened, from here the terminal event belongs
      to a single winner among the completion, error and stop paths.*/
   i2c_lld_tgen_open(i2cp);
-
-  /* Hardware programming and start.*/
-  i2c_lld_setup_transfer(i2cp, addr);
 
   return HAL_RET_SUCCESS;
 }
@@ -964,15 +1270,21 @@ msg_t i2c_lld_start_master_transmit(hal_i2c_driver_c *i2cp, i2caddr_t addr,
  *          STOP condition is generated. The lines are driven through
  *          the SIO function emulating open drain outputs, the caller
  *          must reassign the pads to the I2C function afterwards and
- *          restart the driver.
+ *          restart the driver. Every SCL release is verified with a
+ *          bounded wait: a clock line that never reads high is held by
+ *          another device and such a bus cannot be recovered from this
+ *          side, the procedure then fails instead of reporting a false
+ *          success derived from the SDA observation alone. The STOP
+ *          condition is generated only from a state with both lines
+ *          observed releasable.
  * @note    Thread context only, this function sleeps between line
  *          transitions. It is not wired into any I-class path.
  *
  * @param[in] sclline   line identifier of the SCL signal
  * @param[in] sdaline   line identifier of the SDA signal
  * @return              The bus state.
- * @retval true         if SDA reads high after the procedure.
- * @retval false        if SDA is still stuck low.
+ * @retval true         if both lines read high after the procedure.
+ * @retval false        if a line is still stuck low.
  *
  * @api
  */
@@ -984,28 +1296,51 @@ bool i2cRPBusClear(ioline_t sclline, ioline_t sdaline) {
   palSetLineMode(sclline, PAL_MODE_INPUT_PULLUP);
   chThdSleep(TIME_US2I(I2C_BUS_CLEAR_HALF_PERIOD_US));
 
+  /* SCL must be releasable before pulsing, a clock line held low
+     cannot be recovered from this side of the bus.*/
+  if (!i2c_lld_wait_line_high(sclline)) {
+    return false;
+  }
+
   for (i = 0U; i < 9U; i++) {
     if (palReadLine(sdaline) == PAL_HIGH) {
       break;
     }
 
     /* One SCL pulse, low is actively driven, high is released to the
-       pull-up.*/
+       pull-up and verified: a device may legally stretch the low phase
+       within the wait bound, a line that never rises fails the
+       procedure.*/
     palClearLine(sclline);
     palSetLineMode(sclline, PAL_MODE_OUTPUT_PUSHPULL);
     chThdSleep(TIME_US2I(I2C_BUS_CLEAR_HALF_PERIOD_US));
     palSetLineMode(sclline, PAL_MODE_INPUT_PULLUP);
+    if (!i2c_lld_wait_line_high(sclline)) {
+      return false;
+    }
+
+    /* High phase settling time before the next pulse or the SDA
+       sampling.*/
     chThdSleep(TIME_US2I(I2C_BUS_CLEAR_HALF_PERIOD_US));
   }
 
-  /* STOP condition: SDA released while SCL is high.*/
+  /* The STOP condition is only meaningful on a bus with both lines
+     releasable, a still held SDA is a failure.*/
+  if (palReadLine(sdaline) != PAL_HIGH) {
+    return false;
+  }
+
+  /* STOP condition: SDA driven low and then released while SCL stays
+     high.*/
   palClearLine(sdaline);
   palSetLineMode(sdaline, PAL_MODE_OUTPUT_PUSHPULL);
   chThdSleep(TIME_US2I(I2C_BUS_CLEAR_HALF_PERIOD_US));
   palSetLineMode(sdaline, PAL_MODE_INPUT_PULLUP);
   chThdSleep(TIME_US2I(I2C_BUS_CLEAR_HALF_PERIOD_US));
 
-  return palReadLine(sdaline) == PAL_HIGH;
+  /* Success only with both lines observed high at the end.*/
+  return (palReadLine(sclline) == PAL_HIGH) &&
+         (palReadLine(sdaline) == PAL_HIGH);
 }
 #endif /* HAL_USE_PAL == TRUE */
 
