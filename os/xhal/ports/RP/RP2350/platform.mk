@@ -40,8 +40,9 @@ include $(CHIBIOS)/os/xhal/ports/RP/LLD/ADCv1/driver.mk
 include $(CHIBIOS)/os/xhal/ports/RP/LLD/DMAv1/driver.mk
 include $(CHIBIOS)/os/xhal/ports/RP/LLD/EFLv1/driver.mk
 include $(CHIBIOS)/os/xhal/ports/RP/LLD/GPIOv1/driver.mk
-include $(CHIBIOS)/os/xhal/ports/RP/LLD/RTCv2/driver.mk
+include $(CHIBIOS)/os/xhal/ports/RP/LLD/I2Cv1/driver.mk
 include $(CHIBIOS)/os/xhal/ports/RP/LLD/PWMv1/driver.mk
+include $(CHIBIOS)/os/xhal/ports/RP/LLD/RTCv2/driver.mk
 include $(CHIBIOS)/os/xhal/ports/RP/LLD/SPIv1/driver.mk
 include $(CHIBIOS)/os/xhal/ports/RP/LLD/TIMERv1/driver.mk
 include $(CHIBIOS)/os/xhal/ports/RP/LLD/UARTv1/driver.mk
