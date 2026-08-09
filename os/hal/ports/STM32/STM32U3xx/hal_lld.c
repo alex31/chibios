@@ -593,6 +593,12 @@ static bool hal_lld_clock_check_tree(const halclkcfg_t *ccp) {
     pclk1tim = pclk1 * 2U;
   }
 
+#if HAL_USE_RTC == TRUE
+  if (pclk1 < (STM32_RTC_FREQ * 7U)) {
+    return true;
+  }
+#endif
+
   /* PPRE2 frequency.*/
   n = pprediv[(ccp->rcc_cfgr2 & STM32_PPRE2_MASK) >> STM32_PPRE2_POS];
   pclk2 = hclk / n;
