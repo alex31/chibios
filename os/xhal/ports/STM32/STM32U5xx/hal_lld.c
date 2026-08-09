@@ -919,6 +919,9 @@ static bool hal_lld_clock_check_tree(const halclkcfg_t *ccp) {
   halfreq_t pll3inclk, pll3refclk, pll3vcoclk;
   halfreq_t pll3pclk, pll3qclk, pll3rclk;
   halfreq_t sysclk, hclk, pclk1, pclk2, pclk3, pclk1tim, pclk2tim, mcoclk;
+#if HAL_USE_RTC == TRUE
+  halfreq_t rtcclk;
+#endif
 
   switch (ccp->pwr_vosr & PWR_VOSR_VOS_Msk) {
   case PWR_VOSR_VOS_RANGE1:
@@ -1066,6 +1069,30 @@ static bool hal_lld_clock_check_tree(const halclkcfg_t *ccp) {
   if (pclk1 > slp->pclk1_max) {
     return true;
   }
+
+#if HAL_USE_RTC == TRUE
+  if ((ccp->rcc_bdcr & RCC_BDCR_RTCEN) == 0U) {
+    return true;
+  }
+
+  switch (ccp->rcc_bdcr & RCC_BDCR_RTCSEL_Msk) {
+  case RCC_BDCR_RTCSEL_LSE:
+    rtcclk = lseclk;
+    break;
+  case RCC_BDCR_RTCSEL_LSI:
+    rtcclk = lsiclk;
+    break;
+  case RCC_BDCR_RTCSEL_HSEDIV:
+    rtcclk = hseclk / 32U;
+    break;
+  default:
+    rtcclk = 0U;
+  }
+
+  if ((rtcclk == 0U) || (pclk1 < (rtcclk * 7U))) {
+    return true;
+  }
+#endif
 
   n = pprediv[(ccp->rcc_cfgr2 & RCC_CFGR2_PPRE2_Msk) >> RCC_CFGR2_PPRE2_Pos];
   pclk2 = hclk / n;
