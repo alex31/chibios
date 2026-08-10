@@ -82,6 +82,13 @@ const hal_adc_config_t portab_adc_config = {
   .dummy          = 0U
 };
 
+/**
+ * @brief   I2C0 configuration, standard mode at 100kHz.
+ */
+const hal_i2c_config_t portab_i2ccfg = {
+  .baudrate       = 100000U
+};
+
 /*===========================================================================*/
 /* Module local types.                                                       */
 /*===========================================================================*/
@@ -93,6 +100,20 @@ const hal_adc_config_t portab_adc_config = {
 /*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
+
+/*
+ * Assigns the I2C pads to the I2C function with the internal pull-ups
+ * enabled. The demo bus carries no external pull-ups, without them the
+ * lines would float and an unanswered address would be reported as a bus
+ * error instead of the expected acknowledge failure.
+ */
+static void portab_i2c_pads(void) {
+
+  palSetLineMode(PORTAB_LINE_I2C_SDA, PAL_MODE_ALTERNATE_I2C |
+                                      PAL_RP_PAD_PUE);
+  palSetLineMode(PORTAB_LINE_I2C_SCL, PAL_MODE_ALTERNATE_I2C |
+                                      PAL_RP_PAD_PUE);
+}
 
 /*===========================================================================*/
 /* Module exported functions.                                                */
@@ -112,6 +133,25 @@ void portab_setup(void) {
    */
   palSetLineMode(0U, PAL_MODE_ALTERNATE_UART);
   palSetLineMode(1U, PAL_MODE_ALTERNATE_UART);
+
+  /*
+   * I2C0 pads, SDA on GP4 and SCL on GP5.
+   */
+  portab_i2c_pads();
+}
+
+/*
+ * Attempts to recover a stuck I2C bus. The bus clear procedure drives the
+ * lines through the SIO function, the pads are therefore returned to the
+ * I2C function before the caller restarts the driver.
+ */
+bool portab_i2c_bus_clear(void) {
+  bool success;
+
+  success = i2cRPBusClear(PORTAB_LINE_I2C_SCL, PORTAB_LINE_I2C_SDA);
+  portab_i2c_pads();
+
+  return success;
 }
 
 /** @} */
