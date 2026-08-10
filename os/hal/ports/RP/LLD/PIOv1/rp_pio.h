@@ -921,6 +921,31 @@ __STATIC_INLINE void pioSmDisableX(const rp_pio_sm_t *smp) {
 }
 
 /**
+ * @brief   Enables several state machines of a block simultaneously.
+ * @details A single CTRL read-modify-write raises the SM_ENABLE and
+ *          CLKDIV_RESTART bits of every state machine in the mask, so
+ *          their clock dividers restart together and the machines run
+ *          cycle-aligned. Machines outside the mask are not affected.
+ * @pre     Each state machine in the mask is configured and its program
+ *          counter is positioned, as before an individual
+ *          @p pioSmEnableX().
+ *
+ * @param[in] block     pointer to the PIO block descriptor
+ * @param[in] mask      mask of state machines, bits 0..3
+ *
+ * @special
+ */
+__STATIC_INLINE void pioEnableSmMaskInSyncX(const rp_pio_block_t *block,
+                                            uint32_t mask) {
+  uint32_t ctrl;
+
+  osalDbgCheck((block != NULL) && ((mask & ~0xFU) == 0U));
+
+  ctrl = block->pio->CTRL;
+  block->pio->CTRL = ctrl | mask | (mask << 8U);
+}
+
+/**
  * @brief   Restarts a state machine.
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
@@ -1229,6 +1254,31 @@ __STATIC_INLINE void pioSmExecX(const rp_pio_sm_t *smp,
                                  uint16_t instr) {
 
   smp->block->pio->SM[smp->smidx].INSTR = instr;
+}
+
+/**
+ * @brief   Rewrites one instruction memory slot of a block.
+ * @details Intended to patch instructions of an already loaded program at
+ *          runtime, typically JMP targets. The caller must own the slot
+ *          through a previous @p pioProgramLoad(); for a program loaded
+ *          at a non-zero offset both @p addr and any JMP target encoded
+ *          in @p instr must be rebased by the load offset, as the loader
+ *          itself does.
+ * @note    The instruction memory is write-only, a patch cannot be read
+ *          back.
+ *
+ * @param[in] block     pointer to the PIO block descriptor
+ * @param[in] addr      instruction memory address (0..31)
+ * @param[in] instr     16-bit PIO instruction
+ *
+ * @special
+ */
+__STATIC_INLINE void pioProgramPatchX(const rp_pio_block_t *block,
+                                      uint32_t addr, uint16_t instr) {
+
+  osalDbgCheck((block != NULL) && (addr < RP_PIO_NUM_INSTR_MEM));
+
+  block->pio->INSTR_MEM[addr] = (uint32_t)instr;
 }
 
 /**

@@ -74,6 +74,14 @@
  *    autopull states without touching SHIFTCTRL, leave no stalled exec
  *    behind, keep its hands off a stall it did not cause, and
  *    PIO_INSTR_NOP must displace a stalled exec'd instruction.
+ * 20. Instruction patching: pioProgramPatchX must rewrite a slot of a
+ *    running program (the pin freezes and recovers with the patch), at
+ *    rebased addresses when the program is loaded at an offset.
+ * 21. Synchronized enable: pioEnableSmMaskInSyncX must start two state
+ *    machines with one CTRL write and their divided clocks in phase,
+ *    without touching the other machines' enables.
+ *    (Test numbers 15..22 are allocated across the PIO API series;
+ *    this branch carries tests 20..21, the siblings land with theirs.)
  * 22. Instruction encoders: every pioEncode* must match the
  *    hand-assembled words this suite already uses, and a program built
  *    only with encoders must produce the reference square wave.
@@ -1123,6 +1131,104 @@ int main(void) {
   pioSmRestartX(smp);
   pioSmClearFifosX(smp);
   pioSmFree(smp);
+
+  /*
+   * Test 20: in-place instruction patching.
+   */
+  chprintf(chp, "--- Test 20: instruction patching\r\n");
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  /* The parking program keeps address 0 busy so the square wave loads
+     at a non-zero offset and the patch address needs rebasing.*/
+  park_off = pioProgramLoad(block, &park_program);
+  sq_off = pioProgramLoad(block, &sqwave_program);
+  report("programs loaded", (park_off == 0) && (sq_off > 0));
+
+  sqwave_start(smp, (uint32_t)sq_off);
+  edges = count_edges(TEST_GPIO);
+  report("square wave before the patch",
+         (edges >= EDGES_LO) && (edges <= EDGES_HI));
+
+  /* "set pins, 1" patched to "set pins, 0" while running: the pin
+     freezes low without stopping the machine.*/
+  pioProgramPatchX(block, (uint32_t)sq_off, 0xE000U);
+  edges = count_edges(TEST_GPIO);
+  report("pin frozen after the patch", edges <= 2U);
+
+  pioProgramPatchX(block, (uint32_t)sq_off, 0xE001U);
+  edges = count_edges(TEST_GPIO);
+  report("square wave after the patch-back",
+         (edges >= EDGES_LO) && (edges <= EDGES_HI));
+
+  pioSmDisableX(smp);
+  pioProgramUnload(block, park_off, park_program.length);
+  pioProgramUnload(block, sq_off, sqwave_program.length);
+  pioSmFree(smp);
+
+  /*
+   * Test 21: synchronized multi state machine enable.
+   */
+  chprintf(chp, "--- Test 21: synchronized enable\r\n");
+
+  sms[0] = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  sms[1] = pioSmAlloc(block, 1U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("SM0 and SM1 allocated", (sms[0] != NULL) && (sms[1] != NULL));
+  if ((sms[0] == NULL) || (sms[1] == NULL)) {
+    goto summary;
+  }
+
+  sq_off = pioProgramLoad(block, &sqwave_program);
+  report("program loaded", sq_off >= 0);
+
+  /* Both machines set up for the same square wave on adjacent pins,
+     configured and positioned but not enabled.*/
+  for (i = 0U; i < 2U; i++) {
+    pioSmDisableX(sms[i]);
+    pioSmSetFrequencyX(sms[i], SM_TEST_FREQ);
+    pioSmSetExecctrlX(sms[i], PIO_SM_EXECCTRL_WRAP(0U, 31U));
+    pioSmSetShiftctrlX(sms[i], PIO_SM_SHIFTCTRL_IN_SHIFTDIR |
+                               PIO_SM_SHIFTCTRL_OUT_SHIFTDIR);
+    pioSmSetPinctrlX(sms[i], (1U << PIO_SM_PINCTRL_SET_COUNT_Pos) |
+                             ((TEST_GPIO + i) << PIO_SM_PINCTRL_SET_BASE_Pos));
+    pioGpioInitX(sms[i], TEST_GPIO + i);
+    pioSmClearFifosX(sms[i]);
+    pioClearDebugX(sms[i]);
+    pioSmRestartX(sms[i]);
+    pioSmExecX(sms[i], 0xE081U);
+    pioSmSetPCX(sms[i], (uint32_t)sq_off);
+  }
+
+  pioEnableSmMaskInSyncX(block, 0x3U);
+  report("both enables set by one write",
+         (block->pio->CTRL & 0xFU) == 0x3U);
+
+  /* With the dividers restarted together the two machines execute the
+     same program cycle-aligned: a single GPIO_IN read must always see
+     the two pins equal.*/
+  lvl = TIMER0->TIMERAWL;
+  mask = 0U;
+  while ((uint32_t)(TIMER0->TIMERAWL - lvl) < MEASURE_US) {
+    uint32_t in = SIO->GPIO_IN;
+
+    if ((((in >> TEST_GPIO) ^ (in >> (TEST_GPIO + 1U))) & 1U) != 0U) {
+      mask++;
+    }
+  }
+  report("pins locked in phase", mask == 0U);
+
+  edges = count_edges(TEST_GPIO);
+  report("square wave running", (edges >= EDGES_LO) && (edges <= EDGES_HI));
+
+  pioSmDisableX(sms[0]);
+  pioSmDisableX(sms[1]);
+  pioProgramUnload(block, sq_off, sqwave_program.length);
+  pioSmFree(sms[0]);
+  pioSmFree(sms[1]);
 
   /*
    * Test 22: instruction encoders.
