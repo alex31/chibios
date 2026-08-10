@@ -257,6 +257,60 @@
 #define PIO_INSTR_NOP                   0xA042U
 /** @} */
 
+/**
+ * @name    PIO instruction operands
+ * @note    The encoding is shared by several instructions but not every
+ *          value is legal in every one of them, see the datasheet
+ *          instruction set tables.
+ * @{
+ */
+#define PIO_DEST_PINS                   0U
+#define PIO_DEST_X                      1U
+#define PIO_DEST_Y                      2U
+#define PIO_DEST_NULL                   3U
+#define PIO_DEST_PINDIRS                4U
+#define PIO_DEST_PC                     5U
+#define PIO_DEST_ISR                    6U
+#define PIO_DEST_OSR                    7U
+
+/* EXEC is encoded differently by OUT and MOV.*/
+#define PIO_OUT_DEST_EXEC               7U
+#define PIO_MOV_DEST_EXEC               4U
+
+#define PIO_SRC_PINS                    0U
+#define PIO_SRC_X                       1U
+#define PIO_SRC_Y                       2U
+#define PIO_SRC_NULL                    3U
+#define PIO_SRC_STATUS                  5U
+#define PIO_SRC_ISR                     6U
+#define PIO_SRC_OSR                     7U
+
+#define PIO_MOV_NONE                    0U
+#define PIO_MOV_INVERT                  1U
+#define PIO_MOV_BITREV                  2U
+
+#define PIO_JMP_ALWAYS                  0U
+#define PIO_JMP_NOT_X                   1U
+#define PIO_JMP_X_DEC                   2U
+#define PIO_JMP_NOT_Y                   3U
+#define PIO_JMP_Y_DEC                   4U
+#define PIO_JMP_X_NE_Y                  5U
+#define PIO_JMP_PIN                     6U
+#define PIO_JMP_NOT_OSRE                7U
+
+#define PIO_WAIT_GPIO                   0U
+#define PIO_WAIT_PIN                    1U
+#define PIO_WAIT_IRQ                    2U
+#if defined(RP2350) || defined(__DOXYGEN__)
+#define PIO_WAIT_JMPPIN                 3U
+#endif
+
+/* ORed into the index of pioEncodeIrq()/pioEncodeWait() with
+   PIO_WAIT_IRQ: the flag index is taken relative to the state machine
+   number.*/
+#define PIO_IRQ_INDEX_REL               0x10U
+/** @} */
+
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -947,7 +1001,224 @@ __STATIC_INLINE void pioSmSetPinctrlX(const rp_pio_sm_t *smp,
 }
 
 /**
+ * @name    Instruction encoders
+ * @details Build the instruction word taken by @p pioSmExecX() and by
+ *          @p rp_pio_program_t instruction arrays. The delay/side-set
+ *          field is left zero; where needed, OR in the value built with
+ *          @p pioEncodeDelay() and @p pioEncodeSideSet(). An out of band
+ *          exec normally wants it zero: the delay of an exec'd
+ *          instruction is not applied and the side-set field would drive
+ *          pins the running program owns.
+ * @{
+ */
+
+/**
+ * @brief   Encodes a JMP.
+ *
+ * @param[in] cond      condition, one of the @p PIO_JMP_* macros
+ * @param[in] addr      absolute target instruction address (0..31)
+ * @return              The instruction word.
+ */
+__STATIC_INLINE uint16_t pioEncodeJmp(uint32_t cond, uint32_t addr) {
+
+  osalDbgCheck((cond < 8U) && (addr < RP_PIO_NUM_INSTR_MEM));
+
+  return (uint16_t)(0x0000U | (cond << 5) | addr);
+}
+
+/**
+ * @brief   Encodes a WAIT.
+ * @note    With @p PIO_WAIT_GPIO the index is an absolute pin (on the
+ *          RP2350, relative to the GPIOBASE window), with @p PIO_WAIT_PIN
+ *          it is relative to the IN pin base, with @p PIO_WAIT_IRQ it is
+ *          a flag index (0..7, @p PIO_IRQ_INDEX_REL selects
+ *          machine-relative addressing). @p PIO_WAIT_JMPPIN exists on the
+ *          RP2350 only.
+ *
+ * @param[in] polarity  wait for a 1 when true, for a 0 when false
+ * @param[in] src       source, one of the @p PIO_WAIT_* macros
+ * @param[in] index     source index (0..31)
+ * @return              The instruction word.
+ */
+__STATIC_INLINE uint16_t pioEncodeWait(bool polarity, uint32_t src,
+                                       uint32_t index) {
+
+  osalDbgCheck((src < 4U) && (index < 32U));
+
+  return (uint16_t)(0x2000U | (polarity ? 0x80U : 0U) | (src << 5) | index);
+}
+
+/**
+ * @brief   Encodes an IN.
+ *
+ * @param[in] src       source, one of @p PIO_SRC_PINS, @p PIO_SRC_X,
+ *                      @p PIO_SRC_Y, @p PIO_SRC_NULL, @p PIO_SRC_ISR,
+ *                      @p PIO_SRC_OSR
+ * @param[in] count     bit count (1..32, 32 encoded as 0)
+ * @return              The instruction word.
+ */
+__STATIC_INLINE uint16_t pioEncodeIn(uint32_t src, uint32_t count) {
+
+  osalDbgCheck((src < 8U) && (count >= 1U) && (count <= 32U));
+
+  return (uint16_t)(0x4000U | (src << 5) | (count & 0x1FU));
+}
+
+/**
+ * @brief   Encodes an OUT.
+ *
+ * @param[in] dest      destination, one of @p PIO_DEST_PINS,
+ *                      @p PIO_DEST_X, @p PIO_DEST_Y, @p PIO_DEST_NULL,
+ *                      @p PIO_DEST_PINDIRS, @p PIO_DEST_PC,
+ *                      @p PIO_DEST_ISR, @p PIO_OUT_DEST_EXEC
+ * @param[in] count     bit count (1..32, 32 encoded as 0)
+ * @return              The instruction word.
+ */
+__STATIC_INLINE uint16_t pioEncodeOut(uint32_t dest, uint32_t count) {
+
+  osalDbgCheck((dest < 8U) && (count >= 1U) && (count <= 32U));
+
+  return (uint16_t)(0x6000U | (dest << 5) | (count & 0x1FU));
+}
+
+/**
+ * @brief   Encodes a PUSH.
+ *
+ * @param[in] iffull    only push if the input threshold is reached
+ * @param[in] block     stall while the RX FIFO is full
+ * @return              The instruction word.
+ */
+__STATIC_INLINE uint16_t pioEncodePush(bool iffull, bool block) {
+
+  return (uint16_t)(0x8000U | (iffull ? 0x40U : 0U) | (block ? 0x20U : 0U));
+}
+
+/**
+ * @brief   Encodes a PULL.
+ *
+ * @param[in] ifempty   only pull if the output threshold is reached
+ * @param[in] block     stall while the TX FIFO is empty
+ * @return              The instruction word.
+ */
+__STATIC_INLINE uint16_t pioEncodePull(bool ifempty, bool block) {
+
+  return (uint16_t)(0x8080U | (ifempty ? 0x40U : 0U) | (block ? 0x20U : 0U));
+}
+
+/**
+ * @brief   Encodes a MOV.
+ *
+ * @param[in] dest      destination, one of the @p PIO_DEST_* macros or
+ *                      @p PIO_MOV_DEST_EXEC
+ * @param[in] op        operation, one of @p PIO_MOV_NONE,
+ *                      @p PIO_MOV_INVERT, @p PIO_MOV_BITREV
+ * @param[in] src       source, one of the @p PIO_SRC_* macros
+ * @return              The instruction word.
+ */
+__STATIC_INLINE uint16_t pioEncodeMov(uint32_t dest, uint32_t op,
+                                      uint32_t src) {
+
+  osalDbgCheck((dest < 8U) && (op < 3U) && (src < 8U));
+
+  return (uint16_t)(0xA000U | (dest << 5) | (op << 3) | src);
+}
+
+/**
+ * @brief   Encodes an IRQ.
+ *
+ * @param[in] clear     clear the flag instead of raising it
+ * @param[in] wait      stall until the raised flag is cleared again,
+ *                      ignored when @p clear is true
+ * @param[in] index     flag index (0..7), optionally ORed with
+ *                      @p PIO_IRQ_INDEX_REL
+ * @return              The instruction word.
+ */
+__STATIC_INLINE uint16_t pioEncodeIrq(bool clear, bool wait,
+                                      uint32_t index) {
+
+  osalDbgCheck(index < 32U);
+
+  return (uint16_t)(0xC000U | (clear ? 0x40U : 0U) | (wait ? 0x20U : 0U) |
+                    index);
+}
+
+/**
+ * @brief   Encodes a SET.
+ *
+ * @param[in] dest      destination, one of @p PIO_DEST_PINS,
+ *                      @p PIO_DEST_X, @p PIO_DEST_Y, @p PIO_DEST_PINDIRS
+ * @param[in] value     immediate value (0..31)
+ * @return              The instruction word.
+ */
+__STATIC_INLINE uint16_t pioEncodeSet(uint32_t dest, uint32_t value) {
+
+  osalDbgCheck((dest < 8U) && (value < 32U));
+
+  return (uint16_t)(0xE000U | (dest << 5) | value);
+}
+
+/**
+ * @brief   Encodes a NOP, which is @p MOV Y, Y.
+ *
+ * @return              The instruction word.
+ */
+__STATIC_INLINE uint16_t pioEncodeNop(void) {
+
+  return pioEncodeMov(PIO_DEST_Y, PIO_MOV_NONE, PIO_SRC_Y);
+}
+
+/**
+ * @brief   Encodes the delay field, to be ORed into any instruction.
+ * @details The field shrinks as side-set bits are configured, so the
+ *          available delay range depends on the SIDESET_COUNT value the
+ *          state machine runs with.
+ *
+ * @param[in] cycles        delay cycles
+ * @param[in] sideset_bits  side-set bit count the state machine is
+ *                          configured with, enable bit included (0..5)
+ * @return              The delay field value.
+ */
+__STATIC_INLINE uint16_t pioEncodeDelay(uint32_t cycles,
+                                        uint32_t sideset_bits) {
+
+  osalDbgCheck((sideset_bits <= 5U) &&
+               (cycles < (1U << (5U - sideset_bits))));
+
+  return (uint16_t)(cycles << 8);
+}
+
+/**
+ * @brief   Encodes the side-set field, to be ORed into any instruction.
+ *
+ * @param[in] value         side-set value to drive
+ * @param[in] sideset_bits  side-set data bit count the state machine is
+ *                          configured with, enable bit excluded (1..5,
+ *                          1..4 with @p side_en)
+ * @param[in] side_en       side-set is optional (SIDE_EN configured):
+ *                          sets the enable bit so this instruction does
+ *                          drive the pins
+ * @return              The side-set field value.
+ */
+__STATIC_INLINE uint16_t pioEncodeSideSet(uint32_t value,
+                                          uint32_t sideset_bits,
+                                          bool side_en) {
+
+  osalDbgCheck((sideset_bits >= 1U) &&
+               (sideset_bits <= (side_en ? 4U : 5U)) &&
+               (value < (1U << sideset_bits)));
+
+  if (side_en) {
+    return (uint16_t)(0x1000U | (value << (12U - sideset_bits)));
+  }
+
+  return (uint16_t)(value << (13U - sideset_bits));
+}
+/** @} */
+
+/**
  * @brief   Executes an instruction immediately on a state machine.
+ * @note    The instruction is executed out of band, the program counter
+ *          is not affected unless the instruction itself changes it.
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
  * @param[in] instr     16-bit PIO instruction
@@ -1477,7 +1748,7 @@ __STATIC_INLINE void pioSmSetConsecutivePindirsX(const rp_pio_sm_t *smp,
                                   (rel << PIO_SM_PINCTRL_SET_BASE_Pos);
     /* SET PINDIRS, all ones for outputs or all zeros for inputs; only the
        low "chunk" bits take effect.*/
-    pioSmExecX(smp, (uint16_t)(0xE080U | (out ? 0x1FU : 0x00U)));
+    pioSmExecX(smp, pioEncodeSet(PIO_DEST_PINDIRS, out ? 0x1FU : 0x00U));
     rel += chunk;
     count -= chunk;
   } while (count > 0U);
@@ -1501,7 +1772,7 @@ __STATIC_INLINE void pioSmSetConsecutivePindirsX(const rp_pio_sm_t *smp,
  * @special
  */
 __STATIC_INLINE void pioSmSetPCX(const rp_pio_sm_t *smp, uint32_t addr) {
-  pioSmExecX(smp, (uint16_t)(addr & 0x1FU));
+  pioSmExecX(smp, pioEncodeJmp(PIO_JMP_ALWAYS, addr & 0x1FU));
 }
 
 /**

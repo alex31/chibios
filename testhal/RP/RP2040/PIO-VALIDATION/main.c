@@ -74,6 +74,11 @@
  *    autopull states without touching SHIFTCTRL, leave no stalled exec
  *    behind, keep its hands off a stall it did not cause, and
  *    PIO_INSTR_NOP must displace a stalled exec'd instruction.
+ * 22. Instruction encoders: every pioEncode* must match the
+ *    hand-assembled words this suite already uses, and a program built
+ *    only with encoders must produce the reference square wave.
+ *    (Test numbers 15..22 are allocated across the PIO API series;
+ *    this branch carries test 22, the siblings land with theirs.)
  *
  * The square wave is emitted on GPIO2 and read back through SIO GPIO_IN.
  * The report is emitted on UART0 (GPIO0/GPIO1) at the SIO default
@@ -207,6 +212,15 @@ static const rp_pio_program_t outpin_program = {
 
 /* DMA source pattern, filled at run time with alternating bits.*/
 static uint32_t dma_pattern[DMA_WORDS];
+
+/* Square-wave program rebuilt with the instruction encoders in test 22.*/
+static uint16_t encoded_instructions[3];
+
+static const rp_pio_program_t encoded_program = {
+  .instructions = encoded_instructions,
+  .length       = 3U,
+  .origin       = -1
+};
 
 /*===========================================================================*/
 /* Report helpers.                                                           */
@@ -1108,6 +1122,63 @@ int main(void) {
 
   pioSmRestartX(smp);
   pioSmClearFifosX(smp);
+  pioSmFree(smp);
+
+  /*
+   * Test 22: instruction encoders.
+   */
+  chprintf(chp, "--- Test 22: instruction encoders\r\n");
+
+  /* Every encoder against the hand-assembled words used elsewhere in
+     this suite and in the driver.*/
+  report("jmp", pioEncodeJmp(PIO_JMP_ALWAYS, 0U) == 0x0000U);
+  report("jmp x--", pioEncodeJmp(PIO_JMP_X_DEC, 5U) == 0x0045U);
+  report("wait 1 irq 3",
+         pioEncodeWait(true, PIO_WAIT_IRQ, 3U) == 0x20C3U);
+  report("in pins, 32", pioEncodeIn(PIO_SRC_PINS, 32U) == 0x4000U);
+  report("out null, 32",
+         pioEncodeOut(PIO_DEST_NULL, 32U) == PIO_INSTR_OUT_NULL_32);
+  report("out pins, 1", pioEncodeOut(PIO_DEST_PINS, 1U) == 0x6001U);
+  report("push block", pioEncodePush(false, true) == 0x8020U);
+  report("pull noblock",
+         pioEncodePull(false, false) == PIO_INSTR_PULL_NOBLOCK);
+  report("mov x, !pins",
+         pioEncodeMov(PIO_DEST_X, PIO_MOV_INVERT, PIO_SRC_PINS) == 0xA028U);
+  report("nop", pioEncodeNop() == PIO_INSTR_NOP);
+  report("irq set 3", pioEncodeIrq(false, false, 3U) == 0xC003U);
+  report("irq clear 3 rel",
+         pioEncodeIrq(true, false, 3U | PIO_IRQ_INDEX_REL) == 0xC053U);
+  report("set pins, 1", pioEncodeSet(PIO_DEST_PINS, 1U) == 0xE001U);
+  report("set pindirs, 1",
+         pioEncodeSet(PIO_DEST_PINDIRS, 1U) == 0xE081U);
+  report("delay [7]", pioEncodeDelay(7U, 0U) == 0x0700U);
+  report("side 1 of 1", pioEncodeSideSet(1U, 1U, false) == 0x1000U);
+  report("side 1 of 1 opt", pioEncodeSideSet(1U, 1U, true) == 0x1800U);
+
+  /* The reference square wave rebuilt with encoders alone.*/
+  encoded_instructions[0] = pioEncodeSet(PIO_DEST_PINS, 1U);
+  encoded_instructions[1] = pioEncodeSet(PIO_DEST_PINS, 0U);
+  encoded_instructions[2] = pioEncodeJmp(PIO_JMP_ALWAYS, 0U);
+  report("program matches the literal one",
+         (encoded_instructions[0] == sqwave_instructions[0]) &&
+         (encoded_instructions[1] == sqwave_instructions[1]) &&
+         (encoded_instructions[2] == sqwave_instructions[2]));
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  sq_off = pioProgramLoad(block, &encoded_program);
+  report("program loaded", sq_off >= 0);
+  sqwave_start(smp, (uint32_t)sq_off);
+  edges = count_edges(TEST_GPIO);
+  report("square wave from the encoded program",
+         (edges >= EDGES_LO) && (edges <= EDGES_HI));
+
+  pioSmDisableX(smp);
+  pioProgramUnload(block, sq_off, encoded_program.length);
   pioSmFree(smp);
 
   /*
