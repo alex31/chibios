@@ -74,6 +74,13 @@
  *    autopull states without touching SHIFTCTRL, leave no stalled exec
  *    behind, keep its hands off a stall it did not cause, and
  *    PIO_INSTR_NOP must displace a stalled exec'd instruction.
+ * 18. Runtime setters: pioSmSetWrapX, pioSmSetJmpPinX and the PINCTRL
+ *    group setters must modify only their own fields, leaving the
+ *    neighbouring fields bit-exact.
+ * 19. Readback: pioSmGetClkdivX and pioGetInputSyncBypassX (and, on the
+ *    RP2350, pioGetGpioBaseX) must return what the setters wrote.
+ *    (Test numbers 15..22 are allocated across the PIO API series;
+ *    this branch carries tests 18..19, the siblings land with theirs.)
  * 20. Instruction patching: pioProgramPatchX must rewrite a slot of a
  *    running program (the pin freezes and recovers with the patch), at
  *    rebased addresses when the program is loaded at an offset.
@@ -1130,6 +1137,89 @@ int main(void) {
 
   pioSmRestartX(smp);
   pioSmClearFifosX(smp);
+  pioSmFree(smp);
+
+  /*
+   * Test 18: field-scoped runtime setters.
+   */
+  chprintf(chp, "--- Test 18: runtime setters\r\n");
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  /* EXECCTRL planted with distinctive values in the non-wrap fields.*/
+  pioSmSetExecctrlX(smp, PIO_SM_EXECCTRL_WRAP(3U, 12U) |
+                         PIO_SM_EXECCTRL_OUT_STICKY |
+                         PIO_SM_EXECCTRL_SIDE_PINDIR |
+                         (9U << PIO_SM_EXECCTRL_JMP_PIN_Pos));
+
+  pioSmSetWrapX(smp, 5U, 30U);
+  report("wrap repointed, neighbours preserved",
+         block->pio->SM[smp->smidx].EXECCTRL ==
+         (PIO_SM_EXECCTRL_WRAP(5U, 30U) | PIO_SM_EXECCTRL_OUT_STICKY |
+          PIO_SM_EXECCTRL_SIDE_PINDIR |
+          (9U << PIO_SM_EXECCTRL_JMP_PIN_Pos)));
+
+  pioSmSetJmpPinX(smp, 17U);
+  report("JMP_PIN repointed, neighbours preserved",
+         block->pio->SM[smp->smidx].EXECCTRL ==
+         (PIO_SM_EXECCTRL_WRAP(5U, 30U) | PIO_SM_EXECCTRL_OUT_STICKY |
+          PIO_SM_EXECCTRL_SIDE_PINDIR |
+          (17U << PIO_SM_EXECCTRL_JMP_PIN_Pos)));
+
+  /* PINCTRL planted whole, then rebuilt field by field; the side-set
+     count is the only field without a setter here and must survive.*/
+  pioSmSetPinctrlX(smp, (3U << PIO_SM_PINCTRL_OUT_BASE_Pos) |
+                        (7U << PIO_SM_PINCTRL_SET_BASE_Pos) |
+                        (11U << PIO_SM_PINCTRL_SIDESET_BASE_Pos) |
+                        (13U << PIO_SM_PINCTRL_IN_BASE_Pos) |
+                        (8U << PIO_SM_PINCTRL_OUT_COUNT_Pos) |
+                        (2U << PIO_SM_PINCTRL_SET_COUNT_Pos) |
+                        (1U << PIO_SM_PINCTRL_SIDESET_COUNT_Pos));
+  pioSmSetOutPinsX(smp, 20U, 4U);
+  pioSmSetSetPinsX(smp, 6U, 3U);
+  pioSmSetInPinBaseX(smp, 14U);
+  pioSmSetSidesetPinsX(smp, 10U);
+  report("PINCTRL rebuilt field by field",
+         block->pio->SM[smp->smidx].PINCTRL ==
+         ((20U << PIO_SM_PINCTRL_OUT_BASE_Pos) |
+          (4U << PIO_SM_PINCTRL_OUT_COUNT_Pos) |
+          (6U << PIO_SM_PINCTRL_SET_BASE_Pos) |
+          (3U << PIO_SM_PINCTRL_SET_COUNT_Pos) |
+          (14U << PIO_SM_PINCTRL_IN_BASE_Pos) |
+          (10U << PIO_SM_PINCTRL_SIDESET_BASE_Pos) |
+          (1U << PIO_SM_PINCTRL_SIDESET_COUNT_Pos)));
+
+  pioSmSetExecctrlX(smp, PIO_SM_EXECCTRL_WRAP(0U, 31U));
+  pioSmSetPinctrlX(smp, 0U);
+  pioSmFree(smp);
+
+  /*
+   * Test 19: setter/getter roundtrips.
+   */
+  chprintf(chp, "--- Test 19: readback\r\n");
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  pioSmSetClkdivX(smp, PIO_SM_CLKDIV(625U, 128U));
+  report("CLKDIV roundtrip",
+         pioSmGetClkdivX(smp) == PIO_SM_CLKDIV(625U, 128U));
+  pioSmSetClkdivX(smp, PIO_SM_CLKDIV(1U, 0U));
+
+  report("sync bypass idle on entry", pioGetInputSyncBypassX(block) == 0U);
+  pioSetInputSyncBypassX(block, 1U << TEST_GPIO, true);
+  report("sync bypass set",
+         pioGetInputSyncBypassX(block) == (1U << TEST_GPIO));
+  pioSetInputSyncBypassX(block, 1U << TEST_GPIO, false);
+  report("sync bypass cleared", pioGetInputSyncBypassX(block) == 0U);
+
   pioSmFree(smp);
 
   /*
