@@ -73,6 +73,15 @@
  */
 #define I2C_ENABLE_HANDSHAKE_ITERATIONS     32U
 
+/**
+ * @brief   Depth of the transmit and receive FIFOs, in entries.
+ * @details Both FIFOs of the RP controller are sixteen entries deep.
+ *          Every FIFO service loop is additionally bounded by this
+ *          depth so that the critical section it runs in has a fixed
+ *          maximum length regardless of the hardware behaviour.
+ */
+#define I2C_FIFO_DEPTH                      16U
+
 /*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
@@ -94,6 +103,28 @@ hal_i2c_driver_c I2CD1;
 /*===========================================================================*/
 /* Driver local variables and types.                                         */
 /*===========================================================================*/
+
+/**
+ * @brief   Snapshot of the configuration registers.
+ * @details These registers are gated on the controller enable bit and
+ *          hold everything the driver derives from a configuration.
+ *          A snapshot is taken before a configuration is replaced and
+ *          reprogrammed if the replacement cannot be confirmed, the
+ *          hardware then keeps describing the configuration the shared
+ *          layer keeps.
+ */
+typedef struct {
+  /* Control register, mode and feature selection.*/
+  uint32_t                  con;
+  /* SCL high count.*/
+  uint32_t                  hcnt;
+  /* SCL low count.*/
+  uint32_t                  lcnt;
+  /* Spike suppression length.*/
+  uint32_t                  spklen;
+  /* SDA transmit hold time.*/
+  uint32_t                  sdahold;
+} i2c_regs_t;
 
 /**
  * @brief   Driver default configuration.
@@ -208,39 +239,255 @@ static bool i2c_lld_wait_enable_state(I2C_TypeDef *dp, uint32_t state) {
 }
 
 /**
- * @brief   Programs the target address and starts the transfer engine.
+ * @brief   Reads the configuration registers into a snapshot.
+ * @details Register reads are legal in any enable state, the snapshot
+ *          therefore always describes the configuration the controller
+ *          is currently holding.
+ *
+ * @param[in] dp        pointer to the registers block
+ * @param[out] regs     pointer to the snapshot structure
+ */
+static void i2c_lld_read_regs(I2C_TypeDef *dp, i2c_regs_t *regs) {
+
+  regs->con     = dp->CON;
+  regs->hcnt    = dp->FSSCLHCNT;
+  regs->lcnt    = dp->FSSCLLCNT;
+  regs->spklen  = dp->FSSPKLEN;
+  regs->sdahold = dp->SDAHOLD;
+}
+
+/**
+ * @brief   Writes a configuration register snapshot.
+ * @details The FIFO trigger levels belong to the idle configuration and
+ *          are restored here as well: the receive level is retargeted
+ *          by the transfer engine for every read batch.
+ * @note    The controller must be confirmed disabled, these registers
+ *          are gated on the enable bit.
+ *
+ * @param[in] dp        pointer to the registers block
+ * @param[in] regs      pointer to the snapshot structure
+ */
+static void i2c_lld_write_regs(I2C_TypeDef *dp, const i2c_regs_t *regs) {
+
+  dp->CON       = regs->con;
+  dp->FSSCLHCNT = regs->hcnt;
+  dp->FSSCLLCNT = regs->lcnt;
+  dp->FSSPKLEN  = regs->spklen;
+  dp->SDAHOLD   = regs->sdahold;
+  dp->RXTL      = 0U;
+  dp->TXTL      = 0U;
+}
+
+/**
+ * @brief   Applies a register snapshot leaving the controller idle.
+ * @details The configuration registers are gated on the ENABLE register
+ *          bit, the disable is therefore confirmed through the
+ *          ENABLE_STATUS handshake before they are written and the
+ *          re-enable is confirmed before the controller is reported
+ *          usable again. A controller which does not confirm the
+ *          disable is reset and fully reinitialised from the snapshot,
+ *          a reset controller comes back disabled by definition and the
+ *          register gate is then open for certain. This is the single
+ *          point where the driver brings the hardware into a known
+ *          enabled-idle state, every failure path of the transfer setup
+ *          and of the reconfiguration goes through it.
+ * @note    Callable from any context, all waits are bounded: the enable
+ *          handshakes by @p I2C_ENABLE_HANDSHAKE_ITERATIONS and the
+ *          reset release by the resets controller acknowledge.
+ *
+ * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
+ * @param[in] regs      pointer to the snapshot structure
+ * @return              The operation outcome.
+ * @retval true         if the controller is confirmed enabled and idle
+ *                      holding the snapshot.
+ * @retval false        if the enable could not be confirmed, the
+ *                      snapshot has been programmed in any case.
+ */
+static bool i2c_lld_apply_regs(hal_i2c_driver_c *i2cp,
+                               const i2c_regs_t *regs) {
+  I2C_TypeDef *dp = i2cp->i2c;
+  uint32_t mask;
+
+  /* Interrupt sources masked, no service may run against a controller
+     under reconfiguration.*/
+  dp->INTRMASK = 0U;
+
+  dp->ENABLE = 0U;
+  if (!i2c_lld_wait_enable_state(dp, 0U)) {
+    /* The disable request was not confirmed, the controller is reset
+       instead of being written through a closed register gate.*/
+    mask = i2c_lld_reset_mask(i2cp);
+    rp_peripheral_reset(mask);
+    rp_peripheral_unreset(mask);
+  }
+
+  i2c_lld_write_regs(dp, regs);
+
+  /* Repeated after the possible reset, the interrupt mask does not
+     come out of reset masked.*/
+  dp->INTRMASK = 0U;
+
+  dp->ENABLE = I2C_IC_ENABLE_ENABLE;
+  if (!i2c_lld_wait_enable_state(dp, I2C_IC_ENABLE_STATUS_IC_EN)) {
+    return false;
+  }
+  (void)dp->CLRINTR;
+
+  return true;
+}
+
+/**
+ * @brief   Derives the configuration registers from a configuration.
+ * @details The SCL counts and the spike suppression length are derived
+ *          from the requested rate and the current system clock using
+ *          the classic timing ratios, configurations violating the
+ *          field ranges or the databook relations between the counts
+ *          and the suppression length are rejected. No hardware is
+ *          touched, a rejected configuration therefore leaves the
+ *          peripheral untouched.
+ *
+ * @param[in] config    pointer to the @p hal_i2c_config_t structure
+ * @param[out] regs     pointer to the snapshot structure
+ * @return              The derivation outcome.
+ * @retval true         if the configuration is representable.
+ * @retval false        if the configuration has been rejected.
+ */
+static bool i2c_lld_derive_regs(const hal_i2c_config_t *config,
+                                i2c_regs_t *regs) {
+  uint32_t freq_in, baudrate, period, lcnt, hcnt, spklen, sda_tx_hold;
+
+  freq_in = (uint32_t)halClockGetPointX(RP_CLK_SYS);
+  baudrate = config->baudrate;
+
+  /* The RP silicon supports up to Fast Mode Plus.*/
+  if ((baudrate == 0U) || (baudrate > 1000000U)) {
+    return false;
+  }
+
+  period = (freq_in + (baudrate / 2U)) / baudrate;
+
+  /* Periods too long for the 16-bit count fields are rejected early,
+     this also keeps the ratio scaling below within 32 bits.*/
+  if (period > 0x20000U) {
+    return false;
+  }
+
+  if (baudrate <= 100000U) {
+    /* Standard Mode: H: 4000ns, L: 4700ns ~ 0.54.*/
+    lcnt = period * 54U / 100U;
+  }
+  else if (baudrate <= 400000U) {
+    /* Fast Mode: H: 600ns, L: 1300ns ~ 0.68.*/
+    lcnt = period * 68U / 100U;
+  }
+  else {
+    /* Fast Mode Plus: H: 500ns, L: 760ns ~ 0.60.*/
+    lcnt = period * 60U / 100U;
+  }
+  hcnt = period - lcnt;
+
+  if ((lcnt > I2C_IC_FS_SCL_LCNT) || (hcnt > I2C_IC_FS_SCL_HCNT)) {
+    return false;
+  }
+
+  /* Spike suppression length derived as one sixteenth of the low
+     count, mirroring the reference implementation. Values beyond the
+     8-bit field are clamped: a longer than nominal suppression window
+     is harmless at the correspondingly slow SCL rates while silent
+     truncation would program a meaningless length.*/
+  spklen = lcnt < 16U ? 1U : lcnt / 16U;
+  if (spklen > I2C_IC_FS_SPKLEN_IC_FS_SPKLEN) {
+    spklen = I2C_IC_FS_SPKLEN_IC_FS_SPKLEN;
+  }
+
+  /* Databook validity relations between the SCL counts and the spike
+     suppression length: LCNT must exceed SPKLEN + 7 and HCNT must
+     exceed SPKLEN + 5.*/
+  if ((lcnt <= (spklen + 7U)) || (hcnt <= (spklen + 5U))) {
+    return false;
+  }
+
+  if (baudrate < 1000000U) {
+    /* Standard and Fast Mode:
+       sda_tx_hold = freq_in [cycles/s] * 300ns * (1s / 1e9ns)
+       Reduce 300/1e9 to 3/1e7 to avoid numbers that don't fit in u32.
+       Add 1 to avoid division truncation.*/
+    sda_tx_hold = ((freq_in * 3U) / 10000000U) + 1U;
+  }
+  else {
+    /* Fast Mode Plus:
+       sda_tx_hold = freq_in [cycles/s] * 120ns * (1s / 1e9ns)
+       Reduce 120/1e9 to 3/25e6 to avoid numbers that don't fit in u32.
+       Add 1 to avoid division truncation.*/
+    sda_tx_hold = ((freq_in * 3U) / 25000000U) + 1U;
+  }
+
+  if (sda_tx_hold > (lcnt - 2U)) {
+    return false;
+  }
+
+  regs->con     = I2C_IC_CON_IC_SLAVE_DISABLE |
+                  I2C_IC_CON_IC_RESTART_EN |
+#if RP_I2C_ADDRESS_MODE_10BIT == TRUE
+                  I2C_IC_CON_IC_10BITADDR_MASTER |
+#endif
+                  (2U << I2C_IC_CON_SPEED_Pos) | /* Always Fast Mode.*/
+                  I2C_IC_CON_MASTER_MODE |
+                  I2C_IC_CON_STOP_DET_IF_MASTER_ACTIVE |
+                  I2C_IC_CON_TX_EMPTY_CTRL;
+  regs->hcnt    = hcnt;
+  regs->lcnt    = lcnt;
+  regs->spklen  = spklen;
+  regs->sdahold = sda_tx_hold;
+
+  return true;
+}
+
+/**
+ * @brief   Programs the target address for a new transfer.
  * @details The target address register is gated on the ENABLE register
  *          bit, cycling the enable also flushes both FIFOs from any
  *          residue of a previously aborted transfer. Both edges of the
  *          enable cycle are confirmed through the ENABLE_STATUS
  *          handshake mandated by the databook before the dependent
  *          accesses are performed: the target address is written only
- *          on a confirmed disable, the interrupt sources are armed only
- *          on a confirmed enable.
- * @note    Called with the system lock held. The FIFO engine runs
- *          entirely in the interrupt service: with TX_EMPTY_CTRL
- *          selected the first TX_EMPTY interrupt fires as soon as the
- *          mask is armed because the TX FIFO is empty and no command is
- *          in flight, the service then queues data or read commands.
+ *          on a confirmed disable and the transfer is only started on a
+ *          confirmed enable.
+ *
+ *          This method has no effect other than on the hardware and it
+ *          is the only step of a transfer start which can fail. It is
+ *          therefore performed before any transaction state is
+ *          published: on failure the controller is put back into a
+ *          confirmed enabled-idle state holding the active
+ *          configuration and no trace of the attempted transaction is
+ *          left behind, neither in the driver nor in the peripheral.
+ * @note    Called with the system lock held. The interrupt sources are
+ *          deliberately not armed here, arming them is the last step of
+ *          the start sequence, see @p i2c_lld_arm_transfer().
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
  * @param[in] addr      slave device address
  * @return              The operation status.
- * @retval HAL_RET_SUCCESS     if the transfer engine has been started.
+ * @retval HAL_RET_SUCCESS     if the controller is ready to be armed.
  * @retval HAL_RET_HW_BUSY     if an enable handshake bound was
- *                             exhausted, the peripheral is left masked
- *                             and the caller propagates the busy
+ *                             exhausted, the caller propagates the busy
  *                             condition.
  */
 static msg_t i2c_lld_setup_transfer(hal_i2c_driver_c *i2cp, i2caddr_t addr) {
   I2C_TypeDef *dp = i2cp->i2c;
+  i2c_regs_t regs;
 
-  /* All interrupt sources masked during the setup, this is also the
-     state left behind on a failed handshake.*/
+  /* All interrupt sources masked during the setup.*/
   dp->INTRMASK = 0U;
 
   dp->ENABLE = 0U;
   if (!i2c_lld_wait_enable_state(dp, 0U)) {
+    /* The setup never writes the configuration registers, their current
+       contents are the active configuration and are reprogrammed as
+       they are by the recovery.*/
+    i2c_lld_read_regs(dp, &regs);
+    (void)i2c_lld_apply_regs(i2cp, &regs);
+
     return HAL_RET_HW_BUSY;
   }
 
@@ -248,6 +495,9 @@ static msg_t i2c_lld_setup_transfer(hal_i2c_driver_c *i2cp, i2caddr_t addr) {
 
   dp->ENABLE = I2C_IC_ENABLE_ENABLE;
   if (!i2c_lld_wait_enable_state(dp, I2C_IC_ENABLE_STATUS_IC_EN)) {
+    i2c_lld_read_regs(dp, &regs);
+    (void)i2c_lld_apply_regs(i2cp, &regs);
+
     return HAL_RET_HW_BUSY;
   }
 
@@ -255,13 +505,29 @@ static msg_t i2c_lld_setup_transfer(hal_i2c_driver_c *i2cp, i2caddr_t addr) {
      flushed state following an abort.*/
   (void)dp->CLRINTR;
 
-  /* Interrupt sources armed, the transfer proceeds in the service
-     routines from here.*/
-  dp->INTRMASK = I2C_IC_INTR_MASK_M_STOP_DET |
-                 I2C_IC_INTR_MASK_M_TX_EMPTY |
-                 I2C_ERROR_INTERRUPTS;
-
   return HAL_RET_SUCCESS;
+}
+
+/**
+ * @brief   Arms the transfer interrupt sources.
+ * @details This is the last step of a transfer start and the point of
+ *          no return: the transfer proceeds in the service routines
+ *          from here. With TX_EMPTY_CTRL selected the first TX_EMPTY
+ *          interrupt fires as soon as the mask is armed because the TX
+ *          FIFO is empty and no command is in flight, the service then
+ *          queues data or read commands.
+ * @note    Called with the system lock held, after the transaction
+ *          state has been published and the transfer generation has
+ *          been opened. The service routines run under the same lock
+ *          and therefore observe a fully published transaction.
+ *
+ * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
+ */
+static void i2c_lld_arm_transfer(hal_i2c_driver_c *i2cp) {
+
+  i2cp->i2c->INTRMASK = I2C_IC_INTR_MASK_M_STOP_DET |
+                        I2C_IC_INTR_MASK_M_TX_EMPTY |
+                        I2C_ERROR_INTERRUPTS;
 }
 
 /**
@@ -312,7 +578,9 @@ static msg_t i2c_lld_check_startable(hal_i2c_driver_c *i2cp) {
  * @details The read command queued last carries the STOP bit and marks
  *          the transfer as stop-expected, anchoring the own-completion
  *          evidence used by the STOP detection service.
- * @note    Called with the system lock held from ISR context.
+ * @note    Called with the system lock held from ISR context. The queue
+ *          loop is bounded by the batch size, itself capped at the FIFO
+ *          depth, and the loop cannot spin.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
  */
@@ -320,10 +588,11 @@ static void i2c_lld_request_data(hal_i2c_driver_c *i2cp) {
   I2C_TypeDef *dp = i2cp->i2c;
   uint32_t data = I2C_IC_DATA_CMD_CMD;
 
-  /* RP Designware I2C peripheral has FIFO depth of 16 elements. As we
-     specify that the TX_EMPTY interrupt only fires if the TX FIFO is
-     truly empty we don't need to check the current fill level.*/
-  uint32_t batch = i2cp->rxbytes < 16U ? (uint32_t)i2cp->rxbytes : 16U;
+  /* The read commands are queued in FIFO sized batches. As we specify
+     that the TX_EMPTY interrupt only fires if the TX FIFO is truly
+     empty we don't need to check the current fill level.*/
+  uint32_t batch = i2cp->rxbytes < I2C_FIFO_DEPTH ?
+                   (uint32_t)i2cp->rxbytes : I2C_FIFO_DEPTH;
 
   if (i2cp->send_restart) {
     data |= I2C_IC_DATA_CMD_RESTART;
@@ -360,16 +629,24 @@ static void i2c_lld_request_data(hal_i2c_driver_c *i2cp) {
  * @details The data byte queued last in a pure write carries the STOP
  *          bit and marks the transfer as stop-expected, anchoring the
  *          own-completion evidence used by the STOP detection service.
- * @note    Called with the system lock held from ISR context.
+ * @note    Called with the system lock held from ISR context. The fill
+ *          loop is bounded by the FIFO depth in addition to the FIFO
+ *          full status and to the remaining byte count, breaking out
+ *          early is harmless: the TX_EMPTY source stays armed and the
+ *          service is redispatched when the FIFO drains.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
  */
 static void i2c_lld_transmit_data(hal_i2c_driver_c *i2cp) {
   I2C_TypeDef *dp = i2cp->i2c;
   uint32_t data;
+  unsigned i;
 
-  while ((i2cp->txbytes > 0U) &&
-         ((dp->STATUS & I2C_IC_STATUS_TFNF) != 0U)) {
+  for (i = 0U; i < I2C_FIFO_DEPTH; i++) {
+    if ((i2cp->txbytes == 0U) ||
+        ((dp->STATUS & I2C_IC_STATUS_TFNF) == 0U)) {
+      break;
+    }
     data = (uint32_t)*i2cp->txptr;
 
     /* Send STOP after the last byte of a pure write. If a read phase
@@ -408,13 +685,21 @@ static void i2c_lld_transmit_data(hal_i2c_driver_c *i2cp) {
  * @note    Called with the system lock held while the transfer
  *          generation is open, the buffer belongs to the driver only
  *          until the terminal event is claimed.
+ * @note    The drain loop is bounded by the FIFO depth in addition to
+ *          the FIFO empty status, a full FIFO is drained in a single
+ *          pass and the loop cannot spin.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
  */
 static void i2c_lld_drain_rx(hal_i2c_driver_c *i2cp) {
   I2C_TypeDef *dp = i2cp->i2c;
+  unsigned i;
 
-  while ((dp->STATUS & I2C_IC_STATUS_RFNE) != 0U) {
+  for (i = 0U; i < I2C_FIFO_DEPTH; i++) {
+    if ((dp->STATUS & I2C_IC_STATUS_RFNE) == 0U) {
+      break;
+    }
+
     /* Read out received data.*/
     *i2cp->rxptr = (uint8_t)dp->DATACMD;
     i2cp->rxptr++;
@@ -503,23 +788,28 @@ static void i2c_lld_claim_terminal(hal_i2c_driver_c *i2cp, msg_t msg) {
  * @brief   Transmission errors service.
  * @details The terminal event is claimed against the transfer generation
  *          counter and the raw interrupt state, the error decoding and
- *          the whole transfer termination are performed in one critical
- *          section, see @p i2c_lld_claim_terminal(). An error made stale
- *          by a concurrent stop or already consumed by a new transfer
- *          start loses the claim and is silenced without side effects.
- *          The abort completion following a transfer stop takes the
- *          losing path: the stop already claimed the terminal event,
- *          the service only clears the flags and releases the abort
- *          tracking.
+ *          the whole transfer termination are performed in the dispatch
+ *          critical section, see @p i2c_lld_claim_terminal(). An error
+ *          made stale by a concurrent stop or already consumed by a new
+ *          transfer start loses the claim and is silenced without side
+ *          effects. The abort completion following a transfer stop
+ *          takes the losing path: the stop already claimed the terminal
+ *          event, the service only clears the flags and releases the
+ *          abort tracking.
+ * @note    Called with the system lock held from ISR context, this is
+ *          the only service also dispatched with the generation closed.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
+ * @return              The terminal event claim outcome.
+ * @retval true         if this service terminated the transfer and owes
+ *                      the user callback.
+ * @retval false        if the event was stale or lost the claim.
  */
-static void i2c_lld_serve_errors(hal_i2c_driver_c *i2cp) {
+static bool i2c_lld_serve_errors(hal_i2c_driver_c *i2cp) {
   I2C_TypeDef *dp = i2cp->i2c;
   uint32_t raw, abort_source;
   bool claimed;
 
-  chSysLockFromISR();
   raw = dp->RAWINTRSTAT;
 
   /* A raw abort event doubles as the completion notification of the
@@ -563,80 +853,61 @@ static void i2c_lld_serve_errors(hal_i2c_driver_c *i2cp) {
     /* With a transfer in flight and no raw error left the flags have
        already been consumed by a transfer start, nothing to do.*/
   }
-  chSysUnlockFromISR();
 
-  if (claimed) {
-    /* The user callback is the only piece running outside the critical
-       section, invoked by the single terminal-event winner.*/
-    __cbdrv_invoke_cb(i2cp);
-  }
+  return claimed;
 }
 
 /**
  * @brief   TX FIFO empty service.
- * @details Feeds the transmit FIFO or queues read commands. The whole
- *          service runs in a critical section: the generation check and
- *          the FIFO accesses must be atomic with respect to a transfer
- *          stop on the other core, otherwise the engine could feed an
- *          aborting transfer or unmask interrupts behind its back.
+ * @details Feeds the transmit FIFO or queues read commands.
+ * @note    Called with the system lock held from ISR context and with
+ *          the transfer generation validated as open by the dispatcher:
+ *          the interrupt status sample, the validation and these FIFO
+ *          accesses belong to the same critical section, the transfer
+ *          being served cannot change underneath.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
  */
 static void i2c_lld_serve_tx_empty(hal_i2c_driver_c *i2cp) {
 
-  chSysLockFromISR();
-  if ((i2cp->tgen & 1U) != 0U) {
-    if (i2cp->state == HAL_DRV_STATE_ACTIVE) {
-      i2c_lld_transmit_data(i2cp);
-    }
-    else {
-      i2c_lld_request_data(i2cp);
-    }
+  chDbgAssert((i2cp->tgen & 1U) != 0U, "no transfer in flight");
+
+  if (i2cp->state == HAL_DRV_STATE_ACTIVE) {
+    i2c_lld_transmit_data(i2cp);
   }
   else {
-    /* No transfer in flight, a stale data interrupt is silenced. The
-       mask write cannot stomp a concurrent start because starts run
-       under the same lock.*/
-    i2cp->i2c->CLR.INTRMASK = I2C_IC_INTR_MASK_M_TX_EMPTY |
-                              I2C_IC_INTR_MASK_M_RX_FULL;
+    i2c_lld_request_data(i2cp);
   }
-  chSysUnlockFromISR();
 }
 
 /**
  * @brief   RX FIFO batch service.
- * @details Drains the receive FIFO into the transfer buffer. The whole
- *          service runs in a critical section: after a transfer stop
- *          wins the terminal event the caller owns the receive buffer
- *          again, draining into it is only legal while the generation
- *          is still open.
+ * @details Drains the receive FIFO into the transfer buffer.
+ * @note    Called with the system lock held from ISR context and with
+ *          the transfer generation validated as open by the dispatcher:
+ *          after a transfer stop wins the terminal event the caller
+ *          owns the receive buffer again, draining into it is only
+ *          legal while the generation is still open and the generation
+ *          cannot close inside the dispatch critical section.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
  */
 static void i2c_lld_serve_rx_full(hal_i2c_driver_c *i2cp) {
   I2C_TypeDef *dp = i2cp->i2c;
 
-  chSysLockFromISR();
-  if ((i2cp->tgen & 1U) != 0U) {
-    i2c_lld_drain_rx(i2cp);
+  chDbgAssert((i2cp->tgen & 1U) != 0U, "no transfer in flight");
 
-    if (i2cp->rxbytes == 0U) {
-      /* Everything is received, therefore disable all FIFO IRQs.*/
-      dp->CLR.INTRMASK = I2C_IC_INTR_MASK_M_RX_FULL |
-                         I2C_IC_INTR_MASK_M_TX_EMPTY;
-    }
-    else {
-      /* Enable TX FIFO empty IRQ to request more data.*/
-      dp->SET.INTRMASK = I2C_IC_INTR_MASK_M_TX_EMPTY;
-    }
-  }
-  else {
-    /* No transfer in flight, the buffer is not touched, residual data
-       is flushed by the enable cycle of the next transfer start.*/
+  i2c_lld_drain_rx(i2cp);
+
+  if (i2cp->rxbytes == 0U) {
+    /* Everything is received, therefore disable all FIFO IRQs.*/
     dp->CLR.INTRMASK = I2C_IC_INTR_MASK_M_RX_FULL |
                        I2C_IC_INTR_MASK_M_TX_EMPTY;
   }
-  chSysUnlockFromISR();
+  else {
+    /* Enable TX FIFO empty IRQ to request more data.*/
+    dp->SET.INTRMASK = I2C_IC_INTR_MASK_M_TX_EMPTY;
+  }
 }
 
 /**
@@ -661,17 +932,29 @@ static void i2c_lld_serve_rx_full(hal_i2c_driver_c *i2cp) {
  *          nothing is lost. With the evidence positive the final read
  *          data, if any, is already complete in the RX FIFO, it is
  *          drained here while the generation is still open.
+ * @note    Called with the system lock held from ISR context and with
+ *          the transfer generation validated as open by the dispatcher.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
+ * @return              The terminal event claim outcome.
+ * @retval true         if this service terminated the transfer and owes
+ *                      the user callback.
+ * @retval false        if the STOP was not the own completion.
  */
-static void i2c_lld_serve_stop(hal_i2c_driver_c *i2cp) {
+static bool i2c_lld_serve_stop(hal_i2c_driver_c *i2cp) {
   I2C_TypeDef *dp = i2cp->i2c;
   bool claimed = false;
 
-  chSysLockFromISR();
-  if (((i2cp->tgen & 1U) != 0U) &&
-      ((dp->RAWINTRSTAT & (I2C_IC_INTR_STAT_R_TX_ABRT |
-                           I2C_OVERRUN_ERRORS)) == 0U)) {
+  chDbgAssert((i2cp->tgen & 1U) != 0U, "no transfer in flight");
+
+  if ((dp->RAWINTRSTAT & (I2C_IC_INTR_STAT_R_TX_ABRT |
+                          I2C_OVERRUN_ERRORS)) != 0U) {
+    /* A STOP trailing an abort or an overrun, which is terminal through
+       the error service: dropped without touching the rest of the
+       peripheral state.*/
+    (void)dp->CLRSTOPDET;
+  }
+  else {
     if (!i2c_lld_transfer_ended(i2cp)) {
       /* Foreign STOP so far, consumed and immediately reevaluated, see
          the details above.*/
@@ -689,11 +972,72 @@ static void i2c_lld_serve_stop(hal_i2c_driver_c *i2cp) {
       claimed = true;
     }
   }
+
+  return claimed;
+}
+
+/**
+ * @brief   I2C shared ISR code.
+ * @details The system lock is acquired before the interrupt status is
+ *          sampled and released only after the service has run: the
+ *          sample, the transfer generation validation and the actions
+ *          taken on FIFOs, buffers and interrupt masks all belong to
+ *          one critical section. Sampling the status outside the lock
+ *          would dispatch on a generation which the other core can
+ *          close, complete and reopen while this core is still waiting
+ *          for the lock, the service would then act on a transfer it
+ *          never observed. All work performed inside the section is
+ *          bounded by the FIFO depth or by the transfer byte counters,
+ *          no loop can spin, see @p i2c_lld_transmit_data(),
+ *          @p i2c_lld_request_data() and @p i2c_lld_drain_rx().
+ *          The user callback is the only piece which must run outside
+ *          the critical section, it is invoked after unlocking and only
+ *          by the service which won the terminal event.
+ *
+ * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
+ */
+static void i2c_lld_serve_interrupt(hal_i2c_driver_c *i2cp) {
+  I2C_TypeDef *dp = i2cp->i2c;
+  uint32_t intr;
+  bool claimed = false;
+
+  chSysLockFromISR();
+
+  /* Interrupt status sampled inside the critical section, it describes
+     the transfer generation which is live right now.*/
+  intr = dp->INTRSTAT;
+
+  /* Transmission error detected, includes the abort completion of a
+     stopped transfer. This is the only service which is meaningful with
+     the generation already closed, it arbitrates the claim itself.*/
+  if ((intr & I2C_ERROR_INTERRUPTS) != 0U) {
+    claimed = i2c_lld_serve_errors(i2cp);
+  }
+  else if ((i2cp->tgen & 1U) == 0U) {
+    /* No transfer in flight, the remaining sources can only belong to a
+       terminated, stopped or reconfigured generation, they are silenced
+       without touching buffers or driver state. The mask write cannot
+       stomp a concurrent start because starts run under this lock.*/
+    if (intr != 0U) {
+      dp->INTRMASK = 0U;
+      (void)dp->CLRINTR;
+    }
+  }
+  /* If the TX FIFO is empty we can request or send more data.*/
+  else if ((intr & I2C_IC_INTR_STAT_R_TX_EMPTY) != 0U) {
+    i2c_lld_serve_tx_empty(i2cp);
+  }
+  /* A batch of data has been received.*/
+  else if ((intr & I2C_IC_INTR_STAT_R_RX_FULL) != 0U) {
+    i2c_lld_serve_rx_full(i2cp);
+  }
+  /* STOP condition detected, own STOPs terminate the transfer.*/
+  else if ((intr & I2C_IC_INTR_STAT_R_STOP_DET) != 0U) {
+    claimed = i2c_lld_serve_stop(i2cp);
+  }
   else {
-    /* Stale STOP with no transfer in flight, or a STOP trailing an
-       abort or overrun which is terminal through the error service:
-       dropped without touching the rest of the peripheral state.*/
-    (void)dp->CLRSTOPDET;
+    /* Nothing pending, a dispatch made spurious by a source which has
+       been consumed elsewhere.*/
   }
   chSysUnlockFromISR();
 
@@ -701,40 +1045,6 @@ static void i2c_lld_serve_stop(hal_i2c_driver_c *i2cp) {
     /* The user callback is the only piece running outside the critical
        section, invoked by the single terminal-event winner.*/
     __cbdrv_invoke_cb(i2cp);
-  }
-}
-
-/**
- * @brief   I2C shared ISR code.
- *
- * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
- */
-static void i2c_lld_serve_interrupt(hal_i2c_driver_c *i2cp) {
-  I2C_TypeDef *dp = i2cp->i2c;
-  uint32_t intr = dp->INTRSTAT;
-
-  /* Transmission error detected, includes the abort completion of a
-     stopped transfer.*/
-  if ((intr & I2C_ERROR_INTERRUPTS) != 0U) {
-    i2c_lld_serve_errors(i2cp);
-    return;
-  }
-
-  /* If the TX FIFO is empty we can request or send more data.*/
-  if ((intr & I2C_IC_INTR_STAT_R_TX_EMPTY) != 0U) {
-    i2c_lld_serve_tx_empty(i2cp);
-    return;
-  }
-
-  /* A batch of data has been received.*/
-  if ((intr & I2C_IC_INTR_STAT_R_RX_FULL) != 0U) {
-    i2c_lld_serve_rx_full(i2cp);
-    return;
-  }
-
-  /* STOP condition detected, own STOPs terminate the transfer.*/
-  if ((intr & I2C_IC_INTR_STAT_R_STOP_DET) != 0U) {
-    i2c_lld_serve_stop(i2cp);
   }
 }
 
@@ -908,27 +1218,34 @@ void i2c_lld_stop(hal_i2c_driver_c *i2cp) {
 
 /**
  * @brief   I2C configuration.
- * @details The SCL counts and the spike suppression length are derived
- *          from the requested rate and the current system clock using
- *          the classic timing ratios, configurations violating the
- *          field ranges or the databook relations between the counts
- *          and the suppression length are rejected. The peripheral is
- *          reprogrammed only while no transfer is in flight and no
- *          abort is still flushing: the controller disable performed
- *          for reprogramming then settles within the documented two
- *          clock cycles, the bounded handshake is a formality.
+ * @details The register values are derived and validated first, no
+ *          hardware is touched before the configuration is known to be
+ *          representable. The peripheral is reprogrammed only while no
+ *          transfer is in flight and no abort is still flushing: the
+ *          controller disable performed for reprogramming then settles
+ *          within the documented two clock cycles, the bounded
+ *          handshake is a formality.
+ *
+ *          The reprogramming is transactional. The register contents
+ *          describing the configuration currently in effect are saved
+ *          before they are replaced and, if the new configuration does
+ *          not reach a confirmed enabled state, they are programmed
+ *          back: this method returning @p NULL leaves the shared layer
+ *          holding the previous configuration pointer, the hardware
+ *          must be left describing exactly that configuration and never
+ *          a half applied one.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
  * @param[in] config    pointer to the @p hal_i2c_config_t structure
  * @return              A pointer to the current configuration structure.
- * @retval NULL         if the configuration failed.
+ * @retval NULL         if the configuration failed, the peripheral
+ *                      keeps the previous configuration.
  *
  * @notapi
  */
 const hal_i2c_config_t *i2c_lld_setcfg(hal_i2c_driver_c *i2cp,
                                        const hal_i2c_config_t *config) {
-  I2C_TypeDef *dp = i2cp->i2c;
-  uint32_t freq_in, baudrate, period, lcnt, hcnt, spklen, sda_tx_hold;
+  i2c_regs_t newregs, oldregs;
 
   if (config == NULL) {
     config = &i2c_default_config;
@@ -941,74 +1258,8 @@ const hal_i2c_config_t *i2c_lld_setcfg(hal_i2c_driver_c *i2cp,
   }
 
   /* Timing derivation, the classic math with rejection instead of
-     assertion.*/
-  freq_in = (uint32_t)halClockGetPointX(RP_CLK_SYS);
-  baudrate = config->baudrate;
-
-  /* The RP silicon supports up to Fast Mode Plus.*/
-  if ((baudrate == 0U) || (baudrate > 1000000U)) {
-    return NULL;
-  }
-
-  period = (freq_in + (baudrate / 2U)) / baudrate;
-
-  /* Periods too long for the 16-bit count fields are rejected early,
-     this also keeps the ratio scaling below within 32 bits.*/
-  if (period > 0x20000U) {
-    return NULL;
-  }
-
-  if (baudrate <= 100000U) {
-    /* Standard Mode: H: 4000ns, L: 4700ns ~ 0.54.*/
-    lcnt = period * 54U / 100U;
-  }
-  else if (baudrate <= 400000U) {
-    /* Fast Mode: H: 600ns, L: 1300ns ~ 0.68.*/
-    lcnt = period * 68U / 100U;
-  }
-  else {
-    /* Fast Mode Plus: H: 500ns, L: 760ns ~ 0.60.*/
-    lcnt = period * 60U / 100U;
-  }
-  hcnt = period - lcnt;
-
-  if ((lcnt > I2C_IC_FS_SCL_LCNT) || (hcnt > I2C_IC_FS_SCL_HCNT)) {
-    return NULL;
-  }
-
-  /* Spike suppression length derived as one sixteenth of the low
-     count, mirroring the reference implementation. Values beyond the
-     8-bit field are clamped: a longer than nominal suppression window
-     is harmless at the correspondingly slow SCL rates while silent
-     truncation would program a meaningless length.*/
-  spklen = lcnt < 16U ? 1U : lcnt / 16U;
-  if (spklen > I2C_IC_FS_SPKLEN_IC_FS_SPKLEN) {
-    spklen = I2C_IC_FS_SPKLEN_IC_FS_SPKLEN;
-  }
-
-  /* Databook validity relations between the SCL counts and the spike
-     suppression length: LCNT must exceed SPKLEN + 7 and HCNT must
-     exceed SPKLEN + 5.*/
-  if ((lcnt <= (spklen + 7U)) || (hcnt <= (spklen + 5U))) {
-    return NULL;
-  }
-
-  if (baudrate < 1000000U) {
-    /* Standard and Fast Mode:
-       sda_tx_hold = freq_in [cycles/s] * 300ns * (1s / 1e9ns)
-       Reduce 300/1e9 to 3/1e7 to avoid numbers that don't fit in u32.
-       Add 1 to avoid division truncation.*/
-    sda_tx_hold = ((freq_in * 3U) / 10000000U) + 1U;
-  }
-  else {
-    /* Fast Mode Plus:
-       sda_tx_hold = freq_in [cycles/s] * 120ns * (1s / 1e9ns)
-       Reduce 120/1e9 to 3/25e6 to avoid numbers that don't fit in u32.
-       Add 1 to avoid division truncation.*/
-    sda_tx_hold = ((freq_in * 3U) / 25000000U) + 1U;
-  }
-
-  if (sda_tx_hold > (lcnt - 2U)) {
+     assertion, performed before the peripheral is touched.*/
+  if (!i2c_lld_derive_regs(config, &newregs)) {
     return NULL;
   }
 
@@ -1021,43 +1272,17 @@ const hal_i2c_config_t *i2c_lld_setcfg(hal_i2c_driver_c *i2cp,
     return config;
   }
 
-  /* Controller disabled during reprogramming, the disable is confirmed
-     through the ENABLE_STATUS handshake before touching the enable
-     gated registers.*/
-  dp->ENABLE = 0U;
-  if (!i2c_lld_wait_enable_state(dp, 0U)) {
+  /* Configuration in effect saved for the rollback below.*/
+  i2c_lld_read_regs(i2cp->i2c, &oldregs);
+
+  if (!i2c_lld_apply_regs(i2cp, &newregs)) {
+    /* The new configuration did not reach a confirmed enabled state,
+       the previous one is programmed back so that the hardware keeps
+       matching the configuration the shared layer keeps.*/
+    (void)i2c_lld_apply_regs(i2cp, &oldregs);
+
     return NULL;
   }
-
-  dp->CON = I2C_IC_CON_IC_SLAVE_DISABLE |
-            I2C_IC_CON_IC_RESTART_EN |
-#if RP_I2C_ADDRESS_MODE_10BIT == TRUE
-            I2C_IC_CON_IC_10BITADDR_MASTER |
-#endif
-            (2U << I2C_IC_CON_SPEED_Pos) | /* Always Fast Mode.*/
-            I2C_IC_CON_MASTER_MODE |
-            I2C_IC_CON_STOP_DET_IF_MASTER_ACTIVE |
-            I2C_IC_CON_TX_EMPTY_CTRL;
-
-  dp->RXTL = 0U;
-  dp->TXTL = 0U;
-
-  /* All timing values validated above, written as derived.*/
-  dp->FSSCLHCNT = hcnt;
-  dp->FSSCLLCNT = lcnt;
-  dp->FSSPKLEN = spklen;
-  dp->SDAHOLD = sda_tx_hold;
-
-  /* Interrupt sources masked until a transfer starts.*/
-  dp->INTRMASK = 0U;
-
-  /* Peripheral enabled again with the enable confirmed, flags
-     cleared.*/
-  dp->ENABLE = I2C_IC_ENABLE_ENABLE;
-  if (!i2c_lld_wait_enable_state(dp, I2C_IC_ENABLE_STATUS_IC_EN)) {
-    return NULL;
-  }
-  (void)dp->CLRINTR;
 
   return config;
 }
@@ -1182,7 +1407,17 @@ msg_t i2c_lld_start_master_receive(hal_i2c_driver_c *i2cp, i2caddr_t addr,
     return msg;
   }
 
-  /* Transaction setup.*/
+  /* Hardware programming, the only step of a start which can fail. It
+     is performed before any transaction state is published, a failure
+     therefore leaves both the driver fields and the confirmed idle
+     peripheral exactly as they were.*/
+  msg = i2c_lld_setup_transfer(i2cp, addr);
+  if (msg != HAL_RET_SUCCESS) {
+    return msg;
+  }
+
+  /* Transaction setup, published only once the transfer is certain to
+     start.*/
   i2cp->txptr         = NULL;
   i2cp->txbytes       = (size_t)0;
   i2cp->rxptr         = rxbuf;
@@ -1190,16 +1425,12 @@ msg_t i2c_lld_start_master_receive(hal_i2c_driver_c *i2cp, i2caddr_t addr,
   i2cp->send_restart  = false;
   i2cp->stop_expected = false;
 
-  /* Hardware programming and start, a failed enable handshake rejects
-     the start before the transfer generation is opened.*/
-  msg = i2c_lld_setup_transfer(i2cp, addr);
-  if (msg != HAL_RET_SUCCESS) {
-    return msg;
-  }
-
   /* Transfer generation opened, from here the terminal event belongs
      to a single winner among the completion, error and stop paths.*/
   i2c_lld_tgen_open(i2cp);
+
+  /* Interrupt sources armed last, on a fully published transaction.*/
+  i2c_lld_arm_transfer(i2cp);
 
   return HAL_RET_SUCCESS;
 }
@@ -1240,7 +1471,17 @@ msg_t i2c_lld_start_master_transmit(hal_i2c_driver_c *i2cp, i2caddr_t addr,
     return msg;
   }
 
-  /* Transaction setup.*/
+  /* Hardware programming, the only step of a start which can fail. It
+     is performed before any transaction state is published, a failure
+     therefore leaves both the driver fields and the confirmed idle
+     peripheral exactly as they were.*/
+  msg = i2c_lld_setup_transfer(i2cp, addr);
+  if (msg != HAL_RET_SUCCESS) {
+    return msg;
+  }
+
+  /* Transaction setup, published only once the transfer is certain to
+     start.*/
   i2cp->txptr         = txbuf;
   i2cp->txbytes       = txbytes;
   i2cp->rxptr         = rxbuf;
@@ -1248,16 +1489,12 @@ msg_t i2c_lld_start_master_transmit(hal_i2c_driver_c *i2cp, i2caddr_t addr,
   i2cp->send_restart  = false;
   i2cp->stop_expected = false;
 
-  /* Hardware programming and start, a failed enable handshake rejects
-     the start before the transfer generation is opened.*/
-  msg = i2c_lld_setup_transfer(i2cp, addr);
-  if (msg != HAL_RET_SUCCESS) {
-    return msg;
-  }
-
   /* Transfer generation opened, from here the terminal event belongs
      to a single winner among the completion, error and stop paths.*/
   i2c_lld_tgen_open(i2cp);
+
+  /* Interrupt sources armed last, on a fully published transaction.*/
+  i2c_lld_arm_transfer(i2cp);
 
   return HAL_RET_SUCCESS;
 }

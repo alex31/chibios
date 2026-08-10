@@ -159,17 +159,50 @@
  *          completion, transmission error, transfer stop, driver stop)
  *          claims the event in a critical section against the live
  *          counter, only the single winner terminates the transfer.
- *          The interrupt service winners perform the driver state
- *          transition and the waiter resumption inside the claim
- *          critical section itself, atomically with the claim: the
- *          shared I-class stop path decides on the driver state and
- *          wakes the waiter unconditionally under the lock it holds,
- *          state and generation must therefore never disagree, a
- *          driver state observed as active always carries an unclaimed
- *          generation. Losing paths never touch the driver state, the
- *          buffers or the waiter, they only silence hardware flags.
- *          This serializes completions, errors and stops across both
- *          cores.
+ *          Losing paths never touch the driver state, the buffers or
+ *          the waiter, they only silence hardware flags and, in the
+ *          case of an error service losing to a transfer stop, release
+ *          the abort tracking. This serializes completions, errors and
+ *          stops across both cores.
+ * @note    The claim, the peripheral quiescing, the driver state
+ *          transition and the waiter resumption form one atomic unit
+ *          for the three terminal paths of a live transfer: the
+ *          interrupt completion service, the interrupt error service
+ *          and @p i2cStopTransferI(). For these paths the driver state
+ *          and the generation cannot be observed disagreeing, an active
+ *          driver state always carries an unclaimed generation, which is
+ *          what the shared I-class stop path relies on when it decides
+ *          on the driver state and wakes the waiter under the lock it
+ *          holds. Three exceptions are deliberate and do not weaken the
+ *          rule for those paths:
+ *          - The driver lifecycle stop, @p drvStop(), transitions the
+ *            driver through @p HAL_DRV_STATE_STOPPING before the low
+ *            level stop closes the generation, and the shared stop
+ *            implementation resumes the waiter in a critical section of
+ *            its own. Generation closing, state transition and waiter
+ *            resumption are therefore separate sections there, the
+ *            driver is being torn down and no start can interleave.
+ *          - An error service which loses the claim may still clear the
+ *            @p abort_pending flag, this is the abort completion
+ *            notification and it touches no transfer state.
+ *          - The generic @p i2cStopTransfer() wrapper resumes the
+ *            waiter through @p i2cStopTransferI() irrespective of which
+ *            side won the claim, its wakeup is not gated on the low
+ *            level stop result.
+ * @note    The interrupt dispatcher samples the interrupt status inside
+ *          the same critical section in which it validates the
+ *          generation and runs the service, a service therefore always
+ *          acts on the transfer generation the sampled status belongs
+ *          to. The user callback of a terminal service is the only part
+ *          which runs outside that section.
+ * @note    The buffer fields and @p stop_expected are published by a
+ *          transfer start only after the hardware setup has succeeded
+ *          and before the generation is opened, the interrupt sources
+ *          are armed as the last step, all under the same system lock.
+ *          A start which fails publishes nothing and leaves the
+ *          peripheral in a confirmed enabled-idle state, the previous
+ *          transaction remains described by the fields and no service
+ *          can observe either.
  * @note    The @p stop_expected flag is set under the system lock when
  *          the command carrying the STOP bit is queued, it anchors the
  *          own-completion evidence used by the STOP detection service:
