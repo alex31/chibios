@@ -44,6 +44,12 @@
 #define PORTAB_ADC                  ADCD1
 #define PORTAB_ADC_TEMP_GRP         0U
 
+/* I2C instance and pads of the scanned bus, SDA on GP4 and SCL on
+   GP5.*/
+#define PORTAB_I2C                  I2CD0
+#define PORTAB_LINE_I2C_SDA         4U
+#define PORTAB_LINE_I2C_SCL         5U
+
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -66,11 +72,13 @@
 
 extern const hal_pwm_config_t portab_pwm_config;
 extern const hal_adc_config_t portab_adc_config;
+extern const hal_i2c_config_t portab_i2ccfg;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
   void portab_setup(void);
+  bool portab_i2c_bus_clear(void);
 #ifdef __cplusplus
 }
 #endif

@@ -51,9 +51,17 @@
 #define RP_IRQ_TIMER0_ALARM1_PRIORITY       2
 #define RP_IRQ_TIMER0_ALARM2_PRIORITY       2
 #define RP_IRQ_TIMER0_ALARM3_PRIORITY       2
+#define RP_IRQ_I2C0_PRIORITY                3
+#define RP_IRQ_I2C1_PRIORITY                3
 #define RP_IRQ_UART0_PRIORITY               3
 #define RP_IRQ_UART1_PRIORITY               3
 #define RP_IO_IRQ_BANK0_PRIORITY            2
+
+/*
+ * I2C driver system settings.
+ */
+#define RP_I2C_USE_I2C0                     TRUE
+#define RP_I2C_USE_I2C1                     FALSE
 
 /*
  * SIO driver system settings.
