@@ -325,6 +325,13 @@
 
 /**
  * @brief   Type of a PIO ISR callback.
+ * @note    A block has a single interrupt line shared by its four state
+ *          machines, so the callback of every allocated state machine is
+ *          invoked on every interrupt of the block, each time with the
+ *          full IRQn_INTS word: a per state machine callback has to
+ *          select its own bits with the @p PIO_IRQ_* macros. Work that
+ *          must happen once per interrupt belongs in a block callback,
+ *          see @p pioSetBlockCallbackI().
  *
  * @param[in] p         parameter for the registered function
  * @param[in] ints      content of the IRQn_INTS register
@@ -475,6 +482,10 @@ extern "C" {
                          int32_t offset, uint32_t length);
   void pioSmInit(const rp_pio_sm_t *smp, uint32_t initial_pc,
                  const rp_pio_sm_config_t *cfgp);
+  void pioSetBlockCallbackI(const rp_pio_block_t *block,
+                            rp_pioisr_t func, void *param);
+  void pioSetBlockCallback(const rp_pio_block_t *block,
+                           rp_pioisr_t func, void *param);
   uint32_t pioGetSmAllocatedMask(const rp_pio_block_t *block);
   uint32_t pioGetImemAllocatedMask(const rp_pio_block_t *block);
 #if (RP_PIO_HAS_GPIOBASE == TRUE) || defined(__DOXYGEN__)
@@ -1690,6 +1701,49 @@ __STATIC_INLINE void pioSmDisableInterruptX(const rp_pio_sm_t *smp,
 }
 
 /**
+ * @brief   Enables block interrupts on the current core.
+ * @details The IRQ flags a program raises with the IRQ instruction, and
+ *          the FIFO level interrupts, are properties of the block: the
+ *          mask is the same one @p pioSmEnableInterruptX() takes, but no
+ *          state machine has to be allocated to reach it.
+ *
+ * @param[in] block     pointer to the PIO block descriptor
+ * @param[in] mask      interrupt mask (combination of PIO_IRQ_* bits)
+ *
+ * @special
+ */
+__STATIC_INLINE void pioEnableInterruptX(const rp_pio_block_t *block,
+                                         uint32_t mask) {
+
+  osalDbgCheck(block != NULL);
+
+  if (SIO->CPUID == 0U) {
+    block->pio->SET.IRQ0_INTE = mask;
+  }
+  else {
+    block->pio->SET.IRQ1_INTE = mask;
+  }
+}
+
+/**
+ * @brief   Disables block interrupts.
+ * @note    Clears both cores' INTE unconditionally (avoids CPUID check).
+ *
+ * @param[in] block     pointer to the PIO block descriptor
+ * @param[in] mask      interrupt mask (combination of PIO_IRQ_* bits)
+ *
+ * @special
+ */
+__STATIC_INLINE void pioDisableInterruptX(const rp_pio_block_t *block,
+                                          uint32_t mask) {
+
+  osalDbgCheck(block != NULL);
+
+  block->pio->CLR.IRQ0_INTE = mask;
+  block->pio->CLR.IRQ1_INTE = mask;
+}
+
+/**
  * @brief   Returns the state of the PIO IRQ flags of a block.
  * @details The eight flags are shared by all state machines of the
  *          block and can be set, cleared and waited on by them.
@@ -1825,26 +1879,26 @@ __STATIC_INLINE uint32_t pioSmGet(const rp_pio_sm_t *smp) {
 }
 
 /**
- * @brief   Routes a GPIO pin to the PIO block that owns this state machine.
+ * @brief   Routes a GPIO pin to a PIO block.
  * @details Sets IO_BANK0 FUNCSEL for the given pin to PIO0, PIO1, or PIO2
- *          based on the block index of the state machine.
+ *          based on the block index.
  * @note    Only the pin multiplexer is programmed; the pad control
  *          register (input enable, schmitt trigger, drive strength, and
  *          on the RP2350 the isolation latch) is left untouched. Use
- *          @p pioGpioInitX() for complete pin routing.
+ *          @p pioGpioRouteX() for complete pin routing.
  * @note    The @p gpio parameter is an absolute GPIO number. On devices
  *          with the @p RP_PIO_HAS_GPIOBASE capability (RP2350) the pin
  *          fields written into PINCTRL/EXECCTRL are instead relative to
  *          the window selected with @p pioSetGpioBase(), see
  *          @p pioGpioToRel().
  *
- * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @param[in] block     pointer to the PIO block descriptor
  * @param[in] gpio      absolute GPIO pin number
  *
  * @special
  */
-__STATIC_INLINE void pioSmSetPinFunctionX(const rp_pio_sm_t *smp,
-                                           uint32_t gpio) {
+__STATIC_INLINE void pioSetPinFunctionX(const rp_pio_block_t *block,
+                                        uint32_t gpio) {
   static const uint32_t funcsel[] = {
     RP_PIO_FUNCSEL_PIO0,
     RP_PIO_FUNCSEL_PIO1,
@@ -1853,13 +1907,13 @@ __STATIC_INLINE void pioSmSetPinFunctionX(const rp_pio_sm_t *smp,
 #endif
   };
 
-  osalDbgCheck(gpio < RP_GPIO_NUM_LINES);
+  osalDbgCheck((block != NULL) && (gpio < RP_GPIO_NUM_LINES));
 
-  IO_BANK0->GPIO[gpio].CTRL = funcsel[smp->block->pioidx];
+  IO_BANK0->GPIO[gpio].CTRL = funcsel[block->pioidx];
 }
 
 /**
- * @brief   Routes a GPIO pin to the PIO block with explicit pad control.
+ * @brief   Routes a GPIO pin to a PIO block with explicit pad control.
  * @details Programs both the pin multiplexer and the pad control register.
  *          On the RP2350 the pad is reprogrammed while still isolated and
  *          the isolation latch is cleared only after the multiplexer
@@ -1871,6 +1925,64 @@ __STATIC_INLINE void pioSmSetPinFunctionX(const rp_pio_sm_t *smp,
  *          e.g. @p RP_PIO_PAD_DEFAULT | @p RP_PIO_PAD_PUE for an
  *          open-drain bus with pull-up.
  *
+ * @param[in] block     pointer to the PIO block descriptor
+ * @param[in] gpio      absolute GPIO pin number
+ * @param[in] padbits   pad control value, combination of @p RP_PIO_PAD_*
+ *                      bits (excluding @p RP_PIO_PAD_ISO)
+ *
+ * @special
+ */
+__STATIC_INLINE void pioGpioRoutePadX(const rp_pio_block_t *block,
+                                      uint32_t gpio, uint32_t padbits) {
+
+  osalDbgCheck((gpio < RP_GPIO_NUM_LINES) && (padbits <= 0xFFU));
+
+#if defined(RP2350)
+  PADS_BANK0->GPIO[gpio] = padbits | RP_PIO_PAD_ISO;
+  pioSetPinFunctionX(block, gpio);
+  PADS_BANK0->GPIO[gpio] = padbits;
+#else
+  PADS_BANK0->GPIO[gpio] = padbits;
+  pioSetPinFunctionX(block, gpio);
+#endif
+}
+
+/**
+ * @brief   Routes a GPIO pin to a PIO block with default pad control.
+ * @details Equivalent to @p pioGpioRoutePadX() with @p RP_PIO_PAD_DEFAULT:
+ *          input enabled with schmitt trigger, 4mA drive, no pulls.
+ *
+ * @param[in] block     pointer to the PIO block descriptor
+ * @param[in] gpio      absolute GPIO pin number
+ *
+ * @special
+ */
+__STATIC_INLINE void pioGpioRouteX(const rp_pio_block_t *block,
+                                   uint32_t gpio) {
+
+  pioGpioRoutePadX(block, gpio, RP_PIO_PAD_DEFAULT);
+}
+
+/**
+ * @brief   Routes a GPIO pin to the PIO block that owns this state machine.
+ * @details Equivalent to @p pioSetPinFunctionX() on @p smp->block.
+ *
+ * @param[in] smp       pointer to a rp_pio_sm_t structure
+ * @param[in] gpio      absolute GPIO pin number
+ *
+ * @special
+ */
+__STATIC_INLINE void pioSmSetPinFunctionX(const rp_pio_sm_t *smp,
+                                           uint32_t gpio) {
+
+  pioSetPinFunctionX(smp->block, gpio);
+}
+
+/**
+ * @brief   Routes a GPIO pin to the PIO block that owns this state
+ *          machine, with explicit pad control.
+ * @details Equivalent to @p pioGpioRoutePadX() on @p smp->block.
+ *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
  * @param[in] gpio      absolute GPIO pin number
  * @param[in] padbits   pad control value, combination of @p RP_PIO_PAD_*
@@ -1881,22 +1993,13 @@ __STATIC_INLINE void pioSmSetPinFunctionX(const rp_pio_sm_t *smp,
 __STATIC_INLINE void pioGpioInitPadX(const rp_pio_sm_t *smp,
                                      uint32_t gpio, uint32_t padbits) {
 
-  osalDbgCheck((gpio < RP_GPIO_NUM_LINES) && (padbits <= 0xFFU));
-
-#if defined(RP2350)
-  PADS_BANK0->GPIO[gpio] = padbits | RP_PIO_PAD_ISO;
-  pioSmSetPinFunctionX(smp, gpio);
-  PADS_BANK0->GPIO[gpio] = padbits;
-#else
-  PADS_BANK0->GPIO[gpio] = padbits;
-  pioSmSetPinFunctionX(smp, gpio);
-#endif
+  pioGpioRoutePadX(smp->block, gpio, padbits);
 }
 
 /**
- * @brief   Routes a GPIO pin to the PIO block with default pad control.
- * @details Equivalent to @p pioGpioInitPadX() with @p RP_PIO_PAD_DEFAULT:
- *          input enabled with schmitt trigger, 4mA drive, no pulls.
+ * @brief   Routes a GPIO pin to the PIO block that owns this state
+ *          machine, with default pad control.
+ * @details Equivalent to @p pioGpioRouteX() on @p smp->block.
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
  * @param[in] gpio      absolute GPIO pin number
@@ -1905,7 +2008,7 @@ __STATIC_INLINE void pioGpioInitPadX(const rp_pio_sm_t *smp,
  */
 __STATIC_INLINE void pioGpioInitX(const rp_pio_sm_t *smp, uint32_t gpio) {
 
-  pioGpioInitPadX(smp, gpio, RP_PIO_PAD_DEFAULT);
+  pioGpioRoutePadX(smp->block, gpio, RP_PIO_PAD_DEFAULT);
 }
 
 #if (RP_PIO_HAS_GPIOBASE == TRUE) || defined(__DOXYGEN__)
