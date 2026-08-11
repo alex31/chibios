@@ -922,10 +922,11 @@ __STATIC_INLINE void pioSmDisableX(const rp_pio_sm_t *smp) {
 
 /**
  * @brief   Enables several state machines of a block simultaneously.
- * @details A single CTRL read-modify-write raises the SM_ENABLE and
- *          CLKDIV_RESTART bits of every state machine in the mask, so
- *          their clock dividers restart together and the machines run
- *          cycle-aligned. Machines outside the mask are not affected.
+ * @details A single write to the atomic SET alias raises the SM_ENABLE
+ *          and CLKDIV_RESTART bits of every state machine in the mask,
+ *          so their clock dividers restart together and the machines run
+ *          cycle-aligned. Machines outside the mask are not affected by
+ *          construction, and the write is atomic against the other core.
  * @pre     Each state machine in the mask is configured and its program
  *          counter is positioned, as before an individual
  *          @p pioSmEnableX().
@@ -937,12 +938,10 @@ __STATIC_INLINE void pioSmDisableX(const rp_pio_sm_t *smp) {
  */
 __STATIC_INLINE void pioEnableSmMaskInSyncX(const rp_pio_block_t *block,
                                             uint32_t mask) {
-  uint32_t ctrl;
 
   osalDbgCheck((block != NULL) && ((mask & ~0xFU) == 0U));
 
-  ctrl = block->pio->CTRL;
-  block->pio->CTRL = ctrl | mask | (mask << 8U);
+  block->pio->SET.CTRL = mask | (mask << 8U);
 }
 
 /**
