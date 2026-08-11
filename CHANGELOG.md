@@ -195,6 +195,12 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Fixed
 
+- [STM32] OCTOSPIv2 WSPI driver had three defects: the OCTOSPI2 initialization
+  used the OCTOSPI1 DHQC option bit, a non-full-init start wrote an
+  uninitialized DCR2 prescaler, and the transfer-complete ISR invoked the
+  portable ISR code (whose callback may start a new transaction) before
+  waiting for MDMA completion
+  ([#227](https://github.com/chibios-upstream/chibios/pull/227)).
 - [ARMV6M] ARMv6-M could fail to link with `-flto` (an "undefined reference" to the
   interrupt handler body) once an image grew large enough for the LTO
   partitioner to split it; the `PORT_IRQ_HANDLER` body now has external
