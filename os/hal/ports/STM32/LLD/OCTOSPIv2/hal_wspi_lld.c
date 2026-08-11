@@ -127,7 +127,7 @@ void wspi_lld_init(void) {
 #if STM32_WSPI_OCTOSPI2_SSHIFT
                     | OCTOSPI_TCR_SSHIFT
 #endif
-#if STM32_WSPI_OCTOSPI1_DHQC
+#if STM32_WSPI_OCTOSPI2_DHQC
                     | OCTOSPI_TCR_DHQC
 #endif
                     ;
@@ -147,7 +147,18 @@ void wspi_lld_init(void) {
  * @notapi
  */
 void wspi_lld_start(WSPIDriver *wspip) {
-  uint32_t dcr2;
+  uint32_t dcr2 = 0U;
+
+#if STM32_WSPI_USE_OCTOSPI1
+  if (&WSPID1 == wspip) {
+    dcr2 = STM32_DCR2_PRESCALER(STM32_WSPI_OCTOSPI1_PRESCALER_VALUE - 1U);
+  }
+#endif
+#if STM32_WSPI_USE_OCTOSPI2
+  if (&WSPID2 == wspip) {
+    dcr2 = STM32_DCR2_PRESCALER(STM32_WSPI_OCTOSPI2_PRESCALER_VALUE - 1U);
+  }
+#endif
 
   /* If in stopped state then full initialization.*/
   if (wspip->state == WSPI_STOP) {
@@ -159,7 +170,6 @@ void wspi_lld_start(WSPIDriver *wspip) {
       osalDbgAssert(wspip->mdma != NULL, "unable to allocate MDMA channel");
       rccEnableOCTOSPI1(true);
       mdmaChannelSetTrigModeX(wspip->mdma, MDMA_REQUEST_OCTOSPI1_FIFO_TH);
-      dcr2 = STM32_DCR2_PRESCALER(STM32_WSPI_OCTOSPI1_PRESCALER_VALUE - 1U);
     }
 #endif
 
@@ -171,7 +181,6 @@ void wspi_lld_start(WSPIDriver *wspip) {
       osalDbgAssert(wspip->mdma != NULL, "unable to allocate MDMA channel");
       rccEnableOCTOSPI2(true);
       mdmaChannelSetTrigModeX(wspip->mdma, MDMA_REQUEST_OCTOSPI2_FIFO_TH);
-      dcr2 = STM32_DCR2_PRESCALER(STM32_WSPI_OCTOSPI2_PRESCALER_VALUE - 1U);
     }
 #endif
   }
@@ -432,15 +441,16 @@ void wspi_lld_serve_interrupt(WSPIDriver *wspip) {
   wspip->ospi->FCR = OCTOSPI_FCR_CTEF | OCTOSPI_FCR_CTCF |
                      OCTOSPI_FCR_CSMF | OCTOSPI_FCR_CTOF;
 
-  /* Portable WSPI ISR code defined in the high level driver, note, it is
-     a macro.*/
-  _wspi_isr_code(wspip);
-
-  /* Stop everything, we need to give DMA enough time to complete the ongoing
-     operation. Race condition hidden here.*/
+  /* The OCTOSPI transfer-complete flag can precede MDMA completion. Wait
+     before invoking the portable ISR code because its callback is allowed
+     to start another transaction on this driver.*/
   while (mdmaChannelIsEnabled(wspip->mdma)) {
     /* Waiting for MDMA transaction completion.*/
   }
+
+  /* Portable WSPI ISR code defined in the high level driver, note, it is
+     a macro.*/
+  _wspi_isr_code(wspip);
 }
 
 #endif /* HAL_USE_WSPI */
