@@ -504,10 +504,14 @@ void pioSmFreeI(const rp_pio_sm_t *smp) {
 
   /* Reset PIO block only if no state machines remain allocated and no
      programs are loaded, resetting while instruction memory is allocated
-     would wipe loaded programs behind the bookkeeping's back.*/
+     would wipe loaded programs behind the bookkeeping's back. The reset
+     wipes the INTE routing, so the block callback is dropped with it:
+     keeping the pointer past the point it can ever fire again would
+     leave a stale registration behind.*/
   if (((pio.blocks[b].c0_allocated_mask |
         pio.blocks[b].c1_allocated_mask) == 0U) &&
       (pio.blocks[b].imem_allocated == 0U)) {
+    pio.blocks[b].block.func = NULL;
     rp_peripheral_reset(smp->block->resets_mask);
   }
 }
@@ -735,6 +739,11 @@ void pioSmInit(const rp_pio_sm_t *smp, uint32_t initial_pc,
  *          natural place to do it, being the only handler guaranteed to
  *          run exactly once per interrupt.
  * @note    Passing @p NULL removes the callback.
+ * @note    The callback can only be invoked while the current core has
+ *          at least one state machine allocated, which is what keeps the
+ *          PIO interrupt vector enabled. It is dropped automatically
+ *          when the block becomes fully idle and is reset, together with
+ *          the INTE routing.
  *
  * @param[in] block     pointer to the PIO block descriptor
  * @param[in] func      callback function, can be @p NULL

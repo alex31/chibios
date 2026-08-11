@@ -74,9 +74,11 @@
  *    autopull states without touching SHIFTCTRL, leave no stalled exec
  *    behind, keep its hands off a stall it did not cause, and
  *    PIO_INSTR_NOP must displace a stalled exec'd instruction.
- * 15. Block interrupts: pioEnableInterruptX must reach only the current
- *    core's INTE with no state machine allocated, and
- *    pioDisableInterruptX must clear both cores' enables.
+ * 15. Block interrupts: on an active block pioEnableInterruptX must
+ *    reach only the current core's INTE through the block handle, a
+ *    forced flag must travel flag -> INTS -> ISR, and
+ *    pioDisableInterruptX must clear both cores' enables leaving the
+ *    flag pending but masked.
  * 16. Block callback: pioSetBlockCallback must run exactly once per
  *    interrupt, before the per state machine callbacks, and NULL must
  *    remove it.
@@ -319,8 +321,18 @@ static bool check_addr_window(const rp_pio_sm_t *smp,
 }
 
 /*===========================================================================*/
-/* Test 16 callbacks.                                                        */
+/* Test 15/16 callbacks.                                                     */
 /*===========================================================================*/
+
+static volatile uint32_t t15_runs;
+
+/* Acknowledges the IRQ flags so the interrupt cannot re-fire.*/
+static void t15_sm_cb(void *p, uint32_t ints) {
+
+  (void)ints;
+  t15_runs++;
+  pioIrqClearX((const rp_pio_block_t *)p, 0xFFU);
+}
 
 static volatile uint32_t t16_block_runs;
 static volatile uint32_t t16_sm_runs;
@@ -1183,7 +1195,15 @@ int main(void) {
    */
   chprintf(chp, "--- Test 15: block interrupts\r\n");
 
-  report("no SMs allocated", pioGetSmAllocatedMask(block) == 0U);
+  /* An active block is needed: an idle one is held in reset and the
+     INTE write would be lost. SM0 also keeps this core's vector
+     enabled, with a callback that acknowledges the flags.*/
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, t15_sm_cb, (void *)block);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
   report("INTE idle on entry", (block->pio->IRQ0_INTE == 0U) &&
                                (block->pio->IRQ1_INTE == 0U));
 
@@ -1192,19 +1212,30 @@ int main(void) {
          block->pio->IRQ0_INTE == PIO_IRQ_SM(0));
   report("other core's INTE untouched", block->pio->IRQ1_INTE == 0U);
 
+  /* A forced flag must travel flag -> INTS -> ISR through the block
+     level enable; the callback acknowledges it.*/
   pioIrqForceX(block, 0x01U);
-  report("forced flag raises INTS",
-         (block->pio->IRQ0_INTS & PIO_IRQ_SM(0)) != 0U);
+  for (i = 0U; (i < 1000U) && (t15_runs == 0U); i++) {
+    delay_us(1U);
+  }
+  report("forced flag reaches the ISR", t15_runs == 1U);
+  report("flag acknowledged by the callback", pioIrqGetX(block) == 0U);
+  report("INTS idle after the acknowledge", block->pio->IRQ0_INTS == 0U);
 
-  pioIrqClearX(block, 0x01U);
-  report("cleared flag drops INTS", block->pio->IRQ0_INTS == 0U);
-
-  pioIrqForceX(block, 0x01U);
   pioDisableInterruptX(block, PIO_IRQ_SM(0));
   report("disable clears both cores' INTE",
          (block->pio->IRQ0_INTE == 0U) && (block->pio->IRQ1_INTE == 0U));
+
+  /* With the source disabled a forced flag stays pending and masked:
+     visible in the flag state, absent from INTS, no interrupt.*/
+  pioIrqForceX(block, 0x01U);
+  delay_us(100U);
+  report("masked flag does not interrupt", t15_runs == 1U);
+  report("flag visible while masked", pioIrqGetX(block) == 0x01U);
   report("INTS masked while the flag is set", block->pio->IRQ0_INTS == 0U);
+
   pioIrqClearX(block, 0xFFU);
+  pioSmFree(smp);
 
   /*
    * Test 16: block level interrupt callback.

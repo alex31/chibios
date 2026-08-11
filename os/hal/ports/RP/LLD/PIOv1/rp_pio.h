@@ -1705,7 +1705,14 @@ __STATIC_INLINE void pioSmDisableInterruptX(const rp_pio_sm_t *smp,
  * @details The IRQ flags a program raises with the IRQ instruction, and
  *          the FIFO level interrupts, are properties of the block: the
  *          mask is the same one @p pioSmEnableInterruptX() takes, but no
- *          state machine has to be allocated to reach it.
+ *          specific state machine handle is needed to reach it.
+ * @pre     The block is active: at least one state machine allocated or
+ *          one program loaded. An idle block is held in reset and the
+ *          INTE write is lost.
+ * @note    The PIO interrupt vector of a core is enabled while that core
+ *          has at least one state machine allocated, see
+ *          @p pioSmAllocI(): an enabled source only reaches the CPU
+ *          under that condition.
  *
  * @param[in] block     pointer to the PIO block descriptor
  * @param[in] mask      interrupt mask (combination of PIO_IRQ_* bits)
