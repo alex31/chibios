@@ -1181,7 +1181,7 @@ int main(void) {
                         (1U << PIO_SM_PINCTRL_SIDESET_COUNT_Pos));
   pioSmSetOutPinsX(smp, 20U, 4U);
   pioSmSetSetPinsX(smp, 6U, 3U);
-  pioSmSetInPinBaseX(smp, 14U);
+  pioSmSetInPinsX(smp, 14U);
   pioSmSetSidesetPinsX(smp, 10U);
   report("PINCTRL rebuilt field by field",
          block->pio->SM[smp->smidx].PINCTRL ==

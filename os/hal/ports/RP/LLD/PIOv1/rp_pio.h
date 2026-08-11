@@ -1099,22 +1099,22 @@ __STATIC_INLINE void pioSmSetPinctrlX(const rp_pio_sm_t *smp,
  *          @p RP_PIO_HAS_GPIOBASE capability, see @p pioGpioToRel().
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
- * @param[in] base      first pin of the OUT group (0..31)
+ * @param[in] pin_base  first pin of the OUT group (0..31)
  * @param[in] count     number of pins in the OUT group (0..32)
  *
  * @special
  */
 __STATIC_INLINE void pioSmSetOutPinsX(const rp_pio_sm_t *smp,
-                                      uint32_t base, uint32_t count) {
+                                      uint32_t pin_base, uint32_t count) {
   uint32_t pinctrl;
 
-  osalDbgCheck((base < 32U) && (count <= 32U));
+  osalDbgCheck((pin_base < 32U) && (count <= 32U));
 
   pinctrl = smp->block->pio->SM[smp->smidx].PINCTRL;
   smp->block->pio->SM[smp->smidx].PINCTRL =
     (pinctrl & ~(PIO_SM_PINCTRL_OUT_BASE_Msk |
                  PIO_SM_PINCTRL_OUT_COUNT_Msk)) |
-    (base << PIO_SM_PINCTRL_OUT_BASE_Pos) |
+    (pin_base << PIO_SM_PINCTRL_OUT_BASE_Pos) |
     (count << PIO_SM_PINCTRL_OUT_COUNT_Pos);
 }
 
@@ -1126,71 +1126,71 @@ __STATIC_INLINE void pioSmSetOutPinsX(const rp_pio_sm_t *smp,
  *          @p RP_PIO_HAS_GPIOBASE capability, see @p pioGpioToRel().
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
- * @param[in] base      first pin of the SET group (0..31)
+ * @param[in] pin_base  first pin of the SET group (0..31)
  * @param[in] count     number of pins in the SET group (0..5)
  *
  * @special
  */
 __STATIC_INLINE void pioSmSetSetPinsX(const rp_pio_sm_t *smp,
-                                      uint32_t base, uint32_t count) {
+                                      uint32_t pin_base, uint32_t count) {
   uint32_t pinctrl;
 
-  osalDbgCheck((base < 32U) && (count <= 5U));
+  osalDbgCheck((pin_base < 32U) && (count <= 5U));
 
   pinctrl = smp->block->pio->SM[smp->smidx].PINCTRL;
   smp->block->pio->SM[smp->smidx].PINCTRL =
     (pinctrl & ~(PIO_SM_PINCTRL_SET_BASE_Msk |
                  PIO_SM_PINCTRL_SET_COUNT_Msk)) |
-    (base << PIO_SM_PINCTRL_SET_BASE_Pos) |
+    (pin_base << PIO_SM_PINCTRL_SET_BASE_Pos) |
     (count << PIO_SM_PINCTRL_SET_COUNT_Pos);
 }
 
 /**
- * @brief   Sets the IN pin base of a running state machine.
+ * @brief   Sets the IN pins of a running state machine.
  * @details Only the IN_BASE field of PINCTRL is modified, the runtime
  *          counterpart of @p pioSmConfigSetInPinsX(). Pin numbers are
  *          block-relative on devices with the @p RP_PIO_HAS_GPIOBASE
  *          capability, see @p pioGpioToRel().
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
- * @param[in] base      first pin of the IN group (0..31)
+ * @param[in] pin_base  first pin of the IN group (0..31)
  *
  * @special
  */
-__STATIC_INLINE void pioSmSetInPinBaseX(const rp_pio_sm_t *smp,
-                                        uint32_t base) {
+__STATIC_INLINE void pioSmSetInPinsX(const rp_pio_sm_t *smp,
+                                     uint32_t pin_base) {
   uint32_t pinctrl;
 
-  osalDbgCheck(base < 32U);
+  osalDbgCheck(pin_base < 32U);
 
   pinctrl = smp->block->pio->SM[smp->smidx].PINCTRL;
   smp->block->pio->SM[smp->smidx].PINCTRL =
     (pinctrl & ~PIO_SM_PINCTRL_IN_BASE_Msk) |
-    (base << PIO_SM_PINCTRL_IN_BASE_Pos);
+    (pin_base << PIO_SM_PINCTRL_IN_BASE_Pos);
 }
 
 /**
- * @brief   Sets the side-set pin base of a running state machine.
+ * @brief   Sets the side-set pin pin_base of a running state machine.
  * @details Only the SIDESET_BASE field of PINCTRL is modified, the runtime
  *          counterpart of @p pioSmConfigSetSidesetPinsX(). Pin numbers are
  *          block-relative on devices with the @p RP_PIO_HAS_GPIOBASE
  *          capability, see @p pioGpioToRel().
  *
  * @param[in] smp       pointer to a rp_pio_sm_t structure
- * @param[in] base      first pin of the side-set group (0..31)
+ * @param[in] pin_base  first pin of the side-set group (0..31)
  *
  * @special
  */
 __STATIC_INLINE void pioSmSetSidesetPinsX(const rp_pio_sm_t *smp,
-                                          uint32_t base) {
+                                          uint32_t pin_base) {
   uint32_t pinctrl;
 
-  osalDbgCheck(base < 32U);
+  osalDbgCheck(pin_base < 32U);
 
   pinctrl = smp->block->pio->SM[smp->smidx].PINCTRL;
   smp->block->pio->SM[smp->smidx].PINCTRL =
     (pinctrl & ~PIO_SM_PINCTRL_SIDESET_BASE_Msk) |
-    (base << PIO_SM_PINCTRL_SIDESET_BASE_Pos);
+    (pin_base << PIO_SM_PINCTRL_SIDESET_BASE_Pos);
 }
 
 /**
@@ -1913,6 +1913,9 @@ __STATIC_INLINE void pioGpioInitX(const rp_pio_sm_t *smp, uint32_t gpio) {
  * @brief   Returns the GPIO window base of a block.
  * @details The dual of @p pioSetGpioBase(): the base of the 32-pin GPIO
  *          window the pin fields of PINCTRL/EXECCTRL are relative to.
+ * @note    The value is only meaningful on a block that has been
+ *          configured or is active: an idle block is held in reset and
+ *          reads back 0, which coincides with the default window.
  *
  * @param[in] block     pointer to the PIO block descriptor
  * @return              The GPIOBASE register value, 0 or 16.
