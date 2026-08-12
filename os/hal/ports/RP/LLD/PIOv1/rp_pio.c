@@ -511,7 +511,8 @@ void pioSmFreeI(const rp_pio_sm_t *smp) {
   if (((pio.blocks[b].c0_allocated_mask |
         pio.blocks[b].c1_allocated_mask) == 0U) &&
       (pio.blocks[b].imem_allocated == 0U)) {
-    pio.blocks[b].block.func = NULL;
+    pio.blocks[b].block.func  = NULL;
+    pio.blocks[b].block.param = NULL;
     rp_peripheral_reset(smp->block->resets_mask);
   }
 }
@@ -647,10 +648,14 @@ void pioProgramUnloadI(const rp_pio_block_t *block,
   pio.blocks[b].imem_allocated &= ~mask;
 
   /* Reset PIO block if it became fully idle, no state machines allocated
-     by either core and no programs loaded.*/
+     by either core and no programs loaded. The reset wipes the INTE
+     routing, so the block callback is dropped with it, as in
+     pioSmFreeI().*/
   if (((pio.blocks[b].c0_allocated_mask |
         pio.blocks[b].c1_allocated_mask) == 0U) &&
       (pio.blocks[b].imem_allocated == 0U)) {
+    pio.blocks[b].block.func  = NULL;
+    pio.blocks[b].block.param = NULL;
     rp_peripheral_reset(block->resets_mask);
   }
 }

@@ -80,8 +80,9 @@
  *    pioDisableInterruptX must clear both cores' enables leaving the
  *    flag pending but masked.
  * 16. Block callback: pioSetBlockCallback must run exactly once per
- *    interrupt, before the per state machine callbacks, and NULL must
- *    remove it.
+ *    interrupt, before the per state machine callbacks, NULL must
+ *    remove it, and it must not survive the block going idle by any
+ *    route, the program unload path included.
  * 17. Block GPIO routing: pioGpioRoutePadX and pioGpioRouteX must
  *    program the pad and the pin multiplexer through a block handle
  *    with no state machine allocated.
@@ -1267,6 +1268,37 @@ int main(void) {
   }
   report("removed callback stays silent", t16_block_runs == 1U);
   report("SM callback keeps running", t16_sm_runs == 2U);
+
+  pioDisableInterruptX(block, PIO_IRQ_SM(0));
+  pioIrqClearX(block, 0xFFU);
+  pioSmFree(smp);
+
+  /* A block callback must not survive the block going idle by any
+     route: here the last release happens through the program unload
+     path, not the state machine free.*/
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, t16_sm_cb, (void *)block);
+  report("SM0 reallocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+  pioSetBlockCallback(block, t16_block_cb, (void *)block);
+  off1 = pioProgramLoad(block, &single_program);
+  report("program loaded", off1 >= 0);
+  pioSmFree(smp);
+  pioProgramUnload(block, off1, single_program.length);
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, t16_sm_cb, (void *)block);
+  report("SM0 allocated after the idle", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+  pioEnableInterruptX(block, PIO_IRQ_SM(0));
+  pioIrqForceX(block, 0x01U);
+  for (i = 0U; (i < 1000U) && (t16_sm_runs < 3U); i++) {
+    delay_us(1U);
+  }
+  report("SM callback ran after the realloc", t16_sm_runs == 3U);
+  report("unload-path teardown dropped the callback", t16_block_runs == 1U);
 
   pioDisableInterruptX(block, PIO_IRQ_SM(0));
   pioIrqClearX(block, 0xFFU);
