@@ -1170,7 +1170,7 @@ __STATIC_INLINE void pioSmSetInPinsX(const rp_pio_sm_t *smp,
 }
 
 /**
- * @brief   Sets the side-set pin pin_base of a running state machine.
+ * @brief   Sets the side-set pin base of a running state machine.
  * @details Only the SIDESET_BASE field of PINCTRL is modified, the runtime
  *          counterpart of @p pioSmConfigSetSidesetPinsX(). Pin numbers are
  *          block-relative on devices with the @p RP_PIO_HAS_GPIOBASE
