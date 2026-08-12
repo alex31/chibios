@@ -74,6 +74,20 @@
  *    autopull states without touching SHIFTCTRL, leave no stalled exec
  *    behind, keep its hands off a stall it did not cause, and
  *    PIO_INSTR_NOP must displace a stalled exec'd instruction.
+ * 15. Block interrupts: on an active block pioEnableInterruptX must
+ *    reach only the current core's INTE through the block handle, a
+ *    forced flag must travel flag -> INTS -> ISR, and
+ *    pioDisableInterruptX must clear both cores' enables leaving the
+ *    flag pending but masked.
+ * 16. Block callback: pioSetBlockCallback must run exactly once per
+ *    interrupt, before the per state machine callbacks, NULL must
+ *    remove it, and it must not survive the block going idle by any
+ *    route, the program unload path included.
+ * 17. Block GPIO routing: pioGpioRoutePadX and pioGpioRouteX must
+ *    program the pad and the pin multiplexer through a block handle
+ *    with no state machine allocated.
+ *    (Test numbers 15..22 are allocated across the PIO API series;
+ *    this branch carries tests 15..17, the siblings land with theirs.)
  * 18. Runtime setters: pioSmSetWrapX, pioSmSetJmpPinX and the PINCTRL
  *    group setters must modify only their own fields, leaving the
  *    neighbouring fields bit-exact.
@@ -305,6 +319,44 @@ static bool check_addr_window(const rp_pio_sm_t *smp,
   }
 
   return true;
+}
+
+/*===========================================================================*/
+/* Test 15/16 callbacks.                                                     */
+/*===========================================================================*/
+
+static volatile uint32_t t15_runs;
+
+/* Acknowledges the IRQ flags so the interrupt cannot re-fire.*/
+static void t15_sm_cb(void *p, uint32_t ints) {
+
+  (void)ints;
+  t15_runs++;
+  pioIrqClearX((const rp_pio_block_t *)p, 0xFFU);
+}
+
+static volatile uint32_t t16_block_runs;
+static volatile uint32_t t16_sm_runs;
+static volatile uint32_t t16_block_seq;
+static volatile uint32_t t16_sm_seq;
+static volatile uint32_t t16_seq;
+
+/* Both callbacks acknowledge the IRQ flags so the interrupt cannot
+   re-fire whichever of them is registered.*/
+static void t16_block_cb(void *p, uint32_t ints) {
+
+  (void)ints;
+  t16_block_runs++;
+  t16_block_seq = t16_seq++;
+  pioIrqClearX((const rp_pio_block_t *)p, 0xFFU);
+}
+
+static void t16_sm_cb(void *p, uint32_t ints) {
+
+  (void)ints;
+  t16_sm_runs++;
+  t16_sm_seq = t16_seq++;
+  pioIrqClearX((const rp_pio_block_t *)p, 0xFFU);
 }
 
 /*===========================================================================*/
@@ -1137,6 +1189,155 @@ int main(void) {
 
   pioSmRestartX(smp);
   pioSmClearFifosX(smp);
+  pioSmFree(smp);
+
+  /*
+   * Test 15: block level interrupt enables.
+   */
+  chprintf(chp, "--- Test 15: block interrupts\r\n");
+
+  /* An active block is needed: an idle one is held in reset and the
+     INTE write would be lost. SM0 also keeps this core's vector
+     enabled, with a callback that acknowledges the flags.*/
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, t15_sm_cb, (void *)block);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  report("INTE idle on entry", (block->pio->IRQ0_INTE == 0U) &&
+                               (block->pio->IRQ1_INTE == 0U));
+
+  pioEnableInterruptX(block, PIO_IRQ_SM(0));
+  report("enable reaches this core's INTE",
+         block->pio->IRQ0_INTE == PIO_IRQ_SM(0));
+  report("other core's INTE untouched", block->pio->IRQ1_INTE == 0U);
+
+  /* A forced flag must travel flag -> INTS -> ISR through the block
+     level enable; the callback acknowledges it.*/
+  pioIrqForceX(block, 0x01U);
+  for (i = 0U; (i < 1000U) && (t15_runs == 0U); i++) {
+    delay_us(1U);
+  }
+  report("forced flag reaches the ISR", t15_runs == 1U);
+  report("flag acknowledged by the callback", pioIrqGetX(block) == 0U);
+  report("INTS idle after the acknowledge", block->pio->IRQ0_INTS == 0U);
+
+  pioDisableInterruptX(block, PIO_IRQ_SM(0));
+  report("disable clears both cores' INTE",
+         (block->pio->IRQ0_INTE == 0U) && (block->pio->IRQ1_INTE == 0U));
+
+  /* With the source disabled a forced flag stays pending and masked:
+     visible in the flag state, absent from INTS, no interrupt.*/
+  pioIrqForceX(block, 0x01U);
+  delay_us(100U);
+  report("masked flag does not interrupt", t15_runs == 1U);
+  report("flag visible while masked", pioIrqGetX(block) == 0x01U);
+  report("INTS masked while the flag is set", block->pio->IRQ0_INTS == 0U);
+
+  pioIrqClearX(block, 0xFFU);
+  pioSmFree(smp);
+
+  /*
+   * Test 16: block level interrupt callback.
+   */
+  chprintf(chp, "--- Test 16: block callback\r\n");
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, t16_sm_cb, (void *)block);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  pioSetBlockCallback(block, t16_block_cb, (void *)block);
+  pioEnableInterruptX(block, PIO_IRQ_SM(0));
+
+  pioIrqForceX(block, 0x01U);
+  for (i = 0U; (i < 1000U) && (t16_sm_runs == 0U); i++) {
+    delay_us(1U);
+  }
+  report("block callback ran once", t16_block_runs == 1U);
+  report("SM callback ran once", t16_sm_runs == 1U);
+  report("block callback ran first", t16_block_seq < t16_sm_seq);
+  report("flag acknowledged in the callback", pioIrqGetX(block) == 0U);
+
+  pioSetBlockCallback(block, NULL, NULL);
+  pioIrqForceX(block, 0x01U);
+  for (i = 0U; (i < 1000U) && (t16_sm_runs < 2U); i++) {
+    delay_us(1U);
+  }
+  report("removed callback stays silent", t16_block_runs == 1U);
+  report("SM callback keeps running", t16_sm_runs == 2U);
+
+  pioDisableInterruptX(block, PIO_IRQ_SM(0));
+  pioIrqClearX(block, 0xFFU);
+  pioSmFree(smp);
+
+  /* A block callback must not survive the block going idle by any
+     route: here the last release happens through the program unload
+     path, not the state machine free.*/
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, t16_sm_cb, (void *)block);
+  report("SM0 reallocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+  pioSetBlockCallback(block, t16_block_cb, (void *)block);
+  off1 = pioProgramLoad(block, &single_program);
+  report("program loaded", off1 >= 0);
+  pioSmFree(smp);
+  pioProgramUnload(block, off1, single_program.length);
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, t16_sm_cb, (void *)block);
+  report("SM0 allocated after the idle", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+  pioEnableInterruptX(block, PIO_IRQ_SM(0));
+  pioIrqForceX(block, 0x01U);
+  for (i = 0U; (i < 1000U) && (t16_sm_runs < 3U); i++) {
+    delay_us(1U);
+  }
+  report("SM callback ran after the realloc", t16_sm_runs == 3U);
+  report("unload-path teardown dropped the callback", t16_block_runs == 1U);
+
+  pioDisableInterruptX(block, PIO_IRQ_SM(0));
+  pioIrqClearX(block, 0xFFU);
+  pioSmFree(smp);
+
+  /*
+   * Test 17: block level GPIO routing.
+   */
+  chprintf(chp, "--- Test 17: block GPIO routing\r\n");
+
+  report("routed with no SM allocated", pioGetSmAllocatedMask(block) == 0U);
+
+  pioGpioRoutePadX(block, TEST_GPIO, RP_PIO_PAD_DEFAULT | RP_PIO_PAD_PUE);
+  report("pull-up reaches the pad",
+         (PADS_BANK0->GPIO[TEST_GPIO] & RP_PIO_PAD_PUE) != 0U);
+  report("pad isolation dropped",
+         (PADS_BANK0->GPIO[TEST_GPIO] & RP_PIO_PAD_ISO) == 0U);
+
+  pioGpioRouteX(block, TEST_GPIO);
+  report("default pad restored",
+         PADS_BANK0->GPIO[TEST_GPIO] == RP_PIO_PAD_DEFAULT);
+  report("pin muxed to the block",
+         (IO_BANK0->GPIO[TEST_GPIO].CTRL & 0x1FU) == RP_PIO_FUNCSEL_PIO0);
+
+  smp = pioSmAlloc(block, 0U, TEST_IRQ_PRIORITY, NULL, NULL);
+  report("SM0 allocated", smp != NULL);
+  if (smp == NULL) {
+    goto summary;
+  }
+
+  sq_off = pioProgramLoad(block, &sqwave_program);
+  report("program loaded", sq_off >= 0);
+  sqwave_start(smp, (uint32_t)sq_off);
+  edges = count_edges(TEST_GPIO);
+  report("square wave through the routed pin",
+         (edges >= EDGES_LO) && (edges <= EDGES_HI));
+
+  pioSmDisableX(smp);
+  pioProgramUnload(block, sq_off, sqwave_program.length);
   pioSmFree(smp);
 
   /*
