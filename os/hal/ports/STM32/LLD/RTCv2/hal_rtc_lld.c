@@ -130,6 +130,37 @@ static void rtc_decode_date(uint32_t dr, RTCDateTime *timespec) {
   timespec->dayofweek = (dr >> RTC_DR_WDU_OFFSET) & 7;
 }
 
+#if STM32_RTC_HAS_SUBSECONDS
+/* Borrow a calendar day when SHIFTR temporarily advances RTC_TR/RTC_DR.*/
+static void rtc_previous_day(RTCDateTime *timespec) {
+  static const uint8_t month_days[] = {31, 28, 31, 30, 31, 30,
+                                      31, 31, 30, 31, 30, 31};
+
+  timespec->dayofweek = timespec->dayofweek > 1U ?
+                       timespec->dayofweek - 1U : 7U;
+  if (timespec->day > 1U) {
+    --timespec->day;
+    return;
+  }
+
+  if (timespec->month > 1U) {
+    --timespec->month;
+  }
+  else {
+    timespec->month = 12U;
+    timespec->year = timespec->year > 0U ? timespec->year - 1U : 99U;
+  }
+  timespec->day = month_days[timespec->month - 1U];
+  if (timespec->month == 2U) {
+    const uint32_t year = RTC_BASE_YEAR + timespec->year;
+    if ((year % 4U == 0U) && ((year % 100U != 0U) || (year % 400U == 0U))) {
+      timespec->day = 29U;
+    }
+  }
+}
+
+#endif /* STM32_RTC_HAS_SUBSECONDS */
+
 /**
  * @brief   Converts time from timespec to TR register encoding.
  *
@@ -635,7 +666,7 @@ void rtc_lld_set_time(RTCDriver *rtcp, const RTCDateTime *timespec) {
  */
 void rtc_lld_get_time(RTCDriver *rtcp, RTCDateTime *timespec) {
   uint32_t cr, dr, tr, prev_dr, prev_tr;
-  uint32_t subs;
+  int32_t millis;
 #if STM32_RTC_HAS_SUBSECONDS
   uint32_t ssr, prev_ssr;
 #endif /* STM32_RTC_HAS_SUBSECONDS */
@@ -677,18 +708,25 @@ void rtc_lld_get_time(RTCDriver *rtcp, RTCDateTime *timespec) {
   /* Decoding day time, this starts the atomic read sequence, see "Reading
      the calendar" in the RTC documentation.*/
   rtc_decode_time(tr, timespec);
+  rtc_decode_date(dr, timespec);
+  millis = (int32_t)timespec->millisecond;
 
   /* If the RTC is capable of sub-second counting then the value is
      normalized in milliseconds and added to the time.*/
 #if STM32_RTC_HAS_SUBSECONDS
-  subs = (((STM32_RTC_PRESS_VALUE - 1U) - ssr) * 1000U) / STM32_RTC_PRESS_VALUE;
-#else
-  subs = 0;
+  /* SHIFTR can make SSR exceed PREDIV_S. In that case the calendar is
+     ahead of the actual time. Normalize SSR before unsigned arithmetic,
+     then subtract the whole seconds, including a date borrow at midnight.*/
+  millis += (int32_t)(((STM32_RTC_PRESS_VALUE - 1U -
+                        ssr % STM32_RTC_PRESS_VALUE) * 1000U) /
+                      STM32_RTC_PRESS_VALUE);
+  millis -= (int32_t)(ssr / STM32_RTC_PRESS_VALUE) * 1000;
+  if (millis < 0) {
+    millis += 86400000;
+    rtc_previous_day(timespec);
+  }
 #endif /* STM32_RTC_HAS_SUBSECONDS */
-  timespec->millisecond += subs;
-
-  /* Decoding date, this concludes the atomic read sequence.*/
-  rtc_decode_date(dr, timespec);
+  timespec->millisecond = (uint32_t)millis;
 
   /* Retrieving the DST bit.*/
   timespec->dstflag = (cr >> RTC_CR_BKP_OFFSET) & 1;
