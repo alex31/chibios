@@ -576,13 +576,13 @@ struct nil_os_instance {
 #endif
 #if (CH_CFG_ST_TIMEDELTA > 0) || defined(__DOXYGEN__)
   /**
-   * @brief   System time of the last tick event.
+   * @brief   Time origin of the remaining thread timeout intervals.
    */
   systime_t             lasttime;
   /**
-   * @brief   Time of the next scheduled tick event.
+   * @brief   True while the tickless alarm is started.
    */
-  systime_t             nexttime;
+  bool                  started;
 #endif
 #if (CH_DBG_SYSTEM_STATE_CHECK == TRUE) || defined(__DOXYGEN__)
   /**
@@ -1136,6 +1136,7 @@ struct nil_os_instance {
  * @sclass
  */
 #define chSchWakeupS(ntp, msg) do {                                         \
+  chDbgCheckClassS();                                                       \
   chSchReadyI(ntp, msg);                                                    \
   chSchRescheduleS();                                                       \
 } while (false)
@@ -1179,6 +1180,7 @@ struct nil_os_instance {
  * @sclass
  */
 #define chThdResumeS(trp, msg) do {                                         \
+  chDbgCheckClassS();                                                       \
   chThdResumeI(trp, msg);                                                   \
   chSchRescheduleS();                                                       \
 } while (false)
@@ -1317,7 +1319,7 @@ struct nil_os_instance {
  * @xclass
  */
 #define chTimeAddX(systime, interval)                                       \
-  ((systime_t)(systime) + (systime_t)(interval))
+  ((systime_t)((systime_t)(systime) + (systime_t)(interval)))
 
 /**
  * @brief   Subtracts two system times returning an interval.
