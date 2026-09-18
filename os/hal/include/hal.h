@@ -312,6 +312,29 @@ static inline bool halClockSwitchMode(const halclkcfg_t *ccp) {
 }
 #endif /* defined(HAL_LLD_USE_CLOCK_MANAGEMENT) */
 
+#if defined(HAL_LLD_USE_CLOCK_RESUME) || defined(__DOXYGEN__)
+/**
+ * @brief   Resumes the current clock configuration after a low power mode.
+ * @details Restores the default configuration after initialization, or the
+ *          last configuration successfully installed by
+ *          @p halClockSwitchMode().
+ * @note    This operation is only available on supporting platforms.
+ * @note    Interrupts must remain masked throughout this operation.
+ * @note    A failure may leave the clock state partially restored. The caller
+ *          must recover the clock state before interrupts are unmasked.
+ *
+ * @return              The clock resume result.
+ * @retval false        if the clock resume succeeded
+ * @retval true         if the clock resume failed
+ *
+ * @special
+ */
+static inline bool halClockResume(void) {
+
+  return hal_lld_clock_resume();
+}
+#endif /* defined(HAL_LLD_USE_CLOCK_RESUME) */
+
 /*===========================================================================*/
 /* Driver late inclusions.                                                   */
 /*===========================================================================*/
