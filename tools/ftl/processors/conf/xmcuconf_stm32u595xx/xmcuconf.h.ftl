@@ -282,6 +282,8 @@
 
 #define STM32_IRQ_ADC1_2_PRIORITY           ${doc.STM32_IRQ_ADC1_2_PRIORITY!"5"}
 
+#define STM32_IRQ_OTG2_PRIORITY             ${doc.STM32_IRQ_OTG2_PRIORITY!doc.STM32_USB_OTG2_IRQ_PRIORITY!"14"}
+
 #define STM32_IRQ_SPI1_PRIORITY             ${doc.STM32_IRQ_SPI1_PRIORITY!"10"}
 #define STM32_IRQ_SPI2_PRIORITY             ${doc.STM32_IRQ_SPI2_PRIORITY!"10"}
 #define STM32_IRQ_SPI3_PRIORITY             ${doc.STM32_IRQ_SPI3_PRIORITY!"10"}
@@ -478,6 +480,11 @@
 /*
  * SPI driver system settings.
  */
+#define STM32_SPI_SELECT_MODE              ${doc.STM32_SPI_SELECT_MODE!"STM32_SPI_SELECT_MODE_LINE"}
+#define STM32_SPI_DEFAULT_PORT             ${doc.STM32_SPI_DEFAULT_PORT!"GPIOA"}
+#define STM32_SPI_DEFAULT_PAD              ${doc.STM32_SPI_DEFAULT_PAD!"0U"}
+#define STM32_SPI_DEFAULT_CFG1             ${doc.STM32_SPI_DEFAULT_CFG1!"(SPI_CFG1_MBR_DIV128 | SPI_CFG1_DSIZE_8BITS)"}
+#define STM32_SPI_DEFAULT_CFG2             ${doc.STM32_SPI_DEFAULT_CFG2!"0U"}
 #define STM32_SPI_USE_SPI1                  ${doc.STM32_SPI_USE_SPI1!"FALSE"}
 #define STM32_SPI_USE_SPI2                  ${doc.STM32_SPI_USE_SPI2!"FALSE"}
 #define STM32_SPI_USE_SPI3                  ${doc.STM32_SPI_USE_SPI3!"FALSE"}
@@ -534,7 +541,6 @@
  * USB driver system settings.
  */
 #define STM32_USB_USE_OTG2                  ${doc.STM32_USB_USE_OTG2!"FALSE"}
-#define STM32_USB_OTG2_IRQ_PRIORITY         ${doc.STM32_USB_OTG2_IRQ_PRIORITY!"14"}
 #define STM32_USB_OTG2_RX_FIFO_SIZE         ${doc.STM32_USB_OTG2_RX_FIFO_SIZE!"1024"}
 #define STM32_USB_HOST_WAKEUP_DURATION      ${doc.STM32_USB_HOST_WAKEUP_DURATION!"2"}
 

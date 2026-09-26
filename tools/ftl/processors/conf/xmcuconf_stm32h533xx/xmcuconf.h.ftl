@@ -369,6 +369,11 @@
 /*
  * SPI driver system settings.
  */
+#define STM32_SPI_SELECT_MODE              ${doc.STM32_SPI_SELECT_MODE!"STM32_SPI_SELECT_MODE_LINE"}
+#define STM32_SPI_DEFAULT_PORT             ${doc.STM32_SPI_DEFAULT_PORT!"GPIOA"}
+#define STM32_SPI_DEFAULT_PAD              ${doc.STM32_SPI_DEFAULT_PAD!"0U"}
+#define STM32_SPI_DEFAULT_CFG1             ${doc.STM32_SPI_DEFAULT_CFG1!"(SPI_CFG1_MBR_DIV128 | SPI_CFG1_DSIZE_8BITS)"}
+#define STM32_SPI_DEFAULT_CFG2             ${doc.STM32_SPI_DEFAULT_CFG2!"0U"}
 #define STM32_SPI_USE_SPI1                  ${doc.STM32_SPI_USE_SPI1!"FALSE"}
 #define STM32_SPI_USE_SPI2                  ${doc.STM32_SPI_USE_SPI2!"FALSE"}
 #define STM32_SPI_USE_SPI3                  ${doc.STM32_SPI_USE_SPI3!"FALSE"}
@@ -438,6 +443,15 @@
 #define STM32_TRNG_USE_RNG1                 ${doc.STM32_TRNG_USE_RNG1!"FALSE"}
 #define STM32_TRNG_ERROR_CLEAR_ATTEMPTS     ${doc.STM32_TRNG_ERROR_CLEAR_ATTEMPTS!"1000"}
 #define STM32_TRNG_DATA_FETCH_ATTEMPTS      ${doc.STM32_TRNG_DATA_FETCH_ATTEMPTS!"1000"}
+
+/*
+ * USB driver system settings.
+ */
+#define STM32_USB_USE_USB1                  ${doc.STM32_USB_USE_USB1!"FALSE"}
+#define STM32_USB_USE_ISOCHRONOUS           ${doc.STM32_USB_USE_ISOCHRONOUS!"FALSE"}
+#define STM32_USB_USE_FAST_COPY             ${doc.STM32_USB_USE_FAST_COPY!"FALSE"}
+#define STM32_USB_HOST_WAKEUP_DURATION      ${doc.STM32_USB_HOST_WAKEUP_DURATION!"2"}
+#define STM32_USB_48MHZ_DELTA               ${doc.STM32_USB_48MHZ_DELTA!"120000"}
 
 /*
  * WDG driver system settings.
