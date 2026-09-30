@@ -178,7 +178,7 @@ static void adc_lld_calibrate(ADCDriver *adcp) {
   osalSysPolledDelayX(OSAL_US2RTC(STM32_HCLK, 20));
 
 #if STM32_ADC_DUAL_MODE
-  osalDbgAssert(adcp->adcs->CR == ADC_CR_ADVREGEN, "invalid register state");
+  osalDbgAssert(adcp->adcs->CR == STM32_ADC_CR_ADVREGEN, "invalid register state");
 
   /* Differential calibration for slave ADC.*/
   adcp->adcs->CR = STM32_ADC_CR_ADVREGEN | ADC_CR_ADCALDIF;
