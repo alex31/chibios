@@ -870,7 +870,9 @@ void _usb_reset(hal_usb_driver_c *usbp) {
  */
 void _usb_suspend(hal_usb_driver_c *usbp) {
   if ((usbp->state != USB_SUSPENDED) && (usbp->state != USB_ERROR)) {
+#if USB_USE_SYNCHRONIZATION == TRUE
     unsigned i;
+#endif
 
     usbp->saved_state = usbp->state;
     usbp->state = USB_SUSPENDED;

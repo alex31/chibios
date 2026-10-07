@@ -2298,7 +2298,9 @@ for (i = 0U; i <= (unsigned)USB_MAX_ENDPOINTS; i++) {
         <notapi />
         <implementation><![CDATA[
 if ((usbp->state != USB_SUSPENDED) && (usbp->state != USB_ERROR)) {
+#if USB_USE_SYNCHRONIZATION == TRUE
   unsigned i;
+#endif
 
   usbp->saved_state = usbp->state;
   usbp->state = USB_SUSPENDED;
