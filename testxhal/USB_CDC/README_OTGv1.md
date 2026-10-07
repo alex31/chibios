@@ -84,6 +84,9 @@ still require on-board validation.
 - Retires nonzero OUT endpoints asynchronously through global OUT NAK,
   endpoint-disable completion and NAK release. Endpoint configurations and
   receive starts are deferred until old packets and completions are retired.
+- On OTGv1, `usbDisableEndpointsI()` can busy-wait with the system lock held
+  for up to `OTG_OPERATION_TIMEOUT` at the IN-disable barrier, then perform
+  bounded FIFO flushes.
 - Rejects invalid host endpoint addresses and resets bulk/interrupt data
   toggles to DATA0 when clearing an endpoint halt.
 - Maps XHAL `ep_buffers` to the TX FIFO packet multiplier.

@@ -38,7 +38,7 @@
 #define EP0_MAX_INSIZE          64
 #define EP0_MAX_OUTSIZE         64
 
-/* Upper bound for a core reset, FIFO flush or EP0 disable handshake, in us.*/
+/* Upper bound for a core reset, FIFO flush or IN disable handshake, in us.*/
 #define OTG_OPERATION_TIMEOUT   1000U
 
 /* Asynchronous teardown deadline, checked by USB IRQs (SOF while active).
@@ -117,6 +117,7 @@ static void otg_object_init(hal_usb_driver_c *usbp) {
 
   usbObjectInit(usbp);
   usbp->isoc_in_pending = 0U;
+  usbp->in_flush = 0U;
   usbp->out_disable_phase = OTG_OUT_IDLE;
   usbp->out_disable_pending = 0U;
   usbp->out_disable_wait = 0U;
@@ -320,12 +321,20 @@ static void otg_disable_ep_i(hal_usb_driver_c *usbp) {
 
   /* Stop/suspend cancels recovery along with the transfers themselves.*/
   chDbgCheckClassI();
+  usbp->in_flush |= usbp->isoc_in_pending;
   usbp->isoc_in_pending = 0U;
+  /* The HLD returns all buffers, including EP0's, on suspend. Stop refill
+     now; hardware completes disable without ISR assistance. No polling.*/
+  otgp->DIEPEMPMSK = 0U;
   otg_out_disable_i(usbp, false);
   for (i = 0; i <= usbp->otgparams->num_endpoints; i++) {
+    uint32_t ctl = otgp->ie[i].DIEPCTL;
 
-    if ((otgp->ie[i].DIEPCTL & DIEPCTL_EPENA) != 0U) {
-      otgp->ie[i].DIEPCTL |= DIEPCTL_EPDIS;
+    if ((ctl & (DIEPCTL_USBAEP | DIEPCTL_EPENA)) != 0U) {
+      usbp->in_flush |= 1U << i;
+    }
+    if ((ctl & DIEPCTL_EPENA) != 0U) {
+      otgp->ie[i].DIEPCTL = ctl | DIEPCTL_EPDIS | DIEPCTL_SNAK;
     }
 
     otgp->ie[i].DIEPINT = 0xFFFFFFFF;
@@ -381,6 +390,7 @@ static void otg_fault(hal_usb_driver_c *usbp) {
   otg_disconnect_i(usbp);
   otgp->DCTL &= ~DCTL_RWUSIG;
   usbp->isoc_in_pending = 0U;
+  usbp->in_flush = 0U;
   usbp->out_disable_phase = OTG_OUT_IDLE;
   usbp->out_disable_pending = 0U;
   usbp->out_disable_wait = 0U;
@@ -533,6 +543,8 @@ static bool otg_ep0_abort_in(hal_usb_driver_c *usbp) {
     return true;
   }
   otgp->ie[0].DIEPINT = 0xFFFFFFFFU;
+  /* A fresh SETUP retires any EP0 transfer cancelled by suspend.*/
+  usbp->in_flush &= ~1U;
 
   return false;
 }
@@ -784,6 +796,11 @@ static void otg_epin_handler(hal_usb_driver_c *usbp, usbep_t ep) {
     return;
   }
   otgp->ie[ep].DIEPINT = epint;
+  /* Ignore completion/refill for buffers returned by suspend, even after
+     wakeup. Only a new start (or SETUP for EP0) releases this endpoint.*/
+  if ((usbp->in_flush & epmask) != 0U) {
+    return;
+  }
   if ((usbp->epc[ep] == NULL) || (usbp->epc[ep]->in_state == NULL)) {
     usbp->isoc_in_pending &= ~epmask;
     return;
@@ -918,6 +935,7 @@ static void otg_isoc_in_failed_handler(hal_usb_driver_c *usbp) {
     /* Endpoint disable is asynchronous: the registers can still describe
        an active transfer after its software configuration was removed.*/
     if ((epcp == NULL) || (epcp->in_state == NULL) ||
+        ((usbp->in_flush & epmask) != 0U) ||
         ((usbp->isoc_in_pending & epmask) != 0U) ||
         ((epcp->ep_mode & USB_EP_MODE_TYPE) != USB_EP_MODE_TYPE_ISOC)) {
       continue;
@@ -1314,6 +1332,7 @@ msg_t usb_lld_start(hal_usb_driver_c *usbp) {
 
   /* The core reset has cancelled every endpoint and pending teardown.*/
   usbp->isoc_in_pending = 0U;
+  usbp->in_flush = 0U;
   usbp->out_disable_phase = OTG_OUT_IDLE;
   usbp->out_disable_pending = 0U;
   usbp->out_disable_wait = 0U;
@@ -1369,6 +1388,7 @@ void usb_lld_stop(hal_usb_driver_c *usbp) {
   /* Disconnect and power down without waiting for endpoint handshakes.
      Slave mode has no DMA accesses; the next start resets the whole core.*/
   usbp->isoc_in_pending = 0U;
+  usbp->in_flush = 0U;
   usbp->out_disable_phase = OTG_OUT_IDLE;
   usbp->out_disable_pending = 0U;
   usbp->out_disable_wait = 0U;
@@ -1417,6 +1437,7 @@ void usb_lld_reset(hal_usb_driver_c *usbp) {
   otgp->DCTL = (otgp->DCTL & ~DCTL_SGONAK) | DCTL_CGONAK;
   usbp->isoc_in_pending = 0U;
   /* Flush all Tx FIFOs.*/
+  usbp->in_flush = 0U;
   if (otg_txfifo_flush(usbp, 0x10U)) {
     return;
   }
@@ -1569,10 +1590,13 @@ void usb_lld_init_endpoint(hal_usb_driver_c *usbp, usbep_t ep) {
     otgp->ie[ep].DIEPCTL &= ~DIEPCTL_USBAEP;
     otgp->DAINTMSK &= ~DAINTMSK_IEPM(ep);
   }
+  usbp->in_flush &= ~(1U << ep);
 }
 
 /**
  * @brief   Disables all the active endpoints except the endpoint zero.
+ * @note    The I-class caller remains locked during the bounded IN disable
+ *          and FIFO flush waits. OUT teardown remains asynchronous.
  *
  * @param[in] usbp      pointer to the @p hal_usb_driver_c object
  *
@@ -1580,8 +1604,11 @@ void usb_lld_init_endpoint(hal_usb_driver_c *usbp, usbep_t ep) {
  */
 void usb_lld_disable_endpoints(hal_usb_driver_c *usbp) {
   stm32_otg_t *otgp = usbp->otg;
+  uint16_t flush = usbp->in_flush | usbp->isoc_in_pending;
+  halcnt_t start, timeout;
   unsigned ep;
 
+  chDbgCheckClassI();
   usbp->isoc_in_pending = 0U;
   /* Preserve the RX FIFO and EP0 TX FIFO allocations and EP0 operation.*/
   otg_ram_reset(usbp);
@@ -1591,12 +1618,40 @@ void usb_lld_disable_endpoints(hal_usb_driver_c *usbp) {
   otg_out_disable_i(usbp, true);
   otgp->DAINTMSK |= usbp->out_disable_wait << 16U;
   for (ep = 1U; ep <= usbp->otgparams->num_endpoints; ep++) {
-    if ((otgp->ie[ep].DIEPCTL & DIEPCTL_EPENA) != 0U) {
-      otgp->ie[ep].DIEPCTL |= DIEPCTL_EPDIS | DIEPCTL_SNAK;
+    uint32_t ctl = otgp->ie[ep].DIEPCTL;
+
+    if ((ctl & (DIEPCTL_USBAEP | DIEPCTL_EPENA)) != 0U) {
+      flush |= 1U << ep;
+    }
+    if ((ctl & DIEPCTL_EPENA) != 0U) {
+      otgp->ie[ep].DIEPCTL = ctl | DIEPCTL_EPDIS | DIEPCTL_SNAK;
+    }
+  }
+  /* One deadline for the whole group. No FIFO can be reassigned until
+     every old IN endpoint has stopped, including overlapping allocations.*/
+  start = HAL_LLD_GET_CNT_VALUE();
+  timeout = (halcnt_t)US2RTC(HAL_LLD_GET_CNT_FREQUENCY(),
+                            OTG_OPERATION_TIMEOUT);
+  for (ep = 1U; ep <= usbp->otgparams->num_endpoints; ep++) {
+    while ((otgp->ie[ep].DIEPCTL & DIEPCTL_EPENA) != 0U) {
+      if ((halcnt_t)(HAL_LLD_GET_CNT_VALUE() - start) >= timeout) {
+        /* A preemption can cross the deadline after hardware completes.*/
+        if ((otgp->ie[ep].DIEPCTL & DIEPCTL_EPENA) == 0U) {
+          break;
+        }
+        otg_fault(usbp);
+        return;
+      }
+    }
+  }
+  for (ep = 1U; ep <= usbp->otgparams->num_endpoints; ep++) {
+    if (((flush & (1U << ep)) != 0U) && otg_txfifo_flush(usbp, ep)) {
+      return;
     }
     otgp->ie[ep].DIEPCTL &= ~DIEPCTL_USBAEP;
     otgp->ie[ep].DIEPINT = 0xFFFFFFFFU;
   }
+  usbp->in_flush &= 1U;
 }
 /**
  * @brief   Connects the USB device unless a runtime fault is latched.
@@ -1833,6 +1888,24 @@ void usb_lld_start_in(hal_usb_driver_c *usbp, usbep_t ep) {
      Leave the endpoint NAKed until the latter aborts the old request.*/
   if ((ep == 0U) && usbp->ep0setup_pending) {
     return;
+  }
+
+  if ((usbp->in_flush & (1U << ep)) != 0U) {
+    /* EP0 must wait for a fresh SETUP, which also flushes its FIFO.*/
+    if (ep == 0U) {
+      return;
+    }
+    /* Fail closed if reuse races an unfinished disable. Do not assume a
+       minimum suspend duration or wait for the bus from a wakeup hook.*/
+    if ((usbp->otg->ie[ep].DIEPCTL & DIEPCTL_EPENA) != 0U) {
+      otg_fault(usbp);
+      return;
+    }
+    if (otg_txfifo_flush(usbp, ep)) {
+      return;
+    }
+    usbp->otg->ie[ep].DIEPINT = 0xFFFFFFFFU;
+    usbp->in_flush &= ~(1U << ep);
   }
 
   chDbgAssert(mps != 0U, "zero packet size");
