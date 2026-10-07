@@ -48,6 +48,9 @@
 #define OTG_OUT_NAK             1U
 #define OTG_OUT_DISABLE         2U
 #define OTG_OUT_RELEASE         3U
+#define OTG_IN_COMMANDS         (DIEPCTL_EPENA | DIEPCTL_EPDIS |             \
+                                 DIEPCTL_CNAK | DIEPCTL_SNAK |               \
+                                 DIEPCTL_SD0PID | DIEPCTL_SD1PID)
 #define OTG_OUT_COMMANDS        (DOEPCTL_EPENA | DOEPCTL_EPDIS |             \
                                  DOEPCTL_CNAK | DOEPCTL_SNAK |               \
                                  DOEPCTL_SD0PID | DOEPCTL_SD1PID)
@@ -1964,7 +1967,9 @@ void usb_lld_stall_out(hal_usb_driver_c *usbp, usbep_t ep) {
     usbp->out_ctl[ep - 1U] |= DOEPCTL_STALL;
     return;
   }
-  usbp->otg->oe[ep].DOEPCTL |= DOEPCTL_STALL;
+  /* Do not replay commands sampled before a hardware state transition.*/
+  usbp->otg->oe[ep].DOEPCTL =
+    (usbp->otg->oe[ep].DOEPCTL & ~OTG_OUT_COMMANDS) | DOEPCTL_STALL;
 }
 
 /**
@@ -1981,7 +1986,8 @@ void usb_lld_stall_in(hal_usb_driver_c *usbp, usbep_t ep) {
       ((ep == 0U) && usbp->ep0setup_pending)) {
     return;
   }
-  usbp->otg->ie[ep].DIEPCTL |= DIEPCTL_STALL;
+  usbp->otg->ie[ep].DIEPCTL =
+    (usbp->otg->ie[ep].DIEPCTL & ~OTG_IN_COMMANDS) | DIEPCTL_STALL;
 }
 
 /**
@@ -2005,11 +2011,11 @@ void usb_lld_clear_out(hal_usb_driver_c *usbp, usbep_t ep) {
   else {
     ctlp = &usbp->otg->oe[ep].DOEPCTL;
   }
-  ctl = *ctlp & ~DOEPCTL_STALL;
+  ctl = *ctlp & ~(OTG_OUT_COMMANDS | DOEPCTL_STALL);
   if (((ctl & DOEPCTL_EPTYP_MASK) == DOEPCTL_EPTYP_BULK) ||
       ((ctl & DOEPCTL_EPTYP_MASK) == DOEPCTL_EPTYP_INTR)) {
     /* CLEAR_FEATURE(ENDPOINT_HALT) also resets the data toggle.*/
-    ctl = (ctl & ~DOEPCTL_SD1PID) | DOEPCTL_SD0PID;
+    ctl |= DOEPCTL_SD0PID;
   }
   *ctlp = ctl;
 }
@@ -2028,10 +2034,10 @@ void usb_lld_clear_in(hal_usb_driver_c *usbp, usbep_t ep) {
   if (ep > usbp->otgparams->num_endpoints) {
     return;
   }
-  ctl = usbp->otg->ie[ep].DIEPCTL & ~DIEPCTL_STALL;
+  ctl = usbp->otg->ie[ep].DIEPCTL & ~(OTG_IN_COMMANDS | DIEPCTL_STALL);
   if (((ctl & DIEPCTL_EPTYP_MASK) == DIEPCTL_EPTYP_BULK) ||
       ((ctl & DIEPCTL_EPTYP_MASK) == DIEPCTL_EPTYP_INTR)) {
-    ctl = (ctl & ~DIEPCTL_SD1PID) | DIEPCTL_SD0PID;
+    ctl |= DIEPCTL_SD0PID;
   }
   usbp->otg->ie[ep].DIEPCTL = ctl;
 }
