@@ -605,8 +605,14 @@ struct USBDriver {
   uint32_t                      pmnext;
   /**
    * @brief   Hardware failure latched, the driver must be restarted.
+   * @note    The failure is reported to the HLD as a suspend, no wake-up
+   *          follows until the driver is stopped and started again.
    */
   bool                          faulted;
+  /**
+   * @brief   Hardware failure already reported to the HLD.
+   */
+  bool                          fault_reported;
   /**
    * @brief   ISO IN endpoints waiting for missed-frame disable completion.
    */

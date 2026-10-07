@@ -137,6 +137,7 @@ static void otg_object_init(USBDriver *usbp) {
 
   usbObjectInit(usbp);
   usbp->faulted = false;
+  usbp->fault_reported = false;
   usbp->isoc_in_pending = 0U;
   usbp->in_flush = 0U;
   usbp->out_disable_phase = OTG_OUT_IDLE;
@@ -389,11 +390,17 @@ static void otg_disconnect_i(USBDriver *usbp) {
 
 /* Called from unlocked IRQ handlers or from locked contexts. The classic HAL
    has no fault state: the controller is left disconnected and silent, with
-   clocks on, until usbStop(). Debug builds halt after the shutdown.*/
+   clocks on, until usbStop(). The pended OTG vector then reports the fault
+   from the ISR as a suspend, see usb_lld_serve_interrupt(), the driver
+   remains in USB_SUSPENDED. Debug builds halt after the shutdown.*/
 static void otg_fault(USBDriver *usbp) {
   stm32_otg_t *otgp = usbp->otg;
   syssts_t sts = osalSysGetStatusAndLockX();
 
+  if (usbp->faulted) {
+    osalSysRestoreStatusX(sts);
+    return;
+  }
   otgp->GAHBCFG = 0U;
   otgp->GINTMSK = 0U;
   otgp->DAINTMSK = 0U;
@@ -409,6 +416,16 @@ static void otg_fault(USBDriver *usbp) {
   usbp->out_restart = 0U;
   usbp->ep0setup_pending = false;
   usbp->faulted = true;
+#if STM32_USB_USE_OTG1
+  if (&USBD1 == usbp) {
+    nvicSetPending(STM32_OTG1_NUMBER);
+  }
+#endif
+#if STM32_USB_USE_OTG2
+  if (&USBD2 == usbp) {
+    nvicSetPending(STM32_OTG2_NUMBER);
+  }
+#endif
   osalDbgAssert(false, "OTG hardware failure");
   osalSysRestoreStatusX(sts);
 }
@@ -1028,6 +1045,15 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 irq_retry:
 
   if (usbp->faulted) {
+    if (!usbp->fault_reported) {
+      /* Report once, from the unlocked ISR context the HLD requires. The
+         suspend cancels transfers and releases waiters with MSG_RESET.
+         No wake-up can follow: the device is disconnected until restart.
+         If the bus was already suspended this adds no event, that suspend
+         has already been reported and the driver stays suspended.*/
+      usbp->fault_reported = true;
+      _usb_suspend(usbp);
+    }
     return;
   }
   sts  = otgp->GINTSTS;
@@ -1385,6 +1411,7 @@ msg_t usb_lld_start(USBDriver *usbp) {
 
   /* The core reset has cancelled every endpoint and pending teardown.*/
   usbp->faulted = false;
+  usbp->fault_reported = false;
   usbp->isoc_in_pending = 0U;
   usbp->in_flush = 0U;
   usbp->out_disable_phase = OTG_OUT_IDLE;
