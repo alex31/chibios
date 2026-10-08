@@ -42,13 +42,14 @@ static const uint8_t audio_device_descriptor_data[] = {
 };
 
 /*
- * Configuration Descriptor tree for a UAC1 microphone: mono signed 16-bit
- * PCM at 48 kHz, full speed, one 96-byte isochronous packet per frame.
+ * Configuration Descriptor tree for UAC1 microphone and speaker functions,
+ * full speed, 48 kHz signed 16-bit PCM: mono capture in one 96-byte
+ * isochronous packet per frame, stereo playback in 192-byte packets.
  */
 static const uint8_t audio_configuration_descriptor_data[] = {
   /* Configuration Descriptor.*/
-  USB_DESC_CONFIGURATION(100,           /* Total length.                    */
-                         0x02,          /* Two interfaces.                  */
+  USB_DESC_CONFIGURATION(174,           /* Total length.                    */
+                         0x03,          /* Three interfaces.                */
                          0x01,          /* Configuration value.             */
                          0,             /* No configuration string.         */
                          0xC0,          /* Self powered.                    */
@@ -62,13 +63,14 @@ static const uint8_t audio_configuration_descriptor_data[] = {
                          0x00,          /* No protocol.                     */
                          0),            /* No interface string.             */
   /* Class-specific AC Interface Header Descriptor.*/
-  USB_DESC_BYTE         (9),            /* Length.                          */
+  USB_DESC_BYTE         (10),           /* Length.                          */
   USB_DESC_BYTE         (0x24),         /* CS_INTERFACE.                    */
   USB_DESC_BYTE         (0x01),         /* HEADER.                          */
   USB_DESC_BCD          (0x0100),       /* Audio class release 1.0.         */
-  USB_DESC_WORD         (30),           /* Total AC descriptors length.     */
-  USB_DESC_BYTE         (1),            /* One streaming interface.         */
-  USB_DESC_BYTE         (AUDIO_STREAMING_INTERFACE), /* Its number.         */
+  USB_DESC_WORD         (52),           /* Total AC descriptors length.     */
+  USB_DESC_BYTE         (2),            /* Two streaming interfaces.        */
+  USB_DESC_BYTE         (AUDIO_STREAMING_INTERFACE), /* Microphone.         */
+  USB_DESC_BYTE         (SPEAKER_STREAMING_INTERFACE), /* Speaker.          */
   /* Input Terminal Descriptor.*/
   USB_DESC_BYTE         (12),           /* Length.                          */
   USB_DESC_BYTE         (0x24),         /* CS_INTERFACE.                    */
@@ -88,6 +90,26 @@ static const uint8_t audio_configuration_descriptor_data[] = {
   USB_DESC_WORD         (0x0101),       /* USB streaming.                   */
   USB_DESC_BYTE         (0),            /* No associated terminal.          */
   USB_DESC_BYTE         (1),            /* Source, the input terminal.      */
+  USB_DESC_INDEX        (0),            /* No terminal string.              */
+  /* Speaker Input Terminal Descriptor.*/
+  USB_DESC_BYTE         (12),           /* Length.                          */
+  USB_DESC_BYTE         (0x24),         /* CS_INTERFACE.                    */
+  USB_DESC_BYTE         (0x02),         /* INPUT_TERMINAL.                  */
+  USB_DESC_BYTE         (3),            /* Terminal ID.                     */
+  USB_DESC_WORD         (0x0101),       /* USB streaming.                   */
+  USB_DESC_BYTE         (0),            /* No associated terminal.          */
+  USB_DESC_BYTE         (SPEAKER_CHANNELS), /* Two channels.                */
+  USB_DESC_WORD         (0x0003),       /* Left and right front.            */
+  USB_DESC_INDEX        (0),            /* No channel names.                */
+  USB_DESC_INDEX        (0),            /* No terminal string.              */
+  /* Speaker Output Terminal Descriptor.*/
+  USB_DESC_BYTE         (9),            /* Length.                          */
+  USB_DESC_BYTE         (0x24),         /* CS_INTERFACE.                    */
+  USB_DESC_BYTE         (0x03),         /* OUTPUT_TERMINAL.                 */
+  USB_DESC_BYTE         (4),            /* Terminal ID.                     */
+  USB_DESC_WORD         (0x0301),       /* Speaker.                         */
+  USB_DESC_BYTE         (0),            /* No associated terminal.          */
+  USB_DESC_BYTE         (3),            /* Source, the speaker input.       */
   USB_DESC_INDEX        (0),            /* No terminal string.              */
   /* AudioStreaming Interface Descriptor, alternate 0: zero bandwidth.*/
   USB_DESC_INTERFACE    (AUDIO_STREAMING_INTERFACE, /* Interface 1.         */
@@ -138,6 +160,56 @@ static const uint8_t audio_configuration_descriptor_data[] = {
   USB_DESC_BYTE         (0x01),         /* EP_GENERAL.                      */
   USB_DESC_BYTE         (0x00),         /* No controls.                     */
   USB_DESC_BYTE         (0),            /* No lock delay units.             */
+  USB_DESC_WORD         (0),            /* No lock delay.                   */
+  /* Speaker AudioStreaming Interface Descriptor, alternate 0.*/
+  USB_DESC_INTERFACE    (SPEAKER_STREAMING_INTERFACE, /* Interface 2.       */
+                         0x00,          /* Alternate setting 0.             */
+                         0x00,          /* No endpoints.                    */
+                         0x01,          /* Audio class.                     */
+                         0x02,          /* AudioStreaming subclass.         */
+                         0x00,          /* No protocol.                     */
+                         0),            /* No interface string.             */
+  /* Speaker AudioStreaming Interface Descriptor, alternate 1.*/
+  USB_DESC_INTERFACE    (SPEAKER_STREAMING_INTERFACE, /* Interface 2.       */
+                         0x01,          /* Alternate setting 1.             */
+                         0x01,          /* One endpoint.                    */
+                         0x01,          /* Audio class.                     */
+                         0x02,          /* AudioStreaming subclass.         */
+                         0x00,          /* No protocol.                     */
+                         0),            /* No interface string.             */
+  /* Class-specific AS General Interface Descriptor.*/
+  USB_DESC_BYTE         (7),            /* Length.                          */
+  USB_DESC_BYTE         (0x24),         /* CS_INTERFACE.                    */
+  USB_DESC_BYTE         (0x01),         /* AS_GENERAL.                      */
+  USB_DESC_BYTE         (3),            /* Linked to the speaker input.     */
+  USB_DESC_BYTE         (1),            /* One frame delay.                 */
+  USB_DESC_WORD         (0x0001),       /* PCM.                             */
+  /* Type I Format Type Descriptor, one fixed sample rate.*/
+  USB_DESC_BYTE         (11),           /* Length.                          */
+  USB_DESC_BYTE         (0x24),         /* CS_INTERFACE.                    */
+  USB_DESC_BYTE         (0x02),         /* FORMAT_TYPE.                     */
+  USB_DESC_BYTE         (0x01),         /* FORMAT_TYPE_I.                   */
+  USB_DESC_BYTE         (SPEAKER_CHANNELS), /* Two channels.                */
+  USB_DESC_BYTE         (2),            /* Two bytes per sample.            */
+  USB_DESC_BYTE         (16),           /* 16 bits per sample.              */
+  USB_DESC_BYTE         (1),            /* One sample rate.                 */
+  AUDIO_DESC_24         (AUDIO_SAMPLE_RATE), /* Sample rate.                */
+  /* Standard AS Isochronous Audio Data Endpoint Descriptor. Adaptive: the
+     playback clock follows the rate of the received data.*/
+  USB_DESC_BYTE         (9),            /* Length.                          */
+  USB_DESC_BYTE         (USB_DESCRIPTOR_ENDPOINT), /* Endpoint.             */
+  USB_DESC_BYTE         (SPEAKER_OUT_EP), /* OUT endpoint 2.                */
+  USB_DESC_BYTE         (0x09),         /* Isochronous, adaptive.           */
+  USB_DESC_WORD         (SPEAKER_PACKET_SIZE), /* Maximum packet size.      */
+  USB_DESC_BYTE         (1),            /* One packet per frame.            */
+  USB_DESC_BYTE         (0),            /* No refresh.                      */
+  USB_DESC_BYTE         (0),            /* No synchronization endpoint.     */
+  /* Class-specific AS Isochronous Audio Data Endpoint Descriptor.*/
+  USB_DESC_BYTE         (7),            /* Length.                          */
+  USB_DESC_BYTE         (0x25),         /* CS_ENDPOINT.                     */
+  USB_DESC_BYTE         (0x01),         /* EP_GENERAL.                      */
+  USB_DESC_BYTE         (0x00),         /* No controls.                     */
+  USB_DESC_BYTE         (0),            /* No lock delay units.             */
   USB_DESC_WORD         (0)             /* No lock delay.                   */
 };
 
@@ -145,7 +217,7 @@ static const uint8_t audio_configuration_descriptor_data[] = {
 typedef char audio_device_size_check[
   sizeof audio_device_descriptor_data == 18U ? 1 : -1];
 typedef char audio_configuration_size_check[
-  sizeof audio_configuration_descriptor_data == 100U ? 1 : -1];
+  sizeof audio_configuration_descriptor_data == 174U ? 1 : -1];
 
 static const USBDescriptor audio_device_descriptor = {
   sizeof audio_device_descriptor_data,
@@ -244,9 +316,10 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
     audioResetHookI(usbp);
     break;
   case USB_EVENT_CONFIGURED:
-    /* Falls through.*/
-  case USB_EVENT_UNCONFIGURED:
     audioConfigureHookI(usbp);
+    break;
+  case USB_EVENT_UNCONFIGURED:
+    audioUnconfigureHookI(usbp);
     break;
   case USB_EVENT_SUSPEND:
     audioSuspendHookI(usbp);

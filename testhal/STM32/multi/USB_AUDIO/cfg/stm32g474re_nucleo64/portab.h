@@ -29,15 +29,17 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
-#define PORTAB_USB1                 USBD2
+#define PORTAB_USB1                 USBD1
 
-/* Stereo output on DAC1 channels 1 and 2 (PA4, PA5), triggered by TIM6.*/
+/* Stereo output on DAC1 channels 1 and 2 (PA4, PA5), triggered by TIM6.
+   PA5 also drives the LD2 transistor, the LED follows the right channel and
+   the blink has no effect.*/
 #define PORTAB_DAC                  DACD1
-#define PORTAB_DAC_TRIG             5
+#define PORTAB_DAC_TRIG             7
 #define PORTAB_GPT                  GPTD6
-#define PORTAB_GPT_FREQUENCY        260000000U
+#define PORTAB_GPT_FREQUENCY        170000000U
 
-#define PORTAB_BLINK_LED1           LINE_LED1
+#define PORTAB_BLINK_LED1           LINE_LED_GREEN
 
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
