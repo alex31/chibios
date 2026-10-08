@@ -487,6 +487,10 @@ typedef enum {
  * @note    In DUAL mode init, cr and mcr (if available) fields hold CH1
  *          settings in their lower 16 bits and CH2 settings in the upper
  *          16 bits.
+ * @note    At initial start, DMA requests and double DMA are disabled, and
+ *          initial values are loaded before enabling the owned channels.
+ * @note    EN and DMAEN are managed by the driver. HFSEL is derived from the
+ *          DAC clock; configuration values for these fields are ignored.
  */
 #define dac_lld_config_fields                                               \
   /* Initial output on DAC channel.*/                                       \
@@ -500,11 +504,13 @@ typedef enum {
 
 /**
  * @brief   Low level fields of the DAC group configuration structure.
+ * @note    The trigger replaces the selected channel's configured TSEL during
+ *          conversion. In dual mode this applies to CH1; CH2 retains its
+ *          independent trigger settings from the upper halfword of cr.
  */
 #define dac_lld_conversion_group_fields                                     \
-  /* DAC initialization data. This field contains the (not shifted) value   \
-     to be put into the TSEL field of the DAC CR register during            \
-     initialization. All other fields are handled internally.*/             \
+  /* Unshifted TSEL value, from 0 to DAC_TRG_MASK. Trigger sources are      \
+     device-specific. TEN and DMAEN are enabled by the driver.*/            \
   uint32_t                  trigger;
 
 /*===========================================================================*/
