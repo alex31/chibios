@@ -17,6 +17,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "usbaudio.h"
+#include "audio_out.h"
 
 #define AUDIO_PHASE_STEP                  39370534U
 #define AUDIO_FRAME_MASK                  0x07FFU
@@ -30,7 +31,9 @@ static hal_usb_service_c audio_service;
 static USBInEndpointState audio_in_state;
 static uint8_t audio_packet[AUDIO_PACKET_SIZE];
 static uint8_t audio_alt;
-static bool audio_pending;
+static USBOutEndpointState speaker_out_state;
+CC_ALIGN_DATA(4) static uint8_t speaker_packet[SPEAKER_PACKET_SIZE];
+static uint8_t speaker_alt;
 static bool audio_have_frame;
 static uint16_t audio_last_frame;
 static uint32_t audio_phase;
@@ -83,6 +86,16 @@ static void audio_endpoint_in_cb(hal_usb_driver_c *usbp, usbep_t ep) {
   }
 }
 
+static void audio_endpoint_out_cb(hal_usb_driver_c *usbp, usbep_t ep) {
+  hal_usb_binder_c *binderp = usbGetBinderX(usbp);
+
+  if (binderp != NULL) {
+    chSysLockFromISR();
+    usbBinderOutI(binderp, ep);
+    chSysUnlockFromISR();
+  }
+}
+
 static const USBEndpointConfig audio_ep_config = {
   .ep_mode     = USB_EP_MODE_TYPE_ISOC,
   .setup_cb    = NULL,
@@ -96,17 +109,44 @@ static const USBEndpointConfig audio_ep_config = {
   .setup_buf  = NULL
 };
 
+static const USBEndpointConfig speaker_ep_config = {
+  .ep_mode     = USB_EP_MODE_TYPE_ISOC,
+  .setup_cb    = NULL,
+  .in_cb       = NULL,
+  .out_cb      = audio_endpoint_out_cb,
+  .in_maxsize  = 0U,
+  .out_maxsize = SPEAKER_PACKET_SIZE,
+  .in_state   = NULL,
+  .out_state  = &speaker_out_state,
+  .ep_buffers = 1U,
+  .setup_buf  = NULL
+};
+
+/* Called locked. One packet per frame, rearmed from its completion and,
+   after a cancellation, from SOF.*/
+static void speaker_receive_i(hal_usb_driver_c *usbp) {
+
+  if ((speaker_alt == 1U) && (usbGetDriverStateX(usbp) == USB_ACTIVE) &&
+      ((usbp->receiving & (1U << SPEAKER_OUT_EP)) == 0U)) {
+    usbStartReceiveI(usbp, SPEAKER_OUT_EP, speaker_packet,
+                     sizeof speaker_packet);
+  }
+}
+
 /* Called locked, either from SOF or after the previous packet completes.
    OTG arms isochronous transfers for the NEXT frame. Completion immediately
    queues that frame's packet; SOF bootstraps/restarts a stream. SOF-only
    queuing would leave alternate frames empty if the previous transfer is
-   still busy when SOF is dispatched. Never queue twice in the same frame. */
+   still busy when SOF is dispatched. Never queue twice in the same frame.
+   An armed packet is never replaced: the full-speed USB peripherals keep it
+   armed when the stream stops and send it first when the stream restarts,
+   the synthesizer phase is kept across streams for this. */
 static void audio_queue_i(hal_usb_driver_c *usbp) {
   uint16_t frame;
   unsigned i;
 
-  if ((audio_alt != 1U) || audio_pending ||
-      (usbGetDriverStateX(usbp) != USB_ACTIVE)) {
+  if ((audio_alt != 1U) || (usbGetDriverStateX(usbp) != USB_ACTIVE) ||
+      ((usbp->transmitting & (1U << AUDIO_IN_EP)) != 0U)) {
     return;
   }
 
@@ -138,7 +178,6 @@ static void audio_queue_i(hal_usb_driver_c *usbp) {
     audio_phase += AUDIO_PHASE_STEP;
   }
 
-  audio_pending = true;
   audio_stats.packets_queued++;
   usbStartTransmitI(usbp, AUDIO_IN_EP, audio_packet, sizeof audio_packet);
 }
@@ -147,9 +186,10 @@ static void audio_clear(void *ip) {
 
   (void)ip;
   audio_alt = 0U;
-  audio_pending = false;
   audio_have_frame = false;
   audio_phase = 0U;
+  speaker_alt = 0U;
+  audioOutResetI();
 }
 
 static void audio_reset(void *ip) {
@@ -158,12 +198,24 @@ static void audio_reset(void *ip) {
   audio_clear(ip);
 }
 
+/* Both streaming endpoints exist for the whole configuration, alternate
+   settings only start and stop the streams.*/
+static void audio_configure(void *ip) {
+  hal_usb_service_c *self = ip;
+
+  audio_clear(ip);
+  usbInitEndpointI(self->binder->usbp, AUDIO_IN_EP, &audio_ep_config);
+  usbInitEndpointI(self->binder->usbp, SPEAKER_OUT_EP, &speaker_ep_config);
+}
+
+/* The driver has cancelled the transfers; SOF restarts both streams on
+   resume. Playback restarts from an empty ring.*/
 static void audio_suspend(void *ip) {
 
   (void)ip;
   audio_stats.suspends++;
-  audio_pending = false;
   audio_have_frame = false;
+  audioOutResetI();
 }
 
 static void audio_sof(void *ip) {
@@ -173,6 +225,7 @@ static void audio_sof(void *ip) {
     audio_stats.sofs++;
     audio_queue_i(self->binder->usbp);
   }
+  speaker_receive_i(self->binder->usbp);
 }
 
 static void audio_in(void *ip, usbep_t ep) {
@@ -180,28 +233,43 @@ static void audio_in(void *ip, usbep_t ep) {
 
   (void)ep;
   audio_stats.callbacks++;
-  audio_pending = false;
   audio_queue_i(self->binder->usbp);
+}
+
+static void audio_out(void *ip, usbep_t ep) {
+  hal_usb_service_c *self = ip;
+  hal_usb_driver_c *usbp = self->binder->usbp;
+  size_t n = usbGetReceiveTransactionSizeX(usbp, ep);
+
+  audio_stats.speaker_callbacks++;
+  if (n == 0U) {
+    audio_stats.speaker_empty++;
+  }
+  if (speaker_alt == 1U) {
+    audioOutWriteI(speaker_packet, n);
+    speaker_receive_i(usbp);
+  }
 }
 
 static msg_t audio_setup(void *ip, bool *handledp) {
   hal_usb_service_c *self = ip;
   hal_usb_driver_c *usbp = self->binder->usbp;
-  uint8_t alt;
+  uint8_t iface, alt;
   bool get_interface;
 
   *handledp = false;
   chSysLock();
-  /* Do not mutate endpoints for a SETUP superseded while the worker slept. */
+  /* Do not act on a SETUP superseded while the worker slept. */
   if ((usbp->ep0rseq != usbp->ep0seq) ||
       (usbGetDriverStateX(usbp) != USB_ACTIVE)) {
     chSysUnlock();
     return MSG_RESET;
   }
 
+  iface = usbp->setup[4];
   get_interface = (usbp->setup[0] == 0x81U) &&
                   (usbp->setup[1] == USB_REQ_GET_INTERFACE);
-  if ((usbp->setup[3] != 0U) || (usbp->setup[4] > 1U) ||
+  if ((usbp->setup[3] != 0U) || (iface > SPEAKER_STREAMING_INTERFACE) ||
       (usbp->setup[5] != 0U) || (usbp->setup[7] != 0U)) {
     chSysUnlock();
     return MSG_OK;
@@ -209,25 +277,40 @@ static msg_t audio_setup(void *ip, bool *handledp) {
 
   if (get_interface && (usbp->setup[2] == 0U) &&
       (usbp->setup[6] == 1U)) {
-    alt = usbp->setup[4] == 0U ? 0U : audio_alt;
+    if (iface == AUDIO_STREAMING_INTERFACE) {
+      alt = audio_alt;
+    }
+    else if (iface == SPEAKER_STREAMING_INTERFACE) {
+      alt = speaker_alt;
+    }
+    else {
+      alt = 0U;
+    }
   }
   else if ((usbp->setup[0] == 0x01U) &&
            (usbp->setup[1] == USB_REQ_SET_INTERFACE) &&
            (usbp->setup[6] == 0U) &&
-           (usbp->setup[2] <= (usbp->setup[4] == 0U ? 0U : 1U))) {
-    if (usbp->setup[4] == 1U) {
-      alt = usbp->setup[2];
+           (usbp->setup[2] <= (iface == 0U ? 0U : 1U))) {
+    alt = usbp->setup[2];
+    if (iface == AUDIO_STREAMING_INTERFACE) {
       if (audio_alt == 1U) {
         audio_stats.stops++;
       }
-      audio_clear(ip);
-      /* Safe only for this single-function test: this API disables ALL
-         non-control endpoints, not just the selected streaming interface. */
-      usbDisableEndpointsI(usbp);
-      if (alt == 1U) {
-        usbInitEndpointI(usbp, AUDIO_IN_EP, &audio_ep_config);
-        audio_alt = 1U;
+      audio_alt = alt;
+      audio_have_frame = false;
+      if (audio_alt == 1U) {
         audio_stats.starts++;
+      }
+    }
+    else if (iface == SPEAKER_STREAMING_INTERFACE) {
+      if (speaker_alt == 1U) {
+        audio_stats.speaker_stops++;
+      }
+      speaker_alt = alt;
+      audioOutResetI();
+      if (speaker_alt == 1U) {
+        audio_stats.speaker_starts++;
+        speaker_receive_i(usbp);
       }
     }
   }
@@ -246,9 +329,9 @@ static msg_t audio_setup(void *ip, bool *handledp) {
 
 static const hal_usb_service_info_t audio_service_info = {
   .if_base     = 0U,
-  .if_count    = 2U,
+  .if_count    = 3U,
   .in_ep_mask  = 1U << AUDIO_IN_EP,
-  .out_ep_mask = 0U
+  .out_ep_mask = 1U << SPEAKER_OUT_EP
 };
 
 static const struct hal_usb_service_vmt audio_service_vmt = {
@@ -256,13 +339,13 @@ static const struct hal_usb_service_vmt audio_service_vmt = {
   .bind        = __usbsvc_bind_impl,
   .unbind      = __usbsvc_unbind_impl,
   .reset       = audio_reset,
-  .configure   = audio_clear,
+  .configure   = audio_configure,
   .unconfigure = audio_clear,
   .suspend     = audio_suspend,
   .wakeup      = __usbsvc_wakeup_impl,
   .sof         = audio_sof,
   .in          = audio_in,
-  .out         = __usbsvc_out_impl,
+  .out         = audio_out,
   .setup       = audio_setup
 };
 

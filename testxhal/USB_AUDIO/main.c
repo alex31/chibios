@@ -15,30 +15,38 @@
 */
 
 /*
- * Full-speed UAC1 microphone test: mono signed 16-bit PCM, 48 kHz, 440 Hz.
- * Connect the NUCLEO-H723ZG user USB connector to the host. No microphone or
- * analog wiring is needed: samples are synthesized, paced by the USB frames.
+ * Full-speed UAC1 microphone and stereo speaker test, 48 kHz signed 16-bit
+ * PCM. Boards: NUCLEO-H723ZG and NUCLEO-H563ZI, user USB connector;
+ * NUCLEO-G474RE, USB on PA11/PA12 at the morpho connector, the board has no
+ * user USB connector.
  *
- * On Linux, find "ChibiOS XHAL USB Audio" with "arecord -l", then record using
- * that card's hardware PCM, e.g.:
+ * Microphone: a mono 440 Hz tone is synthesized, paced by the USB frames,
+ * no analog wiring is needed. On Linux, find "ChibiOS XHAL USB Audio" with
+ * "arecord -l", then record using that card's hardware PCM, e.g.:
  *   arecord -D hw:CARD=<audio-card-id>,DEV=0 -t wav -f S16_LE -r 48000 \
  *           -c 1 -d 10 tone.wav
  * Check rate, tone frequency and continuity, then repeat open/close and USB
- * reconnect. Green LED blinks faster while configured. audio_stats is
- * available through the debugger.
+ * reconnect.
  *
- * This is deliberately a single-function, IN-only test. Audio OUT will be a
- * separate service/backend: USB packet reception -> bounded PCM ring buffer
- * -> timer/DMA-driven DAC (or filtered PWM). A hardware sample clock needs
- * rate matching/USB feedback; fixed 48-sample packets alone cannot prevent
- * long-term buffer drift. Independent IN/OUT alternate settings also need
- * endpoint-specific teardown before this becomes a full-duplex demo.
+ * Speaker: left and right are output by the DAC on PA4 and PA5. Each pin
+ * drives a line level input through a DC blocking capacitor, an RC low-pass
+ * filter is optional; do not connect headphones directly. Play with e.g.:
+ *   aplay -D plughw:CARD=<audio-card-id>,DEV=0 music.wav
+ * The endpoint is adaptive, the DAC sample clock is adjusted to the data
+ * rate sent by the host.
+ *
+ * The LED blinks faster while configured, on the NUCLEO-G474RE it shares PA5
+ * with the DAC and follows the right channel instead. audio_stats and
+ * audio_out_stats are available through the debugger. Both streaming endpoints
+ * exist for the whole configuration, alternate settings only start and stop the
+ * streams.
  */
 
 #include "ch.h"
 #include "hal.h"
 #include "portab.h"
 #include "usbaudio.h"
+#include "audio_out.h"
 
 static THD_WORKING_AREA(waEp0Thread, 768);
 static THD_FUNCTION(Ep0Thread, arg) {
@@ -89,6 +97,7 @@ int main(void) {
   halInit();
   chSysInit();
   portab_setup();
+  audioOutInit();
   audioObjectInit();
 
   if (drvStart(&PORTAB_USB1, NULL) != HAL_RET_SUCCESS) {

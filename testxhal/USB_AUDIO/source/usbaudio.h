@@ -23,6 +23,14 @@
 #define AUDIO_SAMPLES_PER_FRAME           (AUDIO_SAMPLE_RATE / 1000U)
 #define AUDIO_PACKET_SIZE                 (AUDIO_SAMPLES_PER_FRAME * 2U)
 #define AUDIO_IN_EP                       1U
+#define AUDIO_STREAMING_INTERFACE         1U
+
+/* Stereo speaker, signed 16-bit PCM, up to one extra frame per packet.*/
+#define SPEAKER_CHANNELS                  2U
+#define SPEAKER_PACKET_SIZE               ((AUDIO_SAMPLES_PER_FRAME + 1U) * \
+                                           SPEAKER_CHANNELS * 2U)
+#define SPEAKER_STREAMING_INTERFACE       2U
+#define SPEAKER_OUT_EP                    2U
 
 /* Readable from the debugger; callbacks include failed isochronous transfers,
    and must not be interpreted as proof that the host received a packet. */
@@ -35,6 +43,10 @@ typedef struct {
   uint32_t packets_queued;
   uint32_t callbacks;
   uint32_t skipped_frames;
+  uint32_t speaker_starts;
+  uint32_t speaker_stops;
+  uint32_t speaker_callbacks;
+  uint32_t speaker_empty;
 } audio_stats_t;
 
 extern hal_usb_binder_c audio_binder;

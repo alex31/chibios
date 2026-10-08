@@ -28,20 +28,25 @@ static const uint8_t device_data[] = {
 };
 
 static const uint8_t configuration_data[] = {
-  /* Configuration: self-powered, two interfaces, 100 mA maximum bus load. */
-  9, USB_DESCRIPTOR_CONFIGURATION, LE16(100), 2, 1, 0, 0xC0, 50,
+  /* Configuration: self-powered, three interfaces, 100 mA maximum bus load. */
+  9, USB_DESCRIPTOR_CONFIGURATION, LE16(174), 3, 1, 0, 0xC0, 50,
   /* AudioControl interface 0. No optional mute/volume controls. */
   9, USB_DESCRIPTOR_INTERFACE, 0, 0, 0, 1, 1, 0, 0,
-  /* UAC1 AC header: total AC length 30, streaming interface 1. */
-  9, 0x24, 1, LE16(0x0100), LE16(30), 1, 1,
+  /* UAC1 AC header: total AC length 52, streaming interfaces 1 and 2. */
+  10, 0x24, 1, LE16(0x0100), LE16(52), 2,
+  AUDIO_STREAMING_INTERFACE, SPEAKER_STREAMING_INTERFACE,
   /* Input terminal 1: microphone, one non-spatial channel. */
   12, 0x24, 2, 1, LE16(0x0201), 0, 1, LE16(0), 0, 0,
   /* Output terminal 2: USB streaming, source terminal 1. */
   9, 0x24, 3, 2, LE16(0x0101), 0, 1, 0,
+  /* Input terminal 3: USB streaming, left and right front channels. */
+  12, 0x24, 2, 3, LE16(0x0101), 0, SPEAKER_CHANNELS, LE16(0x0003), 0, 0,
+  /* Output terminal 4: speaker, source terminal 3. */
+  9, 0x24, 3, 4, LE16(0x0301), 0, 3, 0,
   /* AudioStreaming interface 1, alternate 0: zero bandwidth. */
-  9, USB_DESCRIPTOR_INTERFACE, 1, 0, 0, 1, 2, 0, 0,
+  9, USB_DESCRIPTOR_INTERFACE, AUDIO_STREAMING_INTERFACE, 0, 0, 1, 2, 0, 0,
   /* Alternate 1: one isochronous IN endpoint. */
-  9, USB_DESCRIPTOR_INTERFACE, 1, 1, 1, 1, 2, 0, 0,
+  9, USB_DESCRIPTOR_INTERFACE, AUDIO_STREAMING_INTERFACE, 1, 1, 1, 2, 0, 0,
   /* AS general: terminal 2, one-frame delay, PCM. */
   7, 0x24, 1, 2, 1, LE16(1),
   /* Type I: mono, 16-bit in two bytes, single fixed sample rate. */
@@ -51,11 +56,24 @@ static const uint8_t configuration_data[] = {
   9, USB_DESCRIPTOR_ENDPOINT, 0x80 | AUDIO_IN_EP, 0x0D,
   LE16(AUDIO_PACKET_SIZE), 1, 0, 0,
   /* Class-specific endpoint: no sampling-frequency or pitch control. */
+  7, 0x25, 1, 0, 0, LE16(0),
+  /* AudioStreaming interface 2, alternate 0: zero bandwidth. */
+  9, USB_DESCRIPTOR_INTERFACE, SPEAKER_STREAMING_INTERFACE, 0, 0, 1, 2, 0, 0,
+  /* Alternate 1: one isochronous OUT endpoint. */
+  9, USB_DESCRIPTOR_INTERFACE, SPEAKER_STREAMING_INTERFACE, 1, 1, 1, 2, 0, 0,
+  /* AS general: terminal 3, one-frame delay, PCM. */
+  7, 0x24, 1, 3, 1, LE16(1),
+  /* Type I: stereo, 16-bit in two bytes, single fixed sample rate. */
+  11, 0x24, 2, 1, SPEAKER_CHANNELS, 2, 16, 1, LE24(AUDIO_SAMPLE_RATE),
+  /* Adaptive sink: the playback clock follows the received data rate. */
+  9, USB_DESCRIPTOR_ENDPOINT, SPEAKER_OUT_EP, 0x09,
+  LE16(SPEAKER_PACKET_SIZE), 1, 0, 0,
+  /* Class-specific endpoint: no sampling-frequency or pitch control. */
   7, 0x25, 1, 0, 0, LE16(0)
 };
 
 _Static_assert(sizeof device_data == 18U, "device descriptor length");
-_Static_assert(sizeof configuration_data == 100U, "configuration length");
+_Static_assert(sizeof configuration_data == 174U, "configuration length");
 
 static const usb_descriptor_t device_descriptor = {
   sizeof device_data, device_data

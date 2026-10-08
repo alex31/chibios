@@ -14,13 +14,25 @@
     limitations under the License.
 */
 
-#include "hal.h"
+#ifndef PORTAB_H
+#define PORTAB_H
 
-#include "portab.h"
+#define PORTAB_USB1                 USBD1
+#define PORTAB_BLINK_LED1           LINE_LED_GREEN
 
-void portab_setup(void) {
+/* Stereo output on DAC1 channels 1 and 2 (PA4, PA5), triggered by TIM6.
+   PA4 also has the VBUS_SENSE divider (SB56), a light load.*/
+#define PORTAB_DAC                  DACD1
+#define PORTAB_DAC_TRIG             5
+#define PORTAB_GPT                  GPTD6
+#define PORTAB_GPT_FREQUENCY        250000000U
 
-  /* DAC outputs.*/
-  palSetPadMode(GPIOA, 4U, PAL_MODE_INPUT_ANALOG);
-  palSetPadMode(GPIOA, 5U, PAL_MODE_INPUT_ANALOG);
+#ifdef __cplusplus
+extern "C" {
+#endif
+  void portab_setup(void);
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* PORTAB_H */
