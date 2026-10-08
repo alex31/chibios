@@ -581,9 +581,12 @@ void usb_lld_read_setup(hal_usb_driver_c *usbp, usbep_t ep, uint8_t *buf) {
 
   udp = USB_GET_DESCRIPTOR(ep);
   pmap = USB_ADDR2PTR(udp->RXADDR0);
+  /* SETUP buffers are byte buffers and need not be halfword-aligned.*/
   for (n = 0U; n < 4U; n++) {
-    *(uint16_t *)(void *)buf = (uint16_t)*pmap++;
-    buf += 2;
+    uint32_t w = (uint32_t)*pmap++;
+
+    *buf++ = (uint8_t)w;
+    *buf++ = (uint8_t)(w >> 8);
   }
 }
 
