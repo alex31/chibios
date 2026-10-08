@@ -484,6 +484,8 @@ typedef enum {
 
 /**
  * @brief   Low level fields of the DAC configuration structure.
+ * @note    In single mode, cr and mcr hold the selected channel's settings
+ *          in their lower 16 bits, including DMADOUBLE1 for either channel.
  * @note    In DUAL mode init, cr and mcr (if available) fields hold CH1
  *          settings in their lower 16 bits and CH2 settings in the upper
  *          16 bits.
@@ -491,6 +493,19 @@ typedef enum {
  *          initial values are loaded before enabling the owned channels.
  * @note    EN and DMAEN are managed by the driver. HFSEL is derived from the
  *          DAC clock; configuration values for these fields are ignored.
+ * @note    Double DMA supports single-channel conversions with an even depth
+ *          of at least two samples. In 12-bit modes, the sample buffer must
+ *          be aligned to a 32-bit word; in 8-bit mode, to a 16-bit halfword.
+ * @note    Dual-channel conversions do not support double DMA. In 12-bit
+ *          dual modes, num_channels is two and each word-aligned sample pair
+ *          contains CH1 followed by CH2. In 8-bit dual mode, num_channels is
+ *          one and each halfword packs CH1 in bits 7:0 and CH2 in bits 15:8.
+ * @note    Conversion depth must be one or a positive even number, subject
+ *          to the double-DMA restriction above. The full circular buffer
+ *          must fit STM32_DMA3_MAX_TRANSFER bytes (depth times 1/2 bytes in
+ *          single 8/12-bit mode, or 2/4 bytes in dual 8/12-bit mode).
+ * @note    Depth-one conversions report full-buffer events only, without
+ *          half-buffer callbacks, regardless of the data format.
  */
 #define dac_lld_config_fields                                               \
   /* Initial output on DAC channel.*/                                       \

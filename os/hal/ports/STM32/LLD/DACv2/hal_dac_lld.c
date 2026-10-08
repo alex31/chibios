@@ -267,8 +267,8 @@ static void dac_lld_serve_dma_interrupt(void *p, uint32_t flags) {
     /* It is possible that the conversion group has already been reset by a
        DAC error handler. In this case this interrupt is spurious.*/
     if (dacp->grpp != NULL) {
-      if ((flags & STM32_DMA3_CSR_HTF) != 0) {
-        /* Half transfer processing.*/
+      if (((flags & STM32_DMA3_CSR_HTF) != 0U) && (dacp->depth > 1U)) {
+        /* Depth-one conversions have no half-buffer event.*/
         _dac_isr_half_code(dacp);
       }
       if ((flags & STM32_DMA3_CSR_TCF) != 0) {
@@ -352,13 +352,13 @@ static msg_t put_channel(DACDriver *dacp,
 #if STM32_DAC_DUAL_MODE
         dacp->params->dac->DHR8R1 = value;
 #else
-        *(&dacp->params->dac->DHR8R1 + dacp->params->dataoffset) = (uint8_t)value;
+        *(&dacp->params->dac->DHR8R1 + dacp->params->dataoffset) = (uint16_t)value;
 #endif
       }
 #if (STM32_HAS_DAC1_CH2 || STM32_HAS_DAC2_CH2 ||                            \
     STM32_HAS_DAC3_CH2 || STM32_HAS_DAC4_CH2)
       else {
-        dacp->params->dac->DHR8R2 = (uint8_t)value;
+        dacp->params->dac->DHR8R2 = (uint16_t)value;
       }
 #endif
       break;
@@ -760,6 +760,10 @@ msg_t dac_lld_put_channel(DACDriver *dacp,
  * @details Starts an asynchronous conversion operation.
  * @note    In @p DAC_DHRM_8BIT_RIGHT mode two samples are packed in a single
  *          dacsample_t element. DMA does byte read.
+ * @note    Double DMA mode requires an even depth of at least two samples.
+ *          In 12-bit modes the sample buffer must be word-aligned.
+ * @note    In 12-bit DUAL modes, each word-aligned pair contains CH1 followed
+ *          by CH2, with num_channels set to two. DMA reads a complete word.
  * @note    In @p DAC_DHRM_8BIT_RIGHT_DUAL mode two samples are treated
  *          as a single 16 bits sample and packed into a single dacsample_t
  *          element. The num_channels must be set to one in the group
@@ -776,7 +780,8 @@ msg_t dac_lld_put_channel(DACDriver *dacp,
  * @notapi
  */
 msg_t dac_lld_start_conversion(DACDriver *dacp) {
-  uint32_t n, ni, nch, cr, dmamode, dmaccr, dmallr, chx, ch2;
+  uint32_t n, ni, nch, cr, dmamode, dmaccr, dmallr, chx;
+  uint32_t ch2 = 0U;
   volatile const void *dacreg;
   uint8_t *si;
   uint8_t mult;
@@ -788,6 +793,14 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
   dacchannel_t ch_num;
 #endif
 
+  /* A conversion needs one sample frame or a positive even depth. This is
+     also enforced when frontend debug checks are compiled out.*/
+  if ((dacp->depth == 0U) ||
+      ((dacp->depth > 1U) && ((dacp->depth & 1U) != 0U))) {
+    osalDbgAssert(false, "invalid depth");
+    return HAL_RET_CONFIG_ERROR;
+  }
+
   if ((dacp->grpp->trigger & ~DAC_TRG_MASK) != 0U) {
     osalDbgAssert(false, "invalid trigger");
     return HAL_RET_CONFIG_ERROR;
@@ -798,9 +811,37 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
     return HAL_RET_CONFIG_ERROR;
   }
 
-  /* Determine double DMA mode.*/
-  dacddma = ((((dacp->config->mcr & ~dacp->params->regmask)
-      >> dacp->params->regshift) & DAC_MCR_DMADOUBLE1) != 0);
+  /* The selected channel uses the low halfword of the configuration.*/
+  dacddma = (dacp->config->mcr & DAC_MCR_DMADOUBLE1) != 0U;
+
+#if STM32_DAC_DUAL_MODE
+  if (dual) {
+    /* Dual holding registers contain one sample for each physical channel.*/
+    if ((dacp->config->mcr & (DAC_MCR_DMADOUBLE1 | DAC_MCR_DMADOUBLE2)) != 0U) {
+      osalDbgAssert(false, "double DMA not supported in dual conversion");
+      return HAL_RET_CONFIG_ERROR;
+    }
+    if ((dacp->config->datamode != DAC_DHRM_8BIT_RIGHT_DUAL) &&
+        (((uintptr_t)dacp->samples & 3U) != 0U)) {
+      osalDbgAssert(false, "unaligned dual DMA buffer");
+      return HAL_RET_CONFIG_ERROR;
+    }
+  }
+#endif
+
+  if (dacddma) {
+    /* Each request transfers two samples, including the initial preload.*/
+    if ((dacp->depth < 2U) || ((dacp->depth & 1U) != 0U)) {
+      osalDbgAssert(false, "double DMA requires sample pairs");
+      return HAL_RET_CONFIG_ERROR;
+    }
+    if (((dacp->config->datamode == DAC_DHRM_12BIT_RIGHT) ||
+         (dacp->config->datamode == DAC_DHRM_12BIT_LEFT)) &&
+        (((uintptr_t)dacp->samples & 3U) != 0U)) {
+      osalDbgAssert(false, "unaligned double DMA buffer");
+      return HAL_RET_CONFIG_ERROR;
+    }
+  }
 
   /* DMA settings depend on the chosen DAC mode. If not in dual mode then each
      channel of a DAC operates independently. The DAC DMA update request of DHR
@@ -820,9 +861,6 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
       dmamode = STM32_DMA3_CTR1_DDW_WORD;
       dmamode |= dacddma ? STM32_DMA3_CTR1_SDW_WORD : STM32_DMA3_CTR1_SDW_HALF;
       mult = HALF_SINGLE_SAMPLE_MULTIPLIER;
-
-      /* Set initial value of channel holding register(s).*/
-      chx = *(uint32_t *)(void *)dacp->samples;
       break;
 
     case DAC_DHRM_12BIT_LEFT:
@@ -834,9 +872,6 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
       dmamode = STM32_DMA3_CTR1_DDW_WORD;
       dmamode |= dacddma ? STM32_DMA3_CTR1_SDW_WORD : STM32_DMA3_CTR1_SDW_HALF;
       mult = HALF_SINGLE_SAMPLE_MULTIPLIER;
-
-      /* Get initial value of channel holding register(s).*/
-      chx = *(uint32_t *)(void *)dacp->samples;
       break;
 
     case DAC_DHRM_8BIT_RIGHT:
@@ -847,9 +882,6 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
       dmamode = STM32_DMA3_CTR1_DDW_WORD;
       dmamode |= dacddma ? STM32_DMA3_CTR1_SDW_HALF : STM32_DMA3_CTR1_SDW_BYTE;
       mult = BYTE_SINGLE_SAMPLE_MULTIPLIER;
-
-      /* Get initial value of channel holding register(s).*/
-      chx = (uint32_t)*(uint16_t *)dacp->samples;
       break;
 
 #if STM32_DAC_DUAL_MODE == TRUE
@@ -861,10 +893,6 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
       dacreg = &dacp->params->dac->DHR12RD;
       dmamode = (STM32_DMA3_CTR1_DDW_WORD | STM32_DMA3_CTR1_SDW_WORD);
       mult = HALF_DUAL_SAMPLE_MULTIPLIER;
-
-      /* Get initial value of channels, CH1 followed by CH2 in each word.*/
-      chx = (dacsample_t)*dacp->samples;
-      ch2 = (dacsample_t)*(dacp->samples + 1);
       break;
 
     case DAC_DHRM_12BIT_LEFT_DUAL:
@@ -875,24 +903,16 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
       dacreg = &dacp->params->dac->DHR12LD;
       dmamode = (STM32_DMA3_CTR1_DDW_WORD | STM32_DMA3_CTR1_SDW_WORD);
       mult = HALF_DUAL_SAMPLE_MULTIPLIER;
-
-      /* Get initial value of channels, CH1 followed by CH2 in each word.*/
-      chx = (dacsample_t)*dacp->samples;
-      ch2 = (dacsample_t)*(dacp->samples + 1);
       break;
 
     case DAC_DHRM_8BIT_RIGHT_DUAL:
 
       /* Two channels packed as two bytes in a single dacsample_t. GPDMA count
        is 2 bytes per transfer.*/
-      nch = 2U;
+      nch = 1U;
       dacreg = &dacp->params->dac->DHR8RD;
-      dmamode = (STM32_DMA3_CTR1_DDW_WORD | STM32_DMA3_CTR1_SDW_BYTE);
+      dmamode = (STM32_DMA3_CTR1_DDW_WORD | STM32_DMA3_CTR1_SDW_HALF);
       mult = BYTE_DUAL_SAMPLE_MULTIPLIER;
-
-      /* Get initial value of channels.*/
-      chx = (dacsample_t)(*dacp->samples & 0xFF);
-      ch2 = (dacsample_t)(*(dacp->samples) >> 8);
       break;
 
 #endif /* STM32_DAC_DUAL_MODE == TRUE */
@@ -907,20 +927,44 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
     return HAL_RET_CONFIG_ERROR;
   }
 
-  /* Double DMA is supported on single channel only in dual mode.*/
-  if (dacddma && nch == 2) {
-    osalDbgAssert(false, "double DMA mode not supported in 2 channel dual mode");
+  /* Check the full depth before multiplying or narrowing to a DMA count.*/
+  if (dacp->depth > (STM32_DMA3_MAX_TRANSFER / mult)) {
+    osalDbgAssert(false, "unsupported GPDMA transfer size");
     return HAL_RET_CONFIG_ERROR;
   }
+  n = (uint32_t)dacp->depth * mult;
 
-  /* Calculate count of GPDMA byte transfers.*/
-  n = dacp->depth * mult;
+  /* Read initial values only after validating the group and transfer size.*/
+  if (dacp->config->datamode == DAC_DHRM_8BIT_RIGHT) {
+    chx = ((uint8_t *)dacp->samples)[0];
+    if (dacddma) {
+      chx |= (uint32_t)((uint8_t *)dacp->samples)[1] << 8;
+    }
+  }
+  else {
+    chx = dacp->samples[0];
+    if (dacddma) {
+      chx |= (uint32_t)dacp->samples[1] << 16;
+    }
+#if STM32_DAC_DUAL_MODE
+    else if (dual) {
+      if (dacp->config->datamode == DAC_DHRM_8BIT_RIGHT_DUAL) {
+        ch2 = chx >> 8;
+        chx &= 0xFFU;
+      }
+      else {
+        ch2 = dacp->samples[1];
+      }
+    }
+#endif
+  }
 
   /* Adjust multiplier for double DMA mode.*/
   mult *= dacddma ? 2 : 1;
 
-  /* A depth of one just repeats one sample. Otherwise Adjust count and
-     source address for first cycle of DMA.*/
+  /* A depth of one just repeats one sample. Otherwise adjust count and
+     source address for the first cycle of DMA. With double DMA and depth two,
+     the initial block is empty: UB1 reloads the full buffer from the link.*/
   if (dacp->depth == 1) {
     ni = n;
     si = (uint8_t *)dacp->samples;
@@ -928,11 +972,6 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
   else {
     ni = n - mult;
     si = (uint8_t *)dacp->samples + mult;
-  }
-
-  if (n > STM32_DMA3_MAX_TRANSFER) {
-    osalDbgAssert(false, "unsupported GPDMA transfer size");
-    return HAL_RET_CONFIG_ERROR;
   }
 
   /* Allocate GPDMA channel.*/
@@ -964,9 +1003,8 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
   dacp->dbuf->cb1r = n;
   dacp->dbuf->csar = (uint32_t)dacp->samples;
 
-  if (n > 1U) {
-    /* If circular buffer depth > 1, then the half transfer interrupt
-       is enabled in order to allow streaming processing.*/
+  if (dacp->depth > 1U) {
+    /* Half notifications depend on logical depth, not transfer byte count.*/
     dmaccr |= STM32_DMA3_CCR_HTIE;
   }
 
@@ -1042,7 +1080,7 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
 
   /* Set initial value of DHR/DHRB register(s).*/
   (void) put_channel(dacp, 0U, chx);
-  if (nch == 2) {
+  if (dual) {
     (void) put_channel(dacp, 1U, ch2);
   }
 
@@ -1091,8 +1129,9 @@ void dac_lld_stop_conversion(DACDriver *dacp) {
   cr = dacp->params->dac->CR;
 #if STM32_DAC_DUAL_MODE == FALSE
 
-  /* Operating in single mode. Disable channel.*/
-  dacp->params->dac->CR &= ~(DAC_CR_EN1 << dacp->params->regshift);
+  /* Disable channel and DMA requests before changing double DMA mode.*/
+  dacp->params->dac->CR &= ~((DAC_CR_EN1 | DAC_CR_DMAEN1) <<
+                            dacp->params->regshift);
 
   /* Wait for channel to disable.*/
   while ((dacp->params->dac->SR &
@@ -1120,8 +1159,8 @@ void dac_lld_stop_conversion(DACDriver *dacp) {
 
 #else /* !STM32_DAC_DUAL_MODE == FALSE */
 
-  /* Operating in dual mode. Disable CH1.*/
-  dacp->params->dac->CR &= ~DAC_CR_EN1;
+  /* Disable CH1 and its DMA requests before changing double DMA mode.*/
+  dacp->params->dac->CR &= ~(DAC_CR_EN1 | DAC_CR_DMAEN1);
 
   /* Wait for channel to disable.*/
   while ((dacp->params->dac->SR & DAC_SR_DAC1RDY) != 0);
