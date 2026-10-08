@@ -873,11 +873,14 @@ msg_t usbTransmit(USBDriver *usbp, usbep_t ep, const uint8_t *buf, size_t n) {
 #if USB_USE_EP0_THREAD == TRUE
 /**
  * @brief   Waits for a new EP0 setup packet.
+ * @note    While the driver is stopped the function returns @p MSG_RESET
+ *          without waiting, a worker must exit or wait for an application
+ *          event instead of calling it again in a loop.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
  * @return              The operation status.
  * @retval MSG_OK       a setup packet is available in @p usbp->setup.
- * @retval MSG_RESET    EP0 context invalidated, wait again.
+ * @retval MSG_RESET    EP0 context invalidated or driver stopped.
  *
  * @api
  */
