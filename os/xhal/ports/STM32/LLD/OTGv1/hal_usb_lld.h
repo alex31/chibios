@@ -338,6 +338,10 @@ typedef struct {
   const stm32_otg_params_t      *otgparams;                                \
   uint32_t                      pmnext;                                    \
   uint16_t                      isoc_in_pending;                           \
+  uint16_t                      isoc_out_pending;                          \
+  bool                          isoc_out_check;                            \
+  bool                          isoc_out_nak;                              \
+  systime_t                     isoc_out_start;                            \
   uint16_t                      in_flush;                                  \
   uint32_t                      out_disable_pending;                       \
   uint32_t                      out_disable_wait;                          \
