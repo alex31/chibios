@@ -289,11 +289,12 @@ static const dacparams_t dac4_ch2_params = {
 static void dac_lld_serve_tx_interrupt(DACDriver *dacp, uint32_t flags) {
 
   if ((flags & (STM32_DMA_ISR_TEIF | STM32_DMA_ISR_DMEIF)) != 0) {
-    /* DMA errors handling.*/
-    dac_lld_stop_conversion(dacp);
-    _dac_isr_error_code(dacp, DAC_ERR_DMAFAILURE);
+    /* DMA errors handling, the conversion is stopped by the error code.*/
+    if (dacp->grpp != NULL) {
+      _dac_isr_error_code(dacp, DAC_ERR_DMAFAILURE);
+    }
   }
-  else {
+  else if (dacp->grpp != NULL) {
     if ((flags & STM32_DMA_ISR_HTIF) != 0) {
       /* Half transfer processing.*/
       _dac_isr_half_code(dacp);
@@ -832,9 +833,11 @@ void dac_lld_stop_conversion(DACDriver *dacp) {
   uint32_t cr;
 
   /* DMA channel disabled and released.*/
-  dmaStreamDisable(dacp->dma);
-  dmaStreamFreeI(dacp->dma);
-  dacp->dma = NULL;
+  if (dacp->dma != NULL) {
+    dmaStreamDisable(dacp->dma);
+    dmaStreamFreeI(dacp->dma);
+    dacp->dma = NULL;
+  }
 
   /* Restore start configuration but leave DORx at current values.*/
   cr = dacp->params->dac->CR;
