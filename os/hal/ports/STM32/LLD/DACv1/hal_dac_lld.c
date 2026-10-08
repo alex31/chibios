@@ -287,20 +287,27 @@ static const dacparams_t dac4_ch2_params = {
  * @param[in] flags     pre-shifted content of the ISR register
  */
 static void dac_lld_serve_tx_interrupt(DACDriver *dacp, uint32_t flags) {
+  uint32_t sequence;
+
+  /* Ignore events without an active conversion.*/
+  if ((dacp->state != DAC_ACTIVE) || (dacp->grpp == NULL)) {
+    return;
+  }
+  sequence = dacp->sequence;
 
   if ((flags & (STM32_DMA_ISR_TEIF | STM32_DMA_ISR_DMEIF)) != 0) {
     /* DMA errors handling, the conversion is stopped by the error code.*/
-    if (dacp->grpp != NULL) {
-      _dac_isr_error_code(dacp, DAC_ERR_DMAFAILURE);
-    }
+    _dac_isr_error_code(dacp, DAC_ERR_DMAFAILURE);
   }
-  else if (dacp->grpp != NULL) {
+  else {
     if ((flags & STM32_DMA_ISR_HTIF) != 0) {
       /* Half transfer processing.*/
       _dac_isr_half_code(dacp);
     }
-    if ((flags & STM32_DMA_ISR_TCIF) != 0) {
-      /* Transfer complete processing.*/
+    if (((flags & STM32_DMA_ISR_TCIF) != 0) &&
+        (dacp->state == DAC_ACTIVE) &&
+        (dacp->sequence == sequence)) {
+      /* Full buffer event, unless the half callback stopped/restarted.*/
       _dac_isr_full_code(dacp);
     }
   }
@@ -325,48 +332,56 @@ void dac_lld_init(void) {
   dacObjectInit(&DACD1);
   DACD1.params  = &dac1_ch1_params;
   DACD1.dma = NULL;
+  DACD1.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC1_CH2
   dacObjectInit(&DACD2);
   DACD2.params  = &dac1_ch2_params;
   DACD2.dma = NULL;
+  DACD2.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC2_CH1
   dacObjectInit(&DACD3);
   DACD3.params  = &dac2_ch1_params;
   DACD3.dma = NULL;
+  DACD3.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC2_CH2
   dacObjectInit(&DACD4);
   DACD4.params  = &dac2_ch2_params;
   DACD4.dma = NULL;
+  DACD4.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC3_CH1
   dacObjectInit(&DACD5);
   DACD5.params  = &dac3_ch1_params;
   DACD5.dma = NULL;
+  DACD5.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC3_CH2
   dacObjectInit(&DACD6);
   DACD6.params  = &dac3_ch2_params;
   DACD6.dma = NULL;
+  DACD6.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC4_CH1
   dacObjectInit(&DACD7);
   DACD7.params  = &dac4_ch1_params;
   DACD7.dma = NULL;
+  DACD7.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC4_CH2
   dacObjectInit(&DACD8);
   DACD8.params  = &dac4_ch2_params;
   DACD8.dma = NULL;
+  DACD8.sequence = 0U;
 #endif
 }
 
@@ -703,6 +718,9 @@ void dac_lld_put_channel(DACDriver *dacp,
  */
 void dac_lld_start_conversion(DACDriver *dacp) {
   uint32_t n, cr, dmamode;
+
+  /* Identifies restarts from callbacks even when group/buffer are reused.*/
+  dacp->sequence++;
 
   /* Number of DMA operations per buffer.*/
   n = dacp->depth * dacp->grpp->num_channels;
