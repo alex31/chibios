@@ -612,16 +612,30 @@ void usb_lld_stall_in(hal_usb_driver_c *usbp, usbep_t ep) {
 }
 
 void usb_lld_clear_out(hal_usb_driver_c *usbp, usbep_t ep) {
+  uint32_t type = STM32_USB->EPR[ep] & EPR_EP_TYPE_MASK;
 
   (void)usbp;
+
+  /* CLEAR_FEATURE(ENDPOINT_HALT) also resets the data toggle.*/
+  if ((type == EPR_EP_TYPE_BULK) || (type == EPR_EP_TYPE_INTERRUPT)) {
+    EPR_CLEAR_DTOG_RX(ep);
+  }
+
   if ((STM32_USB->EPR[ep] & EPR_STAT_RX_MASK) != EPR_STAT_RX_VALID) {
     EPR_SET_STAT_RX(ep, EPR_STAT_RX_NAK);
   }
 }
 
 void usb_lld_clear_in(hal_usb_driver_c *usbp, usbep_t ep) {
+  uint32_t type = STM32_USB->EPR[ep] & EPR_EP_TYPE_MASK;
 
   (void)usbp;
+
+  /* CLEAR_FEATURE(ENDPOINT_HALT) also resets the data toggle.*/
+  if ((type == EPR_EP_TYPE_BULK) || (type == EPR_EP_TYPE_INTERRUPT)) {
+    EPR_CLEAR_DTOG_TX(ep);
+  }
+
   if ((STM32_USB->EPR[ep] & EPR_STAT_TX_MASK) != EPR_STAT_TX_VALID) {
     EPR_SET_STAT_TX(ep, EPR_STAT_TX_NAK);
   }
