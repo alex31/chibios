@@ -26,16 +26,6 @@
 #define STM32_OTG_H
 
 /**
- * @brief   OTG_FS FIFO memory size in words.
- */
-#define STM32_OTG1_FIFO_MEM_SIZE        320
-
-/**
- * @brief   OTG_HS FIFO memory size in words.
- */
-#define STM32_OTG2_FIFO_MEM_SIZE        1024
-
-/**
  * @brief   Host channel registers group.
  */
 typedef struct {
@@ -632,6 +622,7 @@ typedef struct {
  * @name DCFG register bit definitions
  * @{
  */
+#define DCFG_RESET_VALUE        0x02200000U /**< Register reset value.       */
 #define DCFG_PFIVL_MASK         (3U << 11)  /**< Periodic frame interval
                                                  mask.                      */
 #define DCFG_PFIVL(n)           ((n) << 11) /**< Periodic frame interval
@@ -673,7 +664,7 @@ typedef struct {
  * @name DSTS register bit definitions
  * @{
  */
-#define DSTS_FNSOF_MASK         (0x3FFU << 8)   /**< Frame number of the
+#define DSTS_FNSOF_MASK         (0x3FFFU << 8)  /**< Frame number of the
                                                      received SOF mask.     */
 #define DSTS_FNSOF(n)           ((n) << 8)      /**< Frame number of the
                                                      received SOF value.    */
