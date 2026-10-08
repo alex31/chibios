@@ -383,17 +383,36 @@ static void otg_enable_ep(USBDriver *usbp) {
   otgp->DAINTMSK = daintmsk | (usbp->out_disable_wait << 16U);
 }
 
-/* Disconnect register updates require the caller's system lock. Stepping 1
-   controls the pull-up through B-session sensing, see usb_lld_connect_bus().*/
+/* Stepping 1 controls the pull-up through B-session sensing of the embedded
+   PHY. Without sensing VBUS is forced valid, and an external ULPI PHY does
+   not use the embedded one: the soft disconnect controls it instead.*/
+static bool otg_pullup_by_sensing(USBDriver *usbp) {
+
+#if (STM32_OTG_STEPPING == 1) && !defined(BOARD_OTG_NOVBUSSENS)
+#if STM32_USB_USE_OTG2 &&                                                   \
+    (STM32_USB_OTG2_PHY == STM32_OTG_PHY_EXTERNAL_ULPI)
+  return &USBD2 != usbp;
+#else
+  (void)usbp;
+  return true;
+#endif
+#else
+  (void)usbp;
+  return false;
+#endif
+}
+
+/* Disconnect register updates require the caller's system lock.*/
 static void otg_disconnect_i(USBDriver *usbp) {
 
   osalDbgCheckClassI();
 
-#if STM32_OTG_STEPPING == 1
-  usbp->otg->GCCFG &= ~GCCFG_VBUSBSEN;
-#else
-  usbp->otg->DCTL |= DCTL_SDIS;
-#endif
+  if (otg_pullup_by_sensing(usbp)) {
+    usbp->otg->GCCFG &= ~GCCFG_VBUSBSEN;
+  }
+  else {
+    usbp->otg->DCTL |= DCTL_SDIS;
+  }
 }
 
 /* Called from unlocked IRQ handlers or from locked contexts. The classic HAL
@@ -1783,12 +1802,9 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
  * @brief   Disables all the active endpoints except the endpoint zero.
  * @note    OUT endpoints are retired asynchronously through global OUT NAK,
  *          their reconfiguration is deferred until the retirement ends.
- * @note    Known limitation: IN endpoints are only requested to disable,
- *          completion is not awaited. A following @p usb_lld_init_endpoint()
- *          can reassign and flush TX FIFO RAM while an IN packet of the
- *          previous configuration is still in flight (RM0468, "IN endpoint
- *          disable"). With the default ISR-driven EP0 handling this function
- *          runs inside the OTG ISR, where no wait for the bus is performed.
+ * @note    The I-class caller remains locked during the bounded IN disable
+ *          and FIFO flush waits (RM0468, "IN endpoint disable"), with the
+ *          default EP0 handling inside the OTG ISR.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
  *
@@ -1796,6 +1812,8 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
  */
 void usb_lld_disable_endpoints(USBDriver *usbp) {
   stm32_otg_t *otgp = usbp->otg;
+  uint16_t flush = usbp->in_flush | usbp->isoc_in_pending;
+  halcnt_t start, timeout;
   unsigned ep;
 
   osalDbgCheckClassI();
@@ -1813,21 +1831,46 @@ void usb_lld_disable_endpoints(USBDriver *usbp) {
   for (ep = 1U; ep <= usbp->otgparams->num_endpoints; ep++) {
     uint32_t ctl = otgp->ie[ep].DIEPCTL;
 
+    if ((ctl & (DIEPCTL_USBAEP | DIEPCTL_EPENA)) != 0U) {
+      flush |= 1U << ep;
+    }
     if ((ctl & DIEPCTL_EPENA) != 0U) {
       otgp->ie[ep].DIEPCTL = ctl | DIEPCTL_EPDIS | DIEPCTL_SNAK;
+    }
+  }
+  /* One deadline for the whole group. No FIFO can be reassigned until
+     every old IN endpoint has stopped, including overlapping allocations.*/
+  start = HAL_LLD_GET_CNT_VALUE();
+  timeout = (halcnt_t)OSAL_US2RTC(HAL_LLD_GET_CNT_FREQUENCY(),
+                                  OTG_OPERATION_TIMEOUT);
+  for (ep = 1U; ep <= usbp->otgparams->num_endpoints; ep++) {
+    while ((otgp->ie[ep].DIEPCTL & DIEPCTL_EPENA) != 0U) {
+      if ((halcnt_t)(HAL_LLD_GET_CNT_VALUE() - start) >= timeout) {
+        /* A preemption can cross the deadline after hardware completes.*/
+        if ((otgp->ie[ep].DIEPCTL & DIEPCTL_EPENA) == 0U) {
+          break;
+        }
+        otg_fault(usbp);
+        return;
+      }
+    }
+  }
+  for (ep = 1U; ep <= usbp->otgparams->num_endpoints; ep++) {
+    if (((flush & (1U << ep)) != 0U) && otg_txfifo_flush(usbp, ep)) {
+      return;
     }
     /* Do not replay commands sampled before a hardware state transition.*/
     otgp->ie[ep].DIEPCTL = otgp->ie[ep].DIEPCTL &
                            ~(OTG_IN_COMMANDS | DIEPCTL_USBAEP);
     otgp->ie[ep].DIEPINT = 0xFFFFFFFFU;
   }
-  /* Every nonzero IN FIFO is flushed when its endpoint is initialized.*/
   usbp->in_flush &= 1U;
 }
 
 /**
  * @brief   Connects the USB device unless a runtime fault is latched.
- * @note    Stepping 1 controls the pull-up through B-session sensing.
+ * @note    Stepping 1 controls the pull-up through B-session sensing, unless
+ *          VBUS sensing is disabled or an external ULPI PHY is used.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
  *
@@ -1839,11 +1882,12 @@ void usb_lld_connect_bus(USBDriver *usbp) {
   syssts_t sts = osalSysGetStatusAndLockX();
 
   if (!usbp->faulted) {
-#if STM32_OTG_STEPPING == 1
-    usbp->otg->GCCFG |= GCCFG_VBUSBSEN;
-#else
-    usbp->otg->DCTL &= ~DCTL_SDIS;
-#endif
+    if (otg_pullup_by_sensing(usbp)) {
+      usbp->otg->GCCFG |= GCCFG_VBUSBSEN;
+    }
+    else {
+      usbp->otg->DCTL &= ~DCTL_SDIS;
+    }
   }
   osalSysRestoreStatusX(sts);
 }
