@@ -84,20 +84,25 @@ static bool ep_request_valid(USBDriver *usbp, usbep_t ep, bool in) {
   return in ? (epcp->in_state != NULL) : (epcp->out_state != NULL);
 }
 
-#if USB_USE_EP0_THREAD == FALSE
 /**
  * @brief  SET ADDRESS transaction callback.
+ * @note   In EP0 thread mode with early address setting the address has
+ *         already been set by the request handler.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
  */
 static void set_address(USBDriver *usbp) {
 
+#if (USB_USE_EP0_THREAD == FALSE) ||                                        \
+    (USB_SET_ADDRESS_MODE == USB_LATE_SET_ADDRESS)
   usbp->address = usbp->setup[2];
   usb_lld_set_address(usbp);
+#endif
   _usb_isr_invoke_event_cb(usbp, USB_EVENT_ADDRESS);
   usbp->state = USB_SELECTED;
 }
 
+#if USB_USE_EP0_THREAD == FALSE
 /**
  * @brief   Standard requests handler.
  * @details This is the standard requests default handler, most standard
@@ -310,6 +315,7 @@ static void setup_reset(USBDriver *usbp) {
   usbp->receiving &= ~1U;
   usbp->transmitting &= ~1U;
   usbp->ep0n     = 0;
+  usbp->ep0endcb = NULL;
   usbp->ep0state = USB_EP0_STP_WAITING;
 }
 
@@ -326,6 +332,7 @@ static void setup_error(USBDriver *usbp) {
   usbp->receiving &= ~1U;
   usbp->transmitting &= ~1U;
   usbp->ep0n     = 0;
+  usbp->ep0endcb = NULL;
   usbp->ep0state = USB_EP0_ERROR;
 }
 
@@ -339,6 +346,7 @@ static void ep0_signal_resetI(USBDriver *usbp) {
 
   usbp->ep0setup = 0U;
   usbp->ep0reset = 1U;
+  usbp->ep0endcb = NULL;
   usbp->ep0seq++;
   ep0_resume_waiterI(usbp, MSG_RESET);
 }
@@ -347,6 +355,7 @@ static void ep0_signal_setupI(USBDriver *usbp, msg_t msg) {
 
   usbp->ep0setup = 1U;
   usbp->ep0reset = 0U;
+  usbp->ep0endcb = NULL;
   usbp->ep0seq++;
   ep0_resume_waiterI(usbp, msg);
 }
@@ -356,14 +365,6 @@ static void invoke_event_cb(USBDriver *usbp, usbevent_t event) {
   if (usbp->config->event_cb != NULL) {
     usbp->config->event_cb(usbp, event);
   }
-}
-
-static void set_address_thread(USBDriver *usbp) {
-
-  usbp->address = usbp->setup[2];
-  usb_lld_set_address(usbp);
-  invoke_event_cb(usbp, USB_EVENT_ADDRESS);
-  usbp->state = USB_SELECTED;
 }
 
 static msg_t ep0_reply_or_ack(USBDriver *usbp, const uint8_t *buf, size_t n) {
@@ -579,10 +580,7 @@ void usbStop(USBDriver *usbp) {
     usbp->epc[i] = NULL;
   }
 #if USB_USE_EP0_THREAD == TRUE
-  usbp->ep0setup = 0U;
-  usbp->ep0reset = 1U;
-  usbp->ep0seq++;
-  ep0_resume_waiterI(usbp, MSG_RESET);
+  ep0_signal_resetI(usbp);
 #endif
   osalOsRescheduleS();
 
@@ -950,6 +948,7 @@ void usbEp0Stall(USBDriver *usbp) {
   usbp->receiving &= ~1U;
   usbp->transmitting &= ~1U;
   usbp->ep0n = 0U;
+  usbp->ep0endcb = NULL;
   usbp->ep0state = USB_EP0_ERROR;
   osalSysUnlock();
 
@@ -1020,15 +1019,21 @@ msg_t usbEp0HandleStandardRequest(USBDriver *usbp, bool *handledp) {
     break;
   case (uint32_t)USB_RTYPE_RECIPIENT_DEVICE |
        ((uint32_t)USB_REQ_SET_ADDRESS << 8):
-#if USB_SET_ADDRESS_MODE == USB_EARLY_SET_ADDRESS
-    set_address_thread(usbp);
-    msg = usbEp0Acknowledge(usbp);
-#else
-    msg = usbEp0Acknowledge(usbp);
-    if (msg == MSG_OK) {
-      set_address_thread(usbp);
+    osalSysLock();
+    if ((usbGetDriverStateI(usbp) == USB_STOP) ||
+        (usbp->ep0rseq != usbp->ep0seq)) {
+      osalSysUnlock();
+      return MSG_RESET;
     }
+#if USB_SET_ADDRESS_MODE == USB_EARLY_SET_ADDRESS
+    usbp->address = usbp->setup[2];
+    usb_lld_set_address(usbp);
 #endif
+    /* Completed from the status stage interrupt, a SETUP arriving before
+       the worker resumes cannot lose it.*/
+    usbp->ep0endcb = set_address;
+    osalSysUnlock();
+    msg = usbEp0Acknowledge(usbp);
     break;
   case (uint32_t)USB_RTYPE_RECIPIENT_DEVICE |
        ((uint32_t)USB_REQ_GET_DESCRIPTOR << 8):
@@ -1519,7 +1524,6 @@ void _usb_ep0in(USBDriver *usbp, usbep_t ep) {
 #endif
     return;
   case USB_EP0_IN_SENDING_STS:
-#if USB_USE_EP0_THREAD == FALSE
     /* Status packet sent, invoking the callback if defined.*/
     if (usbp->ep0endcb != NULL) {
       usbp->ep0endcb(usbp);
@@ -1527,14 +1531,12 @@ void _usb_ep0in(USBDriver *usbp, usbep_t ep) {
 
     /* Put setup back in ready state.*/
     setup_reset(usbp);
-    return;
-#else
-    setup_reset(usbp);
+#if USB_USE_EP0_THREAD == TRUE
     osalSysLockFromISR();
     ep0_resume_waiterI(usbp, MSG_OK);
     osalSysUnlockFromISR();
-    return;
 #endif
+    return;
 
   case USB_EP0_OUT_WAITING_STS:
     /* Tolerate out of order setup.*/
@@ -1593,21 +1595,18 @@ void _usb_ep0out(USBDriver *usbp, usbep_t ep) {
       break;
     }
 #endif
-#if USB_USE_EP0_THREAD == FALSE
     if (usbp->ep0endcb != NULL) {
       usbp->ep0endcb(usbp);
     }
 
     /* Put setup back in ready state.*/
     setup_reset(usbp);
-    return;
-#else
-    setup_reset(usbp);
+#if USB_USE_EP0_THREAD == TRUE
     osalSysLockFromISR();
     ep0_resume_waiterI(usbp, MSG_OK);
     osalSysUnlockFromISR();
-    return;
 #endif
+    return;
 
   case USB_EP0_IN_TX:
     /* Tolerate out of order setup.*/
