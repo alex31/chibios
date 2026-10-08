@@ -139,6 +139,9 @@ static void otg_object_init(USBDriver *usbp) {
   usbp->faulted = false;
   usbp->fault_reported = false;
   usbp->isoc_in_pending = 0U;
+  usbp->isoc_out_pending = 0U;
+  usbp->isoc_out_check = false;
+  usbp->isoc_out_nak = false;
   usbp->in_flush = 0U;
   usbp->out_disable_phase = OTG_OUT_IDLE;
   usbp->out_disable_pending = 0U;
@@ -294,6 +297,11 @@ static void otg_out_disable_i(USBDriver *usbp, bool deactivate) {
   osalDbgCheckClassI();
 
   usbp->out_restart = 0U;
+  /* The teardown disables every enabled OUT endpoint, including those
+     being recovered; their transfers are cancelled, not reported.*/
+  usbp->isoc_out_pending = 0U;
+  usbp->isoc_out_check = false;
+  usbp->isoc_out_nak = false;
   if (usbp->out_disable_phase == OTG_OUT_IDLE) {
     usbp->out_disable_pending = 0U;
     usbp->out_disable_wait = 0U;
@@ -409,6 +417,9 @@ static void otg_fault(USBDriver *usbp) {
   /* Soft disconnect also on stepping 1, where sensing can be bypassed.*/
   otgp->DCTL = (otgp->DCTL | DCTL_SDIS) & ~DCTL_RWUSIG;
   usbp->isoc_in_pending = 0U;
+  usbp->isoc_out_pending = 0U;
+  usbp->isoc_out_check = false;
+  usbp->isoc_out_nak = false;
   usbp->in_flush = 0U;
   usbp->out_disable_phase = OTG_OUT_IDLE;
   usbp->out_disable_pending = 0U;
@@ -688,6 +699,18 @@ static void otg_fifo_read_to_buffer(volatile uint32_t *fifop,
 static void otg_epin_handler(USBDriver *usbp, usbep_t ep);
 static void otg_epout_handler(USBDriver *usbp, usbep_t ep, bool setup);
 
+/* Ends an ISO OUT recovery, the global OUT NAK is released or cancelled.*/
+static void otg_isoc_out_release_i(USBDriver *usbp) {
+  stm32_otg_t *otgp = usbp->otg;
+
+  osalDbgCheckClassI();
+
+  usbp->isoc_out_nak = false;
+  otgp->GINTMSK &= ~GINTMSK_GONAKEFFM;
+  otgp->DOEPMSK &= ~DOEPMSK_EPDM;
+  otgp->DCTL = (otgp->DCTL & ~DCTL_SGONAK) | DCTL_CGONAK;
+}
+
 /**
  * @brief   Incoming packets handler.
  *
@@ -900,6 +923,38 @@ static void otg_epout_handler(USBDriver *usbp, usbep_t ep, bool setup) {
     otgp->oe[ep].DOEPINT = epint & ~DOEPINT_EPDISD;
     return;
   }
+  if ((usbp->isoc_out_pending & (1U << ep)) != 0U) {
+    bool missed;
+
+    if ((epint & DOEPINT_XFRC) != 0U) {
+      /* Completed before the disable took effect, delivered normally.*/
+      missed = false;
+    }
+    else if (!usbp->isoc_out_nak && ((epint & DOEPINT_EPDISD) != 0U) &&
+             ((otgp->oe[ep].DOEPCTL & DOEPCTL_EPENA) == 0U)) {
+      /* A missed frame, reported once the core confirms the disable.*/
+      missed = true;
+    }
+    else {
+      otgp->oe[ep].DOEPINT = epint;
+      return;
+    }
+    osalSysLockFromISR();
+    usbp->isoc_out_pending &= (uint16_t)~(1U << ep);
+    if (usbp->isoc_out_pending == 0U) {
+      otg_isoc_out_release_i(usbp);
+    }
+    osalSysUnlockFromISR();
+    if (missed) {
+      otgp->oe[ep].DOEPINT = epint;
+      if (usbp->epc[ep] != NULL) {
+        /* Data of an incomplete transfer is discarded.*/
+        usbp->epc[ep]->out_state->rxcnt = 0U;
+        _usb_isr_invoke_out_cb(usbp, ep);
+      }
+      return;
+    }
+  }
   /* STUP is acknowledged here, but only its ordered FIFO marker can
      dispatch a SETUP. A late endpoint interrupt must not dispatch it again.*/
   otgp->oe[ep].DOEPINT = epint;
@@ -988,43 +1043,100 @@ static void otg_isoc_in_failed_handler(USBDriver *usbp) {
 
 /**
  * @brief   Isochronous OUT transfer failed handler.
+ * @details Endpoints still enabled for the frame that has just ended did
+ *          not complete (RM0468, "Incomplete isochronous OUT data
+ *          transfers"). An OUT endpoint disable needs the global OUT NAK,
+ *          the incomplete endpoints are disabled once it is effective, see
+ *          @p otg_isoc_out_serve_i(), and their completion is reported with
+ *          no data after the core confirms it, see @p otg_epout_handler().
+ * @note    Called with the RX FIFO drained, a completion may have been
+ *          pending in it. The frame parity is sampled here, a handler
+ *          delayed past the next SOF could disable a transfer armed for
+ *          the new frame, which is then reported as missed.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
  *
- * @notapi
+ * @iclass
  */
-static void otg_isoc_out_failed_handler(USBDriver *usbp) {
+static void otg_isoc_out_failed_i(USBDriver *usbp) {
   usbep_t ep;
   stm32_otg_t *otgp = usbp->otg;
+  uint32_t parity = (otgp->DSTS & DSTS_FNSOF_ODD) != 0U ? DOEPCTL_EONUM : 0U;
+  uint16_t incomplete = 0U;
 
-  if (usbp->out_disable_phase != OTG_OUT_IDLE) {
+  osalDbgCheckClassI();
+
+  /* A teardown disables every enabled OUT endpoint, a recovery in
+     progress catches any further failure once the endpoint is rearmed.*/
+  if ((usbp->out_disable_phase != OTG_OUT_IDLE) ||
+      (usbp->isoc_out_pending != 0U)) {
     return;
   }
 
   for (ep = 1U; ep <= usbp->otgparams->num_endpoints; ep++) {
     const USBEndpointConfig *epcp = usbp->epc[ep];
+    uint32_t ctl = otgp->oe[ep].DOEPCTL;
 
-    /* Do not notify an endpoint or direction that has been retired.*/
+    /* Do not recover an endpoint or direction that has been retired.*/
     if ((epcp == NULL) || (epcp->out_state == NULL) ||
         ((epcp->ep_mode & USB_EP_MODE_TYPE) != USB_EP_MODE_TYPE_ISOC)) {
       continue;
     }
-    if (((otgp->oe[ep].DOEPCTL & DOEPCTL_EPTYP_MASK) == DOEPCTL_EPTYP_ISO) &&
-        ((otgp->oe[ep].DOEPCTL & DOEPCTL_EPENA) != 0)) {
-#if 0
-      /* Endpoint enabled -> ISOC OUT transfer failed.*/
-      /* Disable endpoint.*/
-      /* CHTODO:: Core stucks here */
-      otgp->oe[ep].DOEPCTL |= (DOEPCTL_EPDIS | DOEPCTL_SNAK);
-      while (otgp->oe[ep].DOEPCTL & DOEPCTL_EPENA)
-        ;
-#endif
-      /* Prepare transfer for next frame.*/
-      _usb_isr_invoke_out_cb(usbp, ep);
-      if (usbp->faulted) {
-        return;
+    if (((ctl & DOEPCTL_EPTYP_MASK) == DOEPCTL_EPTYP_ISO) &&
+        ((ctl & DOEPCTL_EPENA) != 0U) &&
+        ((ctl & DOEPCTL_EONUM) == parity)) {
+      incomplete |= (uint16_t)(1U << ep);
+    }
+  }
+  if (incomplete != 0U) {
+    usbp->isoc_out_pending = incomplete;
+    usbp->isoc_out_nak = true;
+    usbp->isoc_out_start = osalOsGetSystemTimeX();
+    otgp->GINTMSK |= GINTMSK_GONAKEFFM | GINTMSK_SOFM;
+    otgp->DCTL = (otgp->DCTL & ~DCTL_CGONAK) | DCTL_SGONAK;
+  }
+}
+
+/**
+ * @brief   Advances an ISO OUT recovery, without callbacks.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ *
+ * @iclass
+ */
+static void otg_isoc_out_serve_i(USBDriver *usbp) {
+  stm32_otg_t *otgp = usbp->otg;
+  unsigned ep;
+
+  osalDbgCheckClassI();
+
+  if (usbp->isoc_out_nak && ((otgp->GINTSTS & GINTSTS_GONAKEFF) != 0U)) {
+    /* This level interrupt must not spin while EPDISD is outstanding.*/
+    otgp->GINTMSK &= ~GINTMSK_GONAKEFFM;
+    otgp->DOEPMSK |= DOEPMSK_EPDM;
+    usbp->isoc_out_nak = false;
+    for (ep = 1U; ep <= usbp->otgparams->num_endpoints; ep++) {
+      if ((usbp->isoc_out_pending & (1U << ep)) == 0U) {
+        continue;
+      }
+      if ((otgp->oe[ep].DOEPCTL & DOEPCTL_EPENA) != 0U) {
+        /* Discard any old disable notification.*/
+        otgp->oe[ep].DOEPINT = DOEPINT_EPDISD;
+        otgp->oe[ep].DOEPCTL |= DOEPCTL_EPDIS | DOEPCTL_SNAK;
+      }
+      else {
+        /* Completed meanwhile, its XFRC is processed normally.*/
+        usbp->isoc_out_pending &= (uint16_t)~(1U << ep);
       }
     }
+    if (usbp->isoc_out_pending == 0U) {
+      otg_isoc_out_release_i(usbp);
+    }
+  }
+  if ((usbp->isoc_out_pending != 0U) &&
+      (osalTimeDiffX(usbp->isoc_out_start, osalOsGetSystemTimeX()) >=
+       OTG_OUT_DISABLE_TIMEOUT)) {
+    otg_fault(usbp);
   }
 }
 
@@ -1115,6 +1227,11 @@ irq_retry:
     out_rearmed = usbp->out_disable_phase == OTG_OUT_IDLE;
     osalSysUnlockFromISR();
   }
+  else if (usbp->isoc_out_pending != 0U) {
+    osalSysLockFromISR();
+    otg_isoc_out_serve_i(usbp);
+    osalSysUnlockFromISR();
+  }
   if (usbp->faulted) {
     return;
   }
@@ -1141,7 +1258,8 @@ irq_retry:
     /* SOF interrupt was used to detect resume of the USB bus after issuing a
        remote wake up of the host, therefore we disable it again.*/
     if ((usbp->config->sof_cb == NULL) &&
-        (usbp->out_disable_phase == OTG_OUT_IDLE)) {
+        (usbp->out_disable_phase == OTG_OUT_IDLE) &&
+        (usbp->isoc_out_pending == 0U)) {
       otgp->GINTMSK &= ~GINTMSK_SOFM;
     }
     if (usbp->state == USB_SUSPENDED) {
@@ -1169,7 +1287,7 @@ irq_retry:
 
   /* A captured failure must not be delivered to a just-rearmed receiver.*/
   if ((sts & GINTSTS_IISOOXFR) && !out_rearmed) {
-    otg_isoc_out_failed_handler(usbp);
+    usbp->isoc_out_check = true;
   }
 
   if (usbp->faulted) {
@@ -1183,6 +1301,14 @@ irq_retry:
       goto irq_retry;
     }
     return;
+  }
+
+  /* Incomplete ISO OUT transfers, now that the RX FIFO is empty.*/
+  if (usbp->isoc_out_check) {
+    usbp->isoc_out_check = false;
+    osalSysLockFromISR();
+    otg_isoc_out_failed_i(usbp);
+    osalSysUnlockFromISR();
   }
 
   /* Only dispatch enabled endpoints belonging to this OTG instance.*/
@@ -1219,6 +1345,9 @@ static void otg_stop(USBDriver *usbp) {
   otgp->GINTMSK = 0U;
   otgp->DIEPEMPMSK = 0U;
   usbp->isoc_in_pending = 0U;
+  usbp->isoc_out_pending = 0U;
+  usbp->isoc_out_check = false;
+  usbp->isoc_out_nak = false;
   usbp->in_flush = 0U;
   usbp->out_disable_phase = OTG_OUT_IDLE;
   usbp->out_disable_pending = 0U;
@@ -1413,6 +1542,9 @@ msg_t usb_lld_start(USBDriver *usbp) {
   usbp->faulted = false;
   usbp->fault_reported = false;
   usbp->isoc_in_pending = 0U;
+  usbp->isoc_out_pending = 0U;
+  usbp->isoc_out_check = false;
+  usbp->isoc_out_nak = false;
   usbp->in_flush = 0U;
   usbp->out_disable_phase = OTG_OUT_IDLE;
   usbp->out_disable_pending = 0U;
@@ -1483,6 +1615,9 @@ void usb_lld_reset(USBDriver *usbp) {
   otgp->GINTMSK &= ~GINTMSK_GONAKEFFM;
   otgp->DCTL = (otgp->DCTL & ~DCTL_SGONAK) | DCTL_CGONAK;
   usbp->isoc_in_pending = 0U;
+  usbp->isoc_out_pending = 0U;
+  usbp->isoc_out_check = false;
+  usbp->isoc_out_nak = false;
   /* Flush all Tx FIFOs.*/
   usbp->in_flush = 0U;
   if (otg_txfifo_flush(usbp, 0x10U)) {
@@ -1574,6 +1709,7 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
 
   /* A previous configuration must not complete recovery on this one.*/
   usbp->isoc_in_pending &= ~(1U << ep);
+  usbp->isoc_out_pending &= ~(1U << ep);
   otgp->ie[ep].DIEPINT = 0xFFFFFFFFU;
 
   /* IN and OUT common parameters.*/

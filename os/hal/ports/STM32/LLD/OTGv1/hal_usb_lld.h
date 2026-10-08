@@ -618,6 +618,22 @@ struct USBDriver {
    */
   uint16_t                      isoc_in_pending;
   /**
+   * @brief   ISO OUT endpoints waiting for missed-frame disable completion.
+   */
+  uint16_t                      isoc_out_pending;
+  /**
+   * @brief   Incomplete ISO OUT transfers to be checked, RX FIFO drained.
+   */
+  bool                          isoc_out_check;
+  /**
+   * @brief   ISO OUT recovery waiting for the global OUT NAK.
+   */
+  bool                          isoc_out_nak;
+  /**
+   * @brief   Start time of the current ISO OUT recovery.
+   */
+  systime_t                     isoc_out_start;
+  /**
    * @brief   IN endpoints whose TX FIFO must be flushed before reuse.
    */
   uint16_t                      in_flush;

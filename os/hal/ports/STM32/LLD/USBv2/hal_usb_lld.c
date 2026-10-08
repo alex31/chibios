@@ -276,7 +276,7 @@ static size_t usb_packet_read_to_buffer(USBDriver *usbp,
      read the counter of the OTHER buffer, which is where the last
      received packet was stored.*/
   if (((chepr & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) &&
-      ((chepr & USB_EP_DTOG_RX) != 0U)) {
+      ((chepr & USB_EP_DTOG_RX) == 0U)) {
     n = USB_GET_RX_COUNT1(udp);
   }
   else {
@@ -371,28 +371,6 @@ static void usb_packet_write_from_buffer(USBDriver *usbp,
   volatile uint32_t *pmap = USB_GET_TX_BUFFER(udp);
   int i;
 
-#if STM32_USB_USE_ISOCHRONOUS
-  uint32_t chepr = usbp->usb->CHEPR[ep];
-
-  /* Double buffering is always enabled for isochronous endpoints, and
-     although we overlap the two buffers for simplicity, we still need
-     to write to the right counter. The DTOG_TX bit indicates the buffer
-     that is currently in use by the USB peripheral, that is, the buffer
-     from which the next packet will be sent, so we need to write the
-     counter of that buffer.*/
-  if (((chepr & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) &&
-      ((chepr & USB_EP_DTOG_TX) != 0U)) {
-    USB_SET_TX_COUNT1(udp, n);
-  }
-  else {
-    USB_SET_TX_COUNT0(udp, n);
-  }
-#else
-  (void)usbp;
-
-  USB_SET_TX_COUNT0(udp, n);
-#endif
-
   i = (int)n;
 
 #if STM32_USB_USE_FAST_COPY
@@ -455,6 +433,22 @@ static void usb_packet_write_from_buffer(USBDriver *usbp,
     }
     *pmap++ = w;
   }
+
+#if STM32_USB_USE_ISOCHRONOUS
+  /* Double buffering is always enabled for isochronous endpoints and the
+     two buffers are overlapped. The endpoint is always valid, the packet is
+     sent by the next IN token whatever the buffer, so both counters are
+     written, after the data. Events of IN tokens already answered with
+     zero-length packets are discarded, those must not complete this
+     transfer.*/
+  if ((usbp->usb->CHEPR[ep] & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) {
+    CHEPR_CLEAR_VTTX(usbp, ep);
+    USB_SET_TX_COUNT1(udp, n);
+  }
+#else
+  (void)usbp;
+#endif
+  USB_SET_TX_COUNT0(udp, n);
 }
 
 /**
@@ -475,7 +469,27 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
     /* IN endpoint, transmission.*/
     USBInEndpointState *isp = epcp->in_state;
 
+    /* The event could have been already served or discarded.*/
+    if ((chepr & USB_EP_VTTX) == 0U) {
+      return;
+    }
+
     CHEPR_CLEAR_VTTX(usbp, ep);
+
+#if STM32_USB_USE_ISOCHRONOUS
+    if ((chepr & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) {
+      stm32_usb_pmabufdesc_t *udp = USB_GET_DESCRIPTOR(ep);
+
+      /* Isochronous endpoints are always valid, IN tokens are answered
+         also when no transfer is active. The packet is not sent again,
+         zero-length packets are sent unless another packet is written.*/
+      USB_SET_TX_COUNT0(udp, 0U);
+      USB_SET_TX_COUNT1(udp, 0U);
+      if ((usbp->transmitting & (uint16_t)(1U << ep)) == 0U) {
+        return;
+      }
+    }
+#endif
 
     isp->txcnt += isp->txlast;
     n = isp->txsize - isp->txcnt;
@@ -500,6 +514,11 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
   else {
     /* OUT endpoint, receive.*/
 
+    /* The event could have been already served.*/
+    if ((chepr & USB_EP_VTRX) == 0U) {
+      return;
+    }
+
     CHEPR_CLEAR_VTRX(usbp, ep);
 
     if (chepr & USB_EP_SETUP) {
@@ -509,6 +528,15 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
     }
     else {
       USBOutEndpointState *osp = epcp->out_state;
+
+#if STM32_USB_USE_ISOCHRONOUS
+      /* Isochronous endpoints are always valid, packets received while no
+         transfer is active are discarded.*/
+      if (((chepr & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) &&
+          ((usbp->receiving & (uint16_t)(1U << ep)) == 0U)) {
+        return;
+      }
+#endif
 
       /* Reads the packet into the defined buffer.*/
       n = usb_packet_read_to_buffer(usbp, ep, osp->rxbuf);

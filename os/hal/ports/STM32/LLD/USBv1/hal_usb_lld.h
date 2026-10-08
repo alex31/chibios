@@ -136,6 +136,14 @@
 #error "USB driver activated but no USB peripheral assigned"
 #endif
 
+/* The low priority handler leaves the isochronous endpoints to the high
+   priority handler, the latter must not be preempted by the former.*/
+#if STM32_USB_USE_ISOCHRONOUS &&                                            \
+    (STM32_USB1_HP_NUMBER != STM32_USB1_LP_NUMBER) &&                       \
+    (STM32_USB_USB1_HP_IRQ_PRIORITY > STM32_USB_USB1_LP_IRQ_PRIORITY)
+#error "STM32_USB_USB1_HP_IRQ_PRIORITY lower than STM32_USB_USB1_LP_IRQ_PRIORITY"
+#endif
+
 #if !defined(STM32_USBCLK)
 #error "STM32_USBCLK not defined"
 #endif

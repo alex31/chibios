@@ -120,7 +120,10 @@ static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf) {
 #if STM32_USB_USE_ISOCHRONOUS
   uint32_t epr = STM32_USB->EPR[ep];
 
-  if (EPR_EP_TYPE_IS_ISO(epr) && ((epr & EPR_DTOG_RX) != 0U)) {
+  /* Isochronous endpoints are double buffered with both buffers
+     overlapped, DTOG_RX selects the buffer that receives the next packet,
+     the counter of the other buffer is read.*/
+  if (EPR_EP_TYPE_IS_ISO(epr) && ((epr & EPR_DTOG_RX) == 0U)) {
     n = (size_t)udp->RXCOUNT1 & RXCOUNT_COUNT_MASK;
   }
   else {
@@ -188,19 +191,6 @@ static void usb_packet_write_from_buffer(usbep_t ep,
   stm32_usb_pma_t *pmap = USB_ADDR2PTR(udp->TXADDR0);
   int i = (int)n;
 
-#if STM32_USB_USE_ISOCHRONOUS
-  uint32_t epr = STM32_USB->EPR[ep];
-
-  if (EPR_EP_TYPE_IS_ISO(epr) && ((epr & EPR_DTOG_TX) != 0U)) {
-    udp->TXCOUNT1 = (stm32_usb_pma_t)n;
-  }
-  else {
-    udp->TXCOUNT0 = (stm32_usb_pma_t)n;
-  }
-#else
-  udp->TXCOUNT0 = (stm32_usb_pma_t)n;
-#endif
-
 #if STM32_USB_USE_FAST_COPY
   while (i >= 16) {
     uint32_t w;
@@ -248,6 +238,19 @@ static void usb_packet_write_from_buffer(usbep_t ep,
   if (i != 0) {
     *pmap = (stm32_usb_pma_t)(*buf);
   }
+
+#if STM32_USB_USE_ISOCHRONOUS
+  /* Isochronous endpoints are double buffered with both buffers overlapped
+     and always valid, the packet is sent by the next IN token whatever the
+     buffer, so both counters are written, after the data. Events of IN
+     tokens already answered with zero-length packets are discarded, those
+     must not complete this transfer.*/
+  if (EPR_EP_TYPE_IS_ISO(STM32_USB->EPR[ep])) {
+    EPR_CLEAR_CTR_TX(ep);
+    udp->TXCOUNT1 = (stm32_usb_pma_t)n;
+  }
+#endif
+  udp->TXCOUNT0 = (stm32_usb_pma_t)n;
 }
 
 static void usb_serve_endpoints(hal_usb_driver_c *usbp, uint32_t istr) {
@@ -259,7 +262,27 @@ static void usb_serve_endpoints(hal_usb_driver_c *usbp, uint32_t istr) {
   if ((istr & ISTR_DIR) == 0U) {
     USBInEndpointState *isp = epcp->in_state;
 
+    /* The event could have been already served or discarded.*/
+    if ((epr & EPR_CTR_TX) == 0U) {
+      return;
+    }
+
     EPR_CLEAR_CTR_TX(ep);
+
+#if STM32_USB_USE_ISOCHRONOUS
+    if (EPR_EP_TYPE_IS_ISO(epr)) {
+      stm32_usb_descriptor_t *udp = USB_GET_DESCRIPTOR(ep);
+
+      /* Isochronous endpoints are always valid, IN tokens are answered
+         also when no transfer is active. The packet is not sent again,
+         zero-length packets are sent unless another packet is written.*/
+      udp->TXCOUNT0 = 0U;
+      udp->TXCOUNT1 = 0U;
+      if ((usbp->transmitting & (uint16_t)(1U << ep)) == 0U) {
+        return;
+      }
+    }
+#endif
 
     isp->txcnt += isp->txlast;
     n = isp->txsize - isp->txcnt;
@@ -279,6 +302,11 @@ static void usb_serve_endpoints(hal_usb_driver_c *usbp, uint32_t istr) {
     }
   }
   else {
+    /* The event could have been already served.*/
+    if ((epr & EPR_CTR_RX) == 0U) {
+      return;
+    }
+
     EPR_CLEAR_CTR_RX(ep);
 
     if ((epr & EPR_SETUP) != 0U) {
@@ -286,6 +314,15 @@ static void usb_serve_endpoints(hal_usb_driver_c *usbp, uint32_t istr) {
     }
     else {
       USBOutEndpointState *osp = epcp->out_state;
+
+#if STM32_USB_USE_ISOCHRONOUS
+      /* Isochronous endpoints are always valid, packets received while no
+         transfer is active are discarded.*/
+      if (EPR_EP_TYPE_IS_ISO(epr) &&
+          ((usbp->receiving & (uint16_t)(1U << ep)) == 0U)) {
+        return;
+      }
+#endif
 
       n = usb_packet_read_to_buffer((usbep_t)ep, osp->rxbuf);
       osp->rxbuf += n;
@@ -593,8 +630,12 @@ void usb_lld_clear_in(hal_usb_driver_c *usbp, usbep_t ep) {
 void usb_lld_serve_endpoints_interrupt(hal_usb_driver_c *usbp) {
   uint32_t istr;
 
+  /* Only isochronous endpoints, the other endpoints are served by
+     usb_lld_serve_interrupt(). Isochronous endpoints are reported first
+     in ISTR.*/
   istr = STM32_USB->ISTR;
-  while ((istr & ISTR_CTR) != 0U) {
+  while (((istr & ISTR_CTR) != 0U) &&
+         EPR_EP_TYPE_IS_ISO(STM32_USB->EPR[istr & ISTR_EP_ID_MASK])) {
     usb_serve_endpoints(usbp, istr);
     istr = STM32_USB->ISTR;
   }
@@ -640,6 +681,13 @@ void usb_lld_serve_interrupt(hal_usb_driver_c *usbp) {
   }
 
   while ((istr & ISTR_CTR) != 0U) {
+#if STM32_USB_USE_ISOCHRONOUS && (STM32_USB1_HP_NUMBER != STM32_USB1_LP_NUMBER)
+    /* Isochronous endpoints are served by the high priority handler,
+       serving them here could race with it.*/
+    if (EPR_EP_TYPE_IS_ISO(STM32_USB->EPR[istr & ISTR_EP_ID_MASK])) {
+      break;
+    }
+#endif
     usb_serve_endpoints(usbp, istr);
     istr = STM32_USB->ISTR;
   }

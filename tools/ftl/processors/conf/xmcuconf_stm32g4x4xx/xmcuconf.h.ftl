@@ -405,6 +405,7 @@
  * USB driver system settings.
  */
 #define STM32_USB_USE_USB1                  ${doc.STM32_USB_USE_USB1!"FALSE"}
+#define STM32_USB_USE_ISOCHRONOUS           ${doc.STM32_USB_USE_ISOCHRONOUS!"FALSE"}
 #define STM32_USB_LOW_POWER_ON_SUSPEND      ${doc.STM32_USB_LOW_POWER_ON_SUSPEND!"FALSE"}
 
 /*

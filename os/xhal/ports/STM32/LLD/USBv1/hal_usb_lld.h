@@ -110,6 +110,14 @@
 #error "Invalid IRQ priority assigned to USB LP"
 #endif
 
+/* The low priority handler leaves the isochronous endpoints to the high
+   priority handler, the latter must not be preempted by the former.*/
+#if STM32_USB_USE_ISOCHRONOUS &&                                            \
+    (STM32_USB1_HP_NUMBER != STM32_USB1_LP_NUMBER) &&                       \
+    (STM32_IRQ_USB1_HP_PRIORITY > STM32_IRQ_USB1_LP_PRIORITY)
+#error "STM32_IRQ_USB1_HP_PRIORITY lower than STM32_IRQ_USB1_LP_PRIORITY"
+#endif
+
 #if !defined(STM32_USB1_HP_HANDLER)
 #error "STM32_USB1_HP_HANDLER not defined"
 #endif
