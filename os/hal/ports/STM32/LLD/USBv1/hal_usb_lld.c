@@ -463,15 +463,14 @@ OSAL_IRQ_HANDLER(STM32_USB1_HP_HANDLER) {
 #endif /* STM32_USB1_LP_NUMBER != STM32_USB1_HP_NUMBER */
 
 /**
- * @brief   USB low priority interrupt handler.
+ * @brief   Serves the low priority USB interrupt sources.
  *
- * @isr
+ * @param[in] usbp      pointer to the @p USBDriver object
+ *
+ * @notapi
  */
-OSAL_IRQ_HANDLER(STM32_USB1_LP_HANDLER) {
+static void usb_serve_interrupt(USBDriver *usbp) {
   uint32_t istr;
-  USBDriver *usbp = &USBD1;
-
-  OSAL_IRQ_PROLOGUE();
 
   /* Reading interrupt sources and atomically clearing them.*/
   istr = STM32_USB->ISTR;
@@ -480,6 +479,8 @@ OSAL_IRQ_HANDLER(STM32_USB1_LP_HANDLER) {
   /* USB bus reset condition handling.*/
   if ((istr & ISTR_RESET) != 0U) {
     _usb_reset(usbp);
+    /* Reset invalidated endpoints and events in the saved snapshot.*/
+    return;
   }
 
   /* USB bus SUSPEND condition handling.*/
@@ -529,6 +530,18 @@ OSAL_IRQ_HANDLER(STM32_USB1_LP_HANDLER) {
     usb_serve_endpoints(usbp, istr);
     istr = STM32_USB->ISTR;
   }
+}
+
+/**
+ * @brief   USB low priority interrupt handler.
+ *
+ * @isr
+ */
+OSAL_IRQ_HANDLER(STM32_USB1_LP_HANDLER) {
+
+  OSAL_IRQ_PROLOGUE();
+
+  usb_serve_interrupt(&USBD1);
 
   OSAL_IRQ_EPILOGUE();
 }

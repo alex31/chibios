@@ -683,6 +683,8 @@ void usb_lld_serve_interrupt(hal_usb_driver_c *usbp) {
 
   if ((istr & ISTR_RESET) != 0U) {
     _usb_reset(usbp);
+    /* Reset invalidated endpoints and events in the saved snapshot.*/
+    return;
   }
 
   if ((istr & ISTR_SUSP) != 0U) {
