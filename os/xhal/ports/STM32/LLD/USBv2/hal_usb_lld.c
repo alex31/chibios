@@ -794,16 +794,8 @@ void usb_lld_init_endpoint(hal_usb_driver_c *usbp, usbep_t ep) {
 #endif
   }
 
-  /* Resetting the data toggling bits for this endpoint.*/
-  if (usbp->usb->CHEPR[ep] & USB_EP_DTOG_RX) {
-    chepr |= USB_EP_DTOG_RX;
-  }
-
-  if (usbp->usb->CHEPR[ep] & USB_EP_DTOG_TX) {
-    chepr |= USB_EP_DTOG_TX;
-  }
-
-  /* CHEPxR register cleared and initialized.*/
+  /* CHEPxR register cleared and initialized, writing back the toggle bits
+     clears them, data toggles restart from DATA0.*/
   usbp->usb->CHEPR[ep] = usbp->usb->CHEPR[ep];
   usbp->usb->CHEPR[ep] = chepr | ep;
 }
