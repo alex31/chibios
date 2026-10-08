@@ -36,7 +36,8 @@
 #define CHANNEL_REGISTER_MASK2        0x0000FFFFU
 #define CONFIG_SINGLE_MASK            0x0000FFFFU
 #define CONFIG_SINGLE_CR_MASK         (CONFIG_SINGLE_MASK &                  \
-                                      ~(DAC_CR_EN1 | DAC_CR_DMAEN1))
+                                      ~(DAC_CR_EN1 | DAC_CR_DMAEN1 |         \
+                                        DAC_CR_DMAUDRIE1))
 #define CONFIG_SINGLE_MCR_MASK        (CONFIG_SINGLE_MASK &                  \
                                       ~(DAC_MCR_HFSEL_0 | DAC_MCR_HFSEL_1))
 
@@ -609,7 +610,8 @@ msg_t dac_lld_start(DACDriver *dacp) {
 
     /* Preload both channels while disabled, without enabling DMA requests.*/
     reg = dacp->config->cr;
-    reg &= ~(DAC_CR_EN1 | DAC_CR_EN2 | DAC_CR_DMAEN1 | DAC_CR_DMAEN2);
+    reg &= ~(DAC_CR_EN1 | DAC_CR_EN2 | DAC_CR_DMAEN1 | DAC_CR_DMAEN2 |
+             DAC_CR_DMAUDRIE1 | DAC_CR_DMAUDRIE2);
     dacp->params->dac->CR = reg;
     (void) put_channel(dacp, 0U, (dacsample_t)dacp->config->init);
     (void) put_channel(dacp, 1U, (dacsample_t)(dacp->config->init >>
@@ -1046,7 +1048,7 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
   (void) ch2;
 
   /* Disable channel and DMA requests before changing double DMA mode.*/
-  dacp->params->dac->CR &= ~((DAC_CR_EN1 | DAC_CR_DMAEN1) <<
+  dacp->params->dac->CR &= ~((DAC_CR_EN1 | DAC_CR_DMAEN1 | DAC_CR_DMAUDRIE1) <<
                             dacp->params->regshift);
 
   /* Wait for channel to disable.*/
@@ -1066,7 +1068,7 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
   cr &= dacp->params->regmask;
   cr |= ((dacp->config->cr & CONFIG_SINGLE_CR_MASK &
           ~(DAC_CR_TSEL1 | DAC_CR_TEN1)) |
-         DAC_CR_DMAEN1 | DAC_CR_TEN1 |
+         DAC_CR_DMAEN1 | DAC_CR_DMAUDRIE1 | DAC_CR_TEN1 |
          (dacp->grpp->trigger << DAC_CR_TSEL1_Pos)) << dacp->params->regshift;
   dacp->params->dac->SR = (DAC_SR_DMAUDR1 << dacp->params->regshift);
 
@@ -1078,10 +1080,10 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
 
   /* Disable the conversion's channels and DMA requests before preloading.
      A single-channel group leaves the spare CH2 running unchanged.*/
-  disable = DAC_CR_EN1 | DAC_CR_DMAEN1;
+  disable = DAC_CR_EN1 | DAC_CR_DMAEN1 | DAC_CR_DMAUDRIE1;
   ready = DAC_SR_DAC1RDY;
   if (dual) {
-    disable |= DAC_CR_EN2 | DAC_CR_DMAEN2;
+    disable |= DAC_CR_EN2 | DAC_CR_DMAEN2 | DAC_CR_DMAUDRIE2;
     ready |= DAC_SR_DAC2RDY;
   }
   dacp->params->dac->CR &= ~disable;
@@ -1105,7 +1107,7 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
   cr &= CHANNEL_REGISTER_MASK1 & ~disable;
   cr |= (dacp->config->cr & CONFIG_SINGLE_CR_MASK &
          ~(DAC_CR_TSEL1 | DAC_CR_TEN1)) |
-        DAC_CR_DMAEN1 | DAC_CR_TEN1 |
+        DAC_CR_DMAEN1 | DAC_CR_DMAUDRIE1 | DAC_CR_TEN1 |
         (dacp->grpp->trigger << DAC_CR_TSEL1_Pos);
   dacp->params->dac->SR = DAC_SR_DMAUDR1;
 
@@ -1136,10 +1138,17 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
 void dac_lld_stop_conversion(DACDriver *dacp) {
   uint32_t cr, mcr;
 
+  /* Stop requests and mask underrun before disabling/releasing their DMA
+     channel. Dual conversions also use only the CH1 DMA request.*/
+  dacp->params->dac->CR &= ~((DAC_CR_DMAEN1 | DAC_CR_DMAUDRIE1) <<
+                            dacp->params->regshift);
+
   /* GPDMA channel disabled and released.*/
-  dma3ChannelDisable(dacp->dmachp);
-  dma3ChannelFreeI(dacp->dmachp);
-  dacp->dmachp = NULL;
+  if (dacp->dmachp != NULL) {
+    dma3ChannelDisable(dacp->dmachp);
+    dma3ChannelFreeI(dacp->dmachp);
+    dacp->dmachp = NULL;
+  }
 
   /* Get current CR and SR.*/
   cr = dacp->params->dac->CR;
@@ -1208,22 +1217,126 @@ void dac_lld_stop_conversion(DACDriver *dacp) {
 
 /**
  * @brief   DAC IRQ service routine.
+ * @note    The caller selects an enabled underrun from its status snapshot
+ *          and checks that preceding callbacks did not restart this driver.
  *
  * @param[in] dacp      pointer to the @p DACDriver object
- * @param[in] isr       content of the ISR register
  *
  * @isr
  */
-void dac_lld_serve_interrupt(DACDriver *dacp) {
+static void dac_lld_serve_interrupt(DACDriver *dacp) {
 
-  /* Check for DMA underrun, the error is only handled if the driver is in
-     DAC_ACTIVE state.*/
-  if (dacp->state == DAC_ACTIVE) {
+  /* Ignore stale events without an active conversion group.*/
+  if ((dacp->state == DAC_ACTIVE) && (dacp->grpp != NULL)) {
     /* DAC DMA underrun condition. This can happen only if the DMA is
        unable to read data fast enough.*/
     _dac_isr_error_code(dacp, DAC_ERR_UNDERFLOW);
   }
 }
+
+#if STM32_DAC_USE_DAC1_CH1 || STM32_DAC_USE_DAC1_CH2 || defined(__DOXYGEN__)
+/**
+ * @brief   DAC1 IRQ service routine.
+ *
+ * @isr
+ */
+void dac_lld_serve_interrupt_dac1(void) {
+  uint32_t isr, flags, pending;
+#if STM32_DAC_USE_DAC1_CH1
+  uint32_t sequence1;
+#endif
+#if !STM32_DAC_DUAL_MODE && STM32_DAC_USE_DAC1_CH2
+  uint32_t sequence2;
+#endif
+
+  /* Snapshot enables and conversion identities before any hook/callback.*/
+  isr = DAC1->SR;
+  flags = isr & DAC_SR_DMAUDR1;
+#if STM32_HAS_DAC1_CH2
+  flags |= isr & DAC_SR_DMAUDR2;
+#endif
+  pending = flags & DAC1->CR;
+#if STM32_DAC_USE_DAC1_CH1
+  sequence1 = DACD1.sequence;
+#endif
+#if !STM32_DAC_DUAL_MODE && STM32_DAC_USE_DAC1_CH2
+  sequence2 = DACD2.sequence;
+#endif
+
+  /* Acknowledge only captured W1C flags, including masked underruns as
+     before. Preserve the raw status argument seen by the optional hook.*/
+  DAC1->SR = flags;
+
+#if defined(STM32_DAC_DAC1_IRQ_HOOK)
+  STM32_DAC_DAC1_IRQ_HOOK(isr);
+#endif
+
+  /* The hook or preceding channel callback may have restarted a conversion.*/
+#if STM32_DAC_USE_DAC1_CH1
+  if (((pending & DAC_SR_DMAUDR1) != 0U) && (DACD1.sequence == sequence1)) {
+    dac_lld_serve_interrupt(&DACD1);
+  }
+#endif
+
+#if !STM32_DAC_DUAL_MODE && STM32_DAC_USE_DAC1_CH2
+  if (((pending & DAC_SR_DMAUDR2) != 0U) && (DACD2.sequence == sequence2)) {
+    dac_lld_serve_interrupt(&DACD2);
+  }
+#endif
+}
+#endif
+
+#if STM32_DAC_USE_DAC2_CH1 || STM32_DAC_USE_DAC2_CH2 || defined(__DOXYGEN__)
+/**
+ * @brief   DAC2 IRQ service routine.
+ *
+ * @isr
+ */
+void dac_lld_serve_interrupt_dac2(void) {
+  uint32_t isr, flags, pending;
+#if STM32_DAC_USE_DAC2_CH1
+  uint32_t sequence1;
+#endif
+#if !STM32_DAC_DUAL_MODE && STM32_DAC_USE_DAC2_CH2
+  uint32_t sequence2;
+#endif
+
+  /* Snapshot enables and conversion identities before any hook/callback.*/
+  isr = DAC2->SR;
+  flags = isr & DAC_SR_DMAUDR1;
+#if STM32_HAS_DAC2_CH2
+  flags |= isr & DAC_SR_DMAUDR2;
+#endif
+  pending = flags & DAC2->CR;
+#if STM32_DAC_USE_DAC2_CH1
+  sequence1 = DACD3.sequence;
+#endif
+#if !STM32_DAC_DUAL_MODE && STM32_DAC_USE_DAC2_CH2
+  sequence2 = DACD4.sequence;
+#endif
+
+  /* Acknowledge only captured W1C flags, including masked underruns as
+     before. Preserve the raw status argument seen by the optional hook.*/
+  DAC2->SR = flags;
+
+#if defined(STM32_DAC_DAC2_IRQ_HOOK)
+  STM32_DAC_DAC2_IRQ_HOOK(isr);
+#endif
+
+  /* The hook or preceding channel callback may have restarted a conversion.*/
+#if STM32_DAC_USE_DAC2_CH1
+  if (((pending & DAC_SR_DMAUDR1) != 0U) && (DACD3.sequence == sequence1)) {
+    dac_lld_serve_interrupt(&DACD3);
+  }
+#endif
+
+#if !STM32_DAC_DUAL_MODE && STM32_DAC_USE_DAC2_CH2
+  if (((pending & DAC_SR_DMAUDR2) != 0U) && (DACD4.sequence == sequence2)) {
+    dac_lld_serve_interrupt(&DACD4);
+  }
+#endif
+}
+#endif
 
 #endif /* HAL_USE_DAC */
 

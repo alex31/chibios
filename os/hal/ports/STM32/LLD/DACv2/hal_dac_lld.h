@@ -493,8 +493,10 @@ typedef enum {
  *          16 bits.
  * @note    At initial start, DMA requests and double DMA are disabled, and
  *          initial values are loaded before enabling the owned channels.
- * @note    EN and DMAEN are managed by the driver. HFSEL is derived from the
- *          DAC clock; configuration values for these fields are ignored.
+ * @note    EN, DMAEN and DMAUDRIE are managed by the driver. Underrun IRQs
+ *          are enabled only during conversions, using CH1 in dual mode.
+ *          HFSEL is derived from the DAC clock; configuration values for
+ *          these fields are ignored.
  * @note    Double DMA supports single-channel conversions with an even depth
  *          of at least two samples. In 12-bit modes, the sample buffer must
  *          be aligned to a 32-bit word; in 8-bit mode, to a 16-bit halfword.
@@ -594,7 +596,12 @@ extern "C" {
                            dacsample_t sample);
   msg_t dac_lld_start_conversion(DACDriver *dacp);
   void  dac_lld_stop_conversion(DACDriver *dacp);
-  void dac_lld_serve_interrupt(DACDriver *dacp);
+#if STM32_DAC_USE_DAC1_CH1 || STM32_DAC_USE_DAC1_CH2 || defined(__DOXYGEN__)
+  void dac_lld_serve_interrupt_dac1(void);
+#endif
+#if STM32_DAC_USE_DAC2_CH1 || STM32_DAC_USE_DAC2_CH2 || defined(__DOXYGEN__)
+  void dac_lld_serve_interrupt_dac2(void);
+#endif
 #ifdef __cplusplus
 }
 #endif
