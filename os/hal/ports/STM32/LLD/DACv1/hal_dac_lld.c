@@ -853,8 +853,8 @@ void dac_lld_stop_conversion(DACDriver *dacp) {
     ((dacp->config->mcr & CONFIG_SINGLE_MASK) << dacp->params->regshift);
 #endif
   cr &= dacp->params->regmask;
-  cr |= (DAC_CR_EN1 | (dacp->config->cr & CONFIG_SINGLE_MASK) <<
-                                      dacp->params->regshift);
+  cr |= (DAC_CR_EN1 | (dacp->config->cr & CONFIG_SINGLE_MASK)) <<
+        dacp->params->regshift;
 #else
 #if STM32_DAC_HAS_MCR == TRUE
   uint32_t mcr;
