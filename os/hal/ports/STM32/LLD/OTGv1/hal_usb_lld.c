@@ -383,17 +383,36 @@ static void otg_enable_ep(USBDriver *usbp) {
   otgp->DAINTMSK = daintmsk | (usbp->out_disable_wait << 16U);
 }
 
-/* Disconnect register updates require the caller's system lock. Stepping 1
-   controls the pull-up through B-session sensing, see usb_lld_connect_bus().*/
+/* Stepping 1 controls the pull-up through B-session sensing of the embedded
+   PHY. Without sensing VBUS is forced valid, and an external ULPI PHY does
+   not use the embedded one: the soft disconnect controls it instead.*/
+static bool otg_pullup_by_sensing(USBDriver *usbp) {
+
+#if (STM32_OTG_STEPPING == 1) && !defined(BOARD_OTG_NOVBUSSENS)
+#if STM32_USB_USE_OTG2 &&                                                   \
+    (STM32_USB_OTG2_PHY == STM32_OTG_PHY_EXTERNAL_ULPI)
+  return &USBD2 != usbp;
+#else
+  (void)usbp;
+  return true;
+#endif
+#else
+  (void)usbp;
+  return false;
+#endif
+}
+
+/* Disconnect register updates require the caller's system lock.*/
 static void otg_disconnect_i(USBDriver *usbp) {
 
   osalDbgCheckClassI();
 
-#if STM32_OTG_STEPPING == 1
-  usbp->otg->GCCFG &= ~GCCFG_VBUSBSEN;
-#else
-  usbp->otg->DCTL |= DCTL_SDIS;
-#endif
+  if (otg_pullup_by_sensing(usbp)) {
+    usbp->otg->GCCFG &= ~GCCFG_VBUSBSEN;
+  }
+  else {
+    usbp->otg->DCTL |= DCTL_SDIS;
+  }
 }
 
 /* Called from unlocked IRQ handlers or from locked contexts. The classic HAL
@@ -1827,7 +1846,8 @@ void usb_lld_disable_endpoints(USBDriver *usbp) {
 
 /**
  * @brief   Connects the USB device unless a runtime fault is latched.
- * @note    Stepping 1 controls the pull-up through B-session sensing.
+ * @note    Stepping 1 controls the pull-up through B-session sensing, unless
+ *          VBUS sensing is disabled or an external ULPI PHY is used.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
  *
@@ -1839,11 +1859,12 @@ void usb_lld_connect_bus(USBDriver *usbp) {
   syssts_t sts = osalSysGetStatusAndLockX();
 
   if (!usbp->faulted) {
-#if STM32_OTG_STEPPING == 1
-    usbp->otg->GCCFG |= GCCFG_VBUSBSEN;
-#else
-    usbp->otg->DCTL &= ~DCTL_SDIS;
-#endif
+    if (otg_pullup_by_sensing(usbp)) {
+      usbp->otg->GCCFG |= GCCFG_VBUSBSEN;
+    }
+    else {
+      usbp->otg->DCTL &= ~DCTL_SDIS;
+    }
   }
   osalSysRestoreStatusX(sts);
 }
