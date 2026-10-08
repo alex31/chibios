@@ -121,6 +121,18 @@ static uint32_t usb_pm_alloc(USBDriver *usbp, size_t size) {
 }
 
 /**
+ * @brief   Rounds an OUT buffer to the size programmed in its descriptor.
+ */
+static size_t usb_pm_rx_size(size_t size) {
+
+  if (size > 62U) {
+    return (size + 31U) & ~(size_t)31U;
+  }
+
+  return (size + 1U) & ~(size_t)1U;
+}
+
+/**
  * @brief   Resets the packet memory allocator while preserving EP0 buffers.
  * @details Endpoint zero remains active when the other endpoints are
  *          disabled, therefore its packet memory cannot be made available to
@@ -136,7 +148,7 @@ static void usb_pm_reset_after_ep0(USBDriver *usbp) {
     (void)usb_pm_alloc(usbp, epcp->in_maxsize);
   }
   if (epcp->out_state != NULL) {
-    (void)usb_pm_alloc(usbp, epcp->out_maxsize);
+    (void)usb_pm_alloc(usbp, usb_pm_rx_size(epcp->out_maxsize));
   }
 }
 
@@ -145,11 +157,14 @@ static void usb_pm_reset_after_ep0(USBDriver *usbp) {
  *
  * @param[in] ep        endpoint number
  * @param[out] buf      buffer where to copy the packet data
- * @return              The size of the receivee packet.
+ * @param[in] max       maximum number of bytes to copy, the rest of the
+ *                      packet is discarded
+ * @return              The size of the received packet.
  *
  * @notapi
  */
-static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf) {
+static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf,
+                                        size_t max) {
   size_t i, n;
   stm32_usb_descriptor_t *udp = USB_GET_DESCRIPTOR(ep);
   stm32_usb_pma_t *pmap = USB_ADDR2PTR(udp->RXADDR0);
@@ -171,7 +186,7 @@ static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf) {
   n = (size_t)udp->RXCOUNT0 & RXCOUNT_COUNT_MASK;
 #endif
 
-  i = n;
+  i = n < max ? n : max;
 
 #if STM32_USB_USE_FAST_COPY
   while (i >= 16) {
@@ -311,7 +326,7 @@ static void usb_packet_write_from_buffer(usbep_t ep,
  * @notapi
  */
 static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
-  size_t n;
+  size_t n, m;
   uint32_t ep = istr & ISTR_EP_ID_MASK;
   uint32_t epr = STM32_USB->EPR[ep];
   const USBEndpointConfig *epcp = usbp->epc[ep];
@@ -389,13 +404,15 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
       }
 #endif
 
-      /* Reads the packet into the defined buffer.*/
-      n = usb_packet_read_to_buffer(ep, osp->rxbuf);
-      osp->rxbuf += n;
+      /* Reads the packet into the defined buffer. The host can send a full
+         packet when less room is left, the excess is discarded.*/
+      n = usb_packet_read_to_buffer(ep, osp->rxbuf, osp->rxsize);
+      m = n < osp->rxsize ? n : osp->rxsize;
+      osp->rxbuf += m;
 
       /* Transaction data updated.*/
-      osp->rxcnt  += n;
-      osp->rxsize -= n;
+      osp->rxcnt  += m;
+      osp->rxsize -= m;
       osp->rxpkts -= 1U;
 
       /* The transaction is completed if the specified number of packets
@@ -446,15 +463,14 @@ OSAL_IRQ_HANDLER(STM32_USB1_HP_HANDLER) {
 #endif /* STM32_USB1_LP_NUMBER != STM32_USB1_HP_NUMBER */
 
 /**
- * @brief   USB low priority interrupt handler.
+ * @brief   Serves the low priority USB interrupt sources.
  *
- * @isr
+ * @param[in] usbp      pointer to the @p USBDriver object
+ *
+ * @notapi
  */
-OSAL_IRQ_HANDLER(STM32_USB1_LP_HANDLER) {
+static void usb_serve_interrupt(USBDriver *usbp) {
   uint32_t istr;
-  USBDriver *usbp = &USBD1;
-
-  OSAL_IRQ_PROLOGUE();
 
   /* Reading interrupt sources and atomically clearing them.*/
   istr = STM32_USB->ISTR;
@@ -463,6 +479,8 @@ OSAL_IRQ_HANDLER(STM32_USB1_LP_HANDLER) {
   /* USB bus reset condition handling.*/
   if ((istr & ISTR_RESET) != 0U) {
     _usb_reset(usbp);
+    /* Reset invalidated endpoints and events in the saved snapshot.*/
+    return;
   }
 
   /* USB bus SUSPEND condition handling.*/
@@ -512,6 +530,18 @@ OSAL_IRQ_HANDLER(STM32_USB1_LP_HANDLER) {
     usb_serve_endpoints(usbp, istr);
     istr = STM32_USB->ISTR;
   }
+}
+
+/**
+ * @brief   USB low priority interrupt handler.
+ *
+ * @isr
+ */
+OSAL_IRQ_HANDLER(STM32_USB1_LP_HANDLER) {
+
+  OSAL_IRQ_PROLOGUE();
+
+  usb_serve_interrupt(&USBD1);
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -712,7 +742,8 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
       nblocks = ((((uint32_t)(epcp->out_maxsize - 1U) | 1U) + 1U) / 2U) << 10;
     }
     dp->RXCOUNT0 = nblocks;
-    dp->RXADDR0  = usb_pm_alloc(usbp, epcp->out_maxsize);
+    /* Reserve all bytes the hardware can write, including block rounding.*/
+    dp->RXADDR0  = usb_pm_alloc(usbp, usb_pm_rx_size(epcp->out_maxsize));
 
 #if STM32_USB_USE_ISOCHRONOUS
     if (epr == EPR_EP_TYPE_ISO) {
@@ -829,9 +860,12 @@ void usb_lld_read_setup(USBDriver *usbp, usbep_t ep, uint8_t *buf) {
 
   udp = USB_GET_DESCRIPTOR(ep);
   pmap = USB_ADDR2PTR(udp->RXADDR0);
+  /* SETUP buffers are byte buffers and need not be halfword-aligned.*/
   for (n = 0; n < 4; n++) {
-    *(uint16_t *)(void *)buf = (uint16_t)*pmap++;
-    buf += 2;
+    uint32_t w = (uint32_t)*pmap++;
+
+    *buf++ = (uint8_t)w;
+    *buf++ = (uint8_t)(w >> 8);
   }
 }
 
