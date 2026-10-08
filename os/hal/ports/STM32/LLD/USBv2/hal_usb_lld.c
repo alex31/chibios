@@ -268,13 +268,16 @@ static void usb_pm_reset_after_ep0(USBDriver *usbp) {
  * @param[in] usbp      pointer to the @p USBDriver object
  * @param[in] ep        endpoint number
  * @param[out] buf      buffer where to copy the packet data
- * @return              The size of the receivee packet.
+ * @param[in] max       maximum number of bytes to copy, the rest of the
+ *                      packet is discarded
+ * @return              The size of the received packet.
  *
  * @notapi
  */
 static size_t usb_packet_read_to_buffer(USBDriver *usbp,
                                         usbep_t ep,
-                                        uint8_t *buf) {
+                                        uint8_t *buf,
+                                        size_t max) {
   size_t n;
   uint32_t w;
   stm32_usb_pmabufdesc_t *udp = USB_GET_DESCRIPTOR(ep);
@@ -304,7 +307,7 @@ static size_t usb_packet_read_to_buffer(USBDriver *usbp,
   n = USB_GET_RX_COUNT0(udp);
 #endif
 
-  i = (int)n;
+  i = (int)(n < max ? n : max);
 
 #if STM32_USB_USE_FAST_COPY
   while (i >= 16) {
@@ -476,7 +479,7 @@ static void usb_packet_write_from_buffer(USBDriver *usbp,
  * @notapi
  */
 static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
-  size_t n;
+  size_t n, m;
   uint32_t ep = istr & USB_ISTR_IDN_Msk;
   uint32_t chepr = usbp->usb->CHEPR[ep];
   const USBEndpointConfig *epcp = usbp->epc[ep];
@@ -554,13 +557,15 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
       }
 #endif
 
-      /* Reads the packet into the defined buffer.*/
-      n = usb_packet_read_to_buffer(usbp, ep, osp->rxbuf);
-      osp->rxbuf += n;
+      /* Reads the packet into the defined buffer. The host can send a full
+         packet when less room is left, the excess is discarded.*/
+      n = usb_packet_read_to_buffer(usbp, ep, osp->rxbuf, osp->rxsize);
+      m = n < osp->rxsize ? n : osp->rxsize;
+      osp->rxbuf += m;
 
       /* Transaction data updated.*/
-      osp->rxcnt  += n;
-      osp->rxsize -= n;
+      osp->rxcnt  += m;
+      osp->rxsize -= m;
       osp->rxpkts -= 1U;
 
       /* The transaction is completed if the specified number of packets

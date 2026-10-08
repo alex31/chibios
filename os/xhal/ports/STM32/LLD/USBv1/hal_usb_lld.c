@@ -113,7 +113,9 @@ static void usb_pm_reset_after_ep0(hal_usb_driver_c *usbp) {
   }
 }
 
-static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf) {
+/* Copies at most max bytes, the rest of the packet is discarded.*/
+static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf,
+                                        size_t max) {
   size_t i, n;
   stm32_usb_descriptor_t *udp = USB_GET_DESCRIPTOR(ep);
   stm32_usb_pma_t *pmap = USB_ADDR2PTR(udp->RXADDR0);
@@ -133,7 +135,7 @@ static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf) {
   n = (size_t)udp->RXCOUNT0 & RXCOUNT_COUNT_MASK;
 #endif
 
-  i = n;
+  i = n < max ? n : max;
 
 #if STM32_USB_USE_FAST_COPY
   while (i >= 16U) {
@@ -254,7 +256,7 @@ static void usb_packet_write_from_buffer(usbep_t ep,
 }
 
 static void usb_serve_endpoints(hal_usb_driver_c *usbp, uint32_t istr) {
-  size_t n;
+  size_t n, m;
   uint32_t ep = istr & ISTR_EP_ID_MASK;
   uint32_t epr = STM32_USB->EPR[ep];
   const USBEndpointConfig *epcp = usbp->epc[ep];
@@ -324,11 +326,14 @@ static void usb_serve_endpoints(hal_usb_driver_c *usbp, uint32_t istr) {
       }
 #endif
 
-      n = usb_packet_read_to_buffer((usbep_t)ep, osp->rxbuf);
-      osp->rxbuf += n;
+      /* The host can send a full packet when less room is left, the excess
+         is discarded.*/
+      n = usb_packet_read_to_buffer((usbep_t)ep, osp->rxbuf, osp->rxsize);
+      m = n < osp->rxsize ? n : osp->rxsize;
+      osp->rxbuf += m;
 
-      osp->rxcnt  += n;
-      osp->rxsize -= n;
+      osp->rxcnt  += m;
+      osp->rxsize -= m;
       osp->rxpkts -= 1U;
 
       if ((n < epcp->out_maxsize) || (osp->rxpkts == 0U)) {
