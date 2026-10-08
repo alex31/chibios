@@ -57,6 +57,34 @@ static uint16_t get_hword(uint8_t *p) {
 }
 
 /**
+ * @brief   Checks the endpoint of a standard endpoint request.
+ * @details Endpoint addresses come from the host, reserved address bits,
+ *          nonexistent endpoints and unconfigured directions are rejected
+ *          before any LLD access.
+ * @note    Called under lock, endpoints can be disabled concurrently.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ * @param[in] ep        endpoint number from the request
+ * @param[in] in        @p true for an IN endpoint
+ * @return              The check result.
+ * @retval false        invalid endpoint, the request must be stalled.
+ * @retval true         valid endpoint.
+ */
+static bool ep_request_valid(USBDriver *usbp, usbep_t ep, bool in) {
+  const USBEndpointConfig *epcp;
+
+  if (((usbp->setup[4] & 0x70U) != 0U) || (usbp->setup[5] != 0U) ||
+      (ep > (usbep_t)USB_MAX_ENDPOINTS)) {
+    return false;
+  }
+  epcp = usbp->epc[ep];
+  if (epcp == NULL) {
+    return false;
+  }
+  return in ? (epcp->in_state != NULL) : (epcp->out_state != NULL);
+}
+
+/**
  * @brief  SET ADDRESS transaction callback.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
@@ -83,6 +111,20 @@ static void set_address(USBDriver *usbp) {
  */
 static bool default_handler(USBDriver *usbp) {
   const USBDescriptor *dp;
+
+  /* Endpoint addresses come from the host, checked before any LLD access.*/
+  if ((usbp->setup[0] & USB_RTYPE_RECIPIENT_MASK) ==
+      USB_RTYPE_RECIPIENT_ENDPOINT) {
+    bool valid;
+
+    osalSysLockFromISR();
+    valid = ep_request_valid(usbp, usbp->setup[4] & 0x0FU,
+                             (usbp->setup[4] & 0x80U) != 0U);
+    osalSysUnlockFromISR();
+    if (!valid) {
+      return false;
+    }
+  }
 
   /* Decoding the request.*/
   switch ((((uint32_t)usbp->setup[0] & (USB_RTYPE_RECIPIENT_MASK |

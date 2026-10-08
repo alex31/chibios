@@ -34,6 +34,12 @@
 /*===========================================================================*/
 
 /**
+ * @brief   Supports enhanced API.
+ * @details @p usb_lld_start() reports core reset failures.
+ */
+#define USB_LLD_ENHANCED_API
+
+/**
  * @brief   Status stage handling method.
  */
 #define USB_EP0_STATUS_STAGE                USB_EP0_STATUS_STAGE_SW
@@ -199,6 +205,11 @@
 #error "USB driver activated but no USB peripheral assigned"
 #endif
 
+/* The safety module fallback counter cannot bound hardware waits.*/
+#if !defined(HAL_LLD_GET_CNT_VALUE) || !defined(HAL_LLD_GET_CNT_FREQUENCY)
+#error "OTGv1 requires HAL timeout counter hooks"
+#endif
+
 /* Maximum endpoint address.*/
 #if STM32_HAS_OTG1 && STM32_USB_USE_OTG1 && STM32_HAS_OTG2 && STM32_USB_USE_OTG2
   #if STM32_OTG1_ENDPOINTS < STM32_OTG2_ENDPOINTS
@@ -210,6 +221,10 @@
   #define USB_MAX_ENDPOINTS                 STM32_OTG1_ENDPOINTS
 #elif STM32_HAS_OTG2 && STM32_USB_USE_OTG2
   #define USB_MAX_ENDPOINTS                 STM32_OTG2_ENDPOINTS
+#endif
+
+#if USB_MAX_ENDPOINTS > 15
+#error "OTG endpoint masks support endpoint addresses 0 through 15"
 #endif
 
 #if STM32_USB_USE_OTG1 &&                                                \
@@ -235,7 +250,7 @@
 #elif defined(STM32F10X_CL)
 #define STM32_USBCLK                        STM32_OTGFSCLK
 #elif defined(STM32L4XX) || defined(STM32L4XXP)
-/**/
+/* RCC operations and clock definitions are provided by the L4 platform.*/
 #elif  defined(STM32H7XX)
 /* Defines directly STM32_USBCLK.*/
 #define rccEnableOTG_FS                     rccEnableUSB2_OTG_FS
@@ -246,6 +261,7 @@
 #define rccResetOTG_HS                      rccResetUSB1_OTG_HS
 #define rccEnableOTG_HSULPI                 rccEnableUSB1_HSULPI
 #define rccDisableOTG_HSULPI                rccDisableUSB1_HSULPI
+#define rccDisableOTG_FSULPI                rccDisableUSB2_HSULPI
 #else
 #error "unsupported STM32 platform for OTG functionality"
 #endif
@@ -301,9 +317,9 @@ typedef struct {
 #endif
   /* End of the mandatory fields.*/
   /**
-   * @brief   Total transmit transfer size.
+   * @brief   End offset of the current hardware transfer chunk.
    */
-  size_t                        totsize;
+  size_t                        txlast;
 } USBInEndpointState;
 
 /**
@@ -330,9 +346,9 @@ typedef struct {
 #endif
   /* End of the mandatory fields.*/
   /**
-   * @brief   Total receive transfer size.
+   * @brief   Full-size packets still expected by the current transfer.
    */
-  size_t                        totsize;
+  size_t                        rxpkts;
 } USBOutEndpointState;
 
 /**
@@ -519,6 +535,84 @@ struct USBDriver {
    * @brief   Pointer to the next address in the packet memory.
    */
   uint32_t                      pmnext;
+  /**
+   * @brief   Hardware failure latched, the driver must be restarted.
+   * @note    The failure is reported to the HLD as a suspend, no wake-up
+   *          follows until the driver is stopped and started again.
+   */
+  bool                          faulted;
+  /**
+   * @brief   Hardware failure already reported to the HLD.
+   */
+  bool                          fault_reported;
+  /**
+   * @brief   ISO IN endpoints waiting for missed-frame disable completion.
+   */
+  uint16_t                      isoc_in_pending;
+  /**
+   * @brief   ISO OUT endpoints waiting for missed-frame disable completion.
+   */
+  uint16_t                      isoc_out_pending;
+  /**
+   * @brief   Incomplete ISO OUT transfers to be checked, RX FIFO drained.
+   */
+  bool                          isoc_out_check;
+  /**
+   * @brief   ISO OUT recovery waiting for the global OUT NAK.
+   */
+  bool                          isoc_out_nak;
+  /**
+   * @brief   Start time of the current ISO OUT recovery.
+   */
+  systime_t                     isoc_out_start;
+  /**
+   * @brief   IN endpoints whose TX FIFO must be flushed before reuse.
+   */
+  uint16_t                      in_flush;
+  /**
+   * @brief   OUT endpoints retired by the current teardown.
+   */
+  uint32_t                      out_disable_pending;
+  /**
+   * @brief   OUT endpoints waiting for disable completion.
+   */
+  uint32_t                      out_disable_wait;
+  /**
+   * @brief   OUT receive requests deferred by the current teardown.
+   */
+  uint32_t                      out_restart;
+  /**
+   * @brief   OUT endpoint configurations deferred by the current teardown.
+   */
+  uint32_t                      out_ctl[USB_MAX_ENDPOINTS];
+  /**
+   * @brief   Start time of the current OUT teardown.
+   */
+  systime_t                     out_disable_start;
+  /**
+   * @brief   Current OUT teardown phase.
+   */
+  unsigned                      out_disable_phase;
+  /**
+   * @brief   EP0 configuration for this driver instance.
+   */
+  USBEndpointConfig             ep0config;
+  /**
+   * @brief   EP0 transfer state for this driver instance.
+   * @note    IN and OUT transfers on EP0 do not run at the same time.
+   */
+  union {
+    USBInEndpointState          in;
+    USBOutEndpointState         out;
+  } ep0_state;
+  /**
+   * @brief   SETUP data received, its completion marker not popped yet.
+   */
+  bool                          ep0setup_pending;
+  /**
+   * @brief   Buffer for incoming EP0 setup packets.
+   */
+  uint8_t                       ep0setup_buffer[8];
 };
 
 /*===========================================================================*/
@@ -542,47 +636,6 @@ struct USBDriver {
 #define usb_lld_get_transaction_size(usbp, ep)                              \
   ((usbp)->epc[ep]->out_state->rxcnt)
 
-/**
- * @brief   Connects the USB device.
- *
- * @notapi
- */
-#if (STM32_OTG_STEPPING == 1) || defined(__DOXYGEN__)
-#define usb_lld_connect_bus(usbp) ((usbp)->otg->GCCFG |= GCCFG_VBUSBSEN)
-#else
-#define usb_lld_connect_bus(usbp) ((usbp)->otg->DCTL &= ~DCTL_SDIS)
-#endif
-
-/**
- * @brief   Disconnect the USB device.
- *
- * @notapi
- */
-#if (STM32_OTG_STEPPING == 1) || defined(__DOXYGEN__)
-#define usb_lld_disconnect_bus(usbp) ((usbp)->otg->GCCFG &= ~GCCFG_VBUSBSEN)
-#else
-#define usb_lld_disconnect_bus(usbp) ((usbp)->otg->DCTL |= DCTL_SDIS)
-#endif
-
-/**
- * @brief   Start of host wake-up procedure.
- *
- * @notapi
- */
-#define usb_lld_wakeup_host(usbp)                                           \
-  do {                                                                      \
-    /* Turnings clocks back on (may be required if coming out of suspend
-       mode).*/                                                             \
-    (usbp)->otg->PCGCCTL &= ~(PCGCCTL_STPPCLK | PCGCCTL_GATEHCLK);          \
-    (usbp)->otg->DCTL |= DCTL_RWUSIG;                                       \
-    /* remote wakeup doesn't trigger the wakeup interrupt, therefore
-       we use the SOF interrupt to detect resume of the bus.*/              \
-    (usbp)->otg->GINTSTS |= GINTSTS_SOF;                                    \
-    (usbp)->otg->GINTMSK |= GINTMSK_SOFM;                                   \
-    osalThreadSleepMilliseconds(STM32_USB_HOST_WAKEUP_DURATION);            \
-    (usbp)->otg->DCTL &= ~DCTL_RWUSIG;                                      \
-  } while (false)
-
 /*===========================================================================*/
 /* External declarations.                                                    */
 /*===========================================================================*/
@@ -599,12 +652,16 @@ extern USBDriver USBD2;
 extern "C" {
 #endif
   void usb_lld_init(void);
-  void usb_lld_start(USBDriver *usbp);
+  msg_t usb_lld_start(USBDriver *usbp);
   void usb_lld_stop(USBDriver *usbp);
   void usb_lld_reset(USBDriver *usbp);
   void usb_lld_set_address(USBDriver *usbp);
   void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep);
   void usb_lld_disable_endpoints(USBDriver *usbp);
+  void usb_lld_connect_bus(USBDriver *usbp);
+  void usb_lld_disconnect_bus(USBDriver *usbp);
+  void usb_lld_wakeup_host(USBDriver *usbp);
+  uint16_t usb_lld_get_frame_number(USBDriver *usbp);
   usbepstatus_t usb_lld_get_status_in(USBDriver *usbp, usbep_t ep);
   usbepstatus_t usb_lld_get_status_out(USBDriver *usbp, usbep_t ep);
   void usb_lld_read_setup(USBDriver *usbp, usbep_t ep, uint8_t *buf);
