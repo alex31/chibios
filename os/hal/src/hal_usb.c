@@ -56,6 +56,34 @@ static uint16_t get_hword(uint8_t *p) {
   return hw;
 }
 
+/**
+ * @brief   Checks the endpoint of a standard endpoint request.
+ * @details Endpoint addresses come from the host, reserved address bits,
+ *          nonexistent endpoints and unconfigured directions are rejected
+ *          before any LLD access.
+ * @note    Called under lock, endpoints can be disabled concurrently.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ * @param[in] ep        endpoint number from the request
+ * @param[in] in        @p true for an IN endpoint
+ * @return              The check result.
+ * @retval false        invalid endpoint, the request must be stalled.
+ * @retval true         valid endpoint.
+ */
+static bool ep_request_valid(USBDriver *usbp, usbep_t ep, bool in) {
+  const USBEndpointConfig *epcp;
+
+  if (((usbp->setup[4] & 0x70U) != 0U) || (usbp->setup[5] != 0U) ||
+      (ep > (usbep_t)USB_MAX_ENDPOINTS)) {
+    return false;
+  }
+  epcp = usbp->epc[ep];
+  if (epcp == NULL) {
+    return false;
+  }
+  return in ? (epcp->in_state != NULL) : (epcp->out_state != NULL);
+}
+
 #if USB_USE_EP0_THREAD == FALSE
 /**
  * @brief  SET ADDRESS transaction callback.
@@ -84,6 +112,20 @@ static void set_address(USBDriver *usbp) {
  */
 static bool default_handler(USBDriver *usbp) {
   const USBDescriptor *dp;
+
+  /* Endpoint addresses come from the host, checked before any LLD access.*/
+  if ((usbp->setup[0] & USB_RTYPE_RECIPIENT_MASK) ==
+      USB_RTYPE_RECIPIENT_ENDPOINT) {
+    bool valid;
+
+    osalSysLockFromISR();
+    valid = ep_request_valid(usbp, usbp->setup[4] & 0x0FU,
+                             (usbp->setup[4] & 0x80U) != 0U);
+    osalSysUnlockFromISR();
+    if (!valid) {
+      return false;
+    }
+  }
 
   /* Decoding the request.*/
   switch ((((uint32_t)usbp->setup[0] & (USB_RTYPE_RECIPIENT_MASK |
@@ -920,6 +962,8 @@ msg_t usbEp0HandleStandardRequest(USBDriver *usbp, bool *handledp) {
   uint16_t recipient;
   uint16_t request;
   const USBDescriptor *dp;
+  usbep_t ep;
+  bool in;
 
   osalDbgCheck((usbp != NULL) && (handledp != NULL));
 
@@ -933,6 +977,21 @@ msg_t usbEp0HandleStandardRequest(USBDriver *usbp, bool *handledp) {
   recipient = usbp->setup[0] & USB_RTYPE_RECIPIENT_MASK;
   request = usbp->setup[1];
   type = recipient | (uint16_t)(request << 8U);
+  ep = usbp->setup[4] & 0x0FU;
+  in = (usbp->setup[4] & 0x80U) != 0U;
+
+  /* Endpoint addresses come from the host, checked before any LLD access.*/
+  if (recipient == USB_RTYPE_RECIPIENT_ENDPOINT) {
+    bool valid;
+
+    osalSysLock();
+    valid = ep_request_valid(usbp, ep, in);
+    osalSysUnlock();
+    if (!valid) {
+      usbEp0Stall(usbp);
+      return MSG_OK;
+    }
+  }
 
   switch (type) {
   case (uint32_t)USB_RTYPE_RECIPIENT_DEVICE |
@@ -1017,8 +1076,8 @@ msg_t usbEp0HandleStandardRequest(USBDriver *usbp, bool *handledp) {
     break;
   case (uint32_t)USB_RTYPE_RECIPIENT_ENDPOINT |
        ((uint32_t)USB_REQ_GET_STATUS << 8):
-    if ((usbp->setup[4] & 0x80U) != 0U) {
-      switch (usb_lld_get_status_in(usbp, usbp->setup[4] & 0x0FU)) {
+    if (in) {
+      switch (usb_lld_get_status_in(usbp, ep)) {
       case EP_STATUS_STALLED:
         msg = usbEp0Reply(usbp, halted_status, 2);
         break;
@@ -1032,7 +1091,7 @@ msg_t usbEp0HandleStandardRequest(USBDriver *usbp, bool *handledp) {
       }
     }
     else {
-      switch (usb_lld_get_status_out(usbp, usbp->setup[4] & 0x0FU)) {
+      switch (usb_lld_get_status_out(usbp, ep)) {
       case EP_STATUS_STALLED:
         msg = usbEp0Reply(usbp, halted_status, 2);
         break;
@@ -1050,12 +1109,12 @@ msg_t usbEp0HandleStandardRequest(USBDriver *usbp, bool *handledp) {
        ((uint32_t)USB_REQ_CLEAR_FEATURE << 8):
     if (usbp->setup[2] == USB_FEATURE_ENDPOINT_HALT) {
       osalSysLock();
-      if ((usbp->setup[4] & 0x0FU) != 0U) {
-        if ((usbp->setup[4] & 0x80U) != 0U) {
-          usb_lld_clear_in(usbp, usbp->setup[4] & 0x0FU);
+      if (ep != 0U) {
+        if (in) {
+          usb_lld_clear_in(usbp, ep);
         }
         else {
-          usb_lld_clear_out(usbp, usbp->setup[4] & 0x0FU);
+          usb_lld_clear_out(usbp, ep);
         }
       }
       osalSysUnlock();
@@ -1069,12 +1128,12 @@ msg_t usbEp0HandleStandardRequest(USBDriver *usbp, bool *handledp) {
        ((uint32_t)USB_REQ_SET_FEATURE << 8):
     if (usbp->setup[2] == USB_FEATURE_ENDPOINT_HALT) {
       osalSysLock();
-      if ((usbp->setup[4] & 0x0FU) != 0U) {
-        if ((usbp->setup[4] & 0x80U) != 0U) {
-          usb_lld_stall_in(usbp, usbp->setup[4] & 0x0FU);
+      if (ep != 0U) {
+        if (in) {
+          usb_lld_stall_in(usbp, ep);
         }
         else {
-          usb_lld_stall_out(usbp, usbp->setup[4] & 0x0FU);
+          usb_lld_stall_out(usbp, ep);
         }
       }
       osalSysUnlock();
