@@ -15,62 +15,46 @@
 */
 
 /**
- * @file    portab.h
- * @brief   Application portability macros and structures.
+ * @file    portab.c
+ * @brief   Application portability module code.
  *
  * @addtogroup application_portability
  * @{
  */
 
-#ifndef PORTAB_H
-#define PORTAB_H
+#include "hal.h"
+
+#include "portab.h"
 
 /*===========================================================================*/
-/* Module constants.                                                         */
-/*===========================================================================*/
-
-#define PORTAB_USB1                 USBD2
-
-/* Stereo output on DAC1 channels 1 and 2 (PA4, PA5), triggered by TIM6.*/
-#define PORTAB_DAC                  DACD1
-#define PORTAB_DAC_TRIG             5
-#define PORTAB_GPT                  GPTD6
-#define PORTAB_GPT_FREQUENCY        260000000U
-
-#define PORTAB_BLINK_LED1           LINE_LED1
-
-/*===========================================================================*/
-/* Module pre-compile time settings.                                         */
+/* Module local definitions.                                                 */
 /*===========================================================================*/
 
 /*===========================================================================*/
-/* Derived constants and error checks.                                       */
+/* Module exported variables.                                                */
 /*===========================================================================*/
 
 /*===========================================================================*/
-/* Module data structures and types.                                         */
+/* Module local types.                                                       */
 /*===========================================================================*/
 
 /*===========================================================================*/
-/* Module macros.                                                            */
+/* Module local variables.                                                   */
 /*===========================================================================*/
 
 /*===========================================================================*/
-/* External declarations.                                                    */
+/* Module local functions.                                                   */
 /*===========================================================================*/
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-  void portab_setup(void);
-#ifdef __cplusplus
+/*===========================================================================*/
+/* Module exported functions.                                                */
+/*===========================================================================*/
+
+void portab_setup(void) {
+
+  /* DAC outputs.*/
+  palSetPadMode(GPIOA, 4, PAL_MODE_INPUT_ANALOG);
+  palSetPadMode(GPIOA, 5, PAL_MODE_INPUT_ANALOG);
 }
-#endif
-
-/*===========================================================================*/
-/* Module inline functions.                                                  */
-/*===========================================================================*/
-
-#endif /* PORTAB_H */
 
 /** @} */

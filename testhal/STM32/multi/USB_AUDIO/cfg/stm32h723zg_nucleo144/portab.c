@@ -51,6 +51,9 @@
 
 void portab_setup(void) {
 
+  /* DAC outputs.*/
+  palSetPadMode(GPIOA, 4, PAL_MODE_INPUT_ANALOG);
+  palSetPadMode(GPIOA, 5, PAL_MODE_INPUT_ANALOG);
 }
 
 /** @} */

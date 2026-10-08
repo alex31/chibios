@@ -15,23 +15,30 @@
 */
 
 /*
- * Full-speed UAC1 microphone test: mono signed 16-bit PCM, 48 kHz, 440 Hz.
- * Connect the NUCLEO-H723ZG user USB connector to the host. No microphone or
- * analog wiring is needed: samples are synthesized, paced by the USB frames.
+ * Full-speed UAC1 microphone and stereo speaker test, 48 kHz signed 16-bit
+ * PCM. Boards: NUCLEO-H723ZG and NUCLEO-H563ZI, user USB connector;
+ * NUCLEO-G474RE, USB on PA11/PA12 at the morpho connector, the board has no
+ * user USB connector.
  *
- * On Linux, find "ChibiOS HAL USB Audio" with "arecord -l", then record using
- * that card's hardware PCM, e.g.:
+ * Microphone: a mono 440 Hz tone is synthesized, paced by the USB frames,
+ * no analog wiring is needed. On Linux, find "ChibiOS HAL USB Audio" with
+ * "arecord -l", then record using that card's hardware PCM, e.g.:
  *   arecord -D hw:CARD=<audio-card-id>,DEV=0 -t wav -f S16_LE -r 48000 \
  *           -c 1 -d 10 tone.wav
- * Check rate, tone frequency and continuity, then repeat open/close and USB
- * reconnect. Green LED blinks faster while configured. audio_stats is
- * available through the debugger.
  *
- * EP0 uses the default ISR-driven handling: alternate settings are selected
- * by the requests hook in source/usbaudio.c. This is deliberately a
- * single-function, IN-only test. A hardware sample clock would need rate
- * matching or USB feedback, fixed 48-sample packets cannot prevent long-term
- * buffer drift.
+ * Speaker: left and right are output by the DAC on PA4 and PA5. Each pin
+ * drives a line level input through a DC blocking capacitor, an RC low-pass
+ * filter is optional; do not connect headphones directly. Play with e.g.:
+ *   aplay -D plughw:CARD=<audio-card-id>,DEV=0 music.wav
+ * The endpoint is adaptive, the DAC sample clock is adjusted to the data
+ * rate sent by the host.
+ *
+ * The LED blinks faster while configured, on the NUCLEO-G474RE it shares PA5
+ * with the DAC and follows the right channel instead. audio_stats and
+ * audio_out_stats are available through the debugger. EP0 uses the default
+ * ISR-driven handling: alternate settings are selected by the requests hook in
+ * source/usbaudio.c, both streaming endpoints exist for the whole
+ * configuration.
  */
 
 #include "ch.h"
@@ -39,6 +46,7 @@
 #include "portab.h"
 
 #include "usbcfg.h"
+#include "audio_out.h"
 
 /*
  * Application entry point.
@@ -59,6 +67,11 @@ int main(void) {
    * Board-dependent initialization.
    */
   portab_setup();
+
+  /*
+   * Speaker output, silent until the host streams audio.
+   */
+  audioOutInit();
 
   /*
    * Activates the USB driver and then the USB bus pull-up on D+.
