@@ -258,23 +258,28 @@ static dac_dmabuf_t __dma3_dac4_ch2;
  */
 static void dac_lld_serve_dma_interrupt(void *p, uint32_t flags) {
   DACDriver *dacp = (DACDriver *)p;
+  uint32_t sequence;
+
+  /* Ignore events without an active conversion.*/
+  if ((dacp->state != DAC_ACTIVE) || (dacp->grpp == NULL)) {
+    return;
+  }
+  sequence = dacp->sequence;
 
   if ((flags & STM32_DMA3_CSR_ERRORS) != 0) {
     /* DMA errors handling.*/
     _dac_isr_error_code(dacp, DAC_ERR_DMAFAILURE);
   }
   else {
-    /* It is possible that the conversion group has already been reset by a
-       DAC error handler. In this case this interrupt is spurious.*/
-    if (dacp->grpp != NULL) {
-      if (((flags & STM32_DMA3_CSR_HTF) != 0U) && (dacp->depth > 1U)) {
-        /* Depth-one conversions have no half-buffer event.*/
-        _dac_isr_half_code(dacp);
-      }
-      if ((flags & STM32_DMA3_CSR_TCF) != 0) {
-        /* Transfer complete processing.*/
-        _dac_isr_full_code(dacp);
-      }
+    if (((flags & STM32_DMA3_CSR_HTF) != 0U) && (dacp->depth > 1U)) {
+      /* Depth-one conversions have no half-buffer event.*/
+      _dac_isr_half_code(dacp);
+    }
+    if (((flags & STM32_DMA3_CSR_TCF) != 0U) &&
+        (dacp->state == DAC_ACTIVE) &&
+        (dacp->sequence == sequence)) {
+      /* Full buffer event, unless the half callback stopped/restarted.*/
+      _dac_isr_full_code(dacp);
     }
   }
 }
@@ -390,6 +395,7 @@ void dac_lld_init(void) {
   DACD1.params  = &dac1_ch1_params;
   DACD1.dmachp = NULL;
   DACD1.dbuf    = &__dma3_dac1_ch1;
+  DACD1.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC1_CH2
@@ -397,6 +403,7 @@ void dac_lld_init(void) {
   DACD2.params  = &dac1_ch2_params;
   DACD2.dmachp = NULL;
   DACD2.dbuf    = &__dma3_dac1_ch2;
+  DACD2.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC2_CH1
@@ -404,6 +411,7 @@ void dac_lld_init(void) {
   DACD3.params  = &dac2_ch1_params;
   DACD3.dmachp = NULL;
   DACD3.dbuf    = &__dma3_dac2_ch1;
+  DACD3.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC2_CH2
@@ -411,6 +419,7 @@ void dac_lld_init(void) {
   DACD4.params  = &dac2_ch2_params;
   DACD4.dmachp = NULL;
   DACD4.dbuf    = &__dma3_dac2_ch2;
+  DACD4.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC3_CH1
@@ -418,6 +427,7 @@ void dac_lld_init(void) {
   DACD5.params  = &dac3_ch1_params;
   DACD5.dmachp = NULL;
   DACD5.dbuf    = &__dma3_dac3_ch1;
+  DACD5.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC3_CH2
@@ -425,6 +435,7 @@ void dac_lld_init(void) {
   DACD6.params  = &dac3_ch2_params;
   DACD6.dmachp = NULL;
   DACD6.dbuf    = &__dma3_dac3_ch2;
+  DACD6.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC4_CH1
@@ -432,6 +443,7 @@ void dac_lld_init(void) {
   DACD7.params  = &dac4_ch1_params;
   DACD7.dmachp = NULL;
   DACD7.dbuf    = &__dma3_dac4_ch1;
+  DACD7.sequence = 0U;
 #endif
 
 #if STM32_DAC_USE_DAC4_CH2
@@ -439,6 +451,7 @@ void dac_lld_init(void) {
   DACD8.params  = &dac4_ch2_params;
   DACD8.dmachp = NULL;
   DACD8.dbuf    = &__dma3_dac4_ch2;
+  DACD8.sequence = 0U;
 #endif
 
   /* Used DAC units reset on initialization, note, reset must occur with
@@ -983,6 +996,9 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
   if (dacp->dmachp == NULL) {
     return HAL_RET_NO_RESOURCE;
   }
+
+  /* Identifies restarts from callbacks even when group/buffer are reused.*/
+  dacp->sequence++;
 
   /* Set DAC target register for GPDMA.*/
   dma3ChannelSetDestination(dacp->dmachp, dacreg);

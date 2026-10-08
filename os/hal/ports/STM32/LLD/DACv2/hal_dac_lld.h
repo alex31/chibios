@@ -480,7 +480,9 @@ typedef enum {
   /* Pointer to associated DMA.*/                                           \
   const stm32_dma3_channel_t        *dmachp;                                \
   /* DMA buffers.*/                                                         \
-  dac_dmabuf_t                      *dbuf;
+  dac_dmabuf_t                      *dbuf;                                  \
+  /* Conversion sequence counter.*/                                         \
+  uint32_t                          sequence;
 
 /**
  * @brief   Low level fields of the DAC configuration structure.
