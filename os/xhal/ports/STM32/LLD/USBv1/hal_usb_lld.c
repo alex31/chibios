@@ -93,6 +93,16 @@ static uint32_t usb_pm_alloc(hal_usb_driver_c *usbp, size_t size) {
   return next;
 }
 
+/* Rounds an OUT buffer to the size programmed in its descriptor.*/
+static size_t usb_pm_rx_size(size_t size) {
+
+  if (size > 62U) {
+    return (size + 31U) & ~(size_t)31U;
+  }
+
+  return (size + 1U) & ~(size_t)1U;
+}
+
 /**
  * @brief   Resets the packet memory allocator while preserving EP0 buffers.
  * @details Endpoint zero remains active when the other endpoints are
@@ -109,7 +119,7 @@ static void usb_pm_reset_after_ep0(hal_usb_driver_c *usbp) {
     (void)usb_pm_alloc(usbp, epcp->in_maxsize);
   }
   if (epcp->out_state != NULL) {
-    (void)usb_pm_alloc(usbp, epcp->out_maxsize);
+    (void)usb_pm_alloc(usbp, usb_pm_rx_size(epcp->out_maxsize));
   }
 }
 
@@ -502,7 +512,9 @@ void usb_lld_init_endpoint(hal_usb_driver_c *usbp, usbep_t ep) {
                             2U) << 10);
     }
     dp->RXCOUNT0 = nblocks;
-    dp->RXADDR0  = (stm32_usb_pma_t)usb_pm_alloc(usbp, epcp->out_maxsize);
+    /* Reserve all bytes the hardware can write, including block rounding.*/
+    dp->RXADDR0  = (stm32_usb_pma_t)usb_pm_alloc(usbp,
+                     usb_pm_rx_size(epcp->out_maxsize));
 
 #if STM32_USB_USE_ISOCHRONOUS
     if (epr == EPR_EP_TYPE_ISO) {
