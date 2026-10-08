@@ -123,6 +123,22 @@
                            (epr)) | USB_EP_VTTX | USB_EP_VTRX
 
 /**
+ * @brief   Resets the DTOG_RX bit.
+ */
+#define CHEPR_CLEAR_DTOG_RX(usbp, ep)                                       \
+  (usbp)->usb->CHEPR[ep] = ((usbp)->usb->CHEPR[ep] &                        \
+                            ~(CHEPR_TOGGLE_MASK & ~USB_CHEP_DTOG_RX_Msk)) | \
+                           USB_EP_VTTX | USB_EP_VTRX
+
+/**
+ * @brief   Resets the DTOG_TX bit.
+ */
+#define CHEPR_CLEAR_DTOG_TX(usbp, ep)                                       \
+  (usbp)->usb->CHEPR[ep] = ((usbp)->usb->CHEPR[ep] &                        \
+                            ~(CHEPR_TOGGLE_MASK & ~USB_CHEP_DTOG_TX_Msk)) | \
+                           USB_EP_VTTX | USB_EP_VTRX
+
+/**
  * @brief   Sets the STATTX field.
  */
 #define CHEPR_SET_STATTX(usbp, ep, epr)                                     \
@@ -965,8 +981,12 @@ void usb_lld_stall_in(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
+  uint32_t utype = usbp->usb->CHEPR[ep] & USB_CHEP_UTYPE_Msk;
 
-  (void)usbp;
+  /* CLEAR_FEATURE(ENDPOINT_HALT) also resets the data toggle.*/
+  if ((utype == USB_EP_BULK) || (utype == USB_EP_INTERRUPT)) {
+    CHEPR_CLEAR_DTOG_RX(usbp, ep);
+  }
 
   /* Makes sure to not put to NAK an endpoint that is already
      transferring.*/
@@ -984,8 +1004,12 @@ void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_clear_in(USBDriver *usbp, usbep_t ep) {
+  uint32_t utype = usbp->usb->CHEPR[ep] & USB_CHEP_UTYPE_Msk;
 
-  (void)usbp;
+  /* CLEAR_FEATURE(ENDPOINT_HALT) also resets the data toggle.*/
+  if ((utype == USB_EP_BULK) || (utype == USB_EP_INTERRUPT)) {
+    CHEPR_CLEAR_DTOG_TX(usbp, ep);
+  }
 
   /* Makes sure to not put to NAK an endpoint that is already
      transferring.*/

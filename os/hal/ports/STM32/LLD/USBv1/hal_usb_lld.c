@@ -921,8 +921,14 @@ void usb_lld_stall_in(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
+  uint32_t type = STM32_USB->EPR[ep] & EPR_EP_TYPE_MASK;
 
   (void)usbp;
+
+  /* CLEAR_FEATURE(ENDPOINT_HALT) also resets the data toggle.*/
+  if ((type == EPR_EP_TYPE_BULK) || (type == EPR_EP_TYPE_INTERRUPT)) {
+    EPR_CLEAR_DTOG_RX(ep);
+  }
 
   /* Makes sure to not put to NAK an endpoint that is already
      transferring.*/
@@ -940,8 +946,14 @@ void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_clear_in(USBDriver *usbp, usbep_t ep) {
+  uint32_t type = STM32_USB->EPR[ep] & EPR_EP_TYPE_MASK;
 
   (void)usbp;
+
+  /* CLEAR_FEATURE(ENDPOINT_HALT) also resets the data toggle.*/
+  if ((type == EPR_EP_TYPE_BULK) || (type == EPR_EP_TYPE_INTERRUPT)) {
+    EPR_CLEAR_DTOG_TX(ep);
+  }
 
   /* Makes sure to not put to NAK an endpoint that is already
      transferring.*/
