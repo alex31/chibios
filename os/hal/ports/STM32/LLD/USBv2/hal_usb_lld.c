@@ -123,6 +123,22 @@
                            (epr)) | USB_EP_VTTX | USB_EP_VTRX
 
 /**
+ * @brief   Resets the DTOG_RX bit.
+ */
+#define CHEPR_CLEAR_DTOG_RX(usbp, ep)                                       \
+  (usbp)->usb->CHEPR[ep] = ((usbp)->usb->CHEPR[ep] &                        \
+                            ~(CHEPR_TOGGLE_MASK & ~USB_CHEP_DTOG_RX_Msk)) | \
+                           USB_EP_VTTX | USB_EP_VTRX
+
+/**
+ * @brief   Resets the DTOG_TX bit.
+ */
+#define CHEPR_CLEAR_DTOG_TX(usbp, ep)                                       \
+  (usbp)->usb->CHEPR[ep] = ((usbp)->usb->CHEPR[ep] &                        \
+                            ~(CHEPR_TOGGLE_MASK & ~USB_CHEP_DTOG_TX_Msk)) | \
+                           USB_EP_VTTX | USB_EP_VTRX
+
+/**
  * @brief   Sets the STATTX field.
  */
 #define CHEPR_SET_STATTX(usbp, ep, epr)                                     \
@@ -252,13 +268,16 @@ static void usb_pm_reset_after_ep0(USBDriver *usbp) {
  * @param[in] usbp      pointer to the @p USBDriver object
  * @param[in] ep        endpoint number
  * @param[out] buf      buffer where to copy the packet data
- * @return              The size of the receivee packet.
+ * @param[in] max       maximum number of bytes to copy, the rest of the
+ *                      packet is discarded
+ * @return              The size of the received packet.
  *
  * @notapi
  */
 static size_t usb_packet_read_to_buffer(USBDriver *usbp,
                                         usbep_t ep,
-                                        uint8_t *buf) {
+                                        uint8_t *buf,
+                                        size_t max) {
   size_t n;
   uint32_t w;
   stm32_usb_pmabufdesc_t *udp = USB_GET_DESCRIPTOR(ep);
@@ -276,7 +295,7 @@ static size_t usb_packet_read_to_buffer(USBDriver *usbp,
      read the counter of the OTHER buffer, which is where the last
      received packet was stored.*/
   if (((chepr & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) &&
-      ((chepr & USB_EP_DTOG_RX) != 0U)) {
+      ((chepr & USB_EP_DTOG_RX) == 0U)) {
     n = USB_GET_RX_COUNT1(udp);
   }
   else {
@@ -288,7 +307,7 @@ static size_t usb_packet_read_to_buffer(USBDriver *usbp,
   n = USB_GET_RX_COUNT0(udp);
 #endif
 
-  i = (int)n;
+  i = (int)(n < max ? n : max);
 
 #if STM32_USB_USE_FAST_COPY
   while (i >= 16) {
@@ -371,28 +390,6 @@ static void usb_packet_write_from_buffer(USBDriver *usbp,
   volatile uint32_t *pmap = USB_GET_TX_BUFFER(udp);
   int i;
 
-#if STM32_USB_USE_ISOCHRONOUS
-  uint32_t chepr = usbp->usb->CHEPR[ep];
-
-  /* Double buffering is always enabled for isochronous endpoints, and
-     although we overlap the two buffers for simplicity, we still need
-     to write to the right counter. The DTOG_TX bit indicates the buffer
-     that is currently in use by the USB peripheral, that is, the buffer
-     from which the next packet will be sent, so we need to write the
-     counter of that buffer.*/
-  if (((chepr & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) &&
-      ((chepr & USB_EP_DTOG_TX) != 0U)) {
-    USB_SET_TX_COUNT1(udp, n);
-  }
-  else {
-    USB_SET_TX_COUNT0(udp, n);
-  }
-#else
-  (void)usbp;
-
-  USB_SET_TX_COUNT0(udp, n);
-#endif
-
   i = (int)n;
 
 #if STM32_USB_USE_FAST_COPY
@@ -455,6 +452,22 @@ static void usb_packet_write_from_buffer(USBDriver *usbp,
     }
     *pmap++ = w;
   }
+
+#if STM32_USB_USE_ISOCHRONOUS
+  /* Double buffering is always enabled for isochronous endpoints and the
+     two buffers are overlapped. The endpoint is always valid, the packet is
+     sent by the next IN token whatever the buffer, so both counters are
+     written, after the data. Events of IN tokens already answered with
+     zero-length packets are discarded, those must not complete this
+     transfer.*/
+  if ((usbp->usb->CHEPR[ep] & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) {
+    CHEPR_CLEAR_VTTX(usbp, ep);
+    USB_SET_TX_COUNT1(udp, n);
+  }
+#else
+  (void)usbp;
+#endif
+  USB_SET_TX_COUNT0(udp, n);
 }
 
 /**
@@ -466,7 +479,7 @@ static void usb_packet_write_from_buffer(USBDriver *usbp,
  * @notapi
  */
 static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
-  size_t n;
+  size_t n, m;
   uint32_t ep = istr & USB_ISTR_IDN_Msk;
   uint32_t chepr = usbp->usb->CHEPR[ep];
   const USBEndpointConfig *epcp = usbp->epc[ep];
@@ -475,7 +488,27 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
     /* IN endpoint, transmission.*/
     USBInEndpointState *isp = epcp->in_state;
 
+    /* The event could have been already served or discarded.*/
+    if ((chepr & USB_EP_VTTX) == 0U) {
+      return;
+    }
+
     CHEPR_CLEAR_VTTX(usbp, ep);
+
+#if STM32_USB_USE_ISOCHRONOUS
+    if ((chepr & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) {
+      stm32_usb_pmabufdesc_t *udp = USB_GET_DESCRIPTOR(ep);
+
+      /* Isochronous endpoints are always valid, IN tokens are answered
+         also when no transfer is active. The packet is not sent again,
+         zero-length packets are sent unless another packet is written.*/
+      USB_SET_TX_COUNT0(udp, 0U);
+      USB_SET_TX_COUNT1(udp, 0U);
+      if ((usbp->transmitting & (uint16_t)(1U << ep)) == 0U) {
+        return;
+      }
+    }
+#endif
 
     isp->txcnt += isp->txlast;
     n = isp->txsize - isp->txcnt;
@@ -500,6 +533,11 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
   else {
     /* OUT endpoint, receive.*/
 
+    /* The event could have been already served.*/
+    if ((chepr & USB_EP_VTRX) == 0U) {
+      return;
+    }
+
     CHEPR_CLEAR_VTRX(usbp, ep);
 
     if (chepr & USB_EP_SETUP) {
@@ -510,13 +548,24 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
     else {
       USBOutEndpointState *osp = epcp->out_state;
 
-      /* Reads the packet into the defined buffer.*/
-      n = usb_packet_read_to_buffer(usbp, ep, osp->rxbuf);
-      osp->rxbuf += n;
+#if STM32_USB_USE_ISOCHRONOUS
+      /* Isochronous endpoints are always valid, packets received while no
+         transfer is active are discarded.*/
+      if (((chepr & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) &&
+          ((usbp->receiving & (uint16_t)(1U << ep)) == 0U)) {
+        return;
+      }
+#endif
+
+      /* Reads the packet into the defined buffer. The host can send a full
+         packet when less room is left, the excess is discarded.*/
+      n = usb_packet_read_to_buffer(usbp, ep, osp->rxbuf, osp->rxsize);
+      m = n < osp->rxsize ? n : osp->rxsize;
+      osp->rxbuf += m;
 
       /* Transaction data updated.*/
-      osp->rxcnt  += n;
-      osp->rxsize -= n;
+      osp->rxcnt  += m;
+      osp->rxsize -= m;
       osp->rxpkts -= 1U;
 
       /* The transaction is completed if the specified number of packets
@@ -741,16 +790,8 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
 #endif
   }
 
-  /* Resetting the data toggling bits for this endpoint.*/
-  if (usbp->usb->CHEPR[ep] & USB_EP_DTOG_RX) {
-    chepr |= USB_EP_DTOG_RX;
-  }
-
-  if (usbp->usb->CHEPR[ep] & USB_EP_DTOG_TX) {
-    chepr |= USB_EP_DTOG_TX;
-  }
-
-  /* CHEPxR register cleared and initialized.*/
+  /* CHEPxR register cleared and initialized, writing back the toggle bits
+     clears them, data toggles restart from DATA0.*/
   usbp->usb->CHEPR[ep] = usbp->usb->CHEPR[ep];
   usbp->usb->CHEPR[ep] = chepr | ep;
 }
@@ -945,8 +986,12 @@ void usb_lld_stall_in(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
+  uint32_t utype = usbp->usb->CHEPR[ep] & USB_CHEP_UTYPE_Msk;
 
-  (void)usbp;
+  /* CLEAR_FEATURE(ENDPOINT_HALT) also resets the data toggle.*/
+  if ((utype == USB_EP_BULK) || (utype == USB_EP_INTERRUPT)) {
+    CHEPR_CLEAR_DTOG_RX(usbp, ep);
+  }
 
   /* Makes sure to not put to NAK an endpoint that is already
      transferring.*/
@@ -964,8 +1009,12 @@ void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_clear_in(USBDriver *usbp, usbep_t ep) {
+  uint32_t utype = usbp->usb->CHEPR[ep] & USB_CHEP_UTYPE_Msk;
 
-  (void)usbp;
+  /* CLEAR_FEATURE(ENDPOINT_HALT) also resets the data toggle.*/
+  if ((utype == USB_EP_BULK) || (utype == USB_EP_INTERRUPT)) {
+    CHEPR_CLEAR_DTOG_TX(usbp, ep);
+  }
 
   /* Makes sure to not put to NAK an endpoint that is already
      transferring.*/
