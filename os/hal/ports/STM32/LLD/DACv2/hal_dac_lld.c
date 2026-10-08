@@ -822,12 +822,12 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
        transfer.*/
       nch = 2U;
       dacreg = &dacp->params->dac->DHR12RD;
-      dmamode = (STM32_DMA3_CTR1_DDW_WORD | STM32_DMA3_CTR1_SDW_HALF);
+      dmamode = (STM32_DMA3_CTR1_DDW_WORD | STM32_DMA3_CTR1_SDW_WORD);
       mult = HALF_DUAL_SAMPLE_MULTIPLIER;
 
-      /* Get initial value of channels.*/
+      /* Get initial value of channels, CH1 followed by CH2 in each word.*/
       chx = (dacsample_t)*dacp->samples;
-      ch2 = (dacsample_t)*(dacp->samples + 2);
+      ch2 = (dacsample_t)*(dacp->samples + 1);
       break;
 
     case DAC_DHRM_12BIT_LEFT_DUAL:
@@ -836,12 +836,12 @@ msg_t dac_lld_start_conversion(DACDriver *dacp) {
        transfer.*/
       nch = 2U;
       dacreg = &dacp->params->dac->DHR12LD;
-      dmamode = (STM32_DMA3_CTR1_DDW_WORD | STM32_DMA3_CTR1_SDW_HALF);
+      dmamode = (STM32_DMA3_CTR1_DDW_WORD | STM32_DMA3_CTR1_SDW_WORD);
       mult = HALF_DUAL_SAMPLE_MULTIPLIER;
 
-      /* Get initial value of channels.*/
+      /* Get initial value of channels, CH1 followed by CH2 in each word.*/
       chx = (dacsample_t)*dacp->samples;
-      ch2 = (dacsample_t)*(dacp->samples + 2);
+      ch2 = (dacsample_t)*(dacp->samples + 1);
       break;
 
     case DAC_DHRM_8BIT_RIGHT_DUAL:
