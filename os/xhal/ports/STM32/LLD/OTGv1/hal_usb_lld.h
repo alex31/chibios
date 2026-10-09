@@ -334,25 +334,45 @@ typedef struct {
  * @brief   Driver-specific fields, including independent EP0 storage.
  */
 #define usb_lld_driver_fields                                              \
+  /* Pointer to the OTG peripheral of this driver.*/                       \
   stm32_otg_t                   *otg;                                      \
+  /* Peripheral-specific parameters.*/                                     \
   const stm32_otg_params_t      *otgparams;                                \
+  /* Next free address in the FIFO memory.*/                               \
   uint32_t                      pmnext;                                    \
+  /* ISO IN endpoints waiting for a missed-frame disable.*/                \
   uint16_t                      isoc_in_pending;                           \
+  /* ISO OUT endpoints waiting for a missed-frame disable.*/               \
   uint16_t                      isoc_out_pending;                          \
+  /* Incomplete ISO OUT to check, RX FIFO drained.*/                       \
   bool                          isoc_out_check;                            \
+  /* ISO OUT recovery waiting for the global OUT NAK.*/                    \
   bool                          isoc_out_nak;                              \
+  /* Start time of the current ISO OUT recovery.*/                         \
   systime_t                     isoc_out_start;                            \
+  /* IN endpoints whose TX FIFO is flushed before reuse.*/                 \
   uint16_t                      in_flush;                                  \
+  /* OUT endpoints retired by the current teardown.*/                      \
   uint32_t                      out_disable_pending;                       \
+  /* OUT endpoints waiting for disable completion.*/                       \
   uint32_t                      out_disable_wait;                          \
+  /* OUT receives deferred by the current teardown.*/                      \
   uint32_t                      out_restart;                               \
-  uint32_t                      out_ctl[USB_MAX_ENDPOINTS];                 \
+  /* OUT configurations deferred by the teardown.*/                        \
+  uint32_t                      out_ctl[USB_MAX_ENDPOINTS];                \
+  /* Start time of the current OUT teardown.*/                             \
   systime_t                     out_disable_start;                         \
+  /* Current OUT teardown phase.*/                                         \
   unsigned                      out_disable_phase;                         \
+  /* EP0 configuration of this driver instance.*/                          \
   USBEndpointConfig             ep0config;                                 \
+  /* EP0 IN transfer state of this driver instance.*/                      \
   USBInEndpointState            ep0in;                                     \
+  /* EP0 OUT transfer state of this driver instance.*/                     \
   USBOutEndpointState           ep0out;                                    \
+  /* SETUP received, its completion marker not popped.*/                   \
   bool                          ep0setup_pending;                          \
+  /* Buffer for incoming EP0 SETUP packets.*/                              \
   uint8_t                       ep0setup_buffer[8]
 
 /*===========================================================================*/
