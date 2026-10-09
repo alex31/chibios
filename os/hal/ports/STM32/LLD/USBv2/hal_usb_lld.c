@@ -201,6 +201,29 @@ static const USBEndpointConfig ep0config = {
 /*===========================================================================*/
 
 /**
+ * @brief   Waits for the transceiver startup time.
+ * @details After PDWN is cleared the transceiver needs tSTARTUP (1us maximum
+ *          on the STM32U0) before the USB reset can be released.
+ * @note    A counted loop, each iteration takes more than one cycle. The
+ *          polled delay needs a realtime counter that the Cortex-M0+ devices
+ *          using this driver do not have.
+ * @note    With dynamic clocks HCLK is read at run time: the configured
+ *          value would make the wait too short after a switch to a faster
+ *          clock.
+ */
+static void usb_wait_startup(void) {
+#if defined(HAL_LLD_USE_CLOCK_MANAGEMENT) && defined(CLK_HCLK)
+  volatile uint32_t loop = (hal_lld_get_clock_point(CLK_HCLK) / 1000000U) + 1U;
+#else
+  volatile uint32_t loop = (STM32_HCLK / 1000000U) + 1U;
+#endif
+
+  do {
+    loop--;
+  } while (loop > 0U);
+}
+
+/**
  * @brief   Resets the packet memory allocator.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
@@ -631,6 +654,7 @@ msg_t usb_lld_start(USBDriver *usbp) {
 
       /* Powers up the transceiver while holding the USB in reset state.*/
       usbp->usb->CNTR = USB_CNTR_USBRST;
+      usb_wait_startup();
 
       /* Releases the USB reset.*/
       usbp->usb->CNTR = 0U;
@@ -657,7 +681,16 @@ void usb_lld_stop(USBDriver *usbp) {
 #if STM32_USB_USE_USB1
     if (&USBD1 == usbp) {
 
-      usbp->usb->CNTR = USB_CNTR_PDWN | USB_CNTR_L2RES;
+      /* Holds the USB in reset, clears any pending interrupt, then powers
+         the transceiver down, the sequence of ST's own driver.*/
+      usbp->usb->CNTR = USB_CNTR_USBRST;
+      usbp->usb->ISTR = 0U;
+      usbp->usb->CNTR = USB_CNTR_USBRST | USB_CNTR_PDWN;
+
+      /* A powered down peripheral can still draw current until it is reset
+         through RCC, about 0.9mA in Stop 2 on the STM32U0. The start
+         resets it anyway.*/
+      rccResetUSB();
       rccDisableUSB();
     }
 #endif

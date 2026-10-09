@@ -91,6 +91,29 @@ static const USBEndpointConfig ep0config = {
 /*===========================================================================*/
 
 /**
+ * @brief   Waits for the transceiver startup time.
+ * @details After PDWN is cleared the transceiver needs tSTARTUP (1us maximum)
+ *          before the USB reset can be released.
+ * @note    A counted loop, each iteration takes more than one cycle. The
+ *          polled delay needs a realtime counter that the Cortex-M0 devices
+ *          using this driver do not have.
+ * @note    With dynamic clocks HCLK is read at run time: the configured
+ *          value would make the wait too short after a switch to a faster
+ *          clock.
+ */
+static void usb_wait_startup(void) {
+#if defined(HAL_LLD_USE_CLOCK_MANAGEMENT) && defined(CLK_HCLK)
+  volatile uint32_t loop = (hal_lld_get_clock_point(CLK_HCLK) / 1000000U) + 1U;
+#else
+  volatile uint32_t loop = (STM32_HCLK / 1000000U) + 1U;
+#endif
+
+  do {
+    loop--;
+  } while (loop > 0U);
+}
+
+/**
  * @brief   Resets the packet memory allocator.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
@@ -587,12 +610,12 @@ void usb_lld_start(USBDriver *usbp) {
       /* Powers up the transceiver while holding the USB in reset state.*/
       STM32_USB->CNTR = CNTR_FRES;
 
-      /* Enabling the USB IRQ vectors, this also gives enough time to allow
-         the transceiver power up (1uS).*/
+      /* Enabling the USB IRQ vectors.*/
 #if STM32_USB1_HP_NUMBER != STM32_USB1_LP_NUMBER
       nvicEnableVector(STM32_USB1_HP_NUMBER, STM32_USB_USB1_HP_IRQ_PRIORITY);
 #endif
       nvicEnableVector(STM32_USB1_LP_NUMBER, STM32_USB_USB1_LP_IRQ_PRIORITY);
+      usb_wait_startup();
 
       /* Releases the USB reset.*/
       STM32_USB->CNTR = 0U;
