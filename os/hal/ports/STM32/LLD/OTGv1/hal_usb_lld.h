@@ -159,6 +159,15 @@
 #endif
 
 /**
+ * @brief   Enables isochronous endpoints support.
+ * @note    Disabling it saves code and RAM; an isochronous endpoint is then
+ *          rejected by a debug assertion and left inactive.
+ */
+#if !defined(STM32_USB_USE_ISOCHRONOUS) || defined(__DOXYGEN__)
+#define STM32_USB_USE_ISOCHRONOUS           FALSE
+#endif
+
+/**
  * @brief   Host wake-up procedure duration.
  */
 #if !defined(STM32_USB_HOST_WAKEUP_DURATION) || defined(__DOXYGEN__)
@@ -603,6 +612,7 @@ struct USBDriver {
    * @brief   Pointer to the next address in the packet memory.
    */
   uint32_t                      pmnext;
+#if (STM32_USB_USE_ISOCHRONOUS == TRUE) || defined(__DOXYGEN__)
   /**
    * @brief   ISO IN endpoints waiting for missed-frame disable completion.
    */
@@ -611,6 +621,7 @@ struct USBDriver {
    * @brief   ISO OUT endpoints waiting for missed-frame disable completion.
    */
   uint16_t                      isoc_out_pending;
+#endif
   /**
    * @brief   IN endpoints whose TX FIFO must be flushed before reuse.
    */
@@ -625,6 +636,7 @@ struct USBDriver {
    * @brief   Hardware failure already reported to the HLD.
    */
   bool                          fault_reported;
+#if (STM32_USB_USE_ISOCHRONOUS == TRUE) || defined(__DOXYGEN__)
   /**
    * @brief   Incomplete ISO OUT transfers to be checked, RX FIFO drained.
    */
@@ -633,6 +645,7 @@ struct USBDriver {
    * @brief   ISO OUT recovery waiting for the global OUT NAK.
    */
   bool                          isoc_out_nak;
+#endif
   /**
    * @brief   SETUP data received, its completion marker not popped yet.
    */
@@ -641,10 +654,12 @@ struct USBDriver {
    * @brief   Current OUT teardown phase.
    */
   uint8_t                       out_disable_phase;
+#if (STM32_USB_USE_ISOCHRONOUS == TRUE) || defined(__DOXYGEN__)
   /**
    * @brief   Start time of the current ISO OUT recovery.
    */
   systime_t                     isoc_out_start;
+#endif
   /**
    * @brief   OUT endpoints retired by the current teardown.
    */

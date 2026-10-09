@@ -520,6 +520,7 @@
 #define STM32_USB_OTGFIFO_FILL_BASEPRI      0
 #define STM32_USB_48MHZ_DELTA               120000
 #define STM32_USB_HOST_WAKEUP_DURATION      2
+#define STM32_USB_USE_ISOCHRONOUS           TRUE
 
 /*
  * WDG driver system settings.
