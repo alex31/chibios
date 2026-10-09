@@ -677,8 +677,12 @@ void usb_lld_reset(USBDriver *usbp) {
   /* Post reset initialization.*/
   usbp->usb->ISTR   = 0U;
   usbp->usb->DADDR  = USB_DADDR_EF;
+  /* ERR is not enabled, the peripheral and the host recover from bus
+     errors. On a floating bus, cable unplugged with the pull-up on, it
+     would fire continuously.*/
   cntr              = /* USB_CNTR_ESOFM | */ USB_CNTR_RESETM  | USB_CNTR_SUSPM |
-                      USB_CNTR_WKUPM | USB_CNTR_ERRM |/* USB_CNTR_PMAOVRM |*/ USB_CNTR_CTRM;
+                      USB_CNTR_WKUPM | /* USB_CNTR_ERRM | USB_CNTR_PMAOVRM |*/
+                      USB_CNTR_CTRM;
   /* The SOF interrupt is only enabled if a callback is defined for
      this service because it is an high rate source.*/
   if (usbp->config->sof_cb != NULL)

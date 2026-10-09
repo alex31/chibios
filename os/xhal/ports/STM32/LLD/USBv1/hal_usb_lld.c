@@ -436,8 +436,10 @@ void usb_lld_reset(hal_usb_driver_c *usbp) {
   STM32_USB->BTABLE = BTABLE_ADDR;
   STM32_USB->ISTR   = 0U;
   STM32_USB->DADDR  = DADDR_EF;
-  cntr              = CNTR_RESETM | CNTR_SUSPM | CNTR_WKUPM |
-                      CNTR_ERRM | CNTR_CTRM;
+  /* ERR is not enabled, the peripheral and the host recover from bus
+     errors. On a floating bus, cable unplugged with the pull-up on, it
+     would fire continuously.*/
+  cntr              = CNTR_RESETM | CNTR_SUSPM | CNTR_WKUPM | CNTR_CTRM;
   if (usbp->binder != NULL) {
     cntr |= CNTR_SOFM;
   }

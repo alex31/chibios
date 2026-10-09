@@ -702,8 +702,10 @@ void usb_lld_reset(hal_usb_driver_c *usbp) {
   /* Post reset initialization.*/
   usbp->usb->ISTR   = 0U;
   usbp->usb->DADDR  = USB_DADDR_EF;
-  cntr = USB_CNTR_RESETM | USB_CNTR_SUSPM | USB_CNTR_WKUPM |
-         USB_CNTR_ERRM | USB_CNTR_CTRM;
+  /* ERR is not enabled, the peripheral and the host recover from bus
+     errors. On a floating bus, cable unplugged with the pull-up on, it
+     would fire continuously.*/
+  cntr = USB_CNTR_RESETM | USB_CNTR_SUSPM | USB_CNTR_WKUPM | USB_CNTR_CTRM;
   /* A bound USB class may need SOF notifications.*/
   if (usbp->binder != NULL) {
     cntr |= USB_CNTR_SOFM;
