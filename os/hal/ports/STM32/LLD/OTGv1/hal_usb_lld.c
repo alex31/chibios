@@ -819,6 +819,29 @@ static bool otg_txfifo_handler(USBDriver *usbp, usbep_t ep) {
 }
 
 /**
+ * @brief   Checks whether an IN endpoint FIFO can be refilled.
+ * @details The conditions checked on entry by the IN handler: no fault, no
+ *          flush pending, endpoint configured, no isochronous retirement,
+ *          no SETUP pending on EP0 outside its IN status stage.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ * @param[in] ep        endpoint number
+ * @return              The check result.
+ *
+ * @notapi
+ */
+static bool otg_epin_refill_allowed(USBDriver *usbp, usbep_t ep) {
+  uint32_t epmask = 1U << ep;
+
+  return !usbp->faulted &&
+         ((usbp->in_flush & epmask) == 0U) &&
+         (usbp->epc[ep] != NULL) && (usbp->epc[ep]->in_state != NULL) &&
+         ((usbp->isoc_in_pending & epmask) == 0U) &&
+         ((ep != 0U) || !usbp->ep0setup_pending ||
+          (usbp->ep0state == USB_EP0_IN_SENDING_STS));
+}
+
+/**
  * @brief   Generic endpoint IN handler.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
@@ -880,8 +903,13 @@ static void otg_epin_handler(USBDriver *usbp, usbep_t ep) {
     else {
       _usb_isr_invoke_in_cb(usbp, ep);
     }
-    /* The callback can disable endpoints or start an unrelated transfer.*/
-    return;
+    /* The callback can disable endpoints or start an unrelated transfer.
+       A transfer started on this endpoint is filled now, before the host
+       polls the endpoint again, the next TXFE interrupt would be late.*/
+    if (!otg_epin_refill_allowed(usbp, ep)) {
+      return;
+    }
+    epint = otgp->ie[ep].DIEPINT;
   }
   if ((epint & DIEPINT_TXFE) &&
       (otgp->DIEPEMPMSK & DIEPEMPMSK_INEPTXFEM(ep))) {

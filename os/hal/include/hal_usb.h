@@ -573,12 +573,15 @@ typedef const USBDescriptor * (*usbgetdescriptor_t)(USBDriver *usbp,
  */
 #if (USB_USE_WAIT == TRUE) || defined(__DOXYGEN__)
 #define _usb_isr_invoke_in_cb(usbp, ep) {                                   \
+  /* The callback can disable the endpoint, the state is taken before.*/    \
+  USBInEndpointState *cb_isp = (usbp)->epc[ep]->in_state;                   \
+                                                                            \
   (usbp)->transmitting &= ~(uint16_t)((unsigned)1U << (unsigned)(ep));      \
   if ((usbp)->epc[ep]->in_cb != NULL) {                                     \
     (usbp)->epc[ep]->in_cb(usbp, ep);                                       \
   }                                                                         \
   osalSysLockFromISR();                                                     \
-  osalThreadResumeI(&(usbp)->epc[ep]->in_state->thread, MSG_OK);            \
+  osalThreadResumeI(&cb_isp->thread, MSG_OK);                               \
   osalSysUnlockFromISR();                                                   \
 }
 #else
@@ -600,13 +603,17 @@ typedef const USBDescriptor * (*usbgetdescriptor_t)(USBDriver *usbp,
  */
 #if (USB_USE_WAIT == TRUE) || defined(__DOXYGEN__)
 #define _usb_isr_invoke_out_cb(usbp, ep) {                                  \
+  /* The callback can disable the endpoint, the state and the received     \
+     size are taken before.*/                                               \
+  USBOutEndpointState *cb_osp = (usbp)->epc[ep]->out_state;                 \
+  size_t cb_n = usbGetReceiveTransactionSizeX(usbp, ep);                    \
+                                                                            \
   (usbp)->receiving &= ~(uint16_t)((unsigned)1U << (unsigned)(ep));         \
   if ((usbp)->epc[ep]->out_cb != NULL) {                                    \
     (usbp)->epc[ep]->out_cb(usbp, ep);                                      \
   }                                                                         \
   osalSysLockFromISR();                                                     \
-  osalThreadResumeI(&(usbp)->epc[ep]->out_state->thread,                    \
-                    usbGetReceiveTransactionSizeX(usbp, ep));               \
+  osalThreadResumeI(&cb_osp->thread, (msg_t)cb_n);                          \
   osalSysUnlockFromISR();                                                   \
 }
 #else
