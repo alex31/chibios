@@ -377,9 +377,12 @@ typedef uint32_t adcerror_t;
  * @details Use this function in order to enable or disable the internal
  *          analog sources. See the documentation in the STM32 Reference
  *          Manual.
- * @note    PRESC bits must not be specified and left to zero.
+ * @note    The PRESC bits are left unchanged and any in @p ccr are
+ *          ignored: the driver programs the clock prescaler when started.
  */
-#define adcSTM32SetCCR(ccr) (ADC1_COMMON->CCR = (ccr))
+#define adcSTM32SetCCR(ccr)                                                 \
+  (ADC1_COMMON->CCR = (ADC1_COMMON->CCR & ADC_CCR_PRESC_Msk) |              \
+                      ((ccr) & ~ADC_CCR_PRESC_Msk))
 
 /*===========================================================================*/
 /* External declarations.                                                    */
