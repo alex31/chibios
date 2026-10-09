@@ -193,7 +193,9 @@ typedef struct {
  * @brief   USB low level driver fields.
  */
 #define usb_lld_driver_fields                                             \
+  /* Pointer to the USB registers block.*/                                \
   stm32_usb_t                  *usb;                                      \
+  /* Next free address in the packet memory.*/                            \
   uint32_t                     pmnext
 
 /*===========================================================================*/

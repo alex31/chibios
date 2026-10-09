@@ -162,8 +162,17 @@
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
 
+/**
+ * @brief   No USB-specific hardware configuration fields.
+ */
 #define usb_lld_config_fields
-#define usb_lld_driver_fields              uint32_t pmnext
+
+/**
+ * @brief   USB low level driver fields.
+ */
+#define usb_lld_driver_fields                                             \
+  /* Next free address in the packet memory.*/                            \
+  uint32_t                     pmnext
 
 /*===========================================================================*/
 /* Driver macros.                                                            */

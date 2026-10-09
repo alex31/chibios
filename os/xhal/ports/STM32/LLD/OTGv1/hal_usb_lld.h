@@ -151,6 +151,15 @@
 #endif
 
 /**
+ * @brief   Enables isochronous endpoints support.
+ * @note    Disabling it saves code and RAM; an isochronous endpoint is then
+ *          rejected by a debug assertion and left inactive.
+ */
+#if !defined(STM32_USB_USE_ISOCHRONOUS) || defined(__DOXYGEN__)
+#define STM32_USB_USE_ISOCHRONOUS           FALSE
+#endif
+
+/**
  * @brief   Host wake-up procedure duration.
  */
 #if !defined(STM32_USB_HOST_WAKEUP_DURATION) || defined(__DOXYGEN__)
@@ -330,29 +339,60 @@ typedef struct {
  */
 #define usb_lld_config_fields
 
+#if (STM32_USB_USE_ISOCHRONOUS == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   Isochronous recovery fields.
+ */
+#define usb_lld_isoc_fields                                                \
+  /* Start time of the current ISO OUT recovery.*/                         \
+  systime_t                     isoc_out_start;                            \
+  /* ISO IN endpoints waiting for a missed-frame disable.*/                \
+  uint16_t                      isoc_in_pending;                           \
+  /* ISO OUT endpoints waiting for a missed-frame disable.*/               \
+  uint16_t                      isoc_out_pending;                          \
+  /* Incomplete ISO OUT to check, RX FIFO drained.*/                       \
+  bool                          isoc_out_check;                            \
+  /* ISO OUT recovery waiting for the global OUT NAK.*/                    \
+  bool                          isoc_out_nak;
+#else
+#define usb_lld_isoc_fields
+#endif
+
 /**
  * @brief   Driver-specific fields, including independent EP0 storage.
  */
 #define usb_lld_driver_fields                                              \
+  /* Pointer to the OTG peripheral of this driver.*/                       \
   stm32_otg_t                   *otg;                                      \
+  /* Peripheral-specific parameters.*/                                     \
   const stm32_otg_params_t      *otgparams;                                \
+  /* Next free address in the FIFO memory.*/                               \
   uint32_t                      pmnext;                                    \
-  uint16_t                      isoc_in_pending;                           \
-  uint16_t                      isoc_out_pending;                          \
-  bool                          isoc_out_check;                            \
-  bool                          isoc_out_nak;                              \
-  systime_t                     isoc_out_start;                            \
+  usb_lld_isoc_fields                                                      \
+  /* IN endpoints whose TX FIFO is flushed before reuse.*/                 \
   uint16_t                      in_flush;                                  \
-  uint32_t                      out_disable_pending;                       \
-  uint32_t                      out_disable_wait;                          \
-  uint32_t                      out_restart;                               \
-  uint32_t                      out_ctl[USB_MAX_ENDPOINTS];                 \
-  systime_t                     out_disable_start;                         \
-  unsigned                      out_disable_phase;                         \
-  USBEndpointConfig             ep0config;                                 \
-  USBInEndpointState            ep0in;                                     \
-  USBOutEndpointState           ep0out;                                    \
+  /* SETUP received, its completion marker not popped.*/                   \
   bool                          ep0setup_pending;                          \
+  /* Current OUT teardown phase.*/                                         \
+  uint8_t                       out_disable_phase;                         \
+  /* OUT endpoints retired by the current teardown.*/                      \
+  uint32_t                      out_disable_pending;                       \
+  /* OUT endpoints waiting for disable completion.*/                       \
+  uint32_t                      out_disable_wait;                          \
+  /* OUT receives deferred by the current teardown.*/                      \
+  uint32_t                      out_restart;                               \
+  /* OUT configurations deferred by the teardown.*/                        \
+  uint32_t                      out_ctl[USB_MAX_ENDPOINTS];                \
+  /* Start time of the current OUT teardown.*/                             \
+  systime_t                     out_disable_start;                         \
+  /* EP0 configuration of this driver instance.*/                          \
+  USBEndpointConfig             ep0config;                                 \
+  /* EP0 transfer state, IN and OUT never run together.*/                  \
+  union {                                                                  \
+    USBInEndpointState          in;                                        \
+    USBOutEndpointState         out;                                       \
+  }                             ep0_state;                                 \
+  /* Buffer for incoming EP0 SETUP packets.*/                              \
   uint8_t                       ep0setup_buffer[8]
 
 /*===========================================================================*/

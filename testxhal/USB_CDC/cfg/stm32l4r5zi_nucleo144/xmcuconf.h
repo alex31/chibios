@@ -377,6 +377,7 @@
  * USB driver system settings.
  */
 #define STM32_USB_USE_OTG1                  TRUE
+#define STM32_USB_USE_ISOCHRONOUS           FALSE
 #define STM32_USB_OTG1_RX_FIFO_SIZE         512
 #define STM32_USB_OTGFIFO_FILL_BASEPRI      0
 #define STM32_USB_48MHZ_DELTA               120000
