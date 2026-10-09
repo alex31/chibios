@@ -167,12 +167,15 @@ do {
             <notapi />
             <implementation><![CDATA[
 do {
+  /* The callback can disable the endpoint, the state is taken before.*/
+  USBInEndpointState *cb_isp = (usbp)->epc[ep]->in_state;
+
   (usbp)->transmitting &= ~(uint16_t)((unsigned)1U << (unsigned)(ep));
   if ((usbp)->epc[ep]->in_cb != NULL) {
     (usbp)->epc[ep]->in_cb(usbp, ep);
   }
   chSysLockFromISR();
-  chThdResumeI(&(usbp)->epc[ep]->in_state->thread, MSG_OK);
+  chThdResumeI(&cb_isp->thread, MSG_OK);
   chSysUnlockFromISR();
 } while (false)]]></implementation>
           </macro>
@@ -183,13 +186,17 @@ do {
             <notapi />
             <implementation><![CDATA[
 do {
+  /* The callback can disable the endpoint, the state and the received
+     size are taken before.*/
+  USBOutEndpointState *cb_osp = (usbp)->epc[ep]->out_state;
+  size_t cb_n = usbGetReceiveTransactionSizeX(usbp, ep);
+
   (usbp)->receiving &= ~(uint16_t)((unsigned)1U << (unsigned)(ep));
   if ((usbp)->epc[ep]->out_cb != NULL) {
     (usbp)->epc[ep]->out_cb(usbp, ep);
   }
   chSysLockFromISR();
-  chThdResumeI(&(usbp)->epc[ep]->out_state->thread,
-                    usbGetReceiveTransactionSizeX(usbp, ep));
+  chThdResumeI(&cb_osp->thread, (msg_t)cb_n);
   chSysUnlockFromISR();
 } while (false)]]></implementation>
           </macro>
