@@ -204,6 +204,29 @@ static const USBEndpointConfig ep0config = {
 /*===========================================================================*/
 
 /**
+ * @brief   Waits for the transceiver startup time.
+ * @details After PDWN is cleared the transceiver needs tSTARTUP (1us maximum
+ *          on the STM32U0) before the USB reset can be released.
+ * @note    A counted loop, each iteration takes more than one cycle. The
+ *          polled delay needs a realtime counter that the Cortex-M0+ devices
+ *          using this driver do not have.
+ * @note    With dynamic clocks HCLK is read at run time: the configured
+ *          value would make the wait too short after a switch to a faster
+ *          clock.
+ */
+static void usb_wait_startup(void) {
+#if defined(HAL_LLD_USE_CLOCK_MANAGEMENT) && defined(CLK_HCLK)
+  volatile uint32_t loop = (hal_lld_get_clock_point(CLK_HCLK) / 1000000U) + 1U;
+#else
+  volatile uint32_t loop = (STM32_HCLK / 1000000U) + 1U;
+#endif
+
+  do {
+    loop--;
+  } while (loop > 0U);
+}
+
+/**
  * @brief   Resets the packet memory allocator.
  *
  * @param[in] usbp      pointer to the @p hal_usb_driver_c object
@@ -666,6 +689,7 @@ msg_t usb_lld_start(hal_usb_driver_c *usbp) {
 
   /* Powering up the transceiver while holding the peripheral in reset.*/
   usbp->usb->CNTR = USB_CNTR_USBRST;
+  usb_wait_startup();
   usbp->usb->CNTR = 0U;
 
   /* Reset procedure enforced on driver start.*/
