@@ -686,6 +686,11 @@ void usb_lld_stop(hal_usb_driver_c *usbp) {
   usb_lld_disconnect_bus(usbp);
   usbp->usb->CNTR = USB_CNTR_PDWN | USB_CNTR_USBRST;
   usbp->usb->ISTR = 0U;
+
+  /* A powered down peripheral can still draw current until it is reset
+     through RCC, about 0.9mA in Stop 2 on the STM32U0. The start resets it
+     anyway.*/
+  rccResetUSB();
   rccDisableUSB();
 }
 

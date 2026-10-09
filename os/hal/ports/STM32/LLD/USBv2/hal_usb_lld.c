@@ -657,7 +657,16 @@ void usb_lld_stop(USBDriver *usbp) {
 #if STM32_USB_USE_USB1
     if (&USBD1 == usbp) {
 
-      usbp->usb->CNTR = USB_CNTR_PDWN | USB_CNTR_L2RES;
+      /* Holds the USB in reset, clears any pending interrupt, then powers
+         the transceiver down, the sequence of ST's own driver.*/
+      usbp->usb->CNTR = USB_CNTR_USBRST;
+      usbp->usb->ISTR = 0U;
+      usbp->usb->CNTR = USB_CNTR_USBRST | USB_CNTR_PDWN;
+
+      /* A powered down peripheral can still draw current until it is reset
+         through RCC, about 0.9mA in Stop 2 on the STM32U0. The start
+         resets it anyway.*/
+      rccResetUSB();
       rccDisableUSB();
     }
 #endif
