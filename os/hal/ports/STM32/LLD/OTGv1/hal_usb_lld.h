@@ -604,6 +604,18 @@ struct USBDriver {
    */
   uint32_t                      pmnext;
   /**
+   * @brief   ISO IN endpoints waiting for missed-frame disable completion.
+   */
+  uint16_t                      isoc_in_pending;
+  /**
+   * @brief   ISO OUT endpoints waiting for missed-frame disable completion.
+   */
+  uint16_t                      isoc_out_pending;
+  /**
+   * @brief   IN endpoints whose TX FIFO must be flushed before reuse.
+   */
+  uint16_t                      in_flush;
+  /**
    * @brief   Hardware failure latched, the driver must be restarted.
    * @note    The failure is reported to the HLD as a suspend, no wake-up
    *          follows until the driver is stopped and started again.
@@ -614,14 +626,6 @@ struct USBDriver {
    */
   bool                          fault_reported;
   /**
-   * @brief   ISO IN endpoints waiting for missed-frame disable completion.
-   */
-  uint16_t                      isoc_in_pending;
-  /**
-   * @brief   ISO OUT endpoints waiting for missed-frame disable completion.
-   */
-  uint16_t                      isoc_out_pending;
-  /**
    * @brief   Incomplete ISO OUT transfers to be checked, RX FIFO drained.
    */
   bool                          isoc_out_check;
@@ -630,13 +634,17 @@ struct USBDriver {
    */
   bool                          isoc_out_nak;
   /**
+   * @brief   SETUP data received, its completion marker not popped yet.
+   */
+  bool                          ep0setup_pending;
+  /**
+   * @brief   Current OUT teardown phase.
+   */
+  uint8_t                       out_disable_phase;
+  /**
    * @brief   Start time of the current ISO OUT recovery.
    */
   systime_t                     isoc_out_start;
-  /**
-   * @brief   IN endpoints whose TX FIFO must be flushed before reuse.
-   */
-  uint16_t                      in_flush;
   /**
    * @brief   OUT endpoints retired by the current teardown.
    */
@@ -658,10 +666,6 @@ struct USBDriver {
    */
   systime_t                     out_disable_start;
   /**
-   * @brief   Current OUT teardown phase.
-   */
-  unsigned                      out_disable_phase;
-  /**
    * @brief   EP0 configuration for this driver instance.
    */
   USBEndpointConfig             ep0config;
@@ -673,10 +677,6 @@ struct USBDriver {
     USBInEndpointState          in;
     USBOutEndpointState         out;
   } ep0_state;
-  /**
-   * @brief   SETUP data received, its completion marker not popped yet.
-   */
-  bool                          ep0setup_pending;
   /**
    * @brief   Buffer for incoming EP0 setup packets.
    */

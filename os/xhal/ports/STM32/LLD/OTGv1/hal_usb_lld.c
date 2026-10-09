@@ -131,8 +131,8 @@ static void otg_object_init(hal_usb_driver_c *usbp) {
   usbp->ep0setup_pending = false;
   usbp->ep0config = (USBEndpointConfig) {
     USB_EP_MODE_TYPE_CTRL, _usb_ep0setup, _usb_ep0in, _usb_ep0out,
-    EP0_MAX_INSIZE, EP0_MAX_OUTSIZE, &usbp->ep0in, &usbp->ep0out,
-    1U, usbp->ep0setup_buffer
+    EP0_MAX_INSIZE, EP0_MAX_OUTSIZE, &usbp->ep0_state.in,
+    &usbp->ep0_state.out, 1U, usbp->ep0setup_buffer
   };
 }
 
@@ -1646,8 +1646,7 @@ void usb_lld_reset(hal_usb_driver_c *usbp) {
 
   /* EP0 initialization, it is a special case.*/
   usbp->ep0setup_pending = false;
-  memset(&usbp->ep0in, 0, sizeof(usbp->ep0in));
-  memset(&usbp->ep0out, 0, sizeof(usbp->ep0out));
+  memset(&usbp->ep0_state, 0, sizeof(usbp->ep0_state));
   usbp->epc[0] = &usbp->ep0config;
   otgp->oe[0].DOEPTSIZ = DOEPTSIZ_STUPCNT(3);
   otgp->oe[0].DOEPCTL = DOEPCTL_SD0PID | DOEPCTL_USBAEP | DOEPCTL_EPTYP_CTRL |
