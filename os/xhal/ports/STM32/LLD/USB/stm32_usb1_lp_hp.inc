@@ -70,7 +70,7 @@
 static inline void usb1_irq_init(void) {
 #if defined(STM32_USB1_IS_USED)
 #if STM32_USB1_HP_NUMBER != STM32_USB1_LP_NUMBER
-#if STM32_USB_USE_ISOCHRONOUS
+#if STM32_USB_USE_ISOCHRONOUS || STM32_USB_USE_DOUBLE_BUFFERING
   nvicEnableVector(STM32_USB1_HP_NUMBER, STM32_IRQ_USB1_HP_PRIORITY);
 #endif
 #endif
@@ -81,7 +81,7 @@ static inline void usb1_irq_init(void) {
 static inline void usb1_irq_deinit(void) {
 #if defined(STM32_USB1_IS_USED)
 #if STM32_USB1_HP_NUMBER != STM32_USB1_LP_NUMBER
-#if STM32_USB_USE_ISOCHRONOUS
+#if STM32_USB_USE_ISOCHRONOUS || STM32_USB_USE_DOUBLE_BUFFERING
   nvicDisableVector(STM32_USB1_HP_NUMBER);
 #endif
 #endif
@@ -95,7 +95,7 @@ static inline void usb1_irq_deinit(void) {
 
 #if defined(STM32_USB1_IS_USED) || defined(__DOXYGEN__)
 #if STM32_USB1_HP_NUMBER != STM32_USB1_LP_NUMBER
-#if STM32_USB_USE_ISOCHRONOUS
+#if STM32_USB_USE_ISOCHRONOUS || STM32_USB_USE_DOUBLE_BUFFERING
 CH_IRQ_HANDLER(STM32_USB1_HP_HANDLER) {
 
   CH_IRQ_PROLOGUE();

@@ -98,6 +98,21 @@
 #endif
 
 /**
+ * @brief   Enables double buffering on bulk endpoints.
+ * @details Unidirectional bulk endpoints with @p ep_buffers set to 2 use
+ *          the double-buffered mode of the peripheral: a packet is copied
+ *          while the peripheral transfers the other buffer, reducing the
+ *          number of transactions answered with NAK. An endpoint enters
+ *          the double-buffered mode on its first transfer of two or more
+ *          packets, it goes back to the single-buffered mode when its halt
+ *          condition is cleared.
+ * @note    Double buffering makes the code size increase.
+ */
+#if !defined(STM32_USB_USE_DOUBLE_BUFFERING) || defined(__DOXYGEN__)
+#define STM32_USB_USE_DOUBLE_BUFFERING      FALSE
+#endif
+
+/**
  * @brief   Host wake-up procedure duration.
  */
 #if !defined(STM32_USB_HOST_WAKEUP_DURATION) || defined(__DOXYGEN__)
@@ -189,10 +204,31 @@ typedef struct {
  */
 #define usb_lld_config_fields
 
+#if (STM32_USB_USE_DOUBLE_BUFFERING == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   Double buffering fields.
+ */
+#define usb_lld_dbl_fields                                                \
+  /* Endpoints that can be double-buffered.*/                             \
+  uint16_t                     dblcap;                                    \
+  /* Double-buffered endpoints whose both buffers are owned by the        \
+     peripheral.*/                                                        \
+  uint16_t                     dblboth;                                   \
+  /* Double-buffered OUT endpoints holding a packet received while no     \
+     transfer is active.*/                                                \
+  uint16_t                     dblheld;                                   \
+  /* Size of the packet written after the last one, per IN endpoint,      \
+     zero if none.*/                                                      \
+  size_t                       txnext[USB_MAX_ENDPOINTS + 1];
+#else
+#define usb_lld_dbl_fields
+#endif
+
 /**
  * @brief   USB low level driver fields.
  */
 #define usb_lld_driver_fields                                             \
+  usb_lld_dbl_fields                                                      \
   /* Pointer to the USB registers block.*/                                \
   stm32_usb_t                  *usb;                                      \
   /* Next free address in the packet memory.*/                            \

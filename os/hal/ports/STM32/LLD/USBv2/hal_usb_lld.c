@@ -146,6 +146,39 @@
                             ~(CHEPR_TOGGLE_MASK & ~USB_CHEP_TX_STTX_Msk)) ^ \
                            (epr)) | USB_EP_VTTX | USB_EP_VTRX
 
+/**
+ * @brief   Toggles bits of the CHEPR register.
+ */
+#define CHEPR_TOGGLE(usbp, ep, bits)                                        \
+  (usbp)->usb->CHEPR[ep] = ((usbp)->usb->CHEPR[ep] & ~CHEPR_TOGGLE_MASK) |  \
+                           USB_EP_VTTX | USB_EP_VTRX | (bits)
+
+/**
+ * @brief   Double-buffered bulk endpoint.
+ */
+#define CHEPR_IS_DBL_BUF(chepr)                                             \
+  (((chepr) & (USB_CHEP_UTYPE_Msk | USB_EP_KIND)) ==                        \
+   (USB_EP_BULK | USB_EP_KIND))
+
+/**
+ * @brief   SW_BUF bit of a double-buffered IN endpoint.
+ */
+#define USB_EP_SWBUF_TX             USB_EP_DTOG_RX
+
+/**
+ * @brief   SW_BUF bit of a double-buffered OUT endpoint.
+ */
+#define USB_EP_SWBUF_RX             USB_EP_DTOG_TX
+
+/**
+ * @brief   USB interrupt vector, shared with UCPD on some devices.
+ */
+#if defined(STM32_USB1_UCPD1_2_NUMBER)
+#define USB_IRQ_NUMBER              STM32_USB1_UCPD1_2_NUMBER
+#else
+#define USB_IRQ_NUMBER              STM32_USB1_NUMBER
+#endif
+
 /*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
@@ -286,51 +319,17 @@ static void usb_pm_reset_after_ep0(USBDriver *usbp) {
 }
 
 /**
- * @brief   Reads from a dedicated packet buffer.
+ * @brief   Reads from a packet buffer.
  *
- * @param[in] usbp      pointer to the @p USBDriver object
- * @param[in] ep        endpoint number
+ * @param[in] pmap      pointer to the packet buffer
  * @param[out] buf      buffer where to copy the packet data
- * @param[in] max       maximum number of bytes to copy, the rest of the
- *                      packet is discarded
- * @return              The size of the received packet.
+ * @param[in] n         number of bytes to copy
  *
  * @notapi
  */
-static size_t usb_packet_read_to_buffer(USBDriver *usbp,
-                                        usbep_t ep,
-                                        uint8_t *buf,
-                                        size_t max) {
-  size_t n;
+static void usb_pma_read(volatile uint32_t *pmap, uint8_t *buf, size_t n) {
   uint32_t w;
-  stm32_usb_pmabufdesc_t *udp = USB_GET_DESCRIPTOR(ep);
-  volatile uint32_t *pmap = USB_GET_RX_BUFFER(udp);
-  int i;
-
-#if STM32_USB_USE_ISOCHRONOUS
-  uint32_t chepr = usbp->usb->CHEPR[ep];
-
-  /* Double buffering is always enabled for isochronous endpoints, and
-     although we overlap the two buffers for simplicity, we still need
-     to read from the right counter. The DTOG_RX bit indicates the buffer
-     that is currently in use by the USB peripheral, that is, the buffer
-     in which the next received packet will be stored, so we need to
-     read the counter of the OTHER buffer, which is where the last
-     received packet was stored.*/
-  if (((chepr & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) &&
-      ((chepr & USB_EP_DTOG_RX) == 0U)) {
-    n = USB_GET_RX_COUNT1(udp);
-  }
-  else {
-    n = USB_GET_RX_COUNT0(udp);
-  }
-#else
-  (void)usbp;
-
-  n = USB_GET_RX_COUNT0(udp);
-#endif
-
-  i = (int)(n < max ? n : max);
+  int i = (int)n;
 
 #if STM32_USB_USE_FAST_COPY
   while (i >= 16) {
@@ -390,30 +389,67 @@ static size_t usb_packet_read_to_buffer(USBDriver *usbp,
     w = *pmap;
     *(buf + 0) = (uint8_t)w;
   }
+}
+
+/**
+ * @brief   Reads from a dedicated packet buffer.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ * @param[in] ep        endpoint number
+ * @param[out] buf      buffer where to copy the packet data
+ * @param[in] max       maximum number of bytes to copy, the rest of the
+ *                      packet is discarded
+ * @return              The size of the received packet.
+ *
+ * @notapi
+ */
+static size_t usb_packet_read_to_buffer(USBDriver *usbp,
+                                        usbep_t ep,
+                                        uint8_t *buf,
+                                        size_t max) {
+  size_t n;
+  stm32_usb_pmabufdesc_t *udp = USB_GET_DESCRIPTOR(ep);
+
+#if STM32_USB_USE_ISOCHRONOUS
+  uint32_t chepr = usbp->usb->CHEPR[ep];
+
+  /* Double buffering is always enabled for isochronous endpoints, and
+     although we overlap the two buffers for simplicity, we still need
+     to read from the right counter. The DTOG_RX bit indicates the buffer
+     that is currently in use by the USB peripheral, that is, the buffer
+     in which the next received packet will be stored, so we need to
+     read the counter of the OTHER buffer, which is where the last
+     received packet was stored.*/
+  if (((chepr & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) &&
+      ((chepr & USB_EP_DTOG_RX) == 0U)) {
+    n = USB_GET_RX_COUNT1(udp);
+  }
+  else {
+    n = USB_GET_RX_COUNT0(udp);
+  }
+#else
+  (void)usbp;
+
+  n = USB_GET_RX_COUNT0(udp);
+#endif
+
+  usb_pma_read(USB_GET_RX_BUFFER(udp), buf, n < max ? n : max);
 
   return n;
 }
 
 /**
- * @brief   Writes to a dedicated packet buffer.
+ * @brief   Writes to a packet buffer.
  *
- * @param[in] usbp      pointer to the @p USBDriver object
- * @param[in] ep        endpoint number
+ * @param[in] pmap      pointer to the packet buffer
  * @param[in] buf       buffer where to fetch the packet data
- * @param[in] n         maximum number of bytes to copy. This value must
- *                      not exceed the maximum packet size for this endpoint.
+ * @param[in] n         number of bytes to copy
  *
  * @notapi
  */
-static void usb_packet_write_from_buffer(USBDriver *usbp,
-                                         usbep_t ep,
-                                         const uint8_t *buf,
-                                         size_t n) {
-  stm32_usb_pmabufdesc_t *udp = USB_GET_DESCRIPTOR(ep);
-  volatile uint32_t *pmap = USB_GET_TX_BUFFER(udp);
-  int i;
-
-  i = (int)n;
+static void usb_pma_write(volatile uint32_t *pmap, const uint8_t *buf,
+                          size_t n) {
+  int i = (int)n;
 
 #if STM32_USB_USE_FAST_COPY
   while (i >= 16) {
@@ -475,6 +511,26 @@ static void usb_packet_write_from_buffer(USBDriver *usbp,
     }
     *pmap++ = w;
   }
+}
+
+/**
+ * @brief   Writes to a dedicated packet buffer.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ * @param[in] ep        endpoint number
+ * @param[in] buf       buffer where to fetch the packet data
+ * @param[in] n         maximum number of bytes to copy. This value must
+ *                      not exceed the maximum packet size for this endpoint.
+ *
+ * @notapi
+ */
+static void usb_packet_write_from_buffer(USBDriver *usbp,
+                                         usbep_t ep,
+                                         const uint8_t *buf,
+                                         size_t n) {
+  stm32_usb_pmabufdesc_t *udp = USB_GET_DESCRIPTOR(ep);
+
+  usb_pma_write(USB_GET_TX_BUFFER(udp), buf, n);
 
 #if STM32_USB_USE_ISOCHRONOUS
   /* Double buffering is always enabled for isochronous endpoints and the
@@ -492,6 +548,237 @@ static void usb_packet_write_from_buffer(USBDriver *usbp,
 #endif
   USB_SET_TX_COUNT0(udp, n);
 }
+
+#if (STM32_USB_USE_DOUBLE_BUFFERING == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   Returns a packet buffer of a double-buffered endpoint.
+ * @note    Buffer 0 is described by the TX fields of the descriptor and
+ *          buffer 1 by the RX fields, whatever the endpoint direction.
+ *
+ * @param[in] udp       pointer to the endpoint descriptor
+ * @param[in] b         buffer number
+ * @return              The packet buffer.
+ *
+ * @notapi
+ */
+static volatile uint32_t *usb_dbl_buffer(stm32_usb_pmabufdesc_t *udp,
+                                         uint32_t b) {
+
+  return b == 0U ? USB_GET_TX_BUFFER(udp) : USB_GET_RX_BUFFER(udp);
+}
+
+/**
+ * @brief   Writes the next packet of a double-buffered IN endpoint.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ * @param[in] ep        endpoint number
+ * @param[in] b         buffer number
+ * @return              The packet size.
+ *
+ * @notapi
+ */
+static size_t usb_dbl_write(USBDriver *usbp, usbep_t ep, uint32_t b) {
+  const USBEndpointConfig *epcp = usbp->epc[ep];
+  USBInEndpointState *isp = epcp->in_state;
+  stm32_usb_pmabufdesc_t *udp = USB_GET_DESCRIPTOR(ep);
+  size_t n;
+
+  n = isp->txsize - isp->txcnt - isp->txlast - isp->txnext;
+  if (n > (size_t)epcp->in_maxsize) {
+    n = (size_t)epcp->in_maxsize;
+  }
+  usb_pma_write(usb_dbl_buffer(udp, b), isp->txbuf, n);
+  if (b == 0U) {
+    USB_SET_TX_COUNT0(udp, n);
+  }
+  else {
+    USB_SET_RX_COUNT0(udp, n);
+  }
+  isp->txbuf += n;
+
+  return n;
+}
+
+/**
+ * @brief   Swaps the packet buffers of a double-buffered endpoint.
+ *
+ * @param[in] ep        endpoint number
+ *
+ * @notapi
+ */
+static void usb_dbl_swap(usbep_t ep) {
+  stm32_usb_pmabufdesc_t *udp = USB_GET_DESCRIPTOR(ep);
+  uint32_t bd = udp->TXBD0;
+
+  udp->TXBD0 = udp->RXBD0;
+  udp->RXBD0 = bd;
+}
+
+/**
+ * @brief   Enters the double-buffered mode.
+ * @details The peripheral blocks when DTOG equals SW_BUF, this condition
+ *          is evaluated when SW_BUF is written and at the end of the
+ *          transactions, except the first one after setting DBL_BUF: the
+ *          peripheral would execute a transaction more than the buffers it
+ *          owns. Both buffers are given to the peripheral, so that the
+ *          missing evaluation is harmless: SW_BUF is written while it
+ *          differs from DTOG, then DTOG is toggled to make them equal.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ * @param[in] ep        endpoint number
+ * @param[in] dtog      DTOG bit of the endpoint direction
+ * @param[in] sw        SW_BUF bit of the endpoint direction
+ * @param[in] stat      STAT field mask of the endpoint direction
+ *
+ * @notapi
+ */
+static void usb_dbl_enter(USBDriver *usbp, usbep_t ep, uint32_t dtog,
+                          uint32_t sw, uint32_t stat) {
+  uint32_t chepr;
+
+  usbp->usb->CHEPR[ep] = (usbp->usb->CHEPR[ep] & ~CHEPR_TOGGLE_MASK) |
+                         USB_EP_VTTX | USB_EP_VTRX | USB_EP_KIND;
+  chepr = usbp->usb->CHEPR[ep];
+  if (((chepr & sw) != 0U) == ((chepr & dtog) != 0U)) {
+    CHEPR_TOGGLE(usbp, ep, sw);
+  }
+  CHEPR_TOGGLE(usbp, ep, dtog);
+  CHEPR_TOGGLE(usbp, ep, sw);
+  CHEPR_TOGGLE(usbp, ep, dtog);
+
+  /* The endpoint is made valid, it stays valid in the double-buffered
+     mode.*/
+  CHEPR_TOGGLE(usbp, ep, (usbp->usb->CHEPR[ep] & stat) ^ stat);
+  usbp->dblboth |= (uint16_t)(1U << ep);
+}
+
+/**
+ * @brief   Stops a double-buffered endpoint.
+ * @details The endpoint is put in NAK state, a held packet is discarded.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ * @param[in] ep        endpoint number
+ * @param[in] stat      STAT field mask of the endpoint direction
+ * @param[in] stall     STAT field STALL value of the endpoint direction
+ * @return              The endpoint register after stopping, its STAT
+ *                      field is the status stored before, STALL or VALID.
+ *
+ * @notapi
+ */
+static uint32_t usb_dbl_stop(USBDriver *usbp, usbep_t ep, uint32_t stat,
+                             uint32_t stall) {
+  uint32_t chepr = usbp->usb->CHEPR[ep];
+  uint32_t stored;
+
+  /* The stored status is either STALL or VALID.*/
+  stored = (chepr & stat) == stall ? stall : stat;
+  CHEPR_TOGGLE(usbp, ep, stored ^ stat ^ stall);
+  usbp->dblboth &= (uint16_t)~(1U << ep);
+  usbp->dblheld &= (uint16_t)~(1U << ep);
+
+  return (usbp->usb->CHEPR[ep] & ~stat) | stored;
+}
+
+/**
+ * @brief   Leaves the double-buffered mode.
+ * @details The data toggle is reset. The blocking condition still applies
+ *          in the single-buffered mode, SW_BUF is written while it differs
+ *          from DTOG in order to clear it.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ * @param[in] ep        endpoint number
+ * @param[in] dtog      DTOG bit of the endpoint direction
+ * @param[in] sw        SW_BUF bit of the endpoint direction
+ * @param[in] valid     STAT toggles making the endpoint valid, zero for
+ *                      leaving it in NAK state
+ *
+ * @notapi
+ */
+static void usb_dbl_exit(USBDriver *usbp, usbep_t ep, uint32_t dtog,
+                         uint32_t sw, uint32_t valid) {
+
+  if ((usbp->usb->CHEPR[ep] & dtog) != 0U) {
+    CHEPR_TOGGLE(usbp, ep, dtog);
+  }
+  if ((usbp->usb->CHEPR[ep] & sw) != 0U) {
+    CHEPR_TOGGLE(usbp, ep, sw);
+  }
+  CHEPR_TOGGLE(usbp, ep, sw);
+  usbp->usb->CHEPR[ep] = (usbp->usb->CHEPR[ep] & ~CHEPR_TOGGLE_MASK &
+                          ~USB_EP_KIND) | USB_EP_VTTX | USB_EP_VTRX | valid;
+}
+
+/**
+ * @brief   Serves a packet received by a double-buffered OUT endpoint.
+ * @details A packet received while no transfer is active is held, the
+ *          peripheral is blocked until it is served.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ * @param[in] ep        endpoint number
+ * @param[in] b         buffer containing the packet
+ * @param[in] release   the other buffer is owned by the software
+ *
+ * @notapi
+ */
+static void usb_dbl_serve_out(USBDriver *usbp, usbep_t ep, uint32_t b,
+                              bool release) {
+  const USBEndpointConfig *epcp = usbp->epc[ep];
+  USBOutEndpointState *osp = epcp->out_state;
+  stm32_usb_pmabufdesc_t *udp = USB_GET_DESCRIPTOR(ep);
+  size_t n, m;
+
+  if ((usbp->receiving & (1U << ep)) == 0U) {
+    usbp->dblheld |= (uint16_t)(1U << ep);
+    return;
+  }
+
+  n = b == 0U ? USB_GET_TX_COUNT0(udp) : USB_GET_RX_COUNT0(udp);
+  if (release && (n >= epcp->out_maxsize) && (osp->rxpkts > 1U)) {
+    /* More packets expected, the other buffer is released before copying
+       this one. It is not released after the last packet, the peripheral
+       must not accept data of the next transfer.*/
+    CHEPR_TOGGLE(usbp, ep, USB_EP_SWBUF_RX);
+  }
+
+  /* Reads the packet into the defined buffer. The host can send a full
+     packet when less room is left, the excess is discarded.*/
+  m = n < osp->rxsize ? n : osp->rxsize;
+  usb_pma_read(usb_dbl_buffer(udp, b), osp->rxbuf, m);
+  osp->rxbuf  += m;
+  osp->rxcnt  += m;
+  osp->rxsize -= m;
+  osp->rxpkts -= 1U;
+
+  /* The transaction is completed if the specified number of packets
+     has been received or the current packet is a short packet.*/
+  if ((n < epcp->out_maxsize) || (osp->rxpkts == 0U)) {
+    _usb_isr_invoke_out_cb(usbp, ep);
+  }
+}
+
+/**
+ * @brief   Serves the held packets of the double-buffered OUT endpoints.
+ * @details A held packet is served when a transfer is active.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ *
+ * @notapi
+ */
+static void usb_dbl_serve_held(USBDriver *usbp) {
+  usbep_t ep;
+
+  for (ep = 1U; ep <= (usbep_t)USB_ENDPOINTS_NUMBER; ep++) {
+    uint16_t mask = (uint16_t)(1U << ep);
+
+    if ((usbp->dblheld & usbp->receiving & mask) != 0U) {
+      usbp->dblheld &= (uint16_t)~mask;
+      usb_dbl_serve_out(usbp, ep,
+                        (usbp->usb->CHEPR[ep] & USB_EP_DTOG_RX) != 0U ? 0U : 1U,
+                        true);
+    }
+  }
+}
+#endif /* STM32_USB_USE_DOUBLE_BUFFERING == TRUE */
 
 /**
  * @brief   Common ISR code, serves the EP-related interrupts.
@@ -530,6 +817,48 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
       if ((usbp->transmitting & (uint16_t)(1U << ep)) == 0U) {
         return;
       }
+    }
+#endif
+
+#if STM32_USB_USE_DOUBLE_BUFFERING
+    if (CHEPR_IS_DBL_BUF(chepr)) {
+      if ((usbp->dblboth & (1U << ep)) != 0U) {
+        /* Both buffers were owned by the peripheral, the transfer goes on
+           when both packets have been sent. A transaction completed after
+           clearing VTTX is served by the next event.*/
+        chepr = usbp->usb->CHEPR[ep];
+        if (((chepr & USB_EP_VTTX) != 0U) ||
+            (((chepr & USB_EP_DTOG_TX) != 0U) !=
+             ((chepr & USB_EP_SWBUF_TX) != 0U))) {
+          return;
+        }
+        usbp->dblboth &= (uint16_t)~(1U << ep);
+        isp->txcnt += isp->txlast;
+        isp->txlast = isp->txnext;
+        isp->txnext = 0U;
+        if (isp->txcnt + isp->txlast < isp->txsize) {
+          isp->txnext = usb_dbl_write(usbp, ep,
+                                      (chepr & USB_EP_SWBUF_TX) != 0U ? 1U : 0U);
+        }
+      }
+      isp->txcnt += isp->txlast;
+      if (isp->txnext > 0U) {
+        /* The packet already written is released first, the peripheral
+           sends it while the following one is written.*/
+        CHEPR_TOGGLE(usbp, ep, USB_EP_SWBUF_TX);
+        isp->txlast = isp->txnext;
+        isp->txnext = 0U;
+        if (isp->txcnt + isp->txlast < isp->txsize) {
+          isp->txnext = usb_dbl_write(usbp, ep,
+                                      (usbp->usb->CHEPR[ep] &
+                                       USB_EP_SWBUF_TX) != 0U ? 1U : 0U);
+        }
+      }
+      else {
+        /* Transfer completed, invokes the callback.*/
+        _usb_isr_invoke_in_cb(usbp, ep);
+      }
+      return;
     }
 #endif
 
@@ -576,6 +905,32 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
          transfer is active are discarded.*/
       if (((chepr & USB_CHEP_UTYPE_Msk) == USB_EP_ISOCHRONOUS) &&
           ((usbp->receiving & (uint16_t)(1U << ep)) == 0U)) {
+        return;
+      }
+#endif
+
+#if STM32_USB_USE_DOUBLE_BUFFERING
+      if (CHEPR_IS_DBL_BUF(chepr)) {
+        chepr = usbp->usb->CHEPR[ep];
+        if ((usbp->dblboth & (1U << ep)) != 0U) {
+          /* Both buffers were owned by the peripheral, the first packet is
+             in the buffer selected by SW_BUF. The second packet, if
+             received before clearing VTRX, is held.*/
+          usbp->dblboth &= (uint16_t)~(1U << ep);
+          if (((chepr & USB_EP_VTRX) == 0U) &&
+              (((chepr & USB_EP_DTOG_RX) != 0U) ==
+               ((chepr & USB_EP_SWBUF_RX) != 0U))) {
+            usbp->dblheld |= (uint16_t)(1U << ep);
+          }
+          usb_dbl_serve_out(usbp, ep,
+                            (chepr & USB_EP_SWBUF_RX) != 0U ? 1U : 0U, false);
+          usb_dbl_serve_held(usbp);
+        }
+        else {
+          /* The peripheral toggled DTOG_RX after filling the buffer.*/
+          usb_dbl_serve_out(usbp, ep,
+                            (chepr & USB_EP_DTOG_RX) != 0U ? 0U : 1U, true);
+        }
         return;
       }
 #endif
@@ -725,6 +1080,12 @@ void usb_lld_reset(USBDriver *usbp) {
   /* Resets the packet memory allocator.*/
   usb_pm_reset(usbp);
 
+#if STM32_USB_USE_DOUBLE_BUFFERING
+  usbp->dblcap  = 0U;
+  usbp->dblboth = 0U;
+  usbp->dblheld = 0U;
+#endif
+
   /* EP0 initialization.*/
   usbp->epc[0] = &ep0config;
   usb_lld_init_endpoint(usbp, 0U);
@@ -781,9 +1142,29 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
 
   dp = USB_GET_DESCRIPTOR(ep);
 
+#if STM32_USB_USE_DOUBLE_BUFFERING
+  /* Unidirectional bulk endpoints with two buffers can be double-buffered,
+     they start in the single-buffered mode.*/
+  usbp->dblboth &= (uint16_t)~(1U << ep);
+  usbp->dblheld &= (uint16_t)~(1U << ep);
+  if ((chepr == USB_EP_BULK) && (epcp->ep_buffers >= 2U) &&
+      ((epcp->in_state == NULL) != (epcp->out_state == NULL))) {
+    usbp->dblcap |= (uint16_t)(1U << ep);
+  }
+  else {
+    usbp->dblcap &= (uint16_t)~(1U << ep);
+  }
+#endif
+
   /* IN endpoint handling.*/
   if (epcp->in_state != NULL) {
     dp->TXBD0 = usb_pm_alloc(usbp, epcp->in_maxsize);
+#if STM32_USB_USE_DOUBLE_BUFFERING
+    if ((usbp->dblcap & (1U << ep)) != 0U) {
+      /* Second buffer in the RX fields.*/
+      dp->RXBD0 = usb_pm_alloc(usbp, epcp->in_maxsize);
+    }
+#endif
 
 #if STM32_USB_USE_ISOCHRONOUS
     if (chepr == USB_EP_ISOCHRONOUS) {
@@ -813,6 +1194,14 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
     /* Reserve all bytes the hardware can write, including block rounding.*/
     dp->RXBD0 = nblocks |
                 usb_pm_alloc(usbp, usb_pm_rx_size(epcp->out_maxsize));
+#if STM32_USB_USE_DOUBLE_BUFFERING
+    if ((usbp->dblcap & (1U << ep)) != 0U) {
+      /* First buffer in the TX fields, the single-buffered mode uses the
+         RX fields.*/
+      dp->TXBD0 = nblocks |
+                  usb_pm_alloc(usbp, usb_pm_rx_size(epcp->out_maxsize));
+    }
+#endif
 
 #if STM32_USB_USE_ISOCHRONOUS
     if (chepr == USB_EP_ISOCHRONOUS) {
@@ -830,6 +1219,16 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
   /* CHEPxR register cleared and initialized, writing back the toggle bits
      clears them, data toggles restart from DATA0.*/
   usbp->usb->CHEPR[ep] = usbp->usb->CHEPR[ep];
+#if STM32_USB_USE_DOUBLE_BUFFERING
+  /* The blocking condition of a previous double-buffered use can survive
+     the register clear, writing SW_BUF while it differs from DTOG clears
+     it. Both directions, SW_BUF and DTOG back to zero.*/
+  usbp->usb->CHEPR[ep] = 0U;
+  CHEPR_TOGGLE(usbp, ep, USB_EP_SWBUF_TX);
+  CHEPR_TOGGLE(usbp, ep, USB_EP_SWBUF_TX);
+  CHEPR_TOGGLE(usbp, ep, USB_EP_SWBUF_RX);
+  CHEPR_TOGGLE(usbp, ep, USB_EP_SWBUF_RX);
+#endif
   usbp->usb->CHEPR[ep] = chepr | ep;
 }
 
@@ -846,6 +1245,12 @@ void usb_lld_disable_endpoints(USBDriver *usbp) {
   /* Resets the packet memory allocator without releasing the still-active
      endpoint-zero buffers.*/
   usb_pm_reset_after_ep0(usbp);
+
+#if STM32_USB_USE_DOUBLE_BUFFERING
+  usbp->dblcap  = 0U;
+  usbp->dblboth = 0U;
+  usbp->dblheld = 0U;
+#endif
 
   /* Disabling all endpoints.*/
   for (i = 1U; i <= (unsigned)USB_ENDPOINTS_NUMBER; i++) {
@@ -958,6 +1363,33 @@ void usb_lld_start_out(USBDriver *usbp, usbep_t ep) {
     osp->rxpkts = (uint16_t)((osp->rxsize + usbp->epc[ep]->out_maxsize - 1U)/
                              usbp->epc[ep]->out_maxsize);
 
+#if STM32_USB_USE_DOUBLE_BUFFERING
+  if ((usbp->dblcap & (1U << ep)) != 0U) {
+    uint32_t chepr = usbp->usb->CHEPR[ep];
+
+    if ((chepr & USB_EP_KIND) != 0U) {
+      if ((usbp->dblheld & (1U << ep)) != 0U) {
+        /* A held packet is served by the interrupt handler.*/
+        nvicSetPending(USB_IRQ_NUMBER);
+      }
+      else if (((chepr & USB_EP_VTRX) == 0U) &&
+               (((chepr & USB_EP_SWBUF_RX) != 0U) ==
+                ((chepr & USB_EP_DTOG_RX) != 0U))) {
+        /* An idle endpoint has SW_BUF equal to DTOG_RX, a buffer is
+           released to the peripheral. A packet received and not served
+           yet is served by the interrupt handler, it releases the buffer.*/
+        CHEPR_TOGGLE(usbp, ep, USB_EP_SWBUF_RX);
+      }
+      return;
+    }
+    if (osp->rxpkts > 1U) {
+      usb_dbl_enter(usbp, ep, USB_EP_DTOG_RX, USB_EP_SWBUF_RX,
+                    USB_CHEP_RX_STRX_Msk);
+      return;
+    }
+  }
+#endif
+
   CHEPR_SET_STATRX(usbp, ep, USB_EP_RX_VALID);
 }
 
@@ -972,6 +1404,45 @@ void usb_lld_start_out(USBDriver *usbp, usbep_t ep) {
 void usb_lld_start_in(USBDriver *usbp, usbep_t ep) {
   size_t n;
   USBInEndpointState *isp = usbp->epc[ep]->in_state;
+
+#if STM32_USB_USE_DOUBLE_BUFFERING
+  if ((usbp->dblcap & (1U << ep)) != 0U) {
+    uint32_t chepr = usbp->usb->CHEPR[ep];
+
+    isp->txlast = 0U;
+    isp->txnext = 0U;
+    if ((chepr & USB_EP_KIND) != 0U) {
+      /* A packet left released by an aborted transfer is recalled.*/
+      if (((chepr & USB_EP_SWBUF_TX) != 0U) !=
+          ((chepr & USB_EP_DTOG_TX) != 0U)) {
+        CHEPR_TOGGLE(usbp, ep, USB_EP_SWBUF_TX);
+        chepr ^= USB_EP_SWBUF_TX;
+      }
+
+      /* The first packet is written and released, the second one, if any,
+         is written in the other buffer.*/
+      isp->txlast = usb_dbl_write(usbp, ep,
+                                  (chepr & USB_EP_SWBUF_TX) != 0U ? 1U : 0U);
+      CHEPR_TOGGLE(usbp, ep, USB_EP_SWBUF_TX);
+      if (isp->txlast < isp->txsize) {
+        isp->txnext = usb_dbl_write(usbp, ep,
+                                    (chepr & USB_EP_SWBUF_TX) != 0U ? 0U : 1U);
+      }
+      return;
+    }
+    if (isp->txsize > (size_t)usbp->epc[ep]->in_maxsize) {
+      /* The first two packets are written in the buffer selected by
+         DTOG_TX and in the other one.*/
+      uint32_t b = (chepr & USB_EP_DTOG_TX) != 0U ? 1U : 0U;
+
+      isp->txlast = usb_dbl_write(usbp, ep, b);
+      isp->txnext = usb_dbl_write(usbp, ep, b ^ 1U);
+      usb_dbl_enter(usbp, ep, USB_EP_DTOG_TX, USB_EP_SWBUF_TX,
+                    USB_CHEP_TX_STTX_Msk);
+      return;
+    }
+  }
+#endif
 
   /* Transfer initialization.*/
   n = isp->txsize;
@@ -994,7 +1465,15 @@ void usb_lld_start_in(USBDriver *usbp, usbep_t ep) {
  */
 void usb_lld_stall_out(USBDriver *usbp, usbep_t ep) {
 
-  (void)usbp;
+#if STM32_USB_USE_DOUBLE_BUFFERING
+  if (CHEPR_IS_DBL_BUF(usbp->usb->CHEPR[ep])) {
+    /* The stored status is either STALL or VALID.*/
+    if ((usbp->usb->CHEPR[ep] & USB_CHEP_RX_STRX_Msk) != USB_EP_RX_STALL) {
+      CHEPR_TOGGLE(usbp, ep, USB_EP_RX_VALID ^ USB_EP_RX_STALL);
+    }
+    return;
+  }
+#endif
 
   CHEPR_SET_STATRX(usbp, ep, USB_EP_RX_STALL);
 }
@@ -1009,7 +1488,15 @@ void usb_lld_stall_out(USBDriver *usbp, usbep_t ep) {
  */
 void usb_lld_stall_in(USBDriver *usbp, usbep_t ep) {
 
-  (void)usbp;
+#if STM32_USB_USE_DOUBLE_BUFFERING
+  if (CHEPR_IS_DBL_BUF(usbp->usb->CHEPR[ep])) {
+    /* The stored status is either STALL or VALID.*/
+    if ((usbp->usb->CHEPR[ep] & USB_CHEP_TX_STTX_Msk) != USB_EP_TX_STALL) {
+      CHEPR_TOGGLE(usbp, ep, USB_EP_TX_VALID ^ USB_EP_TX_STALL);
+    }
+    return;
+  }
+#endif
 
   CHEPR_SET_STATTX(usbp, ep, USB_EP_TX_STALL);
 }
@@ -1024,6 +1511,37 @@ void usb_lld_stall_in(USBDriver *usbp, usbep_t ep) {
  */
 void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
   uint32_t utype = usbp->usb->CHEPR[ep] & USB_CHEP_UTYPE_Msk;
+
+#if STM32_USB_USE_DOUBLE_BUFFERING
+  if (CHEPR_IS_DBL_BUF(usbp->usb->CHEPR[ep])) {
+    syssts_t sts = osalSysGetStatusAndLockX();
+    uint32_t chepr, valid = 0U;
+
+    /* Back to the single-buffered mode, it uses the RX fields. A packet
+       not served yet, in the buffer DTOG_RX does not select, is moved
+       there. Without a transfer in progress it is discarded as a held
+       packet.*/
+    chepr = usb_dbl_stop(usbp, ep, USB_CHEP_RX_STRX_Msk, USB_EP_RX_STALL);
+    if ((chepr & USB_EP_VTRX) != 0U) {
+      if ((usbp->receiving & (1U << ep)) == 0U) {
+        CHEPR_CLEAR_VTRX(usbp, ep);
+      }
+      else if ((chepr & USB_EP_DTOG_RX) != 0U) {
+        usb_dbl_swap(ep);
+      }
+    }
+
+    /* A transfer in progress goes on unless the endpoint was stalled or a
+       packet is not served yet.*/
+    if (((chepr & (USB_EP_VTRX | USB_CHEP_RX_STRX_Msk)) == USB_EP_RX_VALID) &&
+        ((usbp->receiving & (1U << ep)) != 0U)) {
+      valid = USB_EP_RX_VALID ^ USB_EP_RX_NAK;
+    }
+    usb_dbl_exit(usbp, ep, USB_EP_DTOG_RX, USB_EP_SWBUF_RX, valid);
+    osalSysRestoreStatusX(sts);
+    return;
+  }
+#endif
 
   /* CLEAR_FEATURE(ENDPOINT_HALT) also resets the data toggle.*/
   if ((utype == USB_EP_BULK) || (utype == USB_EP_INTERRUPT)) {
@@ -1047,6 +1565,50 @@ void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
  */
 void usb_lld_clear_in(USBDriver *usbp, usbep_t ep) {
   uint32_t utype = usbp->usb->CHEPR[ep] & USB_CHEP_UTYPE_Msk;
+
+#if STM32_USB_USE_DOUBLE_BUFFERING
+  if (CHEPR_IS_DBL_BUF(usbp->usb->CHEPR[ep])) {
+    USBInEndpointState *isp = usbp->epc[ep]->in_state;
+    syssts_t sts = osalSysGetStatusAndLockX();
+    bool both = (usbp->dblboth & (1U << ep)) != 0U;
+    uint32_t chepr, valid = 0U;
+
+    /* Back to the single-buffered mode.*/
+    chepr = usb_dbl_stop(usbp, ep, USB_CHEP_TX_STTX_Msk, USB_EP_TX_STALL);
+    if (both &&
+        ((((chepr & USB_EP_DTOG_TX) != 0U) !=
+          ((chepr & USB_EP_SWBUF_TX) != 0U)) !=
+         ((chepr & USB_EP_VTTX) != 0U))) {
+      /* Both buffers were owned by the peripheral, the first packet has
+         been sent and its event served.*/
+      isp->txcnt += isp->txlast;
+      isp->txlast = isp->txnext;
+      isp->txnext = 0U;
+    }
+
+    /* The single-buffered code expects the buffer pointer on the last
+       packet, the following one is written again.*/
+    isp->txbuf -= isp->txlast + isp->txnext;
+    isp->txnext = 0U;
+
+    /* The packet owned by the peripheral, in the buffer selected by
+       DTOG_TX, is moved in the TX fields. If its event is not served yet
+       then it has been sent.*/
+    if (((chepr & USB_EP_VTTX) == 0U) && ((chepr & USB_EP_DTOG_TX) != 0U)) {
+      usb_dbl_swap(ep);
+    }
+
+    /* A transfer in progress goes on unless the endpoint was stalled or an
+       event is not served yet.*/
+    if (((chepr & (USB_EP_VTTX | USB_CHEP_TX_STTX_Msk)) == USB_EP_TX_VALID) &&
+        ((usbp->transmitting & (1U << ep)) != 0U)) {
+      valid = USB_EP_TX_VALID ^ USB_EP_TX_NAK;
+    }
+    usb_dbl_exit(usbp, ep, USB_EP_DTOG_TX, USB_EP_SWBUF_TX, valid);
+    osalSysRestoreStatusX(sts);
+    return;
+  }
+#endif
 
   /* CLEAR_FEATURE(ENDPOINT_HALT) also resets the data toggle.*/
   if ((utype == USB_EP_BULK) || (utype == USB_EP_INTERRUPT)) {
@@ -1105,6 +1667,14 @@ void usb_lld_serve_interrupt(USBDriver *usbp) {
   if ((istr & USB_ISTR_ERR) != 0U) {
     /* CHTODO */
   }
+
+#if STM32_USB_USE_DOUBLE_BUFFERING
+  /* Held packets of double-buffered endpoints, served when a transfer has
+     been started.*/
+  if (usbp->dblheld != 0U) {
+    usb_dbl_serve_held(usbp);
+  }
+#endif
 
   /* Endpoint events handling.*/
   while ((istr & USB_ISTR_CTR) != 0U) {
