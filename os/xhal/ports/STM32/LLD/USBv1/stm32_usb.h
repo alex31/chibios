@@ -210,6 +210,10 @@ typedef struct {
   STM32_USB->EPR[ep] = (STM32_USB->EPR[ep] & ~EPR_CTR_TX & ~EPR_TOGGLE_MASK)\
                        | EPR_CTR_RX
 
+#define EPR_TOGGLE(ep, epr)                                                 \
+  STM32_USB->EPR[ep] = (STM32_USB->EPR[ep] & ~EPR_TOGGLE_MASK) |            \
+                       EPR_CTR_MASK | (epr)
+
 /**
  * @brief   Returns an endpoint descriptor pointer.
  */
