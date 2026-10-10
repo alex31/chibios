@@ -516,30 +516,34 @@ static uint32_t usb_dbl_stop(USBDriver *usbp, usbep_t ep, uint32_t stat,
 
 /**
  * @brief   Leaves the double-buffered mode.
- * @details The data toggle is reset. The blocking condition still applies
- *          in the single-buffered mode, SW_BUF is written while it differs
- *          from DTOG in order to clear it.
+ * @details The data toggle is reset when the halt is cleared, it is kept
+ *          when the transfers are aborted on suspend. The blocking
+ *          condition still applies in the single-buffered mode, SW_BUF is
+ *          written leaving it different from DTOG in order to clear it.
  *
  * @param[in] ep        endpoint number
  * @param[in] dtog      DTOG bit of the endpoint direction
  * @param[in] sw        SW_BUF bit of the endpoint direction
- * @param[in] valid     STAT toggles making the endpoint valid, zero for
- *                      leaving it in NAK state
+ * @param[in] stat      STAT toggles applied from the NAK state, zero for
+ *                      leaving the endpoint in NAK state
+ * @param[in] reset     the data toggle is reset
  *
  * @notapi
  */
 static void usb_dbl_exit(usbep_t ep, uint32_t dtog, uint32_t sw,
-                         uint32_t valid) {
+                         uint32_t stat, bool reset) {
+  uint32_t epr;
 
-  if ((STM32_USB->EPR[ep] & dtog) != 0U) {
+  if (reset && ((STM32_USB->EPR[ep] & dtog) != 0U)) {
     EPR_TOGGLE(ep, dtog);
   }
-  if ((STM32_USB->EPR[ep] & sw) != 0U) {
+  epr = STM32_USB->EPR[ep];
+  if (((epr & sw) != 0U) != ((epr & dtog) != 0U)) {
     EPR_TOGGLE(ep, sw);
   }
   EPR_TOGGLE(ep, sw);
   STM32_USB->EPR[ep] = (STM32_USB->EPR[ep] & ~EPR_TOGGLE_MASK &
-                        ~EPR_EP_DBL_BUF) | EPR_CTR_MASK | valid;
+                        ~EPR_EP_DBL_BUF) | EPR_CTR_MASK | stat;
 }
 
 /**
@@ -609,6 +613,49 @@ static void usb_dbl_serve_held(USBDriver *usbp) {
       usb_dbl_serve_out(usbp, ep,
                         (STM32_USB->EPR[ep] & EPR_DTOG_RX) != 0U ? 0U : 1U,
                         true);
+    }
+  }
+}
+
+/**
+ * @brief   Aborts the double-buffered endpoints.
+ * @details The transfers are aborted by the frontend on suspend, the
+ *          double-buffered endpoints go back to the single-buffered mode
+ *          and a packet not served yet is discarded. The halts and the data
+ *          toggles are kept, the host does not reset the toggles.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ *
+ * @iclass
+ */
+static void usb_dbl_abort_i(USBDriver *usbp) {
+  usbep_t ep;
+
+  for (ep = 1U; ep <= (usbep_t)USB_ENDPOINTS_NUMBER; ep++) {
+    uint32_t epr = STM32_USB->EPR[ep];
+
+    if (((usbp->dblcap & (1U << ep)) == 0U) ||
+        ((epr & EPR_EP_DBL_BUF) == 0U)) {
+      continue;
+    }
+    if (usbp->epc[ep]->in_state != NULL) {
+      epr = usb_dbl_stop(usbp, ep, EPR_STAT_TX_MASK, EPR_STAT_TX_STALL);
+      if ((epr & EPR_CTR_TX) != 0U) {
+        EPR_CLEAR_CTR_TX(ep);
+      }
+      usbp->epc[ep]->in_state->txnext = 0U;
+      usb_dbl_exit(ep, EPR_DTOG_TX, EPR_SWBUF_TX,
+                   (epr & EPR_STAT_TX_MASK) == EPR_STAT_TX_STALL ?
+                   EPR_STAT_TX_STALL ^ EPR_STAT_TX_NAK : 0U, false);
+    }
+    else {
+      epr = usb_dbl_stop(usbp, ep, EPR_STAT_RX_MASK, EPR_STAT_RX_STALL);
+      if ((epr & EPR_CTR_RX) != 0U) {
+        EPR_CLEAR_CTR_RX(ep);
+      }
+      usb_dbl_exit(ep, EPR_DTOG_RX, EPR_SWBUF_RX,
+                   (epr & EPR_STAT_RX_MASK) == EPR_STAT_RX_STALL ?
+                   EPR_STAT_RX_STALL ^ EPR_STAT_RX_NAK : 0U, false);
     }
   }
 }
@@ -856,6 +903,13 @@ static void usb_serve_interrupt(USBDriver *usbp) {
 
   /* USB bus SUSPEND condition handling.*/
   if ((istr & ISTR_SUSP) != 0U) {
+#if STM32_USB_USE_DOUBLE_BUFFERING
+    /* The transfers are aborted by the frontend, the double-buffered
+       endpoints are stopped.*/
+    osalSysLockFromISR();
+    usb_dbl_abort_i(usbp);
+    osalSysUnlockFromISR();
+#endif
     STM32_USB->CNTR |= CNTR_FSUSP;
 #if STM32_USB_LOW_POWER_ON_SUSPEND
     STM32_USB->CNTR |= CNTR_LP_MODE;
@@ -1504,7 +1558,7 @@ void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
         ((usbp->receiving & (1U << ep)) != 0U)) {
       valid = EPR_STAT_RX_VALID ^ EPR_STAT_RX_NAK;
     }
-    usb_dbl_exit(ep, EPR_DTOG_RX, EPR_SWBUF_RX, valid);
+    usb_dbl_exit(ep, EPR_DTOG_RX, EPR_SWBUF_RX, valid, true);
     osalSysRestoreStatusX(sts);
     return;
   }
@@ -1571,7 +1625,7 @@ void usb_lld_clear_in(USBDriver *usbp, usbep_t ep) {
         ((usbp->transmitting & (1U << ep)) != 0U)) {
       valid = EPR_STAT_TX_VALID ^ EPR_STAT_TX_NAK;
     }
-    usb_dbl_exit(ep, EPR_DTOG_TX, EPR_SWBUF_TX, valid);
+    usb_dbl_exit(ep, EPR_DTOG_TX, EPR_SWBUF_TX, valid, true);
     osalSysRestoreStatusX(sts);
     return;
   }

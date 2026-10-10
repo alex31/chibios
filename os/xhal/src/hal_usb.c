@@ -108,7 +108,18 @@ static void usb_post_events_i(hal_usb_driver_c *usbp, usbeventflags_t flags) {
   }
 }
 
-static void setup_reset(hal_usb_driver_c *usbp) {
+/**
+ * @brief       Resets the setup state machine.
+ * @note        Invoked under lock, a higher priority USB handler can preempt
+ *              the caller and update the other busy bits.
+ *
+ * @param[in,out] usbp          USB driver instance.
+ *
+ * @iclass
+ */
+static void setup_reset_i(hal_usb_driver_c *usbp) {
+  chDbgCheckClassI();
+
   usbp->receiving &= ~1U;
   usbp->transmitting &= ~1U;
   usbp->ep0n = 0U;
@@ -116,12 +127,21 @@ static void setup_reset(hal_usb_driver_c *usbp) {
   usbp->ep0state = USB_EP0_STP_WAITING;
 }
 
-static void setup_error(hal_usb_driver_c *usbp) {
+/**
+ * @brief       Sets the setup state machine in error state.
+ * @note        Invoked under lock, a higher priority USB handler can preempt
+ *              the caller and update the other busy bits.
+ *
+ * @param[in,out] usbp          USB driver instance.
+ *
+ * @iclass
+ */
+static void setup_error_i(hal_usb_driver_c *usbp) {
+  chDbgCheckClassI();
+
   usb_lld_stall_in(usbp, 0U);
   usb_lld_stall_out(usbp, 0U);
-  chSysLockFromISR();
   usb_post_events_i(usbp, USB_FLAGS_STALLED);
-  chSysUnlockFromISR();
   usbp->receiving &= ~1U;
   usbp->transmitting &= ~1U;
   usbp->ep0n = 0U;
@@ -936,12 +956,11 @@ void _usb_ep0setup(hal_usb_driver_c *usbp, usbep_t ep) {
 
   chDbgAssert(ep == 0U, "EP not zero");
 
+  chSysLockFromISR();
   if (usbp->ep0state != USB_EP0_STP_WAITING) {
-    setup_reset(usbp);
+    setup_reset_i(usbp);
     msg = MSG_RESET;
   }
-
-  chSysLockFromISR();
   usbReadSetupI(usbp, 0U, usbp->setup);
   ep0_signal_setup_i(usbp, msg);
   chSysUnlockFromISR();
@@ -982,16 +1001,16 @@ void _usb_ep0in(hal_usb_driver_c *usbp, usbep_t ep) {
     if (usbp->ep0endcb != NULL) {
       usbp->ep0endcb(usbp);
     }
-    setup_reset(usbp);
     chSysLockFromISR();
+    setup_reset_i(usbp);
     ep0_resume_waiter_i(usbp, MSG_OK);
     chSysUnlockFromISR();
     return;
   case USB_EP0_OUT_WAITING_STS:
     return;
   case USB_EP0_ERROR:
-    setup_error(usbp);
     chSysLockFromISR();
+    setup_error_i(usbp);
     ep0_signal_reset_i(usbp);
     chSysUnlockFromISR();
     return;
@@ -1025,16 +1044,16 @@ void _usb_ep0out(hal_usb_driver_c *usbp, usbep_t ep) {
     if (usbp->ep0endcb != NULL) {
       usbp->ep0endcb(usbp);
     }
-    setup_reset(usbp);
     chSysLockFromISR();
+    setup_reset_i(usbp);
     ep0_resume_waiter_i(usbp, MSG_OK);
     chSysUnlockFromISR();
     return;
   case USB_EP0_IN_TX:
     return;
   case USB_EP0_ERROR:
-    setup_error(usbp);
     chSysLockFromISR();
+    setup_error_i(usbp);
     ep0_signal_reset_i(usbp);
     chSysUnlockFromISR();
     return;

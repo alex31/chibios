@@ -319,7 +319,11 @@
   do {                                                                      \
     /* The callback can disable the endpoint, the state is taken before.*/  \
     USBInEndpointState *cb_isp = (usbp)->epc[ep]->in_state;                 \
+    /* Cleared under lock, a higher priority USB handler can preempt        \
+       this one and update the other bits.*/                                \
+    chSysLockFromISR();                                                     \
     (usbp)->transmitting &= ~(uint16_t)((unsigned)1U << (unsigned)(ep));    \
+    chSysUnlockFromISR();                                                   \
     if ((usbp)->epc[ep]->in_cb != NULL) {                                   \
       (usbp)->epc[ep]->in_cb(usbp, ep);                                     \
     }                                                                       \
@@ -342,7 +346,11 @@
        size are taken before.*/                                             \
     USBOutEndpointState *cb_osp = (usbp)->epc[ep]->out_state;               \
     size_t cb_n = usbGetReceiveTransactionSizeX(usbp, ep);                  \
+    /* Cleared under lock, a higher priority USB handler can preempt        \
+       this one and update the other bits.*/                                \
+    chSysLockFromISR();                                                     \
     (usbp)->receiving &= ~(uint16_t)((unsigned)1U << (unsigned)(ep));       \
+    chSysUnlockFromISR();                                                   \
     if ((usbp)->epc[ep]->out_cb != NULL) {                                  \
       (usbp)->epc[ep]->out_cb(usbp, ep);                                    \
     }                                                                       \
@@ -354,14 +362,22 @@
 #else
 #define _usb_isr_invoke_in_cb(usbp, ep)                                     \
   do {                                                                      \
+    /* Cleared under lock, a higher priority USB handler can preempt        \
+       this one and update the other bits.*/                                \
+    chSysLockFromISR();                                                     \
     (usbp)->transmitting &= ~(uint16_t)((unsigned)1U << (unsigned)(ep));    \
+    chSysUnlockFromISR();                                                   \
     if ((usbp)->epc[ep]->in_cb != NULL) {                                   \
       (usbp)->epc[ep]->in_cb(usbp, ep);                                     \
     }                                                                       \
   } while (false)
 #define _usb_isr_invoke_out_cb(usbp, ep)                                    \
   do {                                                                      \
+    /* Cleared under lock, a higher priority USB handler can preempt        \
+       this one and update the other bits.*/                                \
+    chSysLockFromISR();                                                     \
     (usbp)->receiving &= ~(uint16_t)((unsigned)1U << (unsigned)(ep));       \
+    chSysUnlockFromISR();                                                   \
     if ((usbp)->epc[ep]->out_cb != NULL) {                                  \
       (usbp)->epc[ep]->out_cb(usbp, ep);                                    \
     }                                                                       \
