@@ -1590,11 +1590,12 @@ bool stm32_otg2_phy_start(void) {
        SYSCFG_OTGHSPHYTUNER2_SQRXTUNE_Msk)) |
     SYSCFG_OTGHSPHYTUNER2_COMPDISTUNE_1;
 
-  /* The digital and analog PHY blocks require separate startup delays.*/
+  /* The digital and analog PHY blocks require separate startup delays,
+     2ms each.*/
   SYSCFG->OTGHSPHYCR |= SYSCFG_OTGHSPHYCR_EN;
-  osalSysPolledDelayX(OSAL_MS2RTC(STM32_HCLK, 2U));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 2000U));
   SYSCFG->OTGHSPHYCR |= SYSCFG_OTGHSPHYCR_PDCTRL;
-  osalSysPolledDelayX(OSAL_MS2RTC(STM32_HCLK, 2U));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 2000U));
 
   return false;
 }
