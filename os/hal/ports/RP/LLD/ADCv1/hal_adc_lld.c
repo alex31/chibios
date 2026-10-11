@@ -79,17 +79,12 @@ static void adc_lld_drain_fifo(ADC_TypeDef *adc) {
 }
 
 /**
- * @brief   ADC DMA service routine.
- * @details In linear mode the ADC is stopped by the stop channel chained
- *          to the data channel, a single DMA transfer after the end of the
- *          data transfer, long before the FIFO could fill up again. The
- *          FIFO status checked here therefore covers the transfer and not
- *          the conversions which would otherwise continue until this
- *          routine is served, whatever its latency.
- * @note    The conversion already in progress when the stop channel clears
- *          START_MANY still completes, an error in that conversion is
- *          reported as @p ADC_ERR_CONVERSION although it is not part of
- *          the transfer.
+ * @brief   ADC data DMA channel service routine.
+ * @details In circular mode the completion of the data channel re-arms it
+ *          and reports the completed half or the full buffer. In linear
+ *          mode only the errors of the data transfer are served here, the
+ *          conversion is completed by the stop channel, see
+ *          @p adc_lld_serve_stop_interrupt().
  *
  * @param[in] p         parameter for the registered function
  * @param[in] ct        content of the CTRL_TRIG register
@@ -102,19 +97,13 @@ static void adc_lld_serve_dma_interrupt(void *p, uint32_t ct) {
     _adc_isr_error_code(adcp, ADC_ERR_DMAFAILURE);
   }
   else {
-    /* Conversion group may have been reset by error handler.*/
-    if (adcp->grpp != NULL) {
+    /* Conversion group may have been reset by error handler, linear
+       conversions are completed by the stop channel.*/
+    if ((adcp->grpp != NULL) && adcp->grpp->circular) {
       /* Checking for DMA transfer complete.*/
       if ((ct & DMA_CTRL_TRIG_BUSY) == 0U) {
         /* Check for ADC-level errors during transfer.*/
         adcerror_t emask = 0U;
-        if (!adcp->grpp->circular &&
-            ((adcp->dmastop->channel->CTRL_TRIG &
-              (DMA_CTRL_TRIG_READ_ERROR | DMA_CTRL_TRIG_WRITE_ERROR)) != 0U)) {
-          /* The stop channel failed, the ADC is only stopped by the
-             error handling below.*/
-          emask |= ADC_ERR_DMAFAILURE;
-        }
         if ((adcp->adc->FCS & ADC_FCS_OVER) != 0U) {
           emask |= ADC_ERR_OVERFLOW;
         }
@@ -124,7 +113,7 @@ static void adc_lld_serve_dma_interrupt(void *p, uint32_t ct) {
         if (emask != 0U) {
           _adc_isr_error_code(adcp, emask);
         }
-        else if (adcp->grpp->circular) {
+        else {
           /* Circular mode: re-arm DMA before callback.*/
           const ADCConversionGroup *grpp = adcp->grpp;
           size_t total = (size_t)grpp->num_channels * adcp->depth;
@@ -167,11 +156,55 @@ static void adc_lld_serve_dma_interrupt(void *p, uint32_t ct) {
             _adc_isr_full_code(adcp);
           }
         }
-        else {
-          /* Linear mode: transfer complete.*/
-          _adc_isr_full_code(adcp);
-        }
       }
+    }
+  }
+}
+
+/**
+ * @brief   ADC stop DMA channel service routine.
+ * @details Completes linear conversions. The stop channel is chained to
+ *          the data channel and clears START_MANY with a single transfer
+ *          after the end of the data transfer, its completion therefore
+ *          follows the completion of the data transfer. The ADC is
+ *          stopped when this routine runs, the FIFO status checked here
+ *          covers the transfer and the conversions up to the stop
+ *          transfer, not the conversions which would otherwise continue
+ *          until the completion is served, whatever its latency.
+ * @note    The conversion already in progress when the stop channel clears
+ *          START_MANY still completes, an error in that conversion is
+ *          reported as @p ADC_ERR_CONVERSION although it is not part of
+ *          the transfer.
+ * @note    The conversions continue until the stop transfer, if that
+ *          transfer is delayed until they fill the FIFO an overflow is
+ *          reported.
+ *
+ * @param[in] p         parameter for the registered function
+ * @param[in] ct        content of the CTRL_TRIG register
+ */
+static void adc_lld_serve_stop_interrupt(void *p, uint32_t ct) {
+  ADCDriver *adcp = (ADCDriver *)p;
+
+  /* Conversion group may have been reset by error handler.*/
+  if ((adcp->grpp != NULL) && !adcp->grpp->circular) {
+    adcerror_t emask = 0U;
+
+    if ((ct & (DMA_CTRL_TRIG_READ_ERROR | DMA_CTRL_TRIG_WRITE_ERROR)) != 0U) {
+      /* The stop transfer failed, the ADC is only stopped by the error
+         handling below.*/
+      emask |= ADC_ERR_DMAFAILURE;
+    }
+    if ((adcp->adc->FCS & ADC_FCS_OVER) != 0U) {
+      emask |= ADC_ERR_OVERFLOW;
+    }
+    if ((adcp->adc->CS & ADC_CS_ERR_STICKY) != 0U) {
+      emask |= ADC_ERR_CONVERSION;
+    }
+    if (emask != 0U) {
+      _adc_isr_error_code(adcp, emask);
+    }
+    else {
+      _adc_isr_full_code(adcp);
     }
   }
 }
@@ -236,8 +269,8 @@ msg_t adc_lld_start(ADCDriver *adcp) {
       }
       adcp->dmastop = dmaChannelAllocI(RP_DMA_CHANNEL_ID_ANY,
                                        RP_ADC_ADC1_DMA_IRQ_PRIORITY,
-                                       NULL,
-                                       NULL);
+                                       adc_lld_serve_stop_interrupt,
+                                       (void *)adcp);
       if (adcp->dmastop == NULL) {
         dmaChannelFreeI(adcp->dma);
         adcp->dma = NULL;
@@ -407,6 +440,9 @@ void adc_lld_start_conversion(ADCDriver *adcp) {
     adcp->dma->channel->AL1_CTRL =
       (mode & ~DMA_CTRL_TRIG_CHAIN_TO_Msk) |
       DMA_CTRL_TRIG_CHAIN_TO(adcp->dmastop->chnidx);
+
+    /* The stop channel completion terminates the conversion.*/
+    dmaChannelEnableInterruptX(adcp->dmastop);
   }
 
   /* Enable DMA channel interrupt.*/
@@ -438,6 +474,7 @@ void adc_lld_stop_conversion(ADCDriver *adcp) {
   /* The stop channel is disabled first so that a completion of the data
      channel cannot chain into it during the teardown.*/
   dmaChannelDisableX(adcp->dmastop);
+  dmaChannelDisableInterruptX(adcp->dmastop);
 
   /* Disable DMA channel.*/
   dmaChannelDisableX(adcp->dma);
