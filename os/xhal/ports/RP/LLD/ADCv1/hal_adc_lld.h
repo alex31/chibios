@@ -266,7 +266,7 @@ typedef uint32_t adcerror_t;
   const rp_dma_channel_t    *dma;                                           \
   /* Pointer to the second DMA channel chained to the first one, the       \
      ping-pong partner of circular conversions or the stop channel of      \
-     linear conversions.*/                                                  \
+     linear conversions, whose completion terminates them.*/               \
   const rp_dma_channel_t    *dma2;                                          \
   /* DMA mode bit mask.*/                                                   \
   uint32_t                  dmamode;                                        \

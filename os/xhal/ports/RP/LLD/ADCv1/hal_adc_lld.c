@@ -186,18 +186,10 @@ static void adc_lld_drain_fifo(ADC_TypeDef *adc) {
  *          immediately, without any re-arm dependency on this routine,
  *          which only reprograms the just-completed channel for its
  *          next turn and then invokes @p _adc_isr_half_code() or
- *          @p _adc_isr_full_code(). In linear mode the completion of
- *          the main channel invokes @p _adc_isr_full_code() which
- *          terminates the conversion. The ADC is stopped by the second
- *          channel chained to the main one, a single DMA transfer after
- *          the end of the main transfer, long before the FIFO could fill
- *          up again. The FIFO status checked here therefore covers the
- *          transfer and not the conversions which would otherwise
- *          continue until this routine is served, whatever its latency.
- * @note    In linear mode the conversion already in progress when the
- *          second channel clears START_MANY still completes, an error in
- *          that conversion is reported as @p ADC_ERR_CONVERSION although
- *          it is not part of the transfer.
+ *          @p _adc_isr_full_code(). In linear mode only the errors of
+ *          the main channel transfer are served here, the conversion is
+ *          completed by the second channel, see
+ *          @p adc_lld_serve_stop_interrupt().
  * @note    The reprogramming of a completed channel must happen before
  *          the partner channel completion chains back into it, that is
  *          within one half-buffer period instead of the FIFO depth
@@ -237,19 +229,13 @@ static void adc_lld_serve_channel_interrupt(hal_adc_driver_c *adcp,
     _adc_isr_error_code(adcp, ADC_ERR_DMAFAILURE);
   }
   else {
-    /* Conversion group may have been reset by error handler.*/
-    if (adcp->grpp != NULL) {
+    /* Conversion group may have been reset by error handler, linear
+       conversions are completed by the second channel.*/
+    if ((adcp->grpp != NULL) && (adcp->state == ADC_ACTIVE_CIRCULAR)) {
       /* Checking for DMA transfer complete.*/
       if ((ct & DMA_CTRL_TRIG_BUSY) == 0U) {
         /* Check for ADC-level errors during transfer.*/
         adcerror_t emask = 0U;
-        if ((adcp->state != ADC_ACTIVE_CIRCULAR) &&
-            ((adcp->dma2->channel->CTRL_TRIG &
-              (DMA_CTRL_TRIG_READ_ERROR | DMA_CTRL_TRIG_WRITE_ERROR)) != 0U)) {
-          /* The stop channel failed, the ADC is only stopped by the
-             error handling below.*/
-          emask |= ADC_ERR_DMAFAILURE;
-        }
         if ((adcp->adc->FCS & ADC_FCS_OVER) != 0U) {
           emask |= ADC_ERR_OVERFLOW;
         }
@@ -259,7 +245,7 @@ static void adc_lld_serve_channel_interrupt(hal_adc_driver_c *adcp,
         if (emask != 0U) {
           _adc_isr_error_code(adcp, emask);
         }
-        else if (adcp->state == ADC_ACTIVE_CIRCULAR) {
+        else {
           /* Geometry of the completed channel, with a single row
              buffer both channels cover the whole buffer.*/
           size_t total = (size_t)adcp->grpp->num_channels * adcp->depth;
@@ -288,11 +274,55 @@ static void adc_lld_serve_channel_interrupt(hal_adc_driver_c *adcp,
             _adc_isr_half_code(adcp);
           }
         }
-        else {
-          /* Linear mode: transfer complete.*/
-          _adc_isr_full_code(adcp);
-        }
       }
+    }
+  }
+}
+
+/**
+ * @brief   Linear conversion stop service routine.
+ * @details Completes linear conversions. The second channel is chained to
+ *          the main one and clears START_MANY with a single transfer after
+ *          the end of the main transfer, its completion therefore follows
+ *          the completion of the main transfer. The ADC is stopped when
+ *          this routine runs, the FIFO status checked here covers the
+ *          transfer and the conversions up to the stop transfer, not the
+ *          conversions which would otherwise continue until the completion
+ *          is served, whatever its latency.
+ * @note    The conversion already in progress when the second channel
+ *          clears START_MANY still completes, an error in that conversion
+ *          is reported as @p ADC_ERR_CONVERSION although it is not part of
+ *          the transfer.
+ * @note    The conversions continue until the stop transfer, if that
+ *          transfer is delayed until they fill the FIFO an overflow is
+ *          reported.
+ *
+ * @param[in] adcp      pointer to the @p hal_adc_driver_c object
+ * @param[in] ct        content of the CTRL_TRIG register
+ */
+static void adc_lld_serve_stop_interrupt(hal_adc_driver_c *adcp,
+                                         uint32_t ct) {
+
+  /* Conversion group may have been reset by error handler.*/
+  if ((adcp->grpp != NULL) && (adcp->state == ADC_ACTIVE_LINEAR)) {
+    adcerror_t emask = 0U;
+
+    if ((ct & (DMA_CTRL_TRIG_READ_ERROR | DMA_CTRL_TRIG_WRITE_ERROR)) != 0U) {
+      /* The stop transfer failed, the ADC is only stopped by the error
+         handling below.*/
+      emask |= ADC_ERR_DMAFAILURE;
+    }
+    if ((adcp->adc->FCS & ADC_FCS_OVER) != 0U) {
+      emask |= ADC_ERR_OVERFLOW;
+    }
+    if ((adcp->adc->CS & ADC_CS_ERR_STICKY) != 0U) {
+      emask |= ADC_ERR_CONVERSION;
+    }
+    if (emask != 0U) {
+      _adc_isr_error_code(adcp, emask);
+    }
+    else {
+      _adc_isr_full_code(adcp);
     }
   }
 }
@@ -314,14 +344,21 @@ static void adc_lld_serve_dma_interrupt(void *p, uint32_t ct) {
 /**
  * @brief   Second DMA channel service routine.
  * @details Serves the completions of the channel covering the second
- *          buffer half of circular conversions.
+ *          buffer half of circular conversions and the stop transfer of
+ *          linear conversions.
  *
  * @param[in] p         parameter for the registered function
  * @param[in] ct        content of the CTRL_TRIG register
  */
 static void adc_lld_serve_dma2_interrupt(void *p, uint32_t ct) {
+  hal_adc_driver_c *adcp = (hal_adc_driver_c *)p;
 
-  adc_lld_serve_channel_interrupt((hal_adc_driver_c *)p, ct, true);
+  if (adcp->state == ADC_ACTIVE_LINEAR) {
+    adc_lld_serve_stop_interrupt(adcp, ct);
+  }
+  else {
+    adc_lld_serve_channel_interrupt(adcp, ct, true);
+  }
 }
 
 /*===========================================================================*/
@@ -701,9 +738,11 @@ msg_t adc_lld_start_conversion(hal_adc_driver_c *adcp, unsigned grpnum,
       (adcp->dmamode & ~DMA_CTRL_TRIG_CHAIN_TO_Msk) |
       DMA_CTRL_TRIG_CHAIN_TO(adcp->dma2->chnidx);
 
-    /* Enable DMA channel interrupt, only the main channel completion is
-       served.*/
+    /* Enable DMA channel interrupts, the main channel interrupt serves
+       its errors and the second channel completion terminates the
+       conversion.*/
     dmaChannelEnableInterruptX(adcp->dma);
+    dmaChannelEnableInterruptX(adcp->dma2);
 
     /* Enable DMA channel.*/
     dmaChannelEnableX(adcp->dma);

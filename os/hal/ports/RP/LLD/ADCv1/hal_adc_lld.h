@@ -238,7 +238,8 @@ typedef uint32_t adcerror_t;
   /* Pointer to associated DMA channel.*/                                   \
   const rp_dma_channel_t    *dma;                                           \
   /* Pointer to the DMA channel chained to the data channel by linear       \
-     conversions, it stops the ADC at the end of the transfer.*/            \
+     conversions, it stops the ADC at the end of the transfer and its       \
+     completion terminates the conversion.*/                                \
   const rp_dma_channel_t    *dmastop;                                       \
   /* DMA mode bit mask.*/                                                   \
   uint32_t                  dmamode;                                        \
