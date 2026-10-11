@@ -1580,9 +1580,9 @@ void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
       }
     }
 
-    /* A transfer in progress goes on unless the endpoint was stalled or a
-       packet is not served yet.*/
-    if (((chepr & (USB_EP_VTRX | USB_CHEP_RX_STRX_Msk)) == USB_EP_RX_VALID) &&
+    /* A transfer in progress goes on unless a packet is not served yet, a
+       halt from the host only paused it.*/
+    if (((chepr & USB_EP_VTRX) == 0U) &&
         ((usbp->receiving & (1U << ep)) != 0U)) {
       valid = USB_EP_RX_VALID ^ USB_EP_RX_NAK;
     }
@@ -1598,9 +1598,18 @@ void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
   }
 
   /* Makes sure to not put to NAK an endpoint that is already
-     transferring.*/
+     transferring. A transfer halted by the host goes on unless its
+     packet is not served yet, the halt only paused it.*/
   if ((usbp->usb->CHEPR[ep] & USB_CHEP_RX_STRX_Msk) != USB_EP_RX_VALID) {
-    CHEPR_SET_STATRX(usbp, ep, USB_EP_RX_NAK);
+    uint32_t chepr = usbp->usb->CHEPR[ep];
+
+    if (((chepr & (USB_EP_VTRX | USB_CHEP_RX_STRX_Msk)) == USB_EP_RX_STALL) &&
+        ((usbp->receiving & (1U << ep)) != 0U)) {
+      CHEPR_SET_STATRX(usbp, ep, USB_EP_RX_VALID);
+    }
+    else {
+      CHEPR_SET_STATRX(usbp, ep, USB_EP_RX_NAK);
+    }
   }
 }
 
@@ -1647,9 +1656,9 @@ void usb_lld_clear_in(USBDriver *usbp, usbep_t ep) {
       usb_dbl_swap(ep);
     }
 
-    /* A transfer in progress goes on unless the endpoint was stalled or an
-       event is not served yet.*/
-    if (((chepr & (USB_EP_VTTX | USB_CHEP_TX_STTX_Msk)) == USB_EP_TX_VALID) &&
+    /* A transfer in progress goes on unless an event is not served yet, a
+       halt from the host only paused it.*/
+    if (((chepr & USB_EP_VTTX) == 0U) &&
         ((usbp->transmitting & (1U << ep)) != 0U)) {
       valid = USB_EP_TX_VALID ^ USB_EP_TX_NAK;
     }
@@ -1665,9 +1674,18 @@ void usb_lld_clear_in(USBDriver *usbp, usbep_t ep) {
   }
 
   /* Makes sure to not put to NAK an endpoint that is already
-     transferring.*/
+     transferring. A transfer halted by the host goes on unless its
+     event is not served yet, the halt only paused it.*/
   if ((usbp->usb->CHEPR[ep] & USB_CHEP_TX_STTX_Msk) != USB_EP_TX_VALID) {
-    CHEPR_SET_STATTX(usbp, ep, USB_EP_TX_NAK);
+    uint32_t chepr = usbp->usb->CHEPR[ep];
+
+    if (((chepr & (USB_EP_VTTX | USB_CHEP_TX_STTX_Msk)) == USB_EP_TX_STALL) &&
+        ((usbp->transmitting & (1U << ep)) != 0U)) {
+      CHEPR_SET_STATTX(usbp, ep, USB_EP_TX_VALID);
+    }
+    else {
+      CHEPR_SET_STATTX(usbp, ep, USB_EP_TX_NAK);
+    }
   }
 }
 

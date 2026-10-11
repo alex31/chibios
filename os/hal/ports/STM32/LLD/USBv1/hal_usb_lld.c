@@ -1530,8 +1530,6 @@ void usb_lld_stall_in(USBDriver *usbp, usbep_t ep) {
 void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
   uint32_t type = STM32_USB->EPR[ep] & EPR_EP_TYPE_MASK;
 
-  (void)usbp;
-
 #if STM32_USB_USE_DOUBLE_BUFFERING
   if (EPR_EP_TYPE_IS_DBL_BUF(STM32_USB->EPR[ep])) {
     syssts_t sts = osalSysGetStatusAndLockX();
@@ -1551,9 +1549,9 @@ void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
       }
     }
 
-    /* A transfer in progress goes on unless the endpoint was stalled or a
-       packet is not served yet.*/
-    if (((epr & (EPR_CTR_RX | EPR_STAT_RX_MASK)) == EPR_STAT_RX_VALID) &&
+    /* A transfer in progress goes on unless a packet is not served yet, a
+       halt from the host only paused it.*/
+    if (((epr & EPR_CTR_RX) == 0U) &&
         ((usbp->receiving & (1U << ep)) != 0U)) {
       valid = EPR_STAT_RX_VALID ^ EPR_STAT_RX_NAK;
     }
@@ -1568,9 +1566,18 @@ void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
   }
 
   /* Makes sure to not put to NAK an endpoint that is already
-     transferring.*/
+     transferring. A transfer halted by the host goes on unless its
+     packet is not served yet, the halt only paused it.*/
   if ((STM32_USB->EPR[ep] & EPR_STAT_RX_MASK) != EPR_STAT_RX_VALID) {
-    EPR_SET_STAT_RX(ep, EPR_STAT_RX_NAK);
+    uint32_t epr = STM32_USB->EPR[ep];
+
+    if (((epr & (EPR_CTR_RX | EPR_STAT_RX_MASK)) == EPR_STAT_RX_STALL) &&
+        ((usbp->receiving & (1U << ep)) != 0U)) {
+      EPR_SET_STAT_RX(ep, EPR_STAT_RX_VALID);
+    }
+    else {
+      EPR_SET_STAT_RX(ep, EPR_STAT_RX_NAK);
+    }
   }
 }
 
@@ -1584,8 +1591,6 @@ void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
  */
 void usb_lld_clear_in(USBDriver *usbp, usbep_t ep) {
   uint32_t type = STM32_USB->EPR[ep] & EPR_EP_TYPE_MASK;
-
-  (void)usbp;
 
 #if STM32_USB_USE_DOUBLE_BUFFERING
   if (EPR_EP_TYPE_IS_DBL_BUF(STM32_USB->EPR[ep])) {
@@ -1618,9 +1623,9 @@ void usb_lld_clear_in(USBDriver *usbp, usbep_t ep) {
       usb_dbl_swap(ep);
     }
 
-    /* A transfer in progress goes on unless the endpoint was stalled or an
-       event is not served yet.*/
-    if (((epr & (EPR_CTR_TX | EPR_STAT_TX_MASK)) == EPR_STAT_TX_VALID) &&
+    /* A transfer in progress goes on unless an event is not served yet, a
+       halt from the host only paused it.*/
+    if (((epr & EPR_CTR_TX) == 0U) &&
         ((usbp->transmitting & (1U << ep)) != 0U)) {
       valid = EPR_STAT_TX_VALID ^ EPR_STAT_TX_NAK;
     }
@@ -1635,9 +1640,18 @@ void usb_lld_clear_in(USBDriver *usbp, usbep_t ep) {
   }
 
   /* Makes sure to not put to NAK an endpoint that is already
-     transferring.*/
+     transferring. A transfer halted by the host goes on unless its
+     event is not served yet, the halt only paused it.*/
   if ((STM32_USB->EPR[ep] & EPR_STAT_TX_MASK) != EPR_STAT_TX_VALID) {
-    EPR_SET_STAT_TX(ep, EPR_STAT_TX_NAK);
+    uint32_t epr = STM32_USB->EPR[ep];
+
+    if (((epr & (EPR_CTR_TX | EPR_STAT_TX_MASK)) == EPR_STAT_TX_STALL) &&
+        ((usbp->transmitting & (1U << ep)) != 0U)) {
+      EPR_SET_STAT_TX(ep, EPR_STAT_TX_VALID);
+    }
+    else {
+      EPR_SET_STAT_TX(ep, EPR_STAT_TX_NAK);
+    }
   }
 }
 
