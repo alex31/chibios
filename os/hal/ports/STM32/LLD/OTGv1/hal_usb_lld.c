@@ -201,7 +201,7 @@ static bool otg_core_reset(USBDriver *usbp) {
 
   /* Allow at least 10 PHY clocks after PHY selection before core reset.
      One microsecond covers both the 48MHz FS and 60MHz HS interfaces.*/
-  osalSysPolledDelayX(OSAL_US2RTC(SystemCoreClock, 1U));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 1U));
 
   /* Core reset.*/
   otgp->GRSTCTL = GRSTCTL_CSRST;
@@ -211,7 +211,7 @@ static bool otg_core_reset(USBDriver *usbp) {
   }
 
   /* Wait at least 3 PHY clocks before accessing the PHY clock domain.*/
-  osalSysPolledDelayX(OSAL_US2RTC(SystemCoreClock, 1U));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 1U));
 
   /* Wait AHB idle condition again.*/
   return halRegWaitAllSet32X(&otgp->GRSTCTL, GRSTCTL_AHBIDL,
@@ -574,7 +574,7 @@ static bool otg_rxfifo_flush(USBDriver *usbp) {
     return true;
   }
   /* Wait at least 3 PHY clocks, independently of the CPU frequency.*/
-  osalSysPolledDelayX(OSAL_US2RTC(SystemCoreClock, 1U));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 1U));
 
   return false;
 }
@@ -589,7 +589,7 @@ static bool otg_txfifo_flush(USBDriver *usbp, uint32_t fifo) {
     return true;
   }
   /* Wait at least 3 PHY clocks, independently of the CPU frequency.*/
-  osalSysPolledDelayX(OSAL_US2RTC(SystemCoreClock, 1U));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 1U));
 
   return false;
 }
@@ -604,9 +604,9 @@ static bool otg_txfifo_flush(USBDriver *usbp, uint32_t fifo) {
  */
 static bool otg_ep0_abort_in(USBDriver *usbp) {
   stm32_otg_t *otgp = usbp->otg;
-  halcnt_t start = HAL_LLD_GET_CNT_VALUE();
-  halcnt_t timeout = (halcnt_t)OSAL_US2RTC(HAL_LLD_GET_CNT_FREQUENCY(),
-                                     OTG_OPERATION_TIMEOUT);
+  halcnt_t start = halSftGetCounterX();
+  halcnt_t end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(),
+                                        OTG_OPERATION_TIMEOUT);
 
   otgp->DIEPEMPMSK &= ~DIEPEMPMSK_INEPTXFEM(0);
   if ((otgp->ie[0].DIEPCTL & DIEPCTL_EPENA) != 0U) {
@@ -618,7 +618,7 @@ static bool otg_ep0_abort_in(USBDriver *usbp) {
      Both registers share one deadline, unlike separate safety API waits.*/
   while (((otgp->ie[0].DIEPCTL & DIEPCTL_EPENA) != 0U) ||
          ((otgp->GRSTCTL & GRSTCTL_AHBIDL) == 0U)) {
-    if ((halcnt_t)(HAL_LLD_GET_CNT_VALUE() - start) >= timeout) {
+    if (!halSftIsCounterWithinX(start, end)) {
       /* Hardware may have completed while this handler was preempted.*/
       if (((otgp->ie[0].DIEPCTL & DIEPCTL_EPENA) == 0U) &&
           ((otgp->GRSTCTL & GRSTCTL_AHBIDL) != 0U)) {
@@ -1894,7 +1894,7 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
 void usb_lld_disable_endpoints(USBDriver *usbp) {
   stm32_otg_t *otgp = usbp->otg;
   uint16_t flush = usbp->in_flush | otg_isoc_in_pending(usbp);
-  halcnt_t start, timeout;
+  halcnt_t start, end;
   unsigned ep;
 
   osalDbgCheckClassI();
@@ -1923,12 +1923,12 @@ void usb_lld_disable_endpoints(USBDriver *usbp) {
   }
   /* One deadline for the whole group. No FIFO can be reassigned until
      every old IN endpoint has stopped, including overlapping allocations.*/
-  start = HAL_LLD_GET_CNT_VALUE();
-  timeout = (halcnt_t)OSAL_US2RTC(HAL_LLD_GET_CNT_FREQUENCY(),
-                                  OTG_OPERATION_TIMEOUT);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(),
+                               OTG_OPERATION_TIMEOUT);
   for (ep = 1U; ep <= usbp->otgparams->num_endpoints; ep++) {
     while ((otgp->ie[ep].DIEPCTL & DIEPCTL_EPENA) != 0U) {
-      if ((halcnt_t)(HAL_LLD_GET_CNT_VALUE() - start) >= timeout) {
+      if (!halSftIsCounterWithinX(start, end)) {
         /* A preemption can cross the deadline after hardware completes.*/
         if ((otgp->ie[ep].DIEPCTL & DIEPCTL_EPENA) == 0U) {
           break;
