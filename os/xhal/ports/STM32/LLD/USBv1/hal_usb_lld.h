@@ -110,6 +110,11 @@
 #error "USB driver activated but no USB peripheral assigned"
 #endif
 
+/* The transceiver startup time is awaited on the timeout counter.*/
+#if !defined(HAL_LLD_GET_CNT_VALUE) || !defined(HAL_LLD_GET_CNT_FREQUENCY)
+#error "USBv1 requires HAL timeout counter hooks"
+#endif
+
 #if !defined(STM32_USBCLK)
 #error "STM32_USBCLK not defined"
 #endif
