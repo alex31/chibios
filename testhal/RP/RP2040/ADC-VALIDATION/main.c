@@ -44,6 +44,12 @@
  *   Test H: the stop channel of a linear conversion is redirected to an
  *           unmapped address; the failed stop must be reported as a DMA
  *           failure.
+ *   Test I: the stop transfer of a linear conversion is held after the
+ *           end of the data transfer by moving its request to a paused
+ *           DMA pacing timer; no callback may run before it is released,
+ *           then the conversion must complete, or be reported as a DMA
+ *           failure when the stop transfer is also redirected to an
+ *           unmapped address.
  *
  * Tests D, F and G use ADC3 on GPIO29, VSYS/3 on the Pico board, the
  * round-robin samples are attributed to ADC3 and to the temperature
@@ -90,6 +96,9 @@
 
 /* Unmapped address, a DMA write to it raises a bus error.*/
 #define UNMAPPED_ADDRESS     0x30000000U
+
+/* Test I samples, 4ms at 1ksps.*/
+#define SLOW_DEPTH           4U
 
 static BaseSequentialStream *chp;
 static unsigned pass_count;
@@ -253,6 +262,22 @@ static const ADCConversionGroup rrgrp = {
 };
 
 /*
+ * Temperature sensor, linear buffer, 1ksps, with callbacks. The
+ * conversions continuing while the stop transfer of test I is held do
+ * not fill the FIFO.
+ */
+static const ADCConversionGroup slowgrp = {
+  .circular     = false,
+  .num_channels = 1U,
+  .end_cb       = end_cb,
+  .error_cb     = error_cb,
+  .channel      = ADC_CHANNEL_TEMPSENSOR,
+  .rrobin       = 0U,
+  .div          = ADC_DIV(47999U, 0U),
+  .ts_enabled   = true
+};
+
+/*
  * Temperature sensor, linear buffer, free-running conversion clock,
  * with callbacks.
  */
@@ -312,6 +337,7 @@ static const ADCConversionGroup circgrp = {
 static adcsample_t samples[1];
 static adcsample_t rrsamples[2U * RR_DEPTH];
 static adcsample_t longsamples[LONG_DEPTH];
+static adcsample_t slowsamples[SLOW_DEPTH];
 static adcsample_t circsamples[CIRC_DEPTH];
 static adcsample_t refsamples[REF_DEPTH];
 
@@ -679,6 +705,75 @@ static void test_stop_failure(void) {
   ADCD1.dmastop->channel->WRITE_ADDR = (uint32_t)&ADCD1.adc->CS;
 }
 
+/*
+ * Test I: the end of a linear conversion waits for the stop transfer.
+ *
+ * The stop channel request is moved to the paused DMA pacing timer 3,
+ * the stop transfer is then held after the end of the data transfer and
+ * after the data channel interrupt has been served.  The request is
+ * restored by the next conversion start.
+ */
+static void test_delayed_stop(bool fail) {
+  uint32_t start;
+  unsigned early_ends, early_errors;
+  bool held, done;
+
+  cb_reset();
+  DMA->TIMER[3] = 0U;
+
+  chSysLock();
+  adcStartConversionI(&ADCD1, &slowgrp, slowsamples, SLOW_DEPTH);
+  ADCD1.dmastop->channel->AL1_CTRL =
+    (ADCD1.dmastop->channel->AL1_CTRL & ~DMA_CTRL_TRIG_TREQ_SEL_Msk) |
+    DMA_CTRL_TRIG_TREQ_TIMER3;
+  if (fail) {
+    ADCD1.dmastop->channel->WRITE_ADDR = UNMAPPED_ADDRESS;
+  }
+  chSysUnlock();
+
+  /* Waiting for the end of the data transfer, then for its interrupt to
+     be served.*/
+  start = TIMER0->TIMERAWL;
+  while (dmaChannelIsBusyX(ADCD1.dma) &&
+         ((uint32_t)(TIMER0->TIMERAWL - start) < 50000U)) {
+    chThdSleepMilliseconds(1);
+  }
+  chThdSleepMilliseconds(1);
+
+  /* The stop transfer has been triggered and waits for the timer.*/
+  held         = dmaChannelIsBusyX(ADCD1.dmastop);
+  early_ends   = cb_ends;
+  early_errors = cb_errors;
+
+  /* Releasing the stop transfer.*/
+  DMA->TIMER[3] = (1U << 16) | 1U;
+  done = wait_not_active();
+  DMA->TIMER[3] = 0U;
+
+  chprintf(chp, "  stop held=%u, early callbacks end=%u error=%u\r\n",
+           (unsigned)held, early_ends, early_errors);
+  chprintf(chp, "  callbacks: end=%u error=%u err=0x%X state=%d\r\n",
+           cb_ends, cb_errors, (unsigned)cb_err, (int)ADCD1.state);
+
+  if (!fail) {
+    report("Conversion end waits for the delayed stop transfer",
+           held && (early_ends == 0U) && (early_errors == 0U));
+    report("Delayed stop transfer completes the conversion",
+           done && (cb_ends == 1U) && (cb_errors == 0U));
+  }
+  else {
+    report("Error waits for the delayed failing stop transfer",
+           held && (early_ends == 0U) && (early_errors == 0U));
+    report("Delayed failing stop is reported as a DMA failure",
+           done && (cb_ends == 0U) && (cb_errors == 1U) &&
+           ((cb_err & ADC_ERR_DMAFAILURE) != 0U));
+
+    /* Restoring the stop channel destination, programmed by
+       adcStart().*/
+    ADCD1.dmastop->channel->WRITE_ADDR = (uint32_t)&ADCD1.adc->CS;
+  }
+}
+
 /*===========================================================================*/
 /* Blinker thread.                                                           */
 /*===========================================================================*/
@@ -751,6 +846,9 @@ int main(void) {
 
     chprintf(chp, "\r\n  Test H: stop channel failure...\r\n");
     test_stop_failure();
+    chprintf(chp, "\r\n  Test I: delayed stop transfer...\r\n");
+    test_delayed_stop(false);
+    test_delayed_stop(true);
 
     /* The driver must still be operational.*/
     report("Conversion after the failures completes",
