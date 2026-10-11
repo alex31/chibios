@@ -362,8 +362,9 @@ void eth_lld_init(void) {
 #else
   /* PHY soft reset procedure.*/
   mii_write(ethp, MII_BMCR, BMCR_RESET);
-#if defined(BOARD_PHY_RESET_DELAY)
-  chSysPolledDelayX(BOARD_PHY_RESET_DELAY);
+#if defined(BOARD_PHY_RESET_DELAY_US)
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(),
+                              BOARD_PHY_RESET_DELAY_US));
 #endif
   while (mii_read(ethp, MII_BMCR) & BMCR_RESET)
     ;
