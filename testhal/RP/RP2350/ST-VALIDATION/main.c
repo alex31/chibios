@@ -35,6 +35,11 @@
  * timers late and re-arms the alarm close to (or behind) the current
  * time, exercising the deadline-skip paths in the ST/VT machinery.
  *
+ * A further check stops alarm 0 after it fired inside a critical zone,
+ * the interrupt stays pended in the NVIC and the handler, taken on
+ * unlock with nothing pending in TIMER0, must dismiss it.  It runs
+ * before any other timer is armed.
+ *
  * A watchdog acts as a backstop: a fully stalled ST (alarm waiting
  * for the counter wrap) blocks all timeouts, the WDG then resets the
  * board and the reset reason is printed in the banner on next boot.
@@ -61,9 +66,10 @@ static BaseSequentialStream *chp;
 static unsigned pass_count;
 static unsigned fail_count;
 
-static virtual_timer_t vt1, vt2;
+static virtual_timer_t vt1, vt2, vt3;
 static volatile bool d1_fired;
 static volatile bool d2_fired;
+static volatile bool d3_fired;
 static volatile uint32_t d2_fire_rawl;
 static semaphore_t d2_sem;
 
@@ -205,6 +211,52 @@ static bool test_set_alarm_past(void) {
   return fired;
 }
 
+static void d3_cb(virtual_timer_t *vtp, void *arg) {
+
+  (void)vtp;
+  (void)arg;
+
+  d3_fired = true;
+}
+
+/*
+ * Test: alarm 0 stopped after it fired inside a critical zone.
+ *
+ * Must run before any other timer is armed: the timer set here is then
+ * the only one in the list, so resetting it stops alarm 0 while its
+ * interrupt is already pended in the NVIC.  On unlock the handler runs
+ * with nothing pending in TIMER0, it must dismiss the entry without
+ * invoking the timer callback.
+ */
+static bool test_stopped_alarm_dismissed(void) {
+  uint32_t start;
+  bool idle, latched, pended;
+
+  chSysLock();
+
+  /* The alarm must be unused, the timer below has to start it.*/
+  idle = !st_lld_is_alarm_active();
+  chVTDoSetI(&vt3, TIME_US2I(D1_DELAY_US), d3_cb, NULL);
+
+  /* Waiting up to 1ms for the alarm to fire with interrupts masked.*/
+  start = TIMER0->TIMERAWL;
+  while (((TIMER0->INTR & TIMER_INTR_ALARM0) == 0U) &&
+         ((int32_t)(TIMER0->TIMERAWL - start) < 1000)) {
+  }
+  latched = (TIMER0->INTR & TIMER_INTR_ALARM0) != 0U;
+  pended  = NVIC_GetPendingIRQ((IRQn_Type)RP_TIMER0_IRQ0_NUMBER) != 0U;
+
+  /* Stopping the alarm, its interrupt stays pended.*/
+  chVTDoResetI(&vt3);
+
+  chSysUnlock();
+
+  /* The handler has been entered on unlock if no longer pending.*/
+  return idle && latched && pended && !d3_fired &&
+         !st_lld_is_alarm_active() &&
+         (NVIC_GetPendingIRQ((IRQn_Type)RP_TIMER0_IRQ0_NUMBER) == 0U);
+}
+
 /*===========================================================================*/
 /* Phase 2: virtual-timers alarm-miss generator.                             */
 /*===========================================================================*/
@@ -306,7 +358,7 @@ int main(void) {
   uint32_t reason;
   unsigned i, batch_fail = 0U, total_miss = 0U;
   uint32_t batch_maxlat = 0U;
-  bool ok;
+  bool ok, dismissed;
 
   halInit();
   chSysInit();
@@ -323,6 +375,10 @@ int main(void) {
   chSemObjectInit(&d2_sem, 0);
   chVTObjectInit(&vt1);
   chVTObjectInit(&vt2);
+  chVTObjectInit(&vt3);
+
+  /* Before any other timer is armed, the result is reported later.*/
+  dismissed = test_stopped_alarm_dismissed();
 
   /* Start blinker. */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
@@ -360,6 +416,8 @@ int main(void) {
 
   ok = test_set_alarm_past();
   report("st_lld_set_alarm re-arms past deadline", ok);
+
+  report("stopped alarm interrupt dismissed", dismissed);
 
   /* Phase 2: alarm-miss generator.*/
   chprintf(chp, "\r\n  Alarm-miss generator (%u iterations)...\r\n",
