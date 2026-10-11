@@ -204,10 +204,11 @@ static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf,
   uint32_t epr = STM32_USB->EPR[ep];
 
   /* Isochronous endpoints are double buffered with both buffers
-     overlapped, DTOG_RX selects the buffer that receives the next packet,
-     the counter of the other buffer is read.*/
-  if (EPR_EP_TYPE_IS_ISO(epr) && ((epr & EPR_DTOG_RX) == 0U)) {
-    n = (size_t)udp->RXCOUNT1 & RXCOUNT_COUNT_MASK;
+     overlapped. The peripheral fills the buffer in the TX fields while
+     DTOG_RX is zero and toggles DTOG_RX after the reception, so the last
+     received packet is counted in the TX fields when DTOG_RX is one.*/
+  if (EPR_EP_TYPE_IS_ISO(epr) && ((epr & EPR_DTOG_RX) != 0U)) {
+    n = (size_t)udp->TXCOUNT0 & RXCOUNT_COUNT_MASK;
   }
   else {
     n = (size_t)udp->RXCOUNT0 & RXCOUNT_COUNT_MASK;

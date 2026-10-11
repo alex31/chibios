@@ -268,13 +268,12 @@ static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf,
 
   /* Double buffering is always enabled for isochronous endpoints, and
      although we overlap the two buffers for simplicity, we still need
-     to read from the right counter. The DTOG_RX bit indicates the buffer
-     that is currently in use by the USB peripheral, that is, the buffer
-     in which the next received packet will be stored, so we need to
-     read the counter of the OTHER buffer, which is where the last
-     received packet was stored.*/
-  if (EPR_EP_TYPE_IS_ISO(epr) && ((epr & EPR_DTOG_RX) == 0U))
-    n = (size_t)udp->RXCOUNT1 & RXCOUNT_COUNT_MASK;
+     to read from the right counter. The peripheral fills the buffer in
+     the TX fields while DTOG_RX is zero and toggles DTOG_RX after the
+     reception, so the last received packet is counted in the TX fields
+     when DTOG_RX is one, as for double-buffered bulk endpoints.*/
+  if (EPR_EP_TYPE_IS_ISO(epr) && ((epr & EPR_DTOG_RX) != 0U))
+    n = (size_t)udp->TXCOUNT0 & RXCOUNT_COUNT_MASK;
   else
     n = (size_t)udp->RXCOUNT0 & RXCOUNT_COUNT_MASK;
 #else
