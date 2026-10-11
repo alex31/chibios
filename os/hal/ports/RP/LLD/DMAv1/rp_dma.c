@@ -155,19 +155,27 @@ OSAL_IRQ_HANDLER(RP_DMA_IRQ_0_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  /* Getting and clearing pending interrupts for core 0.*/
-  ints = DMA->INTS0;
-  DMA->INTS0 = ints;
-
-  /* Scanning sources.*/
+  /* Scanning the pending interrupts of core 0 in channel order. The
+     pending bits are read again before each channel and only the bit
+     of the channel being served is cleared, so an event cancelled by
+     an earlier callback of this pass, for example when a channel is
+     stopped and restarted by its owner, is not served. Each channel
+     is visited once, which bounds the pass.*/
   dmachp = __rp_dma_channels;
-  do {
-    if ((ints & dmachp->chnmask) > 0U) {
-      ints &= ~dmachp->chnmask;
+  ints = DMA->INTS0;
+  while (ints != 0U) {
+    if ((ints & dmachp->chnmask) != 0U) {
+      DMA->INTS0 = dmachp->chnmask;
       serve_interrupt(dmachp);
     }
     dmachp++;
-  } while (ints > 0U);
+    if (dmachp == &__rp_dma_channels[RP_DMA_NUM_CHANNELS]) {
+      break;
+    }
+
+    /* Pending interrupts of the channels not visited yet.*/
+    ints = DMA->INTS0 & ~(dmachp->chnmask - 1U);
+  }
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -183,19 +191,27 @@ OSAL_IRQ_HANDLER(RP_DMA_IRQ_1_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  /* Getting and clearing pending interrupts for core 1.*/
-  ints = DMA->INTS1;
-  DMA->INTS1 = ints;
-
-  /* Scanning sources.*/
+  /* Scanning the pending interrupts of core 1 in channel order. The
+     pending bits are read again before each channel and only the bit
+     of the channel being served is cleared, so an event cancelled by
+     an earlier callback of this pass, for example when a channel is
+     stopped and restarted by its owner, is not served. Each channel
+     is visited once, which bounds the pass.*/
   dmachp = __rp_dma_channels;
-  do {
-    if ((ints & dmachp->chnmask) > 0U) {
-      ints &= ~dmachp->chnmask;
+  ints = DMA->INTS1;
+  while (ints != 0U) {
+    if ((ints & dmachp->chnmask) != 0U) {
+      DMA->INTS1 = dmachp->chnmask;
       serve_interrupt(dmachp);
     }
     dmachp++;
-  } while (ints > 0U);
+    if (dmachp == &__rp_dma_channels[RP_DMA_NUM_CHANNELS]) {
+      break;
+    }
+
+    /* Pending interrupts of the channels not visited yet.*/
+    ints = DMA->INTS1 & ~(dmachp->chnmask - 1U);
+  }
 
   OSAL_IRQ_EPILOGUE();
 }
