@@ -2840,9 +2840,16 @@ if (n != 0U) {
   usbp->ep0state = USB_EP0_IN_TX;
   usbStartTransmitI(usbp, 0U, buf, n);
 }
+else if (max != 0U) {
+  /* Empty reply to a request with a data stage, a zero size packet is
+     the data stage.*/
+  usbp->ep0state = USB_EP0_IN_WAITING_TX0;
+  usbStartTransmitI(usbp, 0U, NULL, 0U);
+}
 else {
-  usbp->ep0state = USB_EP0_OUT_WAITING_STS;
-  usbStartReceiveI(usbp, 0U, NULL, 0U);
+  /* No data stage, the status stage is an IN transaction.*/
+  usbp->ep0state = USB_EP0_IN_SENDING_STS;
+  usbStartTransmitI(usbp, 0U, NULL, 0U);
 }
 
 msg = chThdSuspendTimeoutS(&usbp->ep0thread, TIME_INFINITE);

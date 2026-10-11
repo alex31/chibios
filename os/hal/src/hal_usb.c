@@ -404,10 +404,17 @@ static msg_t ep0_reply_or_ack(USBDriver *usbp, const uint8_t *buf, size_t n) {
     usbp->ep0state = USB_EP0_IN_TX;
     usbStartTransmitI(usbp, 0, buf, n);
   }
+  else if (max != 0U) {
+    /* Empty reply to a request with a data stage, a zero size packet is
+       the data stage.*/
+    usbp->ep0state = USB_EP0_IN_WAITING_TX0;
+    usbStartTransmitI(usbp, 0, NULL, 0);
+  }
   else {
-    usbp->ep0state = USB_EP0_OUT_WAITING_STS;
+    /* No data stage, the status stage is an IN transaction.*/
+    usbp->ep0state = USB_EP0_IN_SENDING_STS;
 #if (USB_EP0_STATUS_STAGE == USB_EP0_STATUS_STAGE_SW)
-    usbStartReceiveI(usbp, 0, NULL, 0);
+    usbStartTransmitI(usbp, 0, NULL, 0);
 #else
     usb_lld_end_setup(usbp, 0);
 #endif
@@ -1452,13 +1459,21 @@ void _usb_ep0setup(USBDriver *usbp, usbep_t ep) {
       usbStartTransmitI(usbp, 0, usbp->ep0next, usbp->ep0n);
       osalSysUnlockFromISR();
     }
+    else if (max != 0U) {
+      /* Empty reply to a request with a data stage, a zero size packet is
+         the data stage.*/
+      usbp->ep0state = USB_EP0_IN_WAITING_TX0;
+      osalSysLockFromISR();
+      usbStartTransmitI(usbp, 0, NULL, 0);
+      osalSysUnlockFromISR();
+    }
     else {
-      /* No transmission phase, directly receiving the zero sized status
-         packet.*/
-      usbp->ep0state = USB_EP0_OUT_WAITING_STS;
+      /* No data stage, directly sending the zero sized status packet, the
+         status stage is an IN transaction.*/
+      usbp->ep0state = USB_EP0_IN_SENDING_STS;
 #if (USB_EP0_STATUS_STAGE == USB_EP0_STATUS_STAGE_SW)
       osalSysLockFromISR();
-      usbStartReceiveI(usbp, 0, NULL, 0);
+      usbStartTransmitI(usbp, 0, NULL, 0);
       osalSysUnlockFromISR();
 #else
       usb_lld_end_setup(usbp, 0);
