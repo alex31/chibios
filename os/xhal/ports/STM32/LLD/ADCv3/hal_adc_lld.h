@@ -423,6 +423,11 @@
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
+/* The startup and calibration delays use the timeout counter.*/
+#if !defined(HAL_LLD_GET_CNT_VALUE) || !defined(HAL_LLD_GET_CNT_FREQUENCY)
+#error "ADCv3 requires HAL timeout counter hooks"
+#endif
+
 /* Supported devices checks.*/
 #if !defined(STM32F3XX) && !defined(STM32L4XX) && !defined(STM32L4XXP) &&   \
     !defined(STM32G4XX) && !defined(STM32WBXX)

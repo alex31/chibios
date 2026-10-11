@@ -120,7 +120,7 @@ static void adc_lld_vreg_on(ADCDriver *adcp) {
     adcp->adcs->CR = ADC_CR_ADVREGEN;
   }
 #endif
-  osalSysPolledDelayX(OSAL_US2RTC(STM32_SYS_CK, 10U));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 10U));
 }
 
 /**
