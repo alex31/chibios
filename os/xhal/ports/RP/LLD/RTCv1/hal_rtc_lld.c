@@ -395,6 +395,10 @@ msg_t rtc_lld_set_datetime(hal_rtc_driver_c *rtcp,
 /**
  * @brief   Gets the current date/time.
  * @note    The function can be called from any context.
+ * @note    The operation fails with @p HAL_RET_CONFIG_ERROR while the RTC
+ *          is not running, which means the time has not been set since
+ *          the last reset, and while the RTC holds a date before
+ *          1980-01-01, the floor of the shared representation.
  *
  * @param[in]  rtcp      pointer to the @p hal_rtc_driver_c object
  * @param[out] timespec  pointer to a @p rtc_datetime_t structure
@@ -404,11 +408,13 @@ msg_t rtc_lld_set_datetime(hal_rtc_driver_c *rtcp,
  */
 msg_t rtc_lld_get_datetime(hal_rtc_driver_c *rtcp,
                            rtc_datetime_t *timespec) {
-  uint32_t rtc_0, rtc_1;
+  uint32_t ctrl, rtc_0, rtc_1;
   syssts_t sts;
 
   /* Entering a reentrant critical zone.*/
   sts = chSysGetStatusAndLockX();
+
+  ctrl  = rtcp->rtc->CTRL;
 
   /* Read RTC0 first then RTC1.*/
   rtc_0 = rtcp->rtc->RTC0;
@@ -416,6 +422,14 @@ msg_t rtc_lld_get_datetime(hal_rtc_driver_c *rtcp,
 
   /* Leaving a reentrant critical zone.*/
   chSysRestoreStatusX(sts);
+
+  /* The RTC only runs once a date/time has been set, the counters of a
+     stopped RTC are not a time. Years before the base year cannot be
+     represented.*/
+  if (((ctrl & RTC_CTRL_RTC_ACTIVE) == 0U) ||
+      (RTC_RTC_1_YEAR(rtc_1) < RTC_BASE_YEAR)) {
+    return HAL_RET_CONFIG_ERROR;
+  }
 
   /* Calculate and set milliseconds since midnight field.*/
   timespec->millisecond = ((RTC_RTC_0_HOUR(rtc_0) * 3600U) +
