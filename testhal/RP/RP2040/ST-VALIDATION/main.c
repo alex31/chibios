@@ -44,6 +44,12 @@
  * for the counter wrap) blocks all timeouts, the WDG then resets the
  * board and the reset reason is printed in the banner on next boot.
  *
+ * Phase 3 checks deadlines 2^31 ticks or more ahead: the LLD must leave
+ * them armed instead of taking them as missed, and a virtual timer that
+ * far out must not keep re-arming the alarm, which would take most of
+ * the CPU.  The virtual timer check runs before any other timer is
+ * armed, its result is reported in phase 3.
+ *
  * Single-core only (no SMP), tickless mode (CH_CFG_ST_TIMEDELTA 20).
  */
 
@@ -351,11 +357,150 @@ static THD_FUNCTION(Thread1, arg) {
 }
 
 /*===========================================================================*/
+/* Phase 3: far-future deadlines.                                            */
+/*===========================================================================*/
+
+/* About 40 minutes at 1MHz, more than 2^31 ticks ahead.*/
+#define FAR_DELAY            0x90000000U
+
+static virtual_timer_t vt_far, vt_short;
+static volatile bool far_fired;
+
+/*
+ * Test: st_lld_set_alarm_n() with a deadline far in the future.
+ *
+ * Uses the scratch alarm channel, the deadline must not be taken as
+ * missed: the alarm has to stay armed on the requested value.
+ */
+static bool test_set_alarm_n_far(void) {
+  uint32_t start, target;
+  bool kept = true;
+
+  chSysLock();
+  target = TIMER0->TIMERAWL + FAR_DELAY;
+  st_lld_set_alarm_n(SCRATCH_ALARM, (systime_t)target);
+  chSysUnlock();
+
+  /* Polling for 1ms, the alarm must neither fire nor be re-armed.*/
+  start = TIMER0->TIMERAWL;
+  while ((int32_t)(TIMER0->TIMERAWL - start) < 1000) {
+    if (((TIMER0->ARMED & (1U << SCRATCH_ALARM)) == 0U) ||
+        (TIMER0->ALARM[SCRATCH_ALARM] != target)) {
+      kept = false;
+      break;
+    }
+  }
+
+  /* Disarming and clearing the raw interrupt status.*/
+  TIMER0->ARMED = (1U << SCRATCH_ALARM);
+  TIMER0->INTR  = (1U << SCRATCH_ALARM);
+
+  return kept;
+}
+
+/*
+ * Test: st_lld_start_alarm_n() with a deadline far in the future.
+ *
+ * Same as above through the start path, the scratch alarm interrupt is
+ * not bound so enabling it in TIMER0 has no effect.
+ */
+static bool test_start_alarm_n_far(void) {
+  uint32_t start, target;
+  bool kept = true;
+
+  chSysLock();
+  target = TIMER0->TIMERAWL + FAR_DELAY;
+  st_lld_start_alarm_n(SCRATCH_ALARM, (systime_t)target);
+  chSysUnlock();
+
+  /* Polling for 1ms, the alarm must neither fire nor be re-armed.*/
+  start = TIMER0->TIMERAWL;
+  while ((int32_t)(TIMER0->TIMERAWL - start) < 1000) {
+    if (((TIMER0->ARMED & (1U << SCRATCH_ALARM)) == 0U) ||
+        (TIMER0->ALARM[SCRATCH_ALARM] != target)) {
+      kept = false;
+      break;
+    }
+  }
+
+  /* Stopping, disarming and clearing the raw interrupt status.*/
+  chSysLock();
+  st_lld_stop_alarm_n(SCRATCH_ALARM);
+  chSysUnlock();
+  TIMER0->ARMED = (1U << SCRATCH_ALARM);
+  TIMER0->INTR  = (1U << SCRATCH_ALARM);
+
+  return kept;
+}
+
+static void far_cb(virtual_timer_t *vtp, void *arg) {
+
+  (void)vtp;
+  (void)arg;
+
+  far_fired = true;
+}
+
+static void short_cb(virtual_timer_t *vtp, void *arg) {
+
+  (void)vtp;
+  (void)arg;
+}
+
+/* Busy loop iterations in 100ms, timed on the raw counter.*/
+static uint32_t spin_100ms(void) {
+  uint32_t start = TIMER0->TIMERAWL, n = 0U;
+
+  while ((TIMER0->TIMERAWL - start) < 100000U) {
+    n++;
+  }
+
+  return n;
+}
+
+/*
+ * Test: a virtual timer far in the future does not load the CPU.
+ *
+ * Must run before any other timer is armed.  Busy loop iterations are
+ * counted with no timer armed, with the far timer as the first timer
+ * (alarm start path) and with the far timer becoming the first timer
+ * when a short timer expires (alarm set path).  A far deadline taken as
+ * missed re-arms the alarm on every tick and takes most of the CPU, at
+ * -O0 with the debug checks the tick handler cannot keep up and the
+ * system livelocks, the line printed before the check is then the last
+ * output.
+ */
+static bool test_far_timer_load(void) {
+  uint32_t none, first, next;
+
+  chVTObjectInit(&vt_far);
+  chVTObjectInit(&vt_short);
+  far_fired = false;
+
+  none = spin_100ms();
+
+  chVTSet(&vt_far, (sysinterval_t)FAR_DELAY, far_cb, NULL);
+  first = spin_100ms();
+  chVTReset(&vt_far);
+
+  chVTSet(&vt_short, TIME_MS2I(1), short_cb, NULL);
+  chVTSet(&vt_far, (sysinterval_t)FAR_DELAY, far_cb, NULL);
+  next = spin_100ms();
+  chVTReset(&vt_far);
+  chVTReset(&vt_short);
+
+  /* Allowing 10% for the timer handling.*/
+  return !far_fired && (first >= (none - (none / 10U))) &&
+         (next >= (none - (none / 10U)));
+}
+
+/*===========================================================================*/
 /* Main.                                                                     */
 /*===========================================================================*/
 
 int main(void) {
   uint32_t reason;
+  bool far_load_ok;
   unsigned i, batch_fail = 0U, total_miss = 0U;
   uint32_t batch_maxlat = 0U;
   bool ok, dismissed;
@@ -371,6 +516,10 @@ int main(void) {
   palSetLineMode(UART_RX_PIN, PAL_MODE_ALTERNATE_UART);
   sioStart(&SIOD0, NULL);
   chp = (BaseSequentialStream *)&SIOD0;
+
+  /* Before any other timer is armed, the result is reported in phase 3.*/
+  chprintf(chp, "\r\n  Far-future timer check...\r\n");
+  far_load_ok = test_far_timer_load();
 
   chSemObjectInit(&d2_sem, 0);
   chVTObjectInit(&vt1);
@@ -454,6 +603,17 @@ int main(void) {
   if (total_miss != 0U) {
     chprintf(chp, "\r\n  Total missed deadlines: %u\r\n", total_miss);
   }
+
+  /* Phase 3: far-future deadlines.*/
+  chprintf(chp, "\r\n");
+
+  ok = test_set_alarm_n_far();
+  report("st_lld_set_alarm_n keeps far-future deadline", ok);
+
+  ok = test_start_alarm_n_far();
+  report("st_lld_start_alarm_n keeps far-future deadline", ok);
+
+  report("far-future virtual timer does not load the CPU", far_load_ok);
 
   chprintf(chp, "\r\n========================================\r\n");
   chprintf(chp, "  Results: %u pass, %u fail\r\n", pass_count, fail_count);
