@@ -106,7 +106,7 @@ static void adc_lld_vreg_on(hal_adc_driver_c *adcp) {
     adcp->adcs->CR = ADC_CR_ADVREGEN;
   }
 #endif
-  chSysPolledDelayX(US2RTC(SystemCoreClock, 10U));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 10U));
 }
 
 /**

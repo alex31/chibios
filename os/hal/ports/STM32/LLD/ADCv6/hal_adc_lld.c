@@ -129,7 +129,7 @@ static void adc_lld_vreg_on(ADCDriver *adcp) {
 #if STM32_ADC_DUAL_MODE
   adcp->adcs->CR = ADC_CR_ADVREGEN;
 #endif
-  osalSysPolledDelayX(OSAL_US2RTC(STM32_HCLK, 20));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 20U));
 }
 
 /**
@@ -162,7 +162,7 @@ static void adc_lld_calibrate(ADCDriver *adcp) {
   while ((adcp->adcm->CR & ADC_CR_ADCAL) != 0)
     ;
 
-  osalSysPolledDelayX(OSAL_US2RTC(STM32_HCLK, 20));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 20U));
 
   /* Single-ended calibration for master ADC.*/
   adcp->adcm->CR = ADC_CR_ADVREGEN;
@@ -170,7 +170,7 @@ static void adc_lld_calibrate(ADCDriver *adcp) {
   while ((adcp->adcm->CR & ADC_CR_ADCAL) != 0)
     ;
 
-  osalSysPolledDelayX(OSAL_US2RTC(STM32_HCLK, 20));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 20U));
 
 #if STM32_ADC_DUAL_MODE
   osalDbgAssert(adcp->adcs->CR == ADC_CR_ADVREGEN, "invalid register state");
@@ -181,7 +181,7 @@ static void adc_lld_calibrate(ADCDriver *adcp) {
   while ((adcp->adcs->CR & ADC_CR_ADCAL) != 0)
     ;
 
-  osalSysPolledDelayX(OSAL_US2RTC(STM32_HCLK, 20));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 20U));
 
   /* Single-ended calibration for slave ADC.*/
   adcp->adcs->CR = ADC_CR_ADVREGEN;
@@ -189,7 +189,7 @@ static void adc_lld_calibrate(ADCDriver *adcp) {
   while ((adcp->adcs->CR & ADC_CR_ADCAL) != 0)
     ;
 
-  osalSysPolledDelayX(OSAL_US2RTC(STM32_HCLK, 20));
+  halSftDelayX(HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), 20U));
 #endif
 }
 

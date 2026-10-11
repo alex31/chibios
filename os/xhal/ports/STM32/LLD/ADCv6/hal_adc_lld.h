@@ -302,6 +302,11 @@
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
+/* The startup and calibration delays use the timeout counter.*/
+#if !defined(HAL_LLD_GET_CNT_VALUE) || !defined(HAL_LLD_GET_CNT_FREQUENCY)
+#error "ADCv6 requires HAL timeout counter hooks"
+#endif
+
 /* Supported devices checks.*/
 #if !defined(STM32H5XX)
 #error "ADCv6 only supports H5 STM32 devices"
