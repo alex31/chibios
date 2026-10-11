@@ -674,12 +674,14 @@ void usb_lld_start(USBDriver *usbp) {
       osalDbgAssert(RP_USB_CLK == 48000000U,
                     "invalid USB clock frequency");
 
-      /* Reset usb controller. */
+      /* Reset usb controller, the registers are left at their reset
+         values. Those must not be cleared, the RP2350 enables silicon
+         fixes in LINESTATE_TUNING by default.*/
       rp_peripheral_reset(RESETS_ALLREG_USBCTRL);
       rp_peripheral_unreset(RESETS_ALLREG_USBCTRL);
 
-      /* Clear any previous state in dpram and hw regs */
-      memset(USB, 0, sizeof(*USB));
+      /* Clear any previous state in dpram, it is not reset with the
+         controller.*/
       memset(USB_DPSRAM, 0, sizeof(*USB_DPSRAM));
 
       /* Mux the controller to the onboard usb phy */
