@@ -28,8 +28,6 @@
 /* Driver local definitions.                                                 */
 /*===========================================================================*/
 
-#define HAL_US2RTC(freq, usec) (halcnt_t)((((freq) + 999999UL) / 1000000UL) * (usec))
-
 /*===========================================================================*/
 /* Driver exported variables.                                                */
 /*===========================================================================*/
@@ -41,36 +39,6 @@
 /*===========================================================================*/
 /* Driver local functions.                                                   */
 /*===========================================================================*/
-
-#if !defined(HAL_LLD_GET_CNT_VALUE)
-/* Stub type if the LLD does not implement the timeout functionality.*/
-typedef unsigned halcnt_t;
-#endif
-
-static inline uint32_t get_frequency(void) {
-
-#if defined(HAL_LLD_GET_CNT_FREQUENCY)
-  return HAL_LLD_GET_CNT_FREQUENCY();
-#else
-  return 1000000U;
-#endif
-}
-
-static inline halcnt_t get_counter(void) {
-
-#if defined(HAL_LLD_GET_CNT_VALUE)
-  return HAL_LLD_GET_CNT_VALUE();
-#else
-  return (halcnt_t)0;
-#endif
-}
-
-static inline bool is_counter_within(halcnt_t start, halcnt_t end) {
-  halcnt_t cnt = get_counter();
-
-  return (bool)(((halcnt_t)cnt - (halcnt_t)start) <
-                ((halcnt_t)end - (halcnt_t)start));
-}
 
 /*===========================================================================*/
 /* Driver exported functions.                                                */
@@ -119,8 +87,8 @@ bool halRegWaitMatch8X(volatile uint8_t *p, uint8_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -140,7 +108,7 @@ bool halRegWaitMatch8X(volatile uint8_t *p, uint8_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -167,8 +135,8 @@ bool halRegWaitMatch16X(volatile uint16_t *p, uint16_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -188,7 +156,7 @@ bool halRegWaitMatch16X(volatile uint16_t *p, uint16_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -215,8 +183,8 @@ bool halRegWaitMatch32X(volatile uint32_t *p, uint32_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -236,7 +204,7 @@ bool halRegWaitMatch32X(volatile uint32_t *p, uint32_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -262,8 +230,8 @@ bool halRegWaitAllSet8X(volatile uint8_t *p, uint8_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -283,7 +251,7 @@ bool halRegWaitAllSet8X(volatile uint8_t *p, uint8_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -309,8 +277,8 @@ bool halRegWaitAllSet16X(volatile uint16_t *p, uint16_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -330,7 +298,7 @@ bool halRegWaitAllSet16X(volatile uint16_t *p, uint16_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -356,8 +324,8 @@ bool halRegWaitAllSet32X(volatile uint32_t *p, uint32_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -377,7 +345,7 @@ bool halRegWaitAllSet32X(volatile uint32_t *p, uint32_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -403,8 +371,8 @@ bool halRegWaitAnySet8X(volatile uint8_t *p, uint8_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -424,7 +392,7 @@ bool halRegWaitAnySet8X(volatile uint8_t *p, uint8_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -450,8 +418,8 @@ bool halRegWaitAnySet16X(volatile uint16_t *p, uint16_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -471,7 +439,7 @@ bool halRegWaitAnySet16X(volatile uint16_t *p, uint16_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -497,8 +465,8 @@ bool halRegWaitAnySet32X(volatile uint32_t *p, uint32_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -518,7 +486,7 @@ bool halRegWaitAnySet32X(volatile uint32_t *p, uint32_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -544,8 +512,8 @@ bool halRegWaitAllClear8X(volatile uint8_t *p, uint8_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -565,7 +533,7 @@ bool halRegWaitAllClear8X(volatile uint8_t *p, uint8_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -591,8 +559,8 @@ bool halRegWaitAllClear16X(volatile uint16_t *p, uint16_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -612,7 +580,7 @@ bool halRegWaitAllClear16X(volatile uint16_t *p, uint16_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -638,8 +606,8 @@ bool halRegWaitAllClear32X(volatile uint32_t *p, uint32_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -659,7 +627,7 @@ bool halRegWaitAllClear32X(volatile uint32_t *p, uint32_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -685,8 +653,8 @@ bool halRegWaitAnyClear8X(volatile uint8_t *p, uint8_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -706,7 +674,7 @@ bool halRegWaitAnyClear8X(volatile uint8_t *p, uint8_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -732,8 +700,8 @@ bool halRegWaitAnyClear16X(volatile uint16_t *p, uint16_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -753,7 +721,7 @@ bool halRegWaitAnyClear16X(volatile uint16_t *p, uint16_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
@@ -779,8 +747,8 @@ bool halRegWaitAnyClear32X(volatile uint32_t *p, uint32_t mask,
   bool expired = false;
 
   /* Time window for the operation to complete.*/
-  start = get_counter();
-  end = start + HAL_US2RTC(get_frequency(), tmo);
+  start = halSftGetCounterX();
+  end = start + HAL_SFT_US2CNT(halSftGetCounterFrequencyX(), tmo);
 
   /* Testing the condition continuously until it becomes true or the
      timeout expires, it is done at least once.*/
@@ -800,7 +768,7 @@ bool halRegWaitAnyClear32X(volatile uint32_t *p, uint32_t mask,
     if (expired) {
       return true;
     }
-    expired = !is_counter_within(start, end);
+    expired = !halSftIsCounterWithinX(start, end);
   }
 }
 
