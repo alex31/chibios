@@ -134,6 +134,12 @@
 #error "USB driver activated but no USB peripheral assigned"
 #endif
 
+/* The packet memory update of a reception is awaited on the timeout
+   counter.*/
+#if !defined(HAL_LLD_GET_CNT_VALUE) || !defined(HAL_LLD_GET_CNT_FREQUENCY)
+#error "USBv2 requires HAL timeout counter hooks"
+#endif
+
 #if STM32_USB_USE_USB1
 #if defined(STM32_USB1_IS_USED)
 #error "USBD1 requires USB1 but it is already used"

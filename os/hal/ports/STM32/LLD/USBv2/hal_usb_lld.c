@@ -33,6 +33,16 @@
 /*===========================================================================*/
 
 /**
+ * @brief   Packet memory update time of a reception, in counter ticks.
+ * @details The transfer event of an OUT transaction is triggered a little
+ *          before the last packet memory accesses have completed, the packet
+ *          memory is read 800ns after the event (errata ES0565 2.20.1 on
+ *          STM32H5, ES0602 2.12.4 on STM32U0).
+ */
+#define USB_RX_UPDATE_TICKS()                                               \
+  HAL_SFT_NS2CNT(halSftGetCounterFrequencyX(), 800U)
+
+/**
  * @brief   Returns an endpoint descriptor pointer.
  */
 #define USB_GET_DESCRIPTOR(ep)      (&STM32_USB_DRD_PMA_BUFF[ep])
@@ -555,6 +565,7 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
   }
   else {
     /* OUT endpoint, receive.*/
+    halcnt_t rxstart;
 
     /* The event could have been already served.*/
     if ((chepr & USB_EP_VTRX) == 0U) {
@@ -563,9 +574,14 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
 
     CHEPR_CLEAR_VTRX(usbp, ep);
 
+    /* The packets reported by the cleared event completed before this
+       sample, a packet completed later raises a new event.*/
+    rxstart = halSftGetCounterX();
+
     if (chepr & USB_EP_SETUP) {
       /* Setup packets handling, setup packets are handled using a
          specific callback.*/
+      halSftDelayFromX(rxstart, USB_RX_UPDATE_TICKS());
       _usb_isr_invoke_setup_cb(usbp, ep);
     }
     else {
@@ -579,6 +595,8 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t istr) {
         return;
       }
 #endif
+
+      halSftDelayFromX(rxstart, USB_RX_UPDATE_TICKS());
 
       /* Reads the packet into the defined buffer. The host can send a full
          packet when less room is left, the excess is discarded.*/
