@@ -159,7 +159,13 @@ msg_t __adc_start_impl(void *ip, const void *config) {
 void __adc_stop_impl(void *ip, driver_state_t prevstate) {
   hal_adc_driver_c *self = (hal_adc_driver_c *)ip;
 
-  (void)prevstate;
+  /* An active conversion is stopped, the STOPPING state discards late
+     events and no callback is invoked.*/
+  if (prevstate != HAL_DRV_STATE_READY) {
+    chSysLock();
+    adc_lld_stop_conversion(self);
+    chSysUnlock();
+  }
 
   adc_lld_stop(self);
   self->samples = NULL;
@@ -167,6 +173,14 @@ void __adc_stop_impl(void *ip, driver_state_t prevstate) {
   self->grpp    = NULL;
   self->events  = 0U;
   self->errors  = 0U;
+
+#if ADC_USE_SYNCHRONIZATION == TRUE
+  /* Informing the waiting thread, if any.*/
+  chSysLock();
+  _adc_reset_i(self);
+  chSchRescheduleS();
+  chSysUnlock();
+#endif
 }
 
 /**

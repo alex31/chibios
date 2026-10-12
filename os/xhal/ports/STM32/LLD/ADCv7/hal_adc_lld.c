@@ -395,15 +395,9 @@ msg_t adc_lld_start(hal_adc_driver_c *adcp) {
 }
 
 /**
- * @brief   Stops the ADC and wakes waiters without invoking a callback.
+ * @brief   Deactivates the ADC peripheral.
  */
 void adc_lld_stop(hal_adc_driver_c *adcp) {
-
-  chSysLock();
-  adc_lld_stop_conversion(adcp);
-  adcp->grpp = NULL;
-  _adc_reset_s(adcp);
-  chSysUnlock();
 
   adc_lld_analog_off(adcp);
   adc_lld_vreg_off(adcp);

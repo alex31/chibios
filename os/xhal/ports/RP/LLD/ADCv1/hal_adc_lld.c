@@ -467,15 +467,6 @@ void adc_lld_stop(hal_adc_driver_c *adcp) {
 
   /* If stopping then disables the ADC and releases the DMA channel.*/
   if (adcp->state == HAL_DRV_STATE_STOPPING) {
-    /* An active conversion is stopped here, the late events it may
-       still raise are discarded, and a waiting thread is released
-       without callback.*/
-    chSysLock();
-    adc_lld_stop_conversion(adcp);
-    adcp->grpp = NULL;
-    _adc_reset_s(adcp);
-    chSysUnlock();
-
     /* Stop conversions. NOTE: CLR alias may also clear W1C ERR_STICKY
        as a side-effect; acceptable during shutdown.*/
     adcp->adc->CLR.CS = ADC_CS_START_MANY | ADC_CS_TS_EN;
