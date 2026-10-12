@@ -312,6 +312,10 @@ msg_t sio_lld_start(SIODriver *siop) {
     }
   }
 
+  /* No idle condition latched from a previous session.*/
+  siop->rxidle         = false;
+  siop->rxidle_pending = false;
+
   /* Configures the peripheral.*/
   msg = uart_init(siop);
 
@@ -414,6 +418,13 @@ sioevents_t sio_lld_get_and_clear_events(SIODriver *siop) {
   uint32_t ris;
   sioevents_t events = (sioevents_t)0;
 
+  /* The idle event is latched by the ISR, RTRIS does not survive the
+     masking of its source.*/
+  if (siop->rxidle_pending) {
+    events |= SIO_EV_RXIDLE;
+    siop->rxidle_pending = false;
+  }
+
   /* Getting all RIS flags.*/
   ris = siop->uart->UARTRIS & (SIO_LLD_ISR_RX_ERRORS |
                                UART_UARTMIS_RTMIS    |
@@ -452,6 +463,12 @@ sioevents_t sio_lld_get_events(SIODriver *siop) {
   uint32_t ris;
   sioevents_t events = (sioevents_t)0;
 
+  /* The idle event is latched by the ISR, RTRIS does not survive the
+     masking of its source.*/
+  if (siop->rxidle_pending) {
+    events |= SIO_EV_RXIDLE;
+  }
+
   /* Getting all RIS flags.*/
   ris = siop->uart->UARTRIS & (SIO_LLD_ISR_RX_ERRORS |
                                UART_UARTMIS_RTMIS    |
@@ -488,8 +505,9 @@ size_t sio_lld_read(SIODriver *siop, uint8_t *buffer, size_t n) {
   while (true) {
 
     /* If the RX FIFO has been emptied then the RX FIFO and IDLE interrupts
-       are enabled again.*/
+       are enabled again, a latched idle condition is consumed.*/
     if (sio_lld_is_rx_empty(siop)) {
+      siop->rxidle = false;
       uart_enable_rx_irq(siop);
       break;
     }
@@ -563,8 +581,10 @@ msg_t sio_lld_get(SIODriver *siop) {
 
   msg = (msg_t)(siop->uart->UARTDR & 0xFFU);
 
-  /* If the RX FIFO has been emptied then the interrupt is enabled again.*/
+  /* If the RX FIFO has been emptied then the interrupt is enabled again,
+     a latched idle condition is consumed.*/
   if (sio_lld_is_rx_empty(siop)) {
+    siop->rxidle = false;
     uart_enable_rx_irq(siop);
   }
 
@@ -648,8 +668,11 @@ void sio_lld_serve_interrupt(SIODriver *siop) {
 
 #if SIO_USE_SYNCHRONIZATION
       /* The idle flag is forcibly cleared when an RX error event is
-         detected.*/
-      u->UARTICR = UART_UARTICR_RTIC;
+         detected, unless an idle event is reported in this same pass.*/
+      if ((mis & UART_UARTMIS_RTMIS) == 0U) {
+        u->UARTICR = UART_UARTICR_RTIC;
+        siop->rxidle = false;
+      }
 #endif
 
       /* Disabling event sources.*/
@@ -663,16 +686,22 @@ void sio_lld_serve_interrupt(SIODriver *siop) {
     /* Idle RX event.*/
     if ((mis & UART_UARTMIS_RTMIS) != 0U) {
 
+      /* RTRIS is only asserted while RTIM is unmasked, it disappears once
+         the source is masked below, so the idle state and event are
+         latched for sioSynchronizeRXIdle() and the event getters.*/
+      siop->rxidle         = true;
+      siop->rxidle_pending = true;
+
       /* Explicitly clear RTRIS to prevent race on reentry */
       u->UARTICR = UART_UARTICR_RTIC;
 
       /* Called once then the interrupt source is disabled.*/
-       imsc &= ~UART_UARTIMSC_RTIM;
+      imsc &= ~UART_UARTIMSC_RTIM;
 
-       /* Workaround for RX FIFO threshold problem.*/
-       if(!sio_lld_is_rx_empty(siop)) {
-         __sio_wakeup_rx(siop);
-       }
+      /* Workaround for RX FIFO threshold problem.*/
+      if (!sio_lld_is_rx_empty(siop)) {
+        __sio_wakeup_rx(siop);
+      }
 
       /* Waiting thread woken, if any.*/
       __sio_wakeup_rxidle(siop);
@@ -683,8 +712,11 @@ void sio_lld_serve_interrupt(SIODriver *siop) {
 
 #if SIO_USE_SYNCHRONIZATION
       /* The idle flag is forcibly cleared when an RX data event is
-         detected.*/
-      u->UARTICR = UART_UARTICR_RTIC;
+         detected, unless an idle event is reported in this same pass.*/
+      if ((mis & UART_UARTMIS_RTMIS) == 0U) {
+        u->UARTICR = UART_UARTICR_RTIC;
+        siop->rxidle = false;
+      }
 #endif
 
       /* Called once then the interrupt source is disabled.*/

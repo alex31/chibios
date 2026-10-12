@@ -129,11 +129,19 @@
   /* TX-end polling virtual timer.*/                                        \
   virtual_timer_t           txend_vt;                                       \
   /* TX-end polling interval.*/                                             \
-  sysinterval_t             txend_step;
+  sysinterval_t             txend_step;                                     \
+  /* RX idle state latched by the interrupt handler.*/                      \
+  bool                      rxidle;                                         \
+  /* RX idle event latched by the interrupt handler.*/                      \
+  bool                      rxidle_pending;
 #else
 #define sio_lld_driver_fields                                               \
   /* Pointer to the USARTx registers block.*/                               \
-  UART_TypeDef             *uart;
+  UART_TypeDef             *uart;                                           \
+  /* RX idle state latched by the interrupt handler.*/                      \
+  bool                      rxidle;                                         \
+  /* RX idle event latched by the interrupt handler.*/                      \
+  bool                      rxidle_pending;
 #endif
 
 /**
@@ -163,7 +171,17 @@
 
 /**
  * @brief   Determines the activity state of the receiver.
- *(bool)(((siop)->uart->UARTFR & UART_UARTFR_RXFE) != 0U)
+ * @note    The PL011 has no line idle detector, its receive timeout is
+ *          used instead: it fires when the RX FIFO is not empty and no
+ *          data has been received for 32 bit periods.  The raw timeout
+ *          status (UARTRIS.RTRIS) is only asserted while the timeout
+ *          interrupt is unmasked and the handler has to mask it, so the
+ *          condition is latched by the driver.  The state is cleared by
+ *          new RX data or errors and when the RX FIFO is emptied, idle is
+ *          therefore only detectable while received data is still in the
+ *          RX FIFO.  The @p SIO_EV_RXIDLE event is latched separately and
+ *          survives FIFO reads until the events are fetched and cleared.
+ *
  * @param[in] siop      pointer to the @p SIODriver object
  * @return              The RX activity state.
  * @retval false        if RX is in active state.
@@ -172,7 +190,7 @@
  * @notapi
  */
 #define sio_lld_is_rx_idle(siop)                                            \
-  (bool)(((siop)->uart->UARTRIS & UART_UARTRIS_RTRIS) != 0U)
+  ((bool)(siop)->rxidle)
 
 /**
  * @brief   Determines if RX has pending error events to be read and cleared.
