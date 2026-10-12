@@ -323,6 +323,10 @@ static void spi_lld_apply_config(SPIDriver *spip,
  */
 static void spi_lld_serve_rx_interrupt(SPIDriver *spip, uint32_t flags) {
 
+  if (spip->state != HAL_DRV_STATE_ACTIVE) {
+    return;
+  }
+
   /* DMA errors handling.*/
   if ((flags & (STM32_DMA_ISR_TEIF | STM32_DMA_ISR_DMEIF)) != 0) {
 #if defined(STM32_SPI_DMA_ERROR_HOOK)
@@ -357,6 +361,10 @@ static void spi_lld_serve_rx_interrupt(SPIDriver *spip, uint32_t flags) {
  * @param[in] flags     pre-shifted content of the ISR register
  */
 static void spi_lld_serve_tx_interrupt(SPIDriver *spip, uint32_t flags) {
+
+  if (spip->state != HAL_DRV_STATE_ACTIVE) {
+    return;
+  }
 
   /* DMA errors handling.*/
   if ((flags & (STM32_DMA_ISR_TEIF | STM32_DMA_ISR_DMEIF)) != 0) {
