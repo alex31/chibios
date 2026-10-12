@@ -49,8 +49,22 @@
  * 3. Invalid rate rejection.  sioStart() with a 0 baud configuration
  *    must return an error instead of dividing by zero.
  *
+ * 4. RX-idle synchronization (sioSynchronizeRXIdle).  The PL011 signals
+ *    idle through its receive timeout: 32 bit periods without new data
+ *    while the RX FIFO is not empty.  UART1 runs in internal loopback
+ *    (UARTCR.LBE, no pins involved); 8 frames are written and the time
+ *    from the first write to sioSynchronizeRXIdle() returning is measured
+ *    with TIMER0.  8 frames plus the 32-bit timeout take 112 bit periods,
+ *    about 2.9 ms at 38400 bauds; the test passes when the call returns
+ *    MSG_OK within [2.5 ms, 10 ms] and the 8 frames are then read back
+ *    intact.  It runs twice so that re-arming after the FIFO is drained
+ *    is covered too.  On a driver that loses the idle condition the call
+ *    returns MSG_TIMEOUT after the 100 ms timeout.
+ *
  * Single-core only (no SMP).
  */
+
+#include <string.h>
 
 #include "ch.h"
 #include "hal.h"
@@ -66,6 +80,12 @@
 /* 256 frames x 10 bits at 38400 bauds is ~66.7 ms.*/
 #define TXEND_MIN_US         60000U
 #define TXEND_MAX_US         80000U
+
+/* 8 frames x 10 bits plus the 32-bit receive timeout at 38400 bauds is
+   ~2.9 ms.*/
+#define RXIDLE_TEST_LEN      8U
+#define RXIDLE_MIN_US        2500U
+#define RXIDLE_MAX_US        10000U
 
 static BaseSequentialStream *chp;
 static unsigned pass_count;
@@ -90,6 +110,18 @@ static const SIOConfig cfg_zero_baud = {
   .baud         = 0U,
   .UARTLCR_H    = UART_UARTLCR_H_WLEN_8BITS | UART_UARTLCR_H_FEN,
   .UARTCR       = 0U,
+  .UARTIFLS     = UART_UARTIFLS_RXIFLSEL_1_2F | UART_UARTIFLS_TXIFLSEL_1_2E,
+  .UARTDMACR    = 0U
+};
+
+/*
+ * UART1 configuration for the RX-idle test: internal loopback, TX is
+ * routed straight to RX.
+ */
+static const SIOConfig cfg_loopback = {
+  .baud         = TEST_BAUD,
+  .UARTLCR_H    = UART_UARTLCR_H_WLEN_8BITS | UART_UARTLCR_H_FEN,
+  .UARTCR       = UART_UARTCR_LBE,
   .UARTIFLS     = UART_UARTIFLS_RXIFLSEL_1_2F | UART_UARTIFLS_TXIFLSEL_1_2E,
   .UARTDMACR    = 0U
 };
@@ -284,6 +316,52 @@ static void test_zero_baud_rejected(void) {
   report("console recovered after rejection", msg2 == MSG_OK);
 }
 
+/*
+ * Test: RX-idle synchronization timing, UART1 in loopback.
+ */
+static void test_rxidle_loopback(void) {
+  static const uint8_t pattern[RXIDLE_TEST_LEN] = {
+    'I', 'D', 'L', 'E', 'T', 'E', 'S', 'T'
+  };
+  uint8_t rxbuf[RXIDLE_TEST_LEN];
+  unsigned pass;
+
+  if (sioStart(&SIOD1, &cfg_loopback) != MSG_OK) {
+    report("UART1 loopback started", false);
+    return;
+  }
+
+  for (pass = 1U; pass <= 2U; pass++) {
+    uint32_t t0, t1, elapsed;
+    size_t n, sent;
+    msg_t msg;
+
+    t0 = TIMER0->TIMERAWL;
+    sent = sioAsyncWrite(&SIOD1, pattern, sizeof pattern);
+    msg = sioSynchronizeRXIdle(&SIOD1, TIME_MS2I(100));
+    t1 = TIMER0->TIMERAWL;
+    elapsed = t1 - t0;
+
+    n = sioAsyncRead(&SIOD1, rxbuf, sizeof rxbuf);
+
+    wdgReset(&WDGD1);
+
+    chprintf(chp, "  RXIDLE pass %u: msg %d, elapsed %u us (expected %u..%u)"
+                  ", %u frames read\r\n",
+             pass, (int)msg, elapsed, RXIDLE_MIN_US, RXIDLE_MAX_US,
+             (unsigned)n);
+
+    report("RX-idle pattern queued", sent == sizeof pattern);
+    report("sioSynchronizeRXIdle returned MSG_OK", msg == MSG_OK);
+    report("RX-idle synchronized with the receive timeout",
+           (elapsed >= RXIDLE_MIN_US) && (elapsed <= RXIDLE_MAX_US));
+    report("RX-idle frames read back intact",
+           (n == sizeof pattern) && (memcmp(rxbuf, pattern, n) == 0));
+  }
+
+  sioStop(&SIOD1);
+}
+
 /*===========================================================================*/
 /* Blinker thread.                                                           */
 /*===========================================================================*/
@@ -354,6 +432,10 @@ int main(void) {
   /* Test 3: zero rate rejection.*/
   chprintf(chp, "\r\n");
   test_zero_baud_rejected();
+
+  /* Test 4: RX-idle synchronization timing.*/
+  chprintf(chp, "\r\n");
+  test_rxidle_loopback();
 
   chprintf(chp, "\r\n========================================\r\n");
   chprintf(chp, "  Results: %u pass, %u fail\r\n", pass_count, fail_count);
