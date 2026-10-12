@@ -33,6 +33,11 @@
  *      dereferenced the NULLed config in the shared ISR). A second
  *      slice runs across the whole test to verify that stopping one
  *      slice does not break the shared vector for the others.
+ *   5. Fractional divider rounding: a 7MHz counter clock needs a
+ *      150MHz / 7MHz = 21.43 divider, the nearest 8.4 value is 21.4375
+ *      (0x157) while truncation gives 21.375 (0x156), +0.25% too fast.
+ *      The DIV register must hold the rounded value and 1000 wraps of
+ *      period 700 must match it within 0.05%.
  *
  * Pin mapping (RP2350A, slice = (gpio >> 1) & 7, channel = gpio & 1):
  *   GPIO2 = PWM slice 1 channel A -> PWMD1 channel 0 (routed).
@@ -52,6 +57,8 @@
 
 #define PWM_FREQ             1000000U   /* 1MHz counter clock.          */
 #define PWM_PERIOD           1000U      /* 1kHz wrap rate.              */
+#define PWM_FRAC_FREQ        7000000U   /* Needs a fractional divider.  */
+#define PWM_FRAC_PERIOD      700U       /* ~10kHz wrap rate.            */
 
 static BaseSequentialStream *chp;
 static unsigned pass_count;
@@ -147,6 +154,16 @@ static PWMConfig pwmcfg_meas = {
   .channels  = {
     {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL},
     {.mode = PWM_OUTPUT_DISABLED,    .callback = NULL}
+  }
+};
+
+static PWMConfig pwmcfg_frac = {
+  .frequency = PWM_FRAC_FREQ,
+  .period    = PWM_FRAC_PERIOD,
+  .callback  = meas_cb,
+  .channels  = {
+    {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
+    {.mode = PWM_OUTPUT_DISABLED, .callback = NULL}
   }
 };
 
@@ -254,6 +271,31 @@ static bool test_change_period(void) {
            elapsed);
 
   return (elapsed >= 499500U) && (elapsed <= 500500U);
+}
+
+/*
+ * Test: the 8.4 counter divider is rounded to the nearest 1/16 and the
+ * wrap rate follows it.
+ */
+static bool test_divider_rounding(void) {
+  uint32_t sys = (uint32_t)halClockGetPointX(RP_CLK_SYS);
+  uint32_t want, div, elapsed, expected;
+
+  want = (uint32_t)((((uint64_t)sys << 4) + (PWM_FRAC_FREQ / 2U)) /
+                    PWM_FRAC_FREQ);
+  div = PWM->CH[PWMD1.timer_id].DIV;
+
+  /* 1000 wraps of PWM_FRAC_PERIOD counts at sys * 16 / div Hz.*/
+  expected = (uint32_t)(((uint64_t)1000U * PWM_FRAC_PERIOD * div *
+                         1000000U) / ((uint64_t)sys << 4));
+  elapsed = measure_wraps(&PWMD1, 2U, 1000U, 3000000U);
+
+  chprintf(chp, "    DIV 0x%03x (expected 0x%03x), 1000 wraps: %u us "
+                "(expected %u)\r\n", div, want, elapsed, expected);
+
+  return (div == want) &&
+         (elapsed >= expected - (expected / 2000U)) &&
+         (elapsed <= expected + (expected / 2000U));
 }
 
 /*
@@ -416,6 +458,12 @@ int main(void) {
   report("Other slice callbacks survive pwmStop", ok);
 
   pwmStop(&PWMD2);
+
+  /* Test 6: fractional divider rounding. */
+  pwmStart(&PWMD1, &pwmcfg_frac);
+  ok = test_divider_rounding();
+  report("Divider rounded to nearest 1/16 (7MHz counter)", ok);
+  pwmStop(&PWMD1);
 
   chprintf(chp, "\r\n========================================\r\n");
   chprintf(chp, "  Results: %u pass, %u fail\r\n", pass_count, fail_count);
