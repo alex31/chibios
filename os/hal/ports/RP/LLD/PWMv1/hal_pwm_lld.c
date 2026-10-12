@@ -383,8 +383,9 @@ void pwm_lld_start(PWMDriver *pwmp) {
     p->CH[pwmp->timer_id].CC  = 0;
   }
 
-  /* Counter clock divider as an 8.4 fixed point value, computed in 64
-     bits in order not to overflow at high system clocks. */
+  /* Counter clock divider as an 8.4 fixed point value rounded to the
+     nearest 1/16, computed in 64 bits in order not to overflow at high
+     system clocks. */
   halfreq_t sys_clk = halClockGetPointX(RP_CLK_SYS);
   uint32_t div_fp4;
 
@@ -397,7 +398,8 @@ void pwm_lld_start(PWMDriver *pwmp) {
     div_fp4 = 0xFFFU;
   }
   else {
-    div_fp4 = (uint32_t)(((uint64_t)sys_clk << 4) /
+    div_fp4 = (uint32_t)((((uint64_t)sys_clk << 4) +
+                          (pwmp->config->frequency / 2U)) /
                          pwmp->config->frequency);
   }
 
@@ -407,8 +409,9 @@ void pwm_lld_start(PWMDriver *pwmp) {
   }
 
   /* The 12-bit INT.FRAC divider tops out at 255+15/16; release builds
-     clamp instead of writing a truncated unrelated value. */
-  osalDbgAssert(div_fp4 <= 0xFFFU, "PWM frequency too low");
+     clamp instead of writing a truncated unrelated value. A divider that
+     only rounds up to 256.0 is still served best by the maximum. */
+  osalDbgAssert(div_fp4 <= 0x1000U, "PWM frequency too low");
   if (div_fp4 > 0xFFFU) {
     div_fp4 = 0xFFFU;
   }
