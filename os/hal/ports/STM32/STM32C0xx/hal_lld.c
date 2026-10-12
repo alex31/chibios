@@ -224,6 +224,12 @@ static void hal_lld_set_static_clocks(void) {
 static bool hal_lld_clock_configure(const halclkcfg_t *ccp) {
   uint32_t wtmask;
 
+  /* Setting the flash latency to its maximum while the clock tree is
+     reconfigured, the HSISYS divider of the target configuration
+     takes effect before the switch.*/
+  halRegMaskedWrite32X(&FLASH->ACR, FLASH_ACR_LATENCY_Msk,
+                       FLASH_ACR_LATENCY_1WS, true);
+
   /* Using default clock settings (HSION) during transition.*/
   halRegWrite32X(&RCC->CR, STM32_RCC_CR_RESET, true);
   if (halRegWaitAllSet32X(&RCC->CR, RCC_CR_HSIRDY,
@@ -266,9 +272,6 @@ static bool hal_lld_clock_configure(const halclkcfg_t *ccp) {
   /* Final RCC CFGR settings (prescalers, MCO, etc).*/
   halRegWrite32X(&RCC->CFGR, ccp->rcc_cfgr, true);
 
-  /* Final flash ACR settings according to the target configuration.*/
-  halRegWrite32X(&FLASH->ACR, ccp->flash_acr | FLASH_ACR_RESVD10, true);
-
   /* Waiting for the requested SYSCLK source to become active (SWS == SW). */
   if (halRegWaitMatch32X(&RCC->CFGR,
                          RCC_CFGR_SWS_Msk, (ccp->rcc_cfgr & RCC_CFGR_SW_Msk) << RCC_CFGR_SWS_Pos,
@@ -276,6 +279,10 @@ static bool hal_lld_clock_configure(const halclkcfg_t *ccp) {
                          NULL)) {
     return true;
   }
+
+  /* Final flash ACR settings according to the target configuration,
+     the target clock is active.*/
+  halRegWrite32X(&FLASH->ACR, ccp->flash_acr | FLASH_ACR_RESVD10, true);
 
   /* Final RCC_CR value, HSI could go off at this point if it is not part
      of the mask.*/
