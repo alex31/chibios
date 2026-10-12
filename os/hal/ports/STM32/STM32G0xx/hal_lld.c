@@ -844,10 +844,11 @@ void stm32_clock_init(void) {
   halRegWrite32X(&TIM17->CR1, TIM_CR1_CEN, true);
 
 #if !STM32_NO_INIT
-  /* Reset of all peripherals.*/
+  /* Reset of all peripherals except TIM17, it is the timeout counter and
+     it is already running.*/
   rccResetAHB(~0);
   rccResetAPBR1(~0);
-  rccResetAPBR2(~0);
+  rccResetAPBR2(~RCC_APBRSTR2_TIM17RST);
 
   /* SYSCFG clock enabled here because it is a multi-functional unit shared
      among multiple drivers.*/
