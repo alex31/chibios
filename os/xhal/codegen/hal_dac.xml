@@ -541,6 +541,9 @@ return msg;]]></implementation>
             </method>
             <method shortname="stop">
               <implementation><![CDATA[
+
+(void)prevstate;
+
 dac_lld_stop(self);
 self->samples = NULL;
 self->depth   = 0U;

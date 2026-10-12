@@ -382,7 +382,7 @@ struct hal_adc_driver_vmt {
   void (*dispose)(void *ip);
   /* From hal_base_driver_c.*/
   msg_t (*start)(void *ip, const void *config);
-  void (*stop)(void *ip);
+  void (*stop)(void *ip, driver_state_t prevstate);
   const void * (*setcfg)(void *ip, const void *config);
   const void * (*selcfg)(void *ip, unsigned cfgnum);
   /* From hal_cb_driver_c.*/
@@ -484,7 +484,7 @@ extern "C" {
   void *__adc_objinit_impl(void *ip, const void *vmt);
   void __adc_dispose_impl(void *ip);
   msg_t __adc_start_impl(void *ip, const void *config);
-  void __adc_stop_impl(void *ip);
+  void __adc_stop_impl(void *ip, driver_state_t prevstate);
   const void *__adc_setcfg_impl(void *ip, const void *config);
   const void *__adc_selcfg_impl(void *ip, unsigned cfgnum);
   void __adc_oncbset_impl(void *ip, drv_cb_t cb);

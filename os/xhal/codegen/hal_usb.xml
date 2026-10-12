@@ -1852,6 +1852,8 @@ return msg;]]></implementation>
               <implementation><![CDATA[
 unsigned i;
 
+(void)prevstate;
+
 usb_lld_stop(self);
 if (self->binder != NULL) {
   usbBinderUnbind(self->binder);

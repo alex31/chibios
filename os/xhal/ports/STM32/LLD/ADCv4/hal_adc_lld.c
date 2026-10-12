@@ -487,13 +487,6 @@ msg_t adc_lld_start(hal_adc_driver_c *adcp) {
  */
 void adc_lld_stop(hal_adc_driver_c *adcp) {
 
-  /* STOPPING suppresses late callbacks. Wake waiters without a callback.*/
-  chSysLock();
-  adc_lld_stop_conversion(adcp);
-  adcp->grpp = NULL;
-  _adc_reset_s(adcp);
-  chSysUnlock();
-
   adc_lld_analog_off(adcp);
   adc_lld_vreg_off(adcp);
 #if STM32_ADC_USE_ADC12

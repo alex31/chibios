@@ -742,7 +742,7 @@ struct hal_crypto_driver_vmt {
   void (*dispose)(void *ip);
   /* From hal_base_driver_c.*/
   msg_t (*start)(void *ip, const void *config);
-  void (*stop)(void *ip);
+  void (*stop)(void *ip, driver_state_t prevstate);
   const void * (*setcfg)(void *ip, const void *config);
   const void * (*selcfg)(void *ip, unsigned cfgnum);
   /* From hal_crypto_driver_c.*/
@@ -808,7 +808,7 @@ extern "C" {
   void *__cry_objinit_impl(void *ip, const void *vmt);
   void __cry_dispose_impl(void *ip);
   msg_t __cry_start_impl(void *ip, const void *config);
-  void __cry_stop_impl(void *ip);
+  void __cry_stop_impl(void *ip, driver_state_t prevstate);
   const void *__cry_setcfg_impl(void *ip, const void *config);
   const void *__cry_selcfg_impl(void *ip, unsigned cfgnum);
   /* Regular functions.*/
