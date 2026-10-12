@@ -758,9 +758,10 @@ void stm32_clock_init(void) {
 #if !STM32_NO_INIT
   /* Reset of all peripherals.
      Note, GPIOs are not reset because initialized before this point in
-     board files.*/
+     board files. TIM7 is not reset either, it is the timeout counter and
+     it is already running.*/
   rccResetAHB(~0);
-  rccResetAPBR1(~0);
+  rccResetAPBR1(~RCC_APBRSTR1_TIM7RST);
   rccResetAPBR2(~0);
 
   /* RTC APB clock enable.*/
