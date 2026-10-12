@@ -293,7 +293,7 @@ struct hal_dac_driver_vmt {
   void (*dispose)(void *ip);
   /* From hal_base_driver_c.*/
   msg_t (*start)(void *ip, const void *config);
-  void (*stop)(void *ip);
+  void (*stop)(void *ip, driver_state_t prevstate);
   const void * (*setcfg)(void *ip, const void *config);
   const void * (*selcfg)(void *ip, unsigned cfgnum);
   /* From hal_cb_driver_c.*/
@@ -395,7 +395,7 @@ extern "C" {
   void *__dac_objinit_impl(void *ip, const void *vmt);
   void __dac_dispose_impl(void *ip);
   msg_t __dac_start_impl(void *ip, const void *config);
-  void __dac_stop_impl(void *ip);
+  void __dac_stop_impl(void *ip, driver_state_t prevstate);
   const void *__dac_setcfg_impl(void *ip, const void *config);
   const void *__dac_selcfg_impl(void *ip, unsigned cfgnum);
   void __dac_oncbset_impl(void *ip, drv_cb_t cb);

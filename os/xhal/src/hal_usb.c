@@ -1636,10 +1636,15 @@ msg_t __usb_start_impl(void *ip, const void *config) {
  * @brief       Override of method @p __drv_stop().
  *
  * @param[in,out] ip            Pointer to a @p hal_usb_driver_c instance.
+ * @param[in]     prevstate     Driver state when the stop was requested, it
+ *                              allows the class to abort an operation in
+ *                              progress.
  */
-void __usb_stop_impl(void *ip) {
+void __usb_stop_impl(void *ip, driver_state_t prevstate) {
   hal_usb_driver_c *self = (hal_usb_driver_c *)ip;
   unsigned i;
+
+  (void)prevstate;
 
   usb_lld_stop(self);
   if (self->binder != NULL) {

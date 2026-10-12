@@ -564,6 +564,8 @@ return HAL_RET_SUCCESS;]]></implementation>
             <method shortname="stop">
               <implementation><![CDATA[
 
+(void)prevstate;
+
 chSysLock();
 sioWriteEnableFlagsX(self->siop, SIO_EV_NONE);
 drvSetCallbackX(self->siop, NULL);

@@ -866,7 +866,7 @@ struct hal_usb_driver_vmt {
   void (*dispose)(void *ip);
   /* From hal_base_driver_c.*/
   msg_t (*start)(void *ip, const void *config);
-  void (*stop)(void *ip);
+  void (*stop)(void *ip, driver_state_t prevstate);
   const void * (*setcfg)(void *ip, const void *config);
   const void * (*selcfg)(void *ip, unsigned cfgnum);
   /* From hal_usb_driver_c.*/
@@ -1053,7 +1053,7 @@ extern "C" {
   void *__usb_objinit_impl(void *ip, const void *vmt);
   void __usb_dispose_impl(void *ip);
   msg_t __usb_start_impl(void *ip, const void *config);
-  void __usb_stop_impl(void *ip);
+  void __usb_stop_impl(void *ip, driver_state_t prevstate);
   const void *__usb_setcfg_impl(void *ip, const void *config);
   const void *__usb_selcfg_impl(void *ip, unsigned cfgnum);
   msg_t usbBind(void *ip, hal_usb_binder_c *binderp);

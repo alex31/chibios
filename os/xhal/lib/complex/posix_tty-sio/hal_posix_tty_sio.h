@@ -277,7 +277,7 @@ struct hal_posix_tty_sio_vmt {
   void (*dispose)(void *ip);
   /* From hal_base_driver_c.*/
   msg_t (*start)(void *ip, const void *config);
-  void (*stop)(void *ip);
+  void (*stop)(void *ip, driver_state_t prevstate);
   const void * (*setcfg)(void *ip, const void *config);
   const void * (*selcfg)(void *ip, unsigned cfgnum);
   /* From hal_cb_driver_c.*/
@@ -408,7 +408,7 @@ extern "C" {
   void *__ptty_objinit_impl(void *ip, const void *vmt, hal_sio_driver_c *siop);
   void __ptty_dispose_impl(void *ip);
   msg_t __ptty_start_impl(void *ip, const void *config);
-  void __ptty_stop_impl(void *ip);
+  void __ptty_stop_impl(void *ip, driver_state_t prevstate);
   const void *__ptty_setcfg_impl(void *ip, const void *config);
   const void *__ptty_selcfg_impl(void *ip, unsigned cfgnum);
   msg_t pttyReset(void *ip);
