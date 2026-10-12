@@ -157,13 +157,14 @@
  * @brief   Per-thread stack overhead for interrupts servicing.
  * @details This constant is used in the calculation of the correct working
  *          area size.
- * @note    In this port this value is conservatively set to 64 because the
- *          function @p chSchDoPreemption() can have a stack frame, especially
- *          with compiler optimizations disabled. The value can be reduced
- *          when compiler optimizations are enabled.
+ * @note    In this port this value is conservatively set to 80 because the
+ *          post-IRQ @p chSchDoPreemption() call chain runs on the stack of
+ *          the preempted thread and it is deeper with compiler optimizations
+ *          disabled. The value can be reduced when compiler optimizations
+ *          are enabled.
  */
 #if !defined(PORT_INT_REQUIRED_STACK)
-#define PORT_INT_REQUIRED_STACK         64
+#define PORT_INT_REQUIRED_STACK         80
 #endif
 
 /**
