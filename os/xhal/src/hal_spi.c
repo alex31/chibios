@@ -158,9 +158,23 @@ msg_t __spi_start_impl(void *ip, const void *config) {
 void __spi_stop_impl(void *ip, driver_state_t prevstate) {
   hal_spi_driver_c *self = (hal_spi_driver_c *)ip;
 
-  (void)prevstate;
+  /* An active transfer is stopped, the low level driver stop is only
+     invoked on an idle peripheral.*/
+  if (prevstate != HAL_DRV_STATE_READY) {
+    chSysLock();
+    (void) spi_lld_stop_transfer(self, NULL);
+    chSysUnlock();
+  }
 
   spi_lld_stop(self);
+
+#if SPI_USE_SYNCHRONIZATION == TRUE
+  /* Informing the waiting thread, if any.*/
+  chSysLock();
+  chThdResumeI(&self->sync_transfer, MSG_RESET);
+  chSchRescheduleS();
+  chSysUnlock();
+#endif
 }
 
 /**

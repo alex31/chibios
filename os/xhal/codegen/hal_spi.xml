@@ -957,9 +957,23 @@ return msg;]]></implementation>
             <method shortname="stop">
               <implementation><![CDATA[
 
-(void)prevstate;
+/* An active transfer is stopped, the low level driver stop is only
+   invoked on an idle peripheral.*/
+if (prevstate != HAL_DRV_STATE_READY) {
+  chSysLock();
+  (void) spi_lld_stop_transfer(self, NULL);
+  chSysUnlock();
+}
 
-spi_lld_stop(self);]]></implementation>
+spi_lld_stop(self);
+
+#if SPI_USE_SYNCHRONIZATION == TRUE
+/* Informing the waiting thread, if any.*/
+chSysLock();
+chThdResumeI(&self->sync_transfer, MSG_RESET);
+chSchRescheduleS();
+chSysUnlock();
+#endif]]></implementation>
             </method>
             <method shortname="setcfg">
               <implementation><![CDATA[
