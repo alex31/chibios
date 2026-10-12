@@ -415,6 +415,12 @@ static bool hal_lld_clock_check_tree(const halclkcfg_t *ccp) {
     sysclk = 0U;
   }
 
+#if STM32_RCC_HAS_SYSDIV
+  /* SYSCLK divider.*/
+  sysclk = sysclk /
+           (((ccp->rcc_cr & RCC_CR_SYSDIV_Msk) >> RCC_CR_SYSDIV_Pos) + 1U);
+#endif
+
   if ((sysclk == 0U) || (sysclk > STM32_SYSCLK_MAX)) {
     return true;
   }
