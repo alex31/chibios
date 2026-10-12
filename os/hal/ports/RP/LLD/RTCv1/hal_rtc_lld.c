@@ -63,6 +63,36 @@ static void rtc_disable_alarm(RTCDriver *rtcp) {
 }
 #endif
 
+/**
+ * @brief   Waits for the counters to show a loaded date/time.
+ * @details The counters are updated from the RTC clock domain, they show
+ *          the values loaded by a set about one clk_rtc cycle after the
+ *          RTC is active again. The wait is bounded to four clk_rtc
+ *          cycles, a seconds increment in the meantime would not match.
+ *
+ * @param[in] rtcp      pointer to RTC driver structure
+ * @param[in] setup0    loaded @p SETUP0 value, same layout as @p RTC1
+ * @param[in] setup1    loaded @p SETUP1 value, same layout as @p RTC0
+ *
+ * @notapi
+ */
+static void rtc_wait_loaded(RTCDriver *rtcp,
+                            uint32_t setup0, uint32_t setup1) {
+  halcnt_t start, ticks;
+  uint32_t rtc_0, rtc_1;
+
+  /* The divider is the clk_rtc frequency minus one. */
+  ticks = HAL_SFT_US2CNT(halSftGetCounterFrequencyX(),
+                         ((4U * 1000000U) / (rtcp->rtc->CLKDIVM1 + 1U)) + 1U);
+  start = halSftGetCounterX();
+  do {
+    /* Read RTC0 first then RTC1. */
+    rtc_0 = rtcp->rtc->RTC0;
+    rtc_1 = rtcp->rtc->RTC1;
+  } while (((rtc_0 != setup1) || (rtc_1 != setup0)) &&
+           halSftIsCounterWithinX(start, start + ticks));
+}
+
 /*===========================================================================*/
 /* Driver interrupt handlers.                                                */
 /*===========================================================================*/
@@ -80,15 +110,19 @@ OSAL_IRQ_HANDLER(RP_RTC_IRQ_HANDLER) {
   /* Disable the alarm to clear the interrupt. */
   rtc_disable_alarm(&RTCD1);
 
-  /* If it is a repeatable alarm, re-enable the alarm. */
-  if ((RTCD1.mask & RTC_ALARM_NON_REPEATING) != RTC_ALARM_NON_REPEATING) {
+  /* A stale pending interrupt taken after the alarm has been disabled
+     must neither re-enable matching nor invoke the callback. */
+  if (RTCD1.mask != RTC_ALARM_DISABLE_ALL_MATCHING) {
+    /* If it is a repeatable alarm, re-enable the alarm. */
+    if ((RTCD1.mask & RTC_ALARM_NON_REPEATING) != RTC_ALARM_NON_REPEATING) {
       rtc_enable_alarm(&RTCD1);
-  }
+    }
 #if RTC_SUPPORTS_CALLBACKS == TRUE
-  if (RTCD1.callback != NULL) {
-    RTCD1.callback(&RTCD1, RTC_EVENT_ALARM);
-  }
+    if (RTCD1.callback != NULL) {
+      RTCD1.callback(&RTCD1, RTC_EVENT_ALARM);
+    }
 #endif
+  }
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -120,7 +154,7 @@ void rtc_lld_init(void) {
 
   /* Get clock parameters. */
   uint32_t clock = hal_lld_get_clock_point(clk_rtc);
-  osalDbgAssert((clock > 0U) || (clock - 1 <= RTC_CLKDIV_M1), "bad clock");
+  osalDbgAssert((clock > 0U) && (clock - 1 <= RTC_CLKDIV_M1), "bad clock");
 
   /* Take RTC out of reset. */
   hal_lld_peripheral_unreset(RESETS_ALLREG_RTC);
@@ -138,6 +172,8 @@ void rtc_lld_init(void) {
  * @note    Fractional seconds part will be silently ignored. There is no
  *          possibility to set it on RP2040 platform.
  * @note    The RP2040 handles leap year for years evenly divisible by 4.
+ * @note    The function returns once the RTC counters show the new
+ *          date/time, a few clk_rtc cycles after it has been loaded.
  * @note    The function can be called from any context.
  *
  * @param[in] rtcp      pointer to RTC driver structure
@@ -146,6 +182,7 @@ void rtc_lld_init(void) {
  * @notapi
  */
 void rtc_lld_set_time(RTCDriver *rtcp, const RTCDateTime *timespec) {
+  uint32_t setup0, setup1;
 
   uint32_t sec = (uint32_t)timespec->millisecond / 1000;
   uint32_t hour = sec / 3600;
@@ -153,30 +190,38 @@ void rtc_lld_set_time(RTCDriver *rtcp, const RTCDateTime *timespec) {
   uint32_t min = sec / 60;
   sec %= 60;
 
+  /* Setup register data. */
+  setup0 = (RTC_SETUP_0_YEAR(timespec->year + RTC_BASE_YEAR))               |
+           (RTC_SETUP_0_MONTH(timespec->month))                             |
+           (RTC_SETUP_0_DAY(timespec->day));
+  setup1 = (RTC_SETUP_1_DOTW(timespec->dayofweek > 0U ?
+               timespec->dayofweek - 1U : 0U)
+               & RTC_SETUP_1_DOTW_Msk)                                      |
+           (RTC_SETUP_1_HOUR(hour) & RTC_SETUP_1_HOUR_Msk)                  |
+           (RTC_SETUP_1_MIN(min) & RTC_SETUP_1_MIN_Msk)                     |
+           (RTC_SETUP_1_SEC(sec) & RTC_SETUP_1_SEC_Msk);
+
   /* Entering a reentrant critical zone.*/
   syssts_t sts = osalSysGetStatusAndLockX();
 
   /* Disable RTC. */
-  rtcp->rtc->CTRL &= ~RTC_CTRL_RTC_ENABLE;
+  rtcp->rtc->CTRL = 0;
 
   /* Wait for RTC to go inactive. */
   while ((rtcp->rtc->CTRL & RTC_CTRL_RTC_ACTIVE) != 0)
     ;
 
   /* Write setup to pre-load registers. */
-  rtcp->rtc->SETUP0 = (RTC_SETUP_0_YEAR(timespec->year + RTC_BASE_YEAR))    |
-                      (RTC_SETUP_0_MONTH(timespec->month))                  |
-                      (RTC_SETUP_0_DAY(timespec->day));
-  rtcp->rtc->SETUP1 = (RTC_SETUP_1_DOTW(timespec->dayofweek - 1))           |
-                      (RTC_SETUP_1_HOUR(hour))                              |
-                      (RTC_SETUP_1_MIN(min))                                |
-                      (RTC_SETUP_1_SEC(sec));
+  rtcp->rtc->SETUP0 = setup0;
+  rtcp->rtc->SETUP1 = setup1;
 
-  /* Move setup values into RTC clock domain. */
-  rtcp->rtc->CTRL = RTC_CTRL_LOAD;
-
-  /* Enable RTC and wait for active. */
-  rtcp->rtc->CTRL |= RTC_CTRL_RTC_ENABLE;
+  /* Move the setup values into the RTC clock domain and re-enable the
+     RTC in one write. Writing LOAD and RTC_ENABLE as two separate
+     writes races the slower RTC clock domain: the second write clears
+     the pending LOAD strobe before the date counter has sampled it, so
+     the time of day would take the new value while the date kept the
+     old one. */
+  rtcp->rtc->CTRL = RTC_CTRL_LOAD | RTC_CTRL_RTC_ENABLE;
 
   /* Leaving a reentrant critical zone.*/
   osalSysRestoreStatusX(sts);
@@ -184,6 +229,9 @@ void rtc_lld_set_time(RTCDriver *rtcp, const RTCDateTime *timespec) {
   /* Wait for RTC to go active. */
   while ((rtcp->rtc->CTRL & RTC_CTRL_RTC_ACTIVE) == 0)
     ;
+
+  /* A read right after the set must return the new date/time. */
+  rtc_wait_loaded(rtcp, setup0, setup1);
 }
 
 /**
@@ -223,11 +271,13 @@ void rtc_lld_get_time(RTCDriver *rtcp, RTCDateTime *timespec) {
 /**
  * @brief   Set alarm time.
  * @note    The alarm time can be partially specified by leaving fields as zero.
+ * @note    A @p NULL alarm specification, or a specification with no
+ *          matching fields enabled, disables the alarm.
  * @note    The function can be called from any context.
  *
  * @param[in] rtcp      pointer to RTC driver structure.
- * @param[in] alarm     alarm identifier. Can be 1.
- * @param[in] alarmspec pointer to a @p RTCAlarm structure.
+ * @param[in] alarm     alarm identifier. Can be 0.
+ * @param[in] alarmspec pointer to a @p RTCAlarm structure or @p NULL.
  *
  * @notapi
  */
@@ -237,14 +287,28 @@ void rtc_lld_set_alarm(RTCDriver *rtcp,
 
   (void)alarm;
   uint32_t sec, min, hour, day, month, year, dotw, setup0, setup1;
-  const RTCDateTime *timespec = &alarmspec->alarm;
-  const rtcdtmask_t dtmask = alarmspec->mask;
 
-  if (dtmask == RTC_ALARM_DISABLE_ALL_MATCHING) {
-    /* Disable RTC when no fields are enabled. */
+  if ((alarmspec == NULL) ||
+      (alarmspec->mask == RTC_ALARM_DISABLE_ALL_MATCHING)) {
+    /* Entering a reentrant critical zone.*/
+    syssts_t sts = osalSysGetStatusAndLockX();
+
+    /* Disable matching and the alarm interrupt; the level interrupt
+       deasserts when matching deactivates. */
     rtc_disable_alarm(rtcp);
+    rtcp->rtc->INTE &= ~RTC_INTE_RTC;
+
+    /* Update the saved software state so the alarm reads back as
+       disabled. */
+    rtcp->mask = RTC_ALARM_DISABLE_ALL_MATCHING;
+
+    /* Leaving a reentrant critical zone.*/
+    osalSysRestoreStatusX(sts);
     return;
   }
+
+  const RTCDateTime *timespec = &alarmspec->alarm;
+  const rtcdtmask_t dtmask = alarmspec->mask;
 
   /* Setup date/time fields. */
   sec = (uint32_t)timespec->millisecond / 1000;
@@ -258,13 +322,14 @@ void rtc_lld_set_alarm(RTCDriver *rtcp,
   year = timespec->year + RTC_BASE_YEAR;
 
   /* Setup register data. */
-  setup0 = (RTC_IRQ_SETUP_0_YEAR(year))        |
-           (RTC_IRQ_SETUP_0_MONTH(month))      |
-           (RTC_IRQ_SETUP_0_DAY(day));
-  setup1 = (RTC_IRQ_SETUP_1_DOTW(dotw - 1))    |
-           (RTC_IRQ_SETUP_1_HOUR(hour))        |
-           (RTC_IRQ_SETUP_1_MIN(min))          |
-           (RTC_IRQ_SETUP_1_SEC(sec));
+  setup0 = (RTC_IRQ_SETUP_0_YEAR(year) & RTC_IRQ_SETUP_0_YEAR_Msk)     |
+           (RTC_IRQ_SETUP_0_MONTH(month) & RTC_IRQ_SETUP_0_MONTH_Msk)  |
+           (RTC_IRQ_SETUP_0_DAY(day) & RTC_IRQ_SETUP_0_DAY_Msk);
+  setup1 = (RTC_IRQ_SETUP_1_DOTW(dotw > 0U ? dotw - 1U : 0U)
+               & RTC_IRQ_SETUP_1_DOTW_Msk)                             |
+           (RTC_IRQ_SETUP_1_HOUR(hour) & RTC_IRQ_SETUP_1_HOUR_Msk)    |
+           (RTC_IRQ_SETUP_1_MIN(min) & RTC_IRQ_SETUP_1_MIN_Msk)       |
+           (RTC_IRQ_SETUP_1_SEC(sec) & RTC_IRQ_SETUP_1_SEC_Msk);
 
   /* Check and set match enable bits. */
   if (RTC_ALARM_TEST_MATCH(dtmask, RTC_DT_ALARM_YEAR))

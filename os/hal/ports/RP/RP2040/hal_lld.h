@@ -151,9 +151,26 @@ typedef struct {
 } halclkcfg_t;
 #endif /* defined(HAL_LLD_USE_CLOCK_MANAGEMENT) */
 
+/**
+ * @brief   Type of a timeout counter.
+ */
+typedef uint32_t halcnt_t;
+
 /*===========================================================================*/
 /* Driver macros.                                                            */
 /*===========================================================================*/
+
+/**
+ * @brief   Real time counter frequency exported to the safety module.
+ * @note    The counter is the lower word of the TIMER counter, it counts
+ *          microseconds.
+ */
+#define HAL_LLD_GET_CNT_FREQUENCY()         1000000U
+
+/**
+ * @brief   Real time counter value exported to the safety module.
+ */
+#define HAL_LLD_GET_CNT_VALUE()             (TIMER->TIMERAWL)
 
 /*===========================================================================*/
 /* External declarations.                                                    */
