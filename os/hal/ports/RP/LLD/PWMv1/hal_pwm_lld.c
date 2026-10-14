@@ -477,7 +477,7 @@ void pwm_lld_stop(PWMDriver *pwmp) {
     p->CH[pwmp->timer_id].CSR = 0U;
     p->CH[pwmp->timer_id].CTR = 0U;
     p->CH[pwmp->timer_id].CC  = 0U;
-    p->CH[pwmp->timer_id].DIV = 1U;
+    p->CH[pwmp->timer_id].DIV = 0x010U;
     p->CH[pwmp->timer_id].TOP = 0xFFFF;
 
     /* Clearing any interrupt request still latched for this slice. */
