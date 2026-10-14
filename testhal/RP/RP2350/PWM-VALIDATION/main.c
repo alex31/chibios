@@ -43,6 +43,12 @@
  *      and 1000 wraps of period 586 must match a division by 256 within
  *      0.01%; the 255+15/16 clamp would run 0.024% fast.
  *
+ * Tests 5 and 6 also drive GPIO2 at 50% duty so an external logic
+ * analyzer can measure the same rates: 9995.84Hz and 999.89Hz at 150MHz,
+ * against 10025.06Hz and 1000.14Hz with the old 0x156 and 0xFFF dividers.
+ * The 1kHz output of test 2 uses an exact divider and calibrates the
+ * analyzer timebase against the board crystal.
+ *
  * Pin mapping (RP2350A, slice = (gpio >> 1) & 7, channel = gpio & 1):
  *   GPIO2 = PWM slice 1 channel A -> PWMD1 channel 0 (routed).
  *   PWMD2 (slice 2) is used callback-only, no pin routing.
@@ -167,8 +173,8 @@ static PWMConfig pwmcfg_frac = {
   .period    = PWM_FRAC_PERIOD,
   .callback  = meas_cb,
   .channels  = {
-    {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
-    {.mode = PWM_OUTPUT_DISABLED, .callback = NULL}
+    {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL},
+    {.mode = PWM_OUTPUT_DISABLED,    .callback = NULL}
   }
 };
 
@@ -178,8 +184,8 @@ static PWMConfig pwmcfg_max = {
   .period    = PWM_MAX_PERIOD,
   .callback  = meas_cb,
   .channels  = {
-    {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
-    {.mode = PWM_OUTPUT_DISABLED, .callback = NULL}
+    {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL},
+    {.mode = PWM_OUTPUT_DISABLED,    .callback = NULL}
   }
 };
 
@@ -297,6 +303,9 @@ static bool test_divider_rounding(void) {
   uint32_t sys = (uint32_t)halClockGetPointX(RP_CLK_SYS);
   uint32_t want, div, elapsed, expected;
 
+  /* 50% on GPIO2 for an external logic analyzer.*/
+  pwmEnableChannel(&PWMD1, 0U, PWM_FRAC_PERIOD / 2U);
+
   want = (uint32_t)((((uint64_t)sys << 4) + (PWM_FRAC_FREQ / 2U)) /
                     PWM_FRAC_FREQ);
   div = PWM->CH[PWMD1.timer_id].DIV;
@@ -321,6 +330,9 @@ static bool test_divider_rounding(void) {
 static bool test_divider_max(void) {
   uint32_t sys = (uint32_t)halClockGetPointX(RP_CLK_SYS);
   uint32_t div, elapsed, expected;
+
+  /* 50% on GPIO2 for an external logic analyzer.*/
+  pwmEnableChannel(&PWMD1, 0U, PWM_MAX_PERIOD / 2U);
 
   div = PWM->CH[PWMD1.timer_id].DIV;
 
