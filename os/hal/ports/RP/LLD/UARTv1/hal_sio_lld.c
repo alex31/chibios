@@ -441,14 +441,19 @@ sioevents_t sio_lld_get_and_clear_errors(SIODriver *siop) {
  */
 sioevents_t sio_lld_get_and_clear_events(SIODriver *siop) {
   uint32_t ris;
+  syssts_t sts;
   sioevents_t events = (sioevents_t)0;
 
   /* The idle event is latched by the ISR, RTRIS does not survive the
-     masking of its source.*/
+     masking of its source. Fetched and cleared atomically, a caller
+     without the lock would otherwise lose an event latched between the
+     two steps.*/
+  sts = osalSysGetStatusAndLockX();
   if (siop->rxidle_pending) {
     events |= SIO_EV_RXIDLE;
     siop->rxidle_pending = false;
   }
+  osalSysRestoreStatusX(sts);
 
   /* Getting all RIS flags.*/
   ris = siop->uart->UARTRIS & (SIO_LLD_ISR_RX_ERRORS |
