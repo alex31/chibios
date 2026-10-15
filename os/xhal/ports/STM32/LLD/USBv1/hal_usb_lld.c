@@ -847,6 +847,44 @@ void usb_lld_set_address(hal_usb_driver_c *usbp) {
   STM32_USB->DADDR = (uint32_t)(usbp->address) | DADDR_EF;
 }
 
+void usb_lld_wakeup_host(hal_usb_driver_c *usbp) {
+  unsigned i;
+
+  (void)usbp;
+
+  /* The suspend interrupt stays disabled until the host has resumed the
+     bus, two SOFs lock the frame timer, or for at most
+     STM32_USB_HOST_RESUME_TIMEOUT milliseconds. Some devices raise a
+     false suspend when the first SOF arrives late after a remote wakeup
+     (errata "ESOF interrupt timing desynchronized after resume
+     signaling", G4, L0 and U0). A suspend latched meanwhile is discarded
+     only if SOFs are received, if the host did not resume the bus it is
+     served when the interrupt is enabled again.*/
+  chSysLock();
+  STM32_USB->CNTR = (STM32_USB->CNTR & ~CNTR_SUSPM) | CNTR_RESUME;
+  chSysUnlock();
+  chThdSleepMilliseconds(STM32_USB_HOST_WAKEUP_DURATION);
+  chSysLock();
+  STM32_USB->CNTR &= ~CNTR_RESUME;
+  chSysUnlock();
+
+  /* Waiting for the host to resume the bus.*/
+  for (i = 0U; i < (unsigned)STM32_USB_HOST_RESUME_TIMEOUT; i++) {
+    if ((STM32_USB->FNR & FNR_LCK) != 0U) {
+      break;
+    }
+    chThdSleepMilliseconds(1);
+  }
+
+  chSysLock();
+  if ((STM32_USB->FNR & FNR_LCK) != 0U) {
+    /* SOFs are received, a latched suspend is a false one.*/
+    STM32_USB->ISTR = ~(uint32_t)ISTR_SUSP;
+  }
+  STM32_USB->CNTR |= CNTR_SUSPM;
+  chSysUnlock();
+}
+
 void usb_lld_init_endpoint(hal_usb_driver_c *usbp, usbep_t ep) {
   uint16_t epr;
   stm32_usb_descriptor_t *dp;
