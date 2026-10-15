@@ -1783,6 +1783,8 @@ msg_t usbBind(void *ip, hal_usb_binder_c *binderp) {
  */
 msg_t usbUnbind(void *ip) {
   hal_usb_driver_c *self = (hal_usb_driver_c *)ip;
+  hal_usb_binder_c *binderp;
+
   chDbgCheck(self != NULL);
 
   chSysLock();
@@ -1792,11 +1794,15 @@ msg_t usbUnbind(void *ip) {
     chSysUnlock();
     return HAL_RET_INV_STATE;
   }
-  if (self->binder != NULL) {
-    usbBinderUnbind(self->binder);
-    self->binder = NULL;
-  }
+  binderp = self->binder;
+  self->binder = NULL;
   chSysUnlock();
+
+  /* The driver no longer refers to the binder, the unbind hooks are API
+     functions and run outside the lock.*/
+  if (binderp != NULL) {
+    usbBinderUnbind(binderp);
+  }
 
   return HAL_RET_SUCCESS;
 }
