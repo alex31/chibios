@@ -133,6 +133,24 @@
 #endif
 
 /**
+ * @brief   Maximum wait for the host resume after a remote wakeup.
+ * @details After a remote wakeup the suspend interrupt stays disabled until
+ *          the host has resumed the bus, at most for this time in
+ *          milliseconds, see @p usb_lld_wakeup_host().
+ * @note    The USB specification only sets a minimum for the host resume
+ *          signaling (20ms). A Linux host took from 40ms to more than 300ms,
+ *          depending on its load, from the start of the remote wakeup to
+ *          the first SOFs.
+ * @note    The timeout only bounds the wait when the host does not resume
+ *          the bus. When it expires before the host resumes, the suspend
+ *          interrupt is enabled early and that wakeup is not protected
+ *          against the false suspend.
+ */
+#if !defined(STM32_USB_HOST_RESUME_TIMEOUT) || defined(__DOXYGEN__)
+#define STM32_USB_HOST_RESUME_TIMEOUT       500
+#endif
+
+/**
  * @brief   Allowed deviation for the 48MHz clock.
  */
 #if !defined(STM32_USB_48MHZ_DELTA) || defined(__DOXYGEN__)
@@ -557,18 +575,6 @@ struct USBDriver {
 #endif
 #endif /* STM32L1XX */
 
-/**
- * @brief   Start of host wake-up procedure.
- *
- * @notapi
- */
-#define usb_lld_wakeup_host(usbp)                                           \
-  do {                                                                      \
-    STM32_USB->CNTR |= USB_CNTR_L2RES;                                      \
-    osalThreadSleepMilliseconds(STM32_USB_HOST_WAKEUP_DURATION);            \
-    STM32_USB->CNTR &= ~USB_CNTR_L2RES;                                     \
-  } while (false)
-
 /*===========================================================================*/
 /* External declarations.                                                    */
 /*===========================================================================*/
@@ -585,6 +591,7 @@ extern "C" {
   void usb_lld_stop(USBDriver *usbp);
   void usb_lld_reset(USBDriver *usbp);
   void usb_lld_set_address(USBDriver *usbp);
+  void usb_lld_wakeup_host(USBDriver *usbp);
   void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep);
   void usb_lld_disable_endpoints(USBDriver *usbp);
   usbepstatus_t usb_lld_get_status_in(USBDriver *usbp, usbep_t ep);
