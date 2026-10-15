@@ -102,6 +102,30 @@ __STATIC_INLINE void uart_enable_tx_irq(SIODriver *siop) {
   }
 }
 
+/**
+ * @brief   Updates the RX idle latch after frames are read from the FIFO.
+ * @details A latched idle state survives the RX FIFO being emptied, frames
+ *          read after that are new reception and invalidate it.  The
+ *          latch is shared with the interrupt handler and the readers can
+ *          be called from any context.
+ *
+ * @param[in] siop      pointer to the @p SIODriver object
+ * @param[in] n         number of frames just read
+ */
+static void uart_rxidle_update(SIODriver *siop, size_t n) {
+  syssts_t sts;
+
+  sts = osalSysGetStatusAndLockX();
+  if ((n > 0U) && siop->rxidle_drained) {
+    siop->rxidle         = false;
+    siop->rxidle_drained = false;
+  }
+  if (siop->rxidle && sio_lld_is_rx_empty(siop)) {
+    siop->rxidle_drained = true;
+  }
+  osalSysRestoreStatusX(sts);
+}
+
 #if (defined(__CHIBIOS_RT__) && (SIO_USE_SYNCHRONIZATION == TRUE)) ||       \
     defined(__DOXYGEN__)
 /**
@@ -315,6 +339,7 @@ msg_t sio_lld_start(SIODriver *siop) {
   /* No idle condition latched from a previous session.*/
   siop->rxidle         = false;
   siop->rxidle_pending = false;
+  siop->rxidle_drained = false;
 
   /* Configures the peripheral.*/
   msg = uart_init(siop);
@@ -505,9 +530,8 @@ size_t sio_lld_read(SIODriver *siop, uint8_t *buffer, size_t n) {
   while (true) {
 
     /* If the RX FIFO has been emptied then the RX FIFO and IDLE interrupts
-       are enabled again, a latched idle condition is consumed.*/
+       are enabled again.*/
     if (sio_lld_is_rx_empty(siop)) {
-      siop->rxidle = false;
       uart_enable_rx_irq(siop);
       break;
     }
@@ -520,6 +544,9 @@ size_t sio_lld_read(SIODriver *siop, uint8_t *buffer, size_t n) {
     *buffer++ = (uint8_t)siop->uart->UARTDR;
     rd++;
   }
+
+  /* The RX idle latch follows the FIFO activity.*/
+  uart_rxidle_update(siop, rd);
 
   return rd;
 }
@@ -581,10 +608,11 @@ msg_t sio_lld_get(SIODriver *siop) {
 
   msg = (msg_t)(siop->uart->UARTDR & 0xFFU);
 
-  /* If the RX FIFO has been emptied then the interrupt is enabled again,
-     a latched idle condition is consumed.*/
+  /* The RX idle latch follows the FIFO activity.*/
+  uart_rxidle_update(siop, 1U);
+
+  /* If the RX FIFO has been emptied then the interrupt is enabled again.*/
   if (sio_lld_is_rx_empty(siop)) {
-    siop->rxidle = false;
     uart_enable_rx_irq(siop);
   }
 
@@ -671,7 +699,8 @@ void sio_lld_serve_interrupt(SIODriver *siop) {
          detected, unless an idle event is reported in this same pass.*/
       if ((mis & UART_UARTMIS_RTMIS) == 0U) {
         u->UARTICR = UART_UARTICR_RTIC;
-        siop->rxidle = false;
+        siop->rxidle         = false;
+        siop->rxidle_drained = false;
       }
 #endif
 
@@ -691,6 +720,7 @@ void sio_lld_serve_interrupt(SIODriver *siop) {
          latched for sioSynchronizeRXIdle() and the event getters.*/
       siop->rxidle         = true;
       siop->rxidle_pending = true;
+      siop->rxidle_drained = false;
 
       /* Explicitly clear RTRIS to prevent race on reentry */
       u->UARTICR = UART_UARTICR_RTIC;
@@ -715,7 +745,8 @@ void sio_lld_serve_interrupt(SIODriver *siop) {
          detected, unless an idle event is reported in this same pass.*/
       if ((mis & UART_UARTMIS_RTMIS) == 0U) {
         u->UARTICR = UART_UARTICR_RTIC;
-        siop->rxidle = false;
+        siop->rxidle         = false;
+        siop->rxidle_drained = false;
       }
 #endif
 

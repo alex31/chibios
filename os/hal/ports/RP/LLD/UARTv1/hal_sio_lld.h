@@ -133,7 +133,9 @@
   /* RX idle state latched by the interrupt handler.*/                      \
   bool                      rxidle;                                         \
   /* RX idle event latched by the interrupt handler.*/                      \
-  bool                      rxidle_pending;
+  bool                      rxidle_pending;                                 \
+  /* RX FIFO emptied since the RX idle state was latched.*/                 \
+  bool                      rxidle_drained;
 #else
 #define sio_lld_driver_fields                                               \
   /* Pointer to the USARTx registers block.*/                               \
@@ -141,7 +143,9 @@
   /* RX idle state latched by the interrupt handler.*/                      \
   bool                      rxidle;                                         \
   /* RX idle event latched by the interrupt handler.*/                      \
-  bool                      rxidle_pending;
+  bool                      rxidle_pending;                                 \
+  /* RX FIFO emptied since the RX idle state was latched.*/                 \
+  bool                      rxidle_drained;
 #endif
 
 /**
@@ -176,10 +180,14 @@
  *          data has been received for 32 bit periods.  The raw timeout
  *          status (UARTRIS.RTRIS) is only asserted while the timeout
  *          interrupt is unmasked and the handler has to mask it, so the
- *          condition is latched by the driver.  The state is cleared by
- *          new RX data or errors and when the RX FIFO is emptied, idle is
- *          therefore only detectable while received data is still in the
- *          RX FIFO.  The @p SIO_EV_RXIDLE event is latched separately and
+ *          condition is latched by the driver.  The latched state survives
+ *          the RX FIFO being emptied, a callback draining the FIFO cannot
+ *          hide it from a woken @p sioSynchronizeRXIdle() waiter.  It is
+ *          cleared by new reception: RX data or error interrupts, or
+ *          frames found in the RX FIFO after it was emptied.  The timeout
+ *          only fires while received data is in the RX FIFO, a burst
+ *          entirely read before its timeout elapses is not reported as
+ *          idle.  The @p SIO_EV_RXIDLE event is latched separately and
  *          survives FIFO reads until the events are fetched and cleared.
  *
  * @param[in] siop      pointer to the @p SIODriver object
@@ -190,7 +198,8 @@
  * @notapi
  */
 #define sio_lld_is_rx_idle(siop)                                            \
-  ((bool)(siop)->rxidle)
+  ((bool)((siop)->rxidle &&                                                 \
+          (!(siop)->rxidle_drained || sio_lld_is_rx_empty(siop))))
 
 /**
  * @brief   Determines if RX has pending error events to be read and cleared.
