@@ -694,15 +694,15 @@ void sio_lld_serve_interrupt(SIODriver *siop) {
     /* Error events handled as a group, except ORE.*/
     if ((mis & SIO_LLD_ISR_RX_ERRORS) != 0U) {
 
-#if SIO_USE_SYNCHRONIZATION
-      /* The idle flag is forcibly cleared when an RX error event is
+      /* The idle state is forcibly cleared when an RX error event is
          detected, unless an idle event is reported in this same pass.*/
       if ((mis & UART_UARTMIS_RTMIS) == 0U) {
+#if SIO_USE_SYNCHRONIZATION
         u->UARTICR = UART_UARTICR_RTIC;
+#endif
         siop->rxidle         = false;
         siop->rxidle_drained = false;
       }
-#endif
 
       /* Disabling event sources.*/
       imsc &= ~(UART_UARTIMSC_OEIM | UART_UARTIMSC_BEIM |
@@ -740,15 +740,15 @@ void sio_lld_serve_interrupt(SIODriver *siop) {
     /* RX FIFO is non-empty.*/
     if ((mis & UART_UARTMIS_RXMIS) != 0U) {
 
-#if SIO_USE_SYNCHRONIZATION
-      /* The idle flag is forcibly cleared when an RX data event is
+      /* The idle state is forcibly cleared when an RX data event is
          detected, unless an idle event is reported in this same pass.*/
       if ((mis & UART_UARTMIS_RTMIS) == 0U) {
+#if SIO_USE_SYNCHRONIZATION
         u->UARTICR = UART_UARTICR_RTIC;
+#endif
         siop->rxidle         = false;
         siop->rxidle_drained = false;
       }
-#endif
 
       /* Called once then the interrupt source is disabled.*/
       imsc &= ~UART_UARTIMSC_RXIM;
