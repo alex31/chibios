@@ -32,7 +32,6 @@
 /* Driver local definitions.                                                 */
 /*===========================================================================*/
 
-#define TRDT_VALUE_FS           5
 #define TRDT_VALUE_HS           9
 
 #define EP0_MAX_INSIZE          64
@@ -184,15 +183,41 @@ static bool otg_core_reset(USBDriver *usbp) {
                              OTG_OPERATION_TIMEOUT, NULL);
 }
 
+/**
+ * @brief   Full speed turnaround time for the current AHB clock.
+ * @details Minimum values from the "TRDT values" table of the reference
+ *          manuals: a slower AHB needs more time to read the FIFO when
+ *          answering an IN token. The full speed core requires an AHB
+ *          clock of at least 14.2MHz.
+ *
+ * @return              The TRDT field value.
+ */
+static uint32_t otg_trdt_fs(void) {
+  static const uint32_t min_hclk[] = {
+    32000000U, 27500000U, 24000000U, 21800000U, 20000000U,
+    18500000U, 17200000U, 16000000U, 15000000U
+  };
+  uint32_t hclk = (uint32_t)STM32_HCLK;
+  uint32_t i;
+
+  for (i = 0U; i < (uint32_t)(sizeof (min_hclk) / sizeof (min_hclk[0])); i++) {
+    if (hclk >= min_hclk[i]) {
+      return 6U + i;
+    }
+  }
+
+  return 15U;
+}
+
 static void otg_device_configure(USBDriver *usbp) {
   stm32_otg_t *otgp = usbp->otg;
 
 #if STM32_USB_USE_OTG1
   if (&USBD1 == usbp) {
     /* - Forced device mode.
-       - USB turn-around time = TRDT_VALUE_FS.
+       - USB turn-around time from the AHB clock.
        - Full Speed 1.1 PHY.*/
-    otgp->GUSBCFG = GUSBCFG_FDMOD | GUSBCFG_TRDT(TRDT_VALUE_FS) |
+    otgp->GUSBCFG = GUSBCFG_FDMOD | GUSBCFG_TRDT(otg_trdt_fs()) |
                     GUSBCFG_PHYSEL;
 
     /* 48MHz 1.1 PHY.*/
@@ -203,14 +228,14 @@ static void otg_device_configure(USBDriver *usbp) {
 #if STM32_USB_USE_OTG2
   if (&USBD2 == usbp) {
     /* - Forced device mode.
-       - USB turn-around time = TRDT_VALUE_HS or TRDT_VALUE_FS.*/
+       - USB turn-around time = TRDT_VALUE_HS or from the AHB clock.*/
 #if defined(BOARD_OTG2_USES_ULPI)
     /* High speed ULPI PHY.*/
     otgp->GUSBCFG = GUSBCFG_FDMOD | GUSBCFG_TRDT(TRDT_VALUE_HS) |
                     GUSBCFG_SRPCAP | GUSBCFG_HNPCAP;
 #else
     /* Embedded full-speed PHY.*/
-    otgp->GUSBCFG = GUSBCFG_FDMOD | GUSBCFG_TRDT(TRDT_VALUE_FS) |
+    otgp->GUSBCFG = GUSBCFG_FDMOD | GUSBCFG_TRDT(otg_trdt_fs()) |
                     GUSBCFG_PHYSEL;
 #endif
 
@@ -1259,7 +1284,7 @@ irq_retry:
     }
     else {
       otgp->GUSBCFG = (otgp->GUSBCFG & ~(GUSBCFG_TRDT_MASK)) |
-                      GUSBCFG_TRDT(TRDT_VALUE_FS);
+                      GUSBCFG_TRDT(otg_trdt_fs());
     }
   }
 
