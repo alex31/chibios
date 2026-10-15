@@ -1124,6 +1124,8 @@ return msg;]]></implementation>
               <return>The operation status.</return>
               <api />
               <implementation><![CDATA[
+hal_usb_binder_c *binderp;
+
 chDbgCheck(self != NULL);
 
 chSysLock();
@@ -1133,11 +1135,15 @@ if ((self->state == USB_SELECTED) ||
   chSysUnlock();
   return HAL_RET_INV_STATE;
 }
-if (self->binder != NULL) {
-  usbBinderUnbind(self->binder);
-  self->binder = NULL;
-}
+binderp = self->binder;
+self->binder = NULL;
 chSysUnlock();
+
+/* The driver no longer refers to the binder, the unbind hooks are API
+   functions and run outside the lock.*/
+if (binderp != NULL) {
+  usbBinderUnbind(binderp);
+}
 
 return HAL_RET_SUCCESS;]]></implementation>
             </method>
