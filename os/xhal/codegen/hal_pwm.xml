@@ -84,15 +84,34 @@
         </macro>
       </group>
       <group description="Low level driver helper macros">
-        <macro name="_pwm_isr_invoke_cb">
-          <brief>Common ISR code, PWM event.</brief>
+        <macro name="_pwm_isr_invoke_cb_i">
+          <brief>Common ISR code, PWM event, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          the driver is not ready, for example while it is stopping.</note>
           <param name="pwmp" dir="both">Pointer to the PWM driver instance.</param>
           <param name="events" dir="in">PWM event flags.</param>
           <notapi />
           <implementation><![CDATA[
 do {
-  (pwmp)->events |= (events);
-  __cbdrv_invoke_cb(pwmp);
+  if ((pwmp)->state == HAL_DRV_STATE_READY) {
+    (pwmp)->events |= (events);
+    __cbdrv_invoke_cb_i(pwmp);
+  }
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_pwm_isr_invoke_cb">
+          <brief>Common ISR code, PWM event.</brief>
+          <note>The driver state is checked under the system lock, see
+          @p _pwm_isr_invoke_cb_i().</note>
+          <param name="pwmp" dir="both">Pointer to the PWM driver instance.</param>
+          <param name="events" dir="in">PWM event flags.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _pwm_isr_invoke_cb_i(pwmp, events);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
         </macro>
       </group>
