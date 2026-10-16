@@ -133,23 +133,27 @@ static bool spi_lld_validate_config(const hal_spi_config_t *config,
  *          concurrent abort, by a previously served TX error or by a
  *          transfer restarted from the other core loses the claim and
  *          is discarded without side effects.
+ * @note    The claim and the driver state transition happen in the same
+ *          critical section, the lock is only released during the
+ *          callback. A transfer aborted and restarted from the other core
+ *          cannot be completed by the event of the previous one.
  *
  * @param[in] spip      pointer to the @p SPIDriver object
  * @param[in] ct        content of the CTRL_TRIG register
  */
 static void spi_lld_serve_rx_interrupt(SPIDriver *spip, uint32_t ct) {
   uint32_t gen;
-  bool claimed;
 
-  /* Transfer generation sampled at service entry, the service body runs
-     outside the system lock and can race the other terminal paths.*/
+  /* Transfer generation sampled at service entry, a transfer started
+     after this point carries a different generation and the event
+     loses the claim.*/
   gen = spip->tgen;
+
+  chSysLockFromISR();
 
   /* DMA errors handling.*/
   if ((ct & DMA_CTRL_TRIG_AHB_ERROR) != 0U) {
-    chSysLockFromISR();
-    claimed = ((gen & 1U) != 0U) && (gen == spip->tgen);
-    if (claimed) {
+    if (((gen & 1U) != 0U) && (gen == spip->tgen)) {
       spip->tgen++;
 
       /* Stopping DMAs within the claim critical section, the channels
@@ -158,16 +162,13 @@ static void spi_lld_serve_rx_interrupt(SPIDriver *spip, uint32_t ct) {
          lock.*/
       dmaChannelDisableX(spip->dmatx);
       dmaChannelDisableX(spip->dmarx);
-    }
-    chSysUnlockFromISR();
 
-    if (claimed) {
 #if defined(RP_SPI_DMA_ERROR_HOOK)
-      /* Hook first, if defined.*/
+      /* Hook first, if defined, invoked with the system lock held.*/
       RP_SPI_DMA_ERROR_HOOK(spip);
 #endif
       /* Reporting the failure.*/
-      _spi_isr_error_code(spip);
+      _spi_isr_error_code_i(spip);
     }
   }
   else {
@@ -177,19 +178,15 @@ static void spi_lld_serve_rx_interrupt(SPIDriver *spip, uint32_t ct) {
        the channel enable bit and on the residual counter reject a stale
        completion served after the channel has been re-armed by a new
        transfer carrying a matching generation.*/
-    chSysLockFromISR();
-    claimed = ((gen & 1U) != 0U) && (gen == spip->tgen) &&
-              ((spip->dmarx->channel->CTRL_TRIG & DMA_CTRL_TRIG_EN) == 0U) &&
-              (dmaChannelGetCounterX(spip->dmarx) == 0U);
-    if (claimed) {
+    if (((gen & 1U) != 0U) && (gen == spip->tgen) &&
+        ((spip->dmarx->channel->CTRL_TRIG & DMA_CTRL_TRIG_EN) == 0U) &&
+        (dmaChannelGetCounterX(spip->dmarx) == 0U)) {
       spip->tgen++;
-    }
-    chSysUnlockFromISR();
-
-    if (claimed) {
-      _spi_isr_complete_code(spip);
+      _spi_isr_complete_code_i(spip);
     }
   }
+
+  chSysUnlockFromISR();
 }
 
 /**
@@ -198,23 +195,24 @@ static void spi_lld_serve_rx_interrupt(SPIDriver *spip, uint32_t ct) {
  *          counter before any driver state transition, see the notes in
  *          the driver header. An error made stale by a concurrent abort
  *          loses the claim and is discarded without side effects.
+ * @note    The claim and the driver state transition happen in the same
+ *          critical section, see @p spi_lld_serve_rx_interrupt().
  *
  * @param[in] spip      pointer to the @p SPIDriver object
  * @param[in] ct        content of the CTRL_TRIG register
  */
 static void spi_lld_serve_tx_interrupt(SPIDriver *spip, uint32_t ct) {
   uint32_t gen;
-  bool claimed;
 
-  /* Transfer generation sampled at service entry, the service body runs
-     outside the system lock and can race the other terminal paths.*/
+  /* Transfer generation sampled at service entry, a transfer started
+     after this point carries a different generation and the event
+     loses the claim.*/
   gen = spip->tgen;
 
   /* DMA errors handling.*/
   if ((ct & DMA_CTRL_TRIG_AHB_ERROR) != 0U) {
     chSysLockFromISR();
-    claimed = ((gen & 1U) != 0U) && (gen == spip->tgen);
-    if (claimed) {
+    if (((gen & 1U) != 0U) && (gen == spip->tgen)) {
       spip->tgen++;
 
       /* Stopping DMAs within the claim critical section, the channels
@@ -223,12 +221,9 @@ static void spi_lld_serve_tx_interrupt(SPIDriver *spip, uint32_t ct) {
          lock.*/
       dmaChannelDisableX(spip->dmatx);
       dmaChannelDisableX(spip->dmarx);
-    }
-    chSysUnlockFromISR();
 
-    if (claimed) {
 #if defined(RP_SPI_DMA_ERROR_HOOK)
-      /* Hook first, if defined.*/
+      /* Hook first, if defined, invoked with the system lock held.*/
       RP_SPI_DMA_ERROR_HOOK(spip);
 #endif
       /* A TX failure makes the RX completion impossible, reporting the
@@ -236,8 +231,9 @@ static void spi_lld_serve_tx_interrupt(SPIDriver *spip, uint32_t ct) {
          pending at this point is cleared by the channel disable above
          and not served, a later RX event loses the claim and is
          discarded.*/
-      _spi_isr_error_code(spip);
+      _spi_isr_error_code_i(spip);
     }
+    chSysUnlockFromISR();
   }
 }
 
