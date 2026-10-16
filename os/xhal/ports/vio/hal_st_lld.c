@@ -41,7 +41,15 @@
 /*===========================================================================*/
 
 #if (PORT_USE_LOCAL_SYSTICK == FALSE) && (CH_CFG_ST_TIMEDELTA == 0)
+/**
+ * @brief   Tick period in host system time units.
+ */
 static sysinterval_t st_alarm_interval;
+
+/**
+ * @brief   Host system time of the last accounted tick.
+ */
+static uint32_t st_last_tick;
 #endif
 
 /*===========================================================================*/
@@ -54,16 +62,31 @@ static sysinterval_t st_alarm_interval;
 
 /**
  * @brief   Interrupt handler.
+ * @details All the tick periods elapsed since the last accounted tick are
+ *          accounted. The host merges the alarm VRQs triggered while the
+ *          sandbox is not running, those ticks are recovered here.
  *
  * @isr
  */
 #if (PORT_USE_LOCAL_SYSTICK == FALSE) && (CH_CFG_ST_TIMEDELTA == 0)
 CH_IRQ_HANDLER(MK_VECTOR(SB_VRQ_ALARM)) {
+  uint32_t now;
 
   CH_IRQ_PROLOGUE();
 
+  now = (uint32_t)sbGetSystemTime();
+
+  /* A negative difference is only possible with a host system time
+     narrower than 32 bits, the elapsed ticks are lost in that case.*/
+  if ((int32_t)(now - st_last_tick) < 0) {
+    st_last_tick = now;
+  }
+
   chSysLockFromISR();
-  chSysTimerHandlerI();
+  while ((now - st_last_tick) >= (uint32_t)st_alarm_interval) {
+    st_last_tick += (uint32_t)st_alarm_interval;
+    chSysTimerHandlerI();
+  }
   chSysUnlockFromISR();
 
   CH_IRQ_EPILOGUE();
@@ -84,8 +107,12 @@ void st_lld_init(void) {
 #if (PORT_USE_LOCAL_SYSTICK == FALSE) && (CH_CFG_ST_TIMEDELTA == 0)
   st_alarm_interval = sbGetFrequency() / CH_CFG_ST_FREQUENCY;
 
+  chDbgAssert(st_alarm_interval > (sysinterval_t)0, "invalid frequency");
+
   /* The ST layer owns the alarm VRQ when the port-local systick is
-     disabled.*/
+     disabled. The tick accounting base is taken before arming the
+     alarm.*/
+  st_last_tick = (uint32_t)sbGetSystemTime();
   __sb_vrq_seten(1U << SB_VRQ_ALARM);
   sbSetAlarm(st_alarm_interval, true);
 #endif

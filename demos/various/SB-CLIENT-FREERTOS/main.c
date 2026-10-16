@@ -42,6 +42,7 @@
 #define PERIODIC_PERIOD         pdMS_TO_TICKS(10)
 #define TIMER_PERIOD            pdMS_TO_TICKS(50)
 #define IDLE_DURATION           pdMS_TO_TICKS(100)
+#define CATCHUP_DURATION_MS     100U
 #define SWVRQ_CYCLES            100U
 #define TEST_STACK_SIZE         (configMINIMAL_STACK_SIZE * 3)
 
@@ -63,6 +64,7 @@
 #define FAIL_SWVRQ              (1U << 4)
 #define FAIL_IDLE_TIME          (1U << 5)
 #define FAIL_IDLE_SPIN          (1U << 6)
+#define FAIL_TICK_CATCHUP       (1U << 7)
 
 /*===========================================================================*/
 /* Demo variables.                                                           */
@@ -255,6 +257,17 @@ static void prvTestTask(void *pvParameters) {
   }
   if (ulIdle > (IDLE_DURATION * 2U) + 10U) {
     ulFailures |= FAIL_IDLE_SPIN;
+  }
+
+  /* Tick catch-up, the whole sandbox is blocked in the host while the
+     alarm VRQs are merged, the elapsed ticks must be recovered when the
+     pending VRQ is served on return.*/
+  xStart = xTaskGetTickCount();
+  sbSleepMilliseconds(CATCHUP_DURATION_MS);
+  xTicks = xTaskGetTickCount() - xStart;
+
+  if (!prvInRange(xTicks, pdMS_TO_TICKS(CATCHUP_DURATION_MS), 1U)) {
+    ulFailures |= FAIL_TICK_CATCHUP;
   }
 
   printf("FreeRTOS %s on %s: periodic=%lu timer=%lu consumer=%lu "
