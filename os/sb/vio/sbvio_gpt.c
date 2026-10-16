@@ -31,6 +31,15 @@
 #if (VIO_CFG_ENABLE_GPT == TRUE) || defined(__DOXYGEN__)
 
 /*===========================================================================*/
+/* Module local definitions.                                                 */
+/*===========================================================================*/
+
+/* The GPT VRQ flags are part of the sandbox ABI, they must match the host
+   definitions.*/
+__CH_STATIC_ASSERT(sb_vgpt_vrq_flags,
+  (SB_VGPT_FL_PERIOD == (1U << GPT_CONTINUOUS)));
+
+/*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
 

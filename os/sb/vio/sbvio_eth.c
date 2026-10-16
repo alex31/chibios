@@ -31,6 +31,16 @@
 #if (VIO_CFG_ENABLE_ETH == TRUE) || defined(__DOXYGEN__)
 
 /*===========================================================================*/
+/* Module local definitions.                                                 */
+/*===========================================================================*/
+
+/* The ETH VRQ flags are part of the sandbox ABI, they must match the host
+   definitions.*/
+__CH_STATIC_ASSERT(sb_veth_vrq_flags,
+  ((SB_VETH_FL_TX == ETH_FLAGS_TX) &&
+   (SB_VETH_FL_RX == ETH_FLAGS_RX)));
+
+/*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
 

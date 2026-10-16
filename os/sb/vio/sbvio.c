@@ -32,6 +32,24 @@
 /* Module local definitions.                                                 */
 /*===========================================================================*/
 
+/* The VIO return codes and VRQ flags are part of the sandbox ABI, they must
+   match the host definitions.*/
+__CH_STATIC_ASSERT(sb_vio_ret_codes,
+  ((SB_VIO_RET_SUCCESS == HAL_RET_SUCCESS) &&
+   (SB_VIO_RET_CONFIG_ERROR == HAL_RET_CONFIG_ERROR) &&
+   (SB_VIO_RET_NO_RESOURCE == HAL_RET_NO_RESOURCE) &&
+   (SB_VIO_RET_HW_BUSY == HAL_RET_HW_BUSY) &&
+   (SB_VIO_RET_HW_FAILURE == HAL_RET_HW_FAILURE) &&
+   (SB_VIO_RET_UNKNOWN_CTL == HAL_RET_UNKNOWN_CTL) &&
+   (SB_VIO_RET_IS_INVALID == HAL_RET_IS_INVALID) &&
+   (SB_VIO_RET_INV_STATE == HAL_RET_INV_STATE)));
+
+__CH_STATIC_ASSERT(sb_vio_vrq_flags,
+  ((SB_VIO_FL_HALF == (1U << HAL_DRV_STATE_HALF)) &&
+   (SB_VIO_FL_FULL == (1U << HAL_DRV_STATE_FULL)) &&
+   (SB_VIO_FL_COMPLETE == (1U << HAL_DRV_STATE_COMPLETE)) &&
+   (SB_VIO_FL_ERROR == (1U << HAL_DRV_STATE_ERROR))));
+
 /*===========================================================================*/
 /* Module exported variables.                                                */
 /*===========================================================================*/

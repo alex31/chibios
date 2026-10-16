@@ -25,14 +25,18 @@
  *          kernel.
  * @note    Units, configurations and VRQ numbers are assigned by the host
  *          configuration, the guest must use the same numbering.
+ * @note    Asynchronous operations signal completion on the VRQ assigned
+ *          to the unit, the VRQ flags are returned by
+ *          @p ulPortVRQGetFlags() or @p __sb_vrq_gcsts(). Events, errors and
+ *          flags are defined in @p sbsysc.h: @p SB_VIO_FL_xxx,
+ *          @p SB_VGPT_FL_PERIOD, @p SB_VETH_FL_xxx, @p SB_VUART_EV_xxx and
+ *          @p SB_VI2C_xxx.
  * @note    Configuration information copied by the host in the @p cfgp
- *          buffers, VRQ flags, events, errors and modes use the host XHAL
- *          drivers definitions. Asynchronous operations signal completion
- *          on the VRQ assigned to the unit, the VRQ flags contain the bit
- *          corresponding to the host driver state (for example
- *          @p HAL_DRV_STATE_COMPLETE or @p HAL_DRV_STATE_ERROR).
+ *          buffers, GPIO modes, UART control operations and ADC errors use
+ *          the host drivers definitions.
  * @note    Unless specified otherwise, functions returning @p msg_t return
- *          @p HAL_RET_SUCCESS or an error code.
+ *          @p SB_VIO_RET_SUCCESS, a @p SB_VIO_RET_xxx or a @p CH_RET_xxx
+ *          error code.
  *
  * @addtogroup ARM_SANDBOX_USER_VIO_API
  * @{
@@ -340,7 +344,7 @@ static inline void vuartPut(uint32_t unit, uint32_t data) {
  * @brief   Writes the mask of events enabled to trigger the unit VRQ.
  *
  * @param[in] unit      VIO UART unit
- * @param[in] mask      host SIO events mask
+ * @param[in] mask      @p SB_VUART_EV_xxx events mask
  */
 static inline void vuartWriteEnableFlags(uint32_t unit, uint32_t mask) {
 
@@ -351,7 +355,7 @@ static inline void vuartWriteEnableFlags(uint32_t unit, uint32_t mask) {
  * @brief   Returns and clears the pending RX errors.
  *
  * @param[in] unit      VIO UART unit
- * @return              The host SIO errors mask.
+ * @return              The @p SB_VUART_EV_xxx errors mask.
  */
 static inline uint32_t vuartGetAndClearErrors(uint32_t unit) {
 
@@ -363,8 +367,8 @@ static inline uint32_t vuartGetAndClearErrors(uint32_t unit) {
  * @brief   Returns and clears pending events.
  *
  * @param[in] unit      VIO UART unit
- * @param[in] mask      host SIO events to be returned and cleared
- * @return              The host SIO events mask.
+ * @param[in] mask      @p SB_VUART_EV_xxx events to be returned and cleared
+ * @return              The @p SB_VUART_EV_xxx events mask.
  */
 static inline uint32_t vuartGetAndClearEvents(uint32_t unit, uint32_t mask) {
 
@@ -376,7 +380,7 @@ static inline uint32_t vuartGetAndClearEvents(uint32_t unit, uint32_t mask) {
  * @brief   Returns the pending events without clearing them.
  *
  * @param[in] unit      VIO UART unit
- * @return              The host SIO events mask.
+ * @return              The @p SB_VUART_EV_xxx events mask.
  */
 static inline uint32_t vuartGetEvents(uint32_t unit) {
 
@@ -404,8 +408,8 @@ static inline msg_t vuartControl(uint32_t unit, uint32_t operation,
 /**
  * @name    VIO SPI API
  * @note    Transfers are asynchronous, completion is signaled on the unit
- *          VRQ. Frame counts are in host frames, buffers must stay valid
- *          until completion.
+ *          VRQ with @p SB_VIO_FL_COMPLETE or @p SB_VIO_FL_ERROR. Frame counts
+ *          are in host frames, buffers must stay valid until completion.
  * @{
  */
 /**
@@ -552,8 +556,9 @@ static inline msg_t vspiStopTransfer(uint32_t unit, size_t *np) {
 /**
  * @name    VIO I2C API
  * @note    Transfers are asynchronous, completion is signaled on the unit
- *          VRQ. The transfer descriptor is read when the transfer starts,
- *          the buffers must stay valid until completion.
+ *          VRQ with @p SB_VIO_FL_COMPLETE or @p SB_VIO_FL_ERROR. The
+ *          transfer descriptor is read when the transfer starts, the buffers
+ *          must stay valid until completion.
  * @{
  */
 /**
@@ -640,7 +645,7 @@ static inline msg_t vi2cStopTransfer(uint32_t unit) {
  * @brief   Returns and clears the errors of the last transfer.
  *
  * @param[in] unit      VIO I2C unit
- * @return              The host I2C errors mask.
+ * @return              The @p SB_VI2C_xxx errors mask.
  */
 static inline uint32_t vi2cGetAndClearErrors(uint32_t unit) {
 
@@ -652,7 +657,10 @@ static inline uint32_t vi2cGetAndClearErrors(uint32_t unit) {
 /**
  * @name    VIO ADC API
  * @note    Conversions are asynchronous, completion is signaled on the
- *          unit VRQ. The samples buffer must stay valid until completion.
+ *          unit VRQ with @p SB_VIO_FL_COMPLETE or @p SB_VIO_FL_ERROR,
+ *          circular conversions also signal @p SB_VIO_FL_HALF and
+ *          @p SB_VIO_FL_FULL. The samples buffer must stay valid until
+ *          completion.
  * @{
  */
 /**
@@ -761,7 +769,8 @@ static inline uint32_t vadcGetAndClearErrors(uint32_t unit) {
 /**
  * @name    VIO GPT API
  * @note    Timer expirations are signaled on the unit VRQ if enabled using
- *          @p vgptSetCallback().
+ *          @p vgptSetCallback(), with @p SB_VGPT_FL_PERIOD in continuous
+ *          mode and @p SB_VIO_FL_COMPLETE in one shot mode.
  * @{
  */
 /**
@@ -928,8 +937,8 @@ static inline uint32_t vgptGetFrequency(uint32_t unit) {
 
 /**
  * @name    VIO ETH API
- * @note    Driver events are signaled on the unit VRQ, the VRQ flags contain
- *          the host ETH event flags instead of the driver state.
+ * @note    Driver events are signaled on the unit VRQ with the
+ *          @p SB_VETH_FL_TX and @p SB_VETH_FL_RX flags.
  * @{
  */
 /**

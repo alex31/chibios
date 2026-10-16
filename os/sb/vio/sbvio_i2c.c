@@ -31,6 +31,22 @@
 #if (VIO_CFG_ENABLE_I2C == TRUE) || defined(__DOXYGEN__)
 
 /*===========================================================================*/
+/* Module local definitions.                                                 */
+/*===========================================================================*/
+
+/* The I2C errors are part of the sandbox ABI, they must match the host
+   definitions.*/
+__CH_STATIC_ASSERT(sb_vi2c_errors,
+  ((SB_VI2C_NO_ERROR == I2C_NO_ERROR) &&
+   (SB_VI2C_BUS_ERROR == I2C_BUS_ERROR) &&
+   (SB_VI2C_ARBITRATION_LOST == I2C_ARBITRATION_LOST) &&
+   (SB_VI2C_ACK_FAILURE == I2C_ACK_FAILURE) &&
+   (SB_VI2C_OVERRUN == I2C_OVERRUN) &&
+   (SB_VI2C_PEC_ERROR == I2C_PEC_ERROR) &&
+   (SB_VI2C_TIMEOUT == I2C_TIMEOUT) &&
+   (SB_VI2C_SMB_ALERT == I2C_SMB_ALERT)));
+
+/*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
 

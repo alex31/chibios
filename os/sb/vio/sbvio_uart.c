@@ -34,6 +34,24 @@
 /* Module local definitions.                                                 */
 /*===========================================================================*/
 
+/* The UART events are part of the sandbox ABI, they must match the host
+   definitions.*/
+__CH_STATIC_ASSERT(sb_vuart_events,
+  ((SB_VUART_EV_NONE == SIO_EV_NONE) &&
+   (SB_VUART_EV_PARITY_ERR == SIO_EV_PARITY_ERR) &&
+   (SB_VUART_EV_FRAMING_ERR == SIO_EV_FRAMING_ERR) &&
+   (SB_VUART_EV_NOISE_ERR == SIO_EV_NOISE_ERR) &&
+   (SB_VUART_EV_OVERRUN_ERR == SIO_EV_OVERRUN_ERR) &&
+   (SB_VUART_EV_ALL_ERRORS == SIO_EV_ALL_ERRORS) &&
+   (SB_VUART_EV_TX_NOTFULL == SIO_EV_TX_NOTFULL) &&
+   (SB_VUART_EV_RX_NOTEMPTY == SIO_EV_RX_NOTEMPTY) &&
+   (SB_VUART_EV_ALL_DATA == SIO_EV_ALL_DATA) &&
+   (SB_VUART_EV_TX_END == SIO_EV_TX_END) &&
+   (SB_VUART_EV_RX_IDLE == SIO_EV_RX_IDLE) &&
+   (SB_VUART_EV_RX_BREAK == SIO_EV_RX_BREAK) &&
+   (SB_VUART_EV_ALL_STATUS == SIO_EV_ALL_STATUS) &&
+   (SB_VUART_EV_ALL_EVENTS == SIO_EV_ALL_EVENTS)));
+
 /*===========================================================================*/
 /* Module exported variables.                                                */
 /*===========================================================================*/
@@ -52,8 +70,9 @@
 
 static void vuart_cb(void *ip) {
   hal_sio_driver_c *siop = (hal_sio_driver_c *)ip;
-  const vio_uart_unit_t *unitp = (const vio_uart_unit_t *)drvGetArgumentX(siop);
+  const vio_uart_unit_t *unitp;
 
+  unitp = (const vio_uart_unit_t *)drvGetArgumentX(siop);
   sbVRQTriggerFromISR(unitp->vrqsb, unitp->vrqn);
 }
 

@@ -244,6 +244,88 @@
 #define SB_VUART_CTL            14
 /** @} */
 
+/**
+ * @name    VIO return codes
+ * @note    Returned by the VIO calls in addition to the @p CH_RET_xxx
+ *          codes, they match the host @p HAL_RET_xxx codes.
+ * @{
+ */
+#define SB_VIO_RET_SUCCESS       0
+#define SB_VIO_RET_CONFIG_ERROR  (-16)
+#define SB_VIO_RET_NO_RESOURCE   (-17)
+#define SB_VIO_RET_HW_BUSY       (-18)
+#define SB_VIO_RET_HW_FAILURE    (-19)
+#define SB_VIO_RET_UNKNOWN_CTL   (-20)
+#define SB_VIO_RET_IS_INVALID    (-21)
+#define SB_VIO_RET_INV_STATE     (-22)
+/** @} */
+
+/**
+ * @name    VIO VRQ flags
+ * @note    Flags associated to the VRQs of the SPI, I2C, ADC and GPT
+ *          units, they encode the host driver state at the event.
+ * @{
+ */
+#define SB_VIO_FL_HALF           (1U << 6)
+#define SB_VIO_FL_FULL           (1U << 7)
+#define SB_VIO_FL_COMPLETE       (1U << 8)
+#define SB_VIO_FL_ERROR          (1U << 9)
+/** @} */
+
+/**
+ * @name    Virtual GPT VRQ flags
+ * @note    A one-shot expiration is signaled by @p SB_VIO_FL_COMPLETE.
+ * @{
+ */
+#define SB_VGPT_FL_PERIOD        (1U << 10)
+/** @} */
+
+/**
+ * @name    Virtual ETH VRQ flags
+ * @{
+ */
+#define SB_VETH_FL_TX            (1U << 0)
+#define SB_VETH_FL_RX            (1U << 1)
+/** @} */
+
+/**
+ * @name    Virtual I2C errors
+ * @{
+ */
+#define SB_VI2C_NO_ERROR         0x00U
+#define SB_VI2C_BUS_ERROR        0x01U
+#define SB_VI2C_ARBITRATION_LOST 0x02U
+#define SB_VI2C_ACK_FAILURE      0x04U
+#define SB_VI2C_OVERRUN          0x08U
+#define SB_VI2C_PEC_ERROR        0x10U
+#define SB_VI2C_TIMEOUT          0x20U
+#define SB_VI2C_SMB_ALERT        0x40U
+/** @} */
+
+/**
+ * @name    Virtual UART events
+ * @note    Used by the UART events and errors calls, the UART VRQ carries
+ *          no flags.
+ * @{
+ */
+#define SB_VUART_EV_NONE         0U
+#define SB_VUART_EV_PARITY_ERR   (1U << 0)
+#define SB_VUART_EV_FRAMING_ERR  (1U << 1)
+#define SB_VUART_EV_NOISE_ERR    (1U << 2)
+#define SB_VUART_EV_OVERRUN_ERR  (1U << 3)
+#define SB_VUART_EV_ALL_ERRORS   (15U << 0)
+#define SB_VUART_EV_TX_NOTFULL   (1U << 8)
+#define SB_VUART_EV_RX_NOTEMPTY  (1U << 9)
+#define SB_VUART_EV_ALL_DATA     (3U << 8)
+#define SB_VUART_EV_TX_END       (1U << 10)
+#define SB_VUART_EV_RX_IDLE      (1U << 11)
+#define SB_VUART_EV_RX_BREAK     (1U << 12)
+#define SB_VUART_EV_ALL_STATUS   (7U << 10)
+#define SB_VUART_EV_ALL_EVENTS   (SB_VUART_EV_ALL_ERRORS |                  \
+                                  SB_VUART_EV_ALL_DATA |                    \
+                                  SB_VUART_EV_ALL_STATUS)
+/** @} */
+
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
