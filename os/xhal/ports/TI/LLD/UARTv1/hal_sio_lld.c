@@ -317,6 +317,12 @@ static void uart_txend_timer_cb(virtual_timer_t *vtp, void *p) {
   bool enabled;
   bool ended;
 
+  /* Nothing to do while the driver is stopping, the stop path resets the
+     timer.*/
+  if (siop->state == HAL_DRV_STATE_STOPPING) {
+    return;
+  }
+
   /* This poll tick stands in for ETBEI while the vector is masked, so it
      must not notify anything ETBEI itself would not have: on this
      peripheral TX_NOTFULL and TX_END share the one enable bit, see
@@ -979,6 +985,16 @@ msg_t sio_lld_control(SIODriver *siop, unsigned int operation, void *arg) {
  */
 void sio_lld_serve_interrupt(SIODriver *siop) {
   uint32_t iir, intid;
+
+  /* While the driver is stopping the interrupt sources are masked and the
+     events discarded, the stop path deactivates the peripheral shortly
+     after. The line is masked at the controller too because the character
+     timeout is not gated by IER, see below.*/
+  if (siop->state == HAL_DRV_STATE_STOPPING) {
+    uart_set_ier(siop, 0U);
+    vimDisableInterrupt(siop->irq);
+    return;
+  }
 
   iir = siop->uart->IIR_FCR;
   if ((iir & TI_UART_IIR_INTSTATUS) != 0U) {
