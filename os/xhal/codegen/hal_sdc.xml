@@ -339,9 +339,11 @@ return sdcDisconnect(self);]]></implementation>
             </method>
             <method shortname="read">
               <implementation><![CDATA[
+
 #if SDC_USE_SYNCHRONIZATION == TRUE
 return sdcRead(self, startblk, buffer, n);
 #else
+(void)self;
 (void)startblk;
 (void)buffer;
 (void)n;
@@ -351,9 +353,11 @@ return HAL_FAILED;
             </method>
             <method shortname="write">
               <implementation><![CDATA[
+
 #if SDC_USE_SYNCHRONIZATION == TRUE
 return sdcWrite(self, startblk, buffer, n);
 #else
+(void)self;
 (void)startblk;
 (void)buffer;
 (void)n;

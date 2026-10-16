@@ -726,9 +726,11 @@ static bool __sdc_blk_disconnect_impl(void *ip) {
 static bool __sdc_blk_read_impl(void *ip, uint32_t startblk, uint8_t *buffer,
                                 uint32_t n) {
   hal_sdc_driver_c *self = oopIfGetOwner(hal_sdc_driver_c, ip);
+
 #if SDC_USE_SYNCHRONIZATION == TRUE
   return sdcRead(self, startblk, buffer, n);
 #else
+  (void)self;
   (void)startblk;
   (void)buffer;
   (void)n;
@@ -749,9 +751,11 @@ static bool __sdc_blk_read_impl(void *ip, uint32_t startblk, uint8_t *buffer,
 static bool __sdc_blk_write_impl(void *ip, uint32_t startblk,
                                  const uint8_t *buffer, uint32_t n) {
   hal_sdc_driver_c *self = oopIfGetOwner(hal_sdc_driver_c, ip);
+
 #if SDC_USE_SYNCHRONIZATION == TRUE
   return sdcWrite(self, startblk, buffer, n);
 #else
+  (void)self;
   (void)startblk;
   (void)buffer;
   (void)n;
