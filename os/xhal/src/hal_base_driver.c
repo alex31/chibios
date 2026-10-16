@@ -353,6 +353,15 @@ msg_t drvStart(void *ip, const void *config) {
  * @brief       Driver close.
  * @details     Stops driver operations. The peripheral is physically
  *              uninitialized.
+ * @note        In SMP systems the callbacks are invoked, outside the system
+ *              lock, by the core serving the driver interrupts. When called
+ *              from a different core the function can return while the last
+ *              callback is still executing, resources used by the callback
+ *              must not be released until it has returned.
+ * @note        Low level drivers can require the function to be called from
+ *              the core that started the driver, for example when the
+ *              interrupt vector is enabled on that core only, refer to the low
+ *              level driver documentation.
  *
  * @param[in,out] ip            Pointer to a @p hal_base_driver_c instance.
  *
