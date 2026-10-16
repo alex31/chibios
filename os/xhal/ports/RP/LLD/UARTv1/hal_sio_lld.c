@@ -236,6 +236,12 @@ static bool uart_txend_process(SIODriver *siop) {
 static void uart_txend_timer_cb(virtual_timer_t *vtp, void *p) {
   SIODriver *siop = (SIODriver *)p;
 
+  /* Nothing to do while the driver is stopping, the stop path resets the
+     timer.*/
+  if (siop->state == HAL_DRV_STATE_STOPPING) {
+    return;
+  }
+
   if (uart_txend_process(siop)) {
     /* Transmission finished and event generated, the callback is
        invoked outside the critical section.*/
@@ -355,6 +361,10 @@ msg_t sio_lld_start(SIODriver *siop) {
     chDbgAssert(false, "invalid SIO instance");
   }
 
+  /* The calling core owns the vector and the TX-end machinery, see the
+     SMP notes in the driver header.*/
+  siop->core = SIO->CPUID;
+
   /* Starting the session with no latched events and an idle TX-end
      machinery.*/
   siop->latched_events = (sioevents_t)0;
@@ -386,6 +396,8 @@ msg_t sio_lld_start(SIODriver *siop) {
  * @notapi
  */
 void sio_lld_stop(SIODriver *siop) {
+
+  chDbgAssert(SIO->CPUID == siop->core, "wrong core");
 
   /* Disables the vector, stops the TX-end machinery and resets the
      peripheral.*/
@@ -788,7 +800,15 @@ void sio_lld_serve_interrupt(SIODriver *siop) {
   uint32_t mis, imsc;
 
   chDbgAssert((siop->state == HAL_DRV_STATE_STARTING) ||
-              (siop->state == HAL_DRV_STATE_READY), "invalid state");
+              (siop->state == HAL_DRV_STATE_READY) ||
+              (siop->state == HAL_DRV_STATE_STOPPING), "invalid state");
+
+  /* While the driver is stopping the interrupt sources are masked and the
+     events discarded, the stop path disables the vector shortly after.*/
+  if (siop->state == HAL_DRV_STATE_STOPPING) {
+    u->UARTIMSC = 0U;
+    return;
+  }
 
   /* Note, ISR flags are just read but not cleared, ISR sources are
      disabled instead.*/
