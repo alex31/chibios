@@ -73,13 +73,6 @@
 #define STM32_DMA1_CH6_NUMBER               STM32_DMA1_CH4567_NUMBER
 #define STM32_DMA1_CH7_NUMBER               STM32_DMA1_CH4567_NUMBER
 
-#define STM32_DMA1_CH2_CMASK                0x00000006U
-#define STM32_DMA1_CH3_CMASK                0x00000006U
-#define STM32_DMA1_CH4_CMASK                0x00000078U
-#define STM32_DMA1_CH5_CMASK                0x00000078U
-#define STM32_DMA1_CH6_CMASK                0x00000078U
-#define STM32_DMA1_CH7_CMASK                0x00000078U
-
 /*
  * EXTI unit.
  */
