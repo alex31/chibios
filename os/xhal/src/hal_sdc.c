@@ -1210,21 +1210,21 @@ msg_t sdcStopTransfer(void *ip) {
   msg_t msg = HAL_RET_SUCCESS;
 
   chDbgCheck(self != NULL);
+
+  chSysLock();
   chDbgAssert((self->state == HAL_DRV_STATE_READY) ||
                 (self->state == SDC_READING) ||
                 (self->state == SDC_WRITING),
                 "invalid state");
-
   if ((self->state == SDC_READING) || (self->state == SDC_WRITING)) {
-    chSysLock();
     msg = sdc_lld_stop_transfer(self);
     self->state = HAL_DRV_STATE_READY;
 #if SDC_USE_SYNCHRONIZATION == TRUE
     chThdResumeI(&self->sync_transfer, MSG_RESET);
 #endif
     chSchRescheduleS();
-    chSysUnlock();
   }
+  chSysUnlock();
 
   return msg;
 }

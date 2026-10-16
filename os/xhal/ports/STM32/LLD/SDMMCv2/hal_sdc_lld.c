@@ -186,11 +186,9 @@ static bool sdc_lld_prepare_read_bytes(hal_sdc_driver_c *sdcp,
   sdcp->sdmmc->IDMABASE0 = (uint32_t)buf;
   sdcp->sdmmc->IDMACTRL  = SDMMC_IDMA_IDMAEN;
 
+  /* The transfer is polled, data interrupts are left disabled because the
+     ISR would consume the flags being polled.*/
   sdcp->sdmmc->ICR   = SDMMC_ICR_ALL_FLAGS;
-  sdcp->sdmmc->MASK  = SDMMC_MASK_DCRCFAILIE |
-                       SDMMC_MASK_DTIMEOUTIE |
-                       SDMMC_MASK_RXOVERRIE |
-                       SDMMC_MASK_DATAENDIE;
   sdcp->sdmmc->DLEN  = bytes;
 
   sdcp->sdmmc->DCTRL = SDMMC_DCTRL_DTDIR |
@@ -680,12 +678,19 @@ void sdc_lld_serve_interrupt(hal_sdc_driver_c *sdcp) {
   msg_t msg;
 
   chSysLockFromISR();
-  msg = sdc_lld_finish_transfer(sdcp);
-  if (msg == HAL_RET_SUCCESS) {
-    _sdc_isr_complete_code(sdcp);
+  if ((sdcp->state == SDC_READING) || (sdcp->state == SDC_WRITING)) {
+    msg = sdc_lld_finish_transfer(sdcp);
+    if (msg == HAL_RET_SUCCESS) {
+      _sdc_isr_complete_code_i(sdcp);
+    }
+    else {
+      _sdc_isr_error_code_i(sdcp);
+    }
   }
   else {
-    _sdc_isr_error_code(sdcp);
+    /* No transfer running, for example while stopping: the sources are
+       disabled and the flags are left to the polled operations.*/
+    sdcp->sdmmc->MASK = 0U;
   }
   chSysUnlockFromISR();
 }

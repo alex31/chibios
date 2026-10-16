@@ -255,8 +255,21 @@
  */
 #define _sdc_wakeup_isr(sdcp, msg)                                          \
   do {                                                                      \
+    chSysLockFromISR();                                                     \
     chThdResumeI(&(sdcp)->sync_transfer, msg);                              \
+    chSysUnlockFromISR();                                                   \
   } while (false)
+
+/**
+ * @brief       Wakes up the thread waiting for transfer completion, lock held.
+ *
+ * @param[in]     sdcp          Pointer to the SDC driver instance.
+ * @param[in]     msg           Wakeup message.
+ *
+ * @notapi
+ */
+#define _sdc_wakeup_i(sdcp, msg)                                            \
+  chThdResumeI(&(sdcp)->sync_transfer, msg)
 #endif /* SDC_USE_SYNCHRONIZATION == TRUE */
 
 #if (SDC_USE_SYNCHRONIZATION != TRUE) || defined (__DOXYGEN__)
@@ -273,10 +286,68 @@
     (void)(sdcp);                                                           \
     (void)(msg);                                                            \
   } while (false)
+
+/**
+ * @brief       Wakes up the thread waiting for transfer completion, lock held.
+ *
+ * @param[in]     sdcp          Pointer to the SDC driver instance.
+ * @param[in]     msg           Wakeup message.
+ *
+ * @notapi
+ */
+#define _sdc_wakeup_i(sdcp, msg)                                            \
+  do {                                                                      \
+    (void)(sdcp);                                                           \
+    (void)(msg);                                                            \
+  } while (false)
 #endif /* SDC_USE_SYNCHRONIZATION != TRUE */
 
 /**
+ * @brief       Common ISR code for successful transfer completion, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if a read or write transfer is not running, for example after a
+ *              stop.
+ *
+ * @param[in]     sdcp          Pointer to the SDC driver instance.
+ *
+ * @notapi
+ */
+#define _sdc_isr_complete_code_i(sdcp)                                      \
+  do {                                                                      \
+    if (((sdcp)->state == SDC_READING) || ((sdcp)->state == SDC_WRITING)) { \
+      __cbdrv_invoke_cb_with_transition_i(sdcp,                             \
+                                          HAL_DRV_STATE_COMPLETE,           \
+                                          HAL_DRV_STATE_READY);             \
+      _sdc_wakeup_i(sdcp, MSG_OK);                                          \
+    }                                                                       \
+  } while (false)
+
+/**
+ * @brief       Common ISR code for transfer errors, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if a read or write transfer is not running, for example after a
+ *              stop.
+ *
+ * @param[in]     sdcp          Pointer to the SDC driver instance.
+ *
+ * @notapi
+ */
+#define _sdc_isr_error_code_i(sdcp)                                         \
+  do {                                                                      \
+    if (((sdcp)->state == SDC_READING) || ((sdcp)->state == SDC_WRITING)) { \
+      __cbdrv_invoke_cb_with_transition_i(sdcp,                             \
+                                          HAL_DRV_STATE_ERROR,              \
+                                          HAL_DRV_STATE_READY);             \
+      _sdc_wakeup_i(sdcp, MSG_RESET);                                       \
+    }                                                                       \
+  } while (false)
+
+/**
  * @brief       Common ISR code for successful transfer completion.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _sdc_isr_complete_code_i().
  *
  * @param[in]     sdcp          Pointer to the SDC driver instance.
  *
@@ -284,14 +355,15 @@
  */
 #define _sdc_isr_complete_code(sdcp)                                        \
   do {                                                                      \
-    __cbdrv_invoke_cb_with_transition(sdcp,                                 \
-                                      HAL_DRV_STATE_COMPLETE,               \
-                                      HAL_DRV_STATE_READY);                 \
-    _sdc_wakeup_isr(sdcp, MSG_OK);                                          \
+    chSysLockFromISR();                                                     \
+    _sdc_isr_complete_code_i(sdcp);                                         \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 
 /**
  * @brief       Common ISR code for transfer errors.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _sdc_isr_error_code_i().
  *
  * @param[in]     sdcp          Pointer to the SDC driver instance.
  *
@@ -299,10 +371,9 @@
  */
 #define _sdc_isr_error_code(sdcp)                                           \
   do {                                                                      \
-    __cbdrv_invoke_cb_with_transition(sdcp,                                 \
-                                      HAL_DRV_STATE_ERROR,                  \
-                                      HAL_DRV_STATE_READY);                 \
-    _sdc_wakeup_isr(sdcp, MSG_RESET);                                       \
+    chSysLockFromISR();                                                     \
+    _sdc_isr_error_code_i(sdcp);                                            \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 /** @} */
 
