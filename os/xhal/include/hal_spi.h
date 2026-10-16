@@ -181,7 +181,77 @@
   __spi_isr_buffer_code(spip, HAL_DRV_STATE_FULL)
 
 /**
+ * @brief       Common ISR code, half buffer event, lock held.
+ * @note        Invoked from ISR context with the system lock held, see @p
+ *              __spi_isr_buffer_code_i().
+ *
+ * @param[in,out] spip          Pointer to the SPI driver instance.
+ *
+ * @notapi
+ */
+#define _spi_isr_half_code_i(spip)                                          \
+  __spi_isr_buffer_code_i(spip, HAL_DRV_STATE_HALF)
+
+/**
+ * @brief       Common ISR code, full buffer event, lock held.
+ * @note        Invoked from ISR context with the system lock held, see @p
+ *              __spi_isr_buffer_code_i().
+ *
+ * @param[in,out] spip          Pointer to the SPI driver instance.
+ *
+ * @notapi
+ */
+#define _spi_isr_full_code_i(spip)                                          \
+  __spi_isr_buffer_code_i(spip, HAL_DRV_STATE_FULL)
+
+/**
+ * @brief       Common ISR code, transfer complete event, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if a transfer is not active, for example after a stop.
+ *
+ * @param[in,out] spip          Pointer to the SPI driver instance.
+ *
+ * @notapi
+ */
+#define _spi_isr_complete_code_i(spip)                                      \
+  do {                                                                      \
+    if ((spip)->state == HAL_DRV_STATE_ACTIVE) {                            \
+      __cbdrv_invoke_cb_with_transition_i(spip,                             \
+                                          HAL_DRV_STATE_COMPLETE,           \
+                                          HAL_DRV_STATE_READY);             \
+      __spi_wakeup_state_i(spip, HAL_DRV_STATE_COMPLETE);                   \
+    }                                                                       \
+  } while (false)
+
+/**
+ * @brief       Common ISR code, transfer error event, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if a transfer is not active, for example after a stop. A
+ *              circular transfer is still active while its half or full buffer
+ *              callback is running.
+ *
+ * @param[in,out] spip          Pointer to the SPI driver instance.
+ *
+ * @notapi
+ */
+#define _spi_isr_error_code_i(spip)                                         \
+  do {                                                                      \
+    if (((spip)->state == HAL_DRV_STATE_ACTIVE) ||                          \
+        ((spip)->state == HAL_DRV_STATE_HALF) ||                            \
+        ((spip)->state == HAL_DRV_STATE_FULL)) {                            \
+      __cbdrv_invoke_cb_with_transition_i(spip,                             \
+                                          HAL_DRV_STATE_ERROR,              \
+                                          HAL_DRV_STATE_READY);             \
+      __spi_wakeup_i(spip, MSG_RESET);                                      \
+    }                                                                       \
+  } while (false)
+
+/**
  * @brief       Common ISR code, transfer complete event.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _spi_isr_complete_code_i().
  *
  * @param[in,out] spip          Pointer to the SPI driver instance.
  *
@@ -189,12 +259,15 @@
  */
 #define _spi_isr_complete_code(spip)                                        \
   do {                                                                      \
-    __cbdrv_invoke_complete_cb(spip);                                       \
-    __spi_wakeup_state_isr(spip, HAL_DRV_STATE_COMPLETE);                   \
+    chSysLockFromISR();                                                     \
+    _spi_isr_complete_code_i(spip);                                         \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 
 /**
  * @brief       Common ISR code, transfer error event.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _spi_isr_error_code_i().
  *
  * @param[in,out] spip          Pointer to the SPI driver instance.
  *
@@ -202,8 +275,9 @@
  */
 #define _spi_isr_error_code(spip)                                           \
   do {                                                                      \
-    __cbdrv_invoke_error_cb(spip);                                          \
-    __spi_wakeup_isr(spip, MSG_RESET);                                      \
+    chSysLockFromISR();                                                     \
+    _spi_isr_error_code_i(spip);                                            \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 
 /*===========================================================================*/
@@ -535,6 +609,42 @@ static inline void __spi_wakeup_state_isr(void *ip, driver_state_t state) {
   chSysUnlockFromISR();
 }
 
+/**
+ * @brief       Wakes up the waiting thread, lock held.
+ * @note        This function is meant to be used in the low level drivers
+ *              implementations only.
+ *
+ * @param[in,out] ip            Pointer to a @p hal_spi_driver_c instance.
+ * @param[in]     msg           The wakeup message.
+ *
+ * @notapi
+ */
+CC_FORCE_INLINE
+static inline void __spi_wakeup_i(void *ip, msg_t msg) {
+  hal_spi_driver_c *self = (hal_spi_driver_c *)ip;
+
+  chThdResumeI(&self->sync_transfer, msg);
+}
+
+/**
+ * @brief       Wakes up a thread waiting for an SPI transfer state, lock held.
+ * @note        This function is meant to be used in the low level drivers
+ *              implementations only.
+ *
+ * @param[in,out] ip            Pointer to a @p hal_spi_driver_c instance.
+ * @param[in]     state         State being synchronized.
+ *
+ * @notapi
+ */
+CC_FORCE_INLINE
+static inline void __spi_wakeup_state_i(void *ip, driver_state_t state) {
+  hal_spi_driver_c *self = (hal_spi_driver_c *)ip;
+
+  if (self->sync_state == state) {
+    chThdResumeI(&self->sync_transfer, MSG_OK);
+  }
+}
+
 #else
 
 CC_FORCE_INLINE
@@ -552,13 +662,68 @@ static inline void __spi_wakeup_state_isr(void *ip, driver_state_t state) {
   (void)self;
   (void)state;
 }
+
+CC_FORCE_INLINE
+static inline void __spi_wakeup_i(void *ip, msg_t msg) {
+  hal_spi_driver_c *self = (hal_spi_driver_c *)ip;
+
+  (void)self;
+  (void)msg;
+}
+
+CC_FORCE_INLINE
+static inline void __spi_wakeup_state_i(void *ip, driver_state_t state) {
+  hal_spi_driver_c *self = (hal_spi_driver_c *)ip;
+
+  (void)self;
+  (void)state;
+}
 #endif /* SPI_USE_SYNCHRONIZATION == TRUE */
 
 /**
+ * @brief       Invokes a circular buffer callback and wakes its waiter, lock
+ *              held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if a transfer is not active, for example after a stop.
+ * @note        If the callback stops or replaces the transfer, the old event
+ *              must not wake a waiter belonging to the new transfer.
+ *
+ * @param[in,out] ip            Pointer to a @p hal_spi_driver_c instance.
+ * @param[in]     state         Buffer event state, @p HAL_DRV_STATE_HALF or @p
+ *                              HAL_DRV_STATE_FULL.
+ *
+ * @notapi
+ */
+CC_FORCE_INLINE
+static inline void __spi_isr_buffer_code_i(void *ip, driver_state_t state) {
+  hal_spi_driver_c *self = (hal_spi_driver_c *)ip;
+#if (SPI_SUPPORTS_CIRCULAR == TRUE) && (SPI_USE_SYNCHRONIZATION == TRUE)
+  uint32_t sequence = self->sequence;
+#endif
+
+  if (self->state != HAL_DRV_STATE_ACTIVE) {
+    return;
+  }
+
+  __cbdrv_invoke_cb_with_transition_i(self, state, HAL_DRV_STATE_ACTIVE);
+
+#if SPI_USE_SYNCHRONIZATION == TRUE
+#if SPI_SUPPORTS_CIRCULAR == TRUE
+  if ((self->state == HAL_DRV_STATE_ACTIVE) && (self->sequence == sequence) &&
+      (self->sync_state == state)) {
+#else
+  if (self->sync_state == state) {
+#endif
+    chThdResumeI(&self->sync_transfer, MSG_OK);
+  }
+#endif
+}
+
+/**
  * @brief       Invokes a circular buffer callback and wakes its waiter.
- * @note        The callback executes outside the system lock. If it stops or
- *              replaces the transfer, the old event must not wake a waiter
- *              belonging to the new transfer.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p __spi_isr_buffer_code_i().
  *
  * @param[in,out] ip            Pointer to a @p hal_spi_driver_c instance.
  * @param[in]     state         Buffer event state, @p HAL_DRV_STATE_HALF or @p
@@ -569,24 +734,10 @@ static inline void __spi_wakeup_state_isr(void *ip, driver_state_t state) {
 CC_FORCE_INLINE
 static inline void __spi_isr_buffer_code(void *ip, driver_state_t state) {
   hal_spi_driver_c *self = (hal_spi_driver_c *)ip;
-#if (SPI_SUPPORTS_CIRCULAR == TRUE) && (SPI_USE_SYNCHRONIZATION == TRUE)
-  uint32_t sequence = self->sequence;
-#endif
 
-  __cbdrv_invoke_cb_with_transition(self, state, HAL_DRV_STATE_ACTIVE);
-
-#if SPI_USE_SYNCHRONIZATION == TRUE
   chSysLockFromISR();
-#if SPI_SUPPORTS_CIRCULAR == TRUE
-  if ((self->state == HAL_DRV_STATE_ACTIVE) && (self->sequence == sequence) &&
-      (self->sync_state == state)) {
-#else
-  if (self->sync_state == state) {
-#endif
-    chThdResumeI(&self->sync_transfer, MSG_OK);
-  }
+  __spi_isr_buffer_code_i(self, state);
   chSysUnlockFromISR();
-#endif
 }
 
 #if (SPI_SUPPORTS_CIRCULAR == TRUE) || defined (__DOXYGEN__)
@@ -610,19 +761,20 @@ static inline void __spi_isr_buffer_code(void *ip, driver_state_t state) {
 CC_FORCE_INLINE
 static inline void _spi_isr_circular_code(void *ip, bool half, bool full) {
   hal_spi_driver_c *self = (hal_spi_driver_c *)ip;
-  uint32_t sequence = self->sequence;
+  uint32_t sequence;
 
-  if (self->state != HAL_DRV_STATE_ACTIVE) {
-    return;
+  chSysLockFromISR();
+  sequence = self->sequence;
+  if (self->state == HAL_DRV_STATE_ACTIVE) {
+    if (half) {
+      __spi_isr_buffer_code_i(self, HAL_DRV_STATE_HALF);
+    }
+    if (full && (self->state == HAL_DRV_STATE_ACTIVE) &&
+        (self->sequence == sequence)) {
+      __spi_isr_buffer_code_i(self, HAL_DRV_STATE_FULL);
+    }
   }
-
-  if (half) {
-    _spi_isr_half_code(self);
-  }
-  if (full && (self->state == HAL_DRV_STATE_ACTIVE) &&
-      (self->sequence == sequence)) {
-    _spi_isr_full_code(self);
-  }
+  chSysUnlockFromISR();
 }
 #endif /* SPI_SUPPORTS_CIRCULAR == TRUE */
 /** @} */

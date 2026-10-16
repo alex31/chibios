@@ -282,8 +282,9 @@
  *          completion, DMA error, transfer stop) claims the event in a
  *          critical section by checking the generation it sampled at
  *          entry against the live value, only the single winner performs
- *          the driver state transition. This serializes completions,
- *          errors and aborts across both cores.
+ *          the driver state transition, within the same critical section.
+ *          This serializes completions, errors and aborts across both
+ *          cores.
  */
 #define spi_lld_driver_fields                                               \
   /* Pointer to the SPIx registers block.*/                                 \

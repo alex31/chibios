@@ -85,24 +85,86 @@ __spi_isr_buffer_code(spip, HAL_DRV_STATE_HALF)]]></implementation>
         <implementation><![CDATA[
 __spi_isr_buffer_code(spip, HAL_DRV_STATE_FULL)]]></implementation>
       </macro>
-      <macro name="_spi_isr_complete_code">
-        <brief>Common ISR code, transfer complete event.</brief>
+      <macro name="_spi_isr_half_code_i">
+        <brief>Common ISR code, half buffer event, lock held.</brief>
+        <note>Invoked from ISR context with the system lock held, see
+          @p __spi_isr_buffer_code_i().</note>
+        <param name="spip" dir="both">Pointer to the SPI driver instance.</param>
+        <notapi />
+        <implementation><![CDATA[
+__spi_isr_buffer_code_i(spip, HAL_DRV_STATE_HALF)]]></implementation>
+      </macro>
+      <macro name="_spi_isr_full_code_i">
+        <brief>Common ISR code, full buffer event, lock held.</brief>
+        <note>Invoked from ISR context with the system lock held, see
+          @p __spi_isr_buffer_code_i().</note>
+        <param name="spip" dir="both">Pointer to the SPI driver instance.</param>
+        <notapi />
+        <implementation><![CDATA[
+__spi_isr_buffer_code_i(spip, HAL_DRV_STATE_FULL)]]></implementation>
+      </macro>
+      <macro name="_spi_isr_complete_code_i">
+        <brief>Common ISR code, transfer complete event, lock held.</brief>
+        <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a transfer is not active, for example after a stop.</note>
         <param name="spip" dir="both">Pointer to the SPI driver instance.</param>
         <notapi />
         <implementation><![CDATA[
 do {
-  __cbdrv_invoke_complete_cb(spip);
-  __spi_wakeup_state_isr(spip, HAL_DRV_STATE_COMPLETE);
+  if ((spip)->state == HAL_DRV_STATE_ACTIVE) {
+    __cbdrv_invoke_cb_with_transition_i(spip,
+                                        HAL_DRV_STATE_COMPLETE,
+                                        HAL_DRV_STATE_READY);
+    __spi_wakeup_state_i(spip, HAL_DRV_STATE_COMPLETE);
+  }
+} while (false)]]></implementation>
+      </macro>
+      <macro name="_spi_isr_error_code_i">
+        <brief>Common ISR code, transfer error event, lock held.</brief>
+        <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a transfer is not active, for example after a stop. A circular
+          transfer is still active while its half or full buffer callback is
+          running.</note>
+        <param name="spip" dir="both">Pointer to the SPI driver instance.</param>
+        <notapi />
+        <implementation><![CDATA[
+do {
+  if (((spip)->state == HAL_DRV_STATE_ACTIVE) ||
+      ((spip)->state == HAL_DRV_STATE_HALF) ||
+      ((spip)->state == HAL_DRV_STATE_FULL)) {
+    __cbdrv_invoke_cb_with_transition_i(spip,
+                                        HAL_DRV_STATE_ERROR,
+                                        HAL_DRV_STATE_READY);
+    __spi_wakeup_i(spip, MSG_RESET);
+  }
+} while (false)]]></implementation>
+      </macro>
+      <macro name="_spi_isr_complete_code">
+        <brief>Common ISR code, transfer complete event.</brief>
+        <note>The driver state is checked and changed under the system lock,
+          see @p _spi_isr_complete_code_i().</note>
+        <param name="spip" dir="both">Pointer to the SPI driver instance.</param>
+        <notapi />
+        <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _spi_isr_complete_code_i(spip);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
       </macro>
       <macro name="_spi_isr_error_code">
         <brief>Common ISR code, transfer error event.</brief>
+        <note>The driver state is checked and changed under the system lock,
+          see @p _spi_isr_error_code_i().</note>
         <param name="spip" dir="both">Pointer to the SPI driver instance.</param>
         <notapi />
         <implementation><![CDATA[
 do {
-  __cbdrv_invoke_error_cb(spip);
-  __spi_wakeup_isr(spip, MSG_RESET);
+  chSysLockFromISR();
+  _spi_isr_error_code_i(spip);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
       </macro>
     </macros>
@@ -861,6 +923,32 @@ if (self->sync_state == state) {
 }
 chSysUnlockFromISR();]]></implementation>
               </method>
+              <method name="__spi_wakeup_i" ctype="void">
+                <brief>Wakes up the waiting thread, lock held.</brief>
+                <note>This function is meant to be used in the low level
+                  drivers implementations only.</note>
+                <param name="msg" ctype="msg_t" dir="in">The wakeup
+                  message.
+                </param>
+                <notapi />
+                <implementation><![CDATA[
+
+chThdResumeI(&self->sync_transfer, msg);]]></implementation>
+              </method>
+              <method name="__spi_wakeup_state_i" ctype="void">
+                <brief>Wakes up a thread waiting for an SPI transfer state, lock held.</brief>
+                <note>This function is meant to be used in the low level
+                  drivers implementations only.</note>
+                <param name="state" ctype="driver_state_t" dir="in">State
+                  being synchronized.
+                </param>
+                <notapi />
+                <implementation><![CDATA[
+
+if (self->sync_state == state) {
+  chThdResumeI(&self->sync_transfer, MSG_OK);
+}]]></implementation>
+              </method>
               <elseif />
               <method name="__spi_wakeup_isr" ctype="void">
                 <param name="msg" ctype="msg_t" dir="in" />
@@ -876,12 +964,30 @@ chSysUnlockFromISR();]]></implementation>
 (void)self;
 (void)state;]]></implementation>
               </method>
+              <method name="__spi_wakeup_i" ctype="void">
+                <param name="msg" ctype="msg_t" dir="in" />
+                <implementation><![CDATA[
+
+(void)self;
+(void)msg;]]></implementation>
+              </method>
+              <method name="__spi_wakeup_state_i" ctype="void">
+                <param name="state" ctype="driver_state_t" dir="in" />
+                <implementation><![CDATA[
+
+(void)self;
+(void)state;]]></implementation>
+              </method>
             </condition>
-            <method name="__spi_isr_buffer_code" ctype="void">
-              <brief>Invokes a circular buffer callback and wakes its waiter.</brief>
-              <note>The callback executes outside the system lock. If it stops
-                or replaces the transfer, the old event must not wake a waiter
-                belonging to the new transfer.</note>
+            <method name="__spi_isr_buffer_code_i" ctype="void">
+              <brief>Invokes a circular buffer callback and wakes its waiter, lock held.</brief>
+              <note>Invoked from ISR context with the system lock held, the
+                lock is released during the callback execution. The event is
+                discarded if a transfer is not active, for example after a
+                stop.</note>
+              <note>If the callback stops or replaces the transfer, the old
+                event must not wake a waiter belonging to the new
+                transfer.</note>
               <param name="state" ctype="driver_state_t" dir="in">Buffer event
                 state, @p HAL_DRV_STATE_HALF or @p HAL_DRV_STATE_FULL.</param>
               <notapi />
@@ -890,10 +996,13 @@ chSysUnlockFromISR();]]></implementation>
 uint32_t sequence = self->sequence;
 #endif
 
-__cbdrv_invoke_cb_with_transition(self, state, HAL_DRV_STATE_ACTIVE);
+if (self->state != HAL_DRV_STATE_ACTIVE) {
+  return;
+}
+
+__cbdrv_invoke_cb_with_transition_i(self, state, HAL_DRV_STATE_ACTIVE);
 
 #if SPI_USE_SYNCHRONIZATION == TRUE
-chSysLockFromISR();
 #if SPI_SUPPORTS_CIRCULAR == TRUE
 if ((self->state == HAL_DRV_STATE_ACTIVE) && (self->sequence == sequence) &&
     (self->sync_state == state)) {
@@ -902,8 +1011,20 @@ if (self->sync_state == state) {
 #endif
   chThdResumeI(&self->sync_transfer, MSG_OK);
 }
-chSysUnlockFromISR();
 #endif]]></implementation>
+            </method>
+            <method name="__spi_isr_buffer_code" ctype="void">
+              <brief>Invokes a circular buffer callback and wakes its waiter.</brief>
+              <note>The driver state is checked and changed under the system
+                lock, see @p __spi_isr_buffer_code_i().</note>
+              <param name="state" ctype="driver_state_t" dir="in">Buffer event
+                state, @p HAL_DRV_STATE_HALF or @p HAL_DRV_STATE_FULL.</param>
+              <notapi />
+              <implementation><![CDATA[
+
+chSysLockFromISR();
+__spi_isr_buffer_code_i(self, state);
+chSysUnlockFromISR();]]></implementation>
             </method>
             <condition check="SPI_SUPPORTS_CIRCULAR == TRUE">
               <method name="_spi_isr_circular_code" ctype="void">
@@ -922,19 +1043,20 @@ chSysUnlockFromISR();
                   pending.</param>
                 <notapi />
                 <implementation><![CDATA[
-uint32_t sequence = self->sequence;
+uint32_t sequence;
 
-if (self->state != HAL_DRV_STATE_ACTIVE) {
-  return;
+chSysLockFromISR();
+sequence = self->sequence;
+if (self->state == HAL_DRV_STATE_ACTIVE) {
+  if (half) {
+    __spi_isr_buffer_code_i(self, HAL_DRV_STATE_HALF);
+  }
+  if (full && (self->state == HAL_DRV_STATE_ACTIVE) &&
+      (self->sequence == sequence)) {
+    __spi_isr_buffer_code_i(self, HAL_DRV_STATE_FULL);
+  }
 }
-
-if (half) {
-  _spi_isr_half_code(self);
-}
-if (full && (self->state == HAL_DRV_STATE_ACTIVE) &&
-    (self->sequence == sequence)) {
-  _spi_isr_full_code(self);
-}]]></implementation>
+chSysUnlockFromISR();]]></implementation>
               </method>
             </condition>
           </inline>
