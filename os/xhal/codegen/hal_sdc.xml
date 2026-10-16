@@ -123,8 +123,17 @@
             <notapi />
             <implementation><![CDATA[
 do {
+  chSysLockFromISR();
   chThdResumeI(&(sdcp)->sync_transfer, msg);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
+          </macro>
+          <macro name="_sdc_wakeup_i">
+            <brief>Wakes up the thread waiting for transfer completion, lock held.</brief>
+            <param name="sdcp" dir="in">Pointer to the SDC driver instance.</param>
+            <param name="msg" dir="in">Wakeup message.</param>
+            <notapi />
+            <implementation><![CDATA[chThdResumeI(&(sdcp)->sync_transfer, msg)]]></implementation>
           </macro>
         </condition>
         <condition check="SDC_USE_SYNCHRONIZATION != TRUE">
@@ -139,29 +148,78 @@ do {
   (void)(msg);
 } while (false)]]></implementation>
           </macro>
+          <macro name="_sdc_wakeup_i">
+            <brief>Wakes up the thread waiting for transfer completion, lock held.</brief>
+            <param name="sdcp" dir="in">Pointer to the SDC driver instance.</param>
+            <param name="msg" dir="in">Wakeup message.</param>
+            <notapi />
+            <implementation><![CDATA[
+do {
+  (void)(sdcp);
+  (void)(msg);
+} while (false)]]></implementation>
+          </macro>
         </condition>
-        <macro name="_sdc_isr_complete_code">
-          <brief>Common ISR code for successful transfer completion.</brief>
+        <macro name="_sdc_isr_complete_code_i">
+          <brief>Common ISR code for successful transfer completion, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a read or write transfer is not running, for example after a
+          stop.</note>
           <param name="sdcp" dir="in">Pointer to the SDC driver instance.</param>
           <notapi />
           <implementation><![CDATA[
 do {
-  __cbdrv_invoke_cb_with_transition(sdcp,
-                                    HAL_DRV_STATE_COMPLETE,
-                                    HAL_DRV_STATE_READY);
-  _sdc_wakeup_isr(sdcp, MSG_OK);
+  if (((sdcp)->state == SDC_READING) || ((sdcp)->state == SDC_WRITING)) {
+    __cbdrv_invoke_cb_with_transition_i(sdcp,
+                                        HAL_DRV_STATE_COMPLETE,
+                                        HAL_DRV_STATE_READY);
+    _sdc_wakeup_i(sdcp, MSG_OK);
+  }
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_sdc_isr_error_code_i">
+          <brief>Common ISR code for transfer errors, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a read or write transfer is not running, for example after a
+          stop.</note>
+          <param name="sdcp" dir="in">Pointer to the SDC driver instance.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  if (((sdcp)->state == SDC_READING) || ((sdcp)->state == SDC_WRITING)) {
+    __cbdrv_invoke_cb_with_transition_i(sdcp,
+                                        HAL_DRV_STATE_ERROR,
+                                        HAL_DRV_STATE_READY);
+    _sdc_wakeup_i(sdcp, MSG_RESET);
+  }
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_sdc_isr_complete_code">
+          <brief>Common ISR code for successful transfer completion.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _sdc_isr_complete_code_i().</note>
+          <param name="sdcp" dir="in">Pointer to the SDC driver instance.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _sdc_isr_complete_code_i(sdcp);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
         </macro>
         <macro name="_sdc_isr_error_code">
           <brief>Common ISR code for transfer errors.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _sdc_isr_error_code_i().</note>
           <param name="sdcp" dir="in">Pointer to the SDC driver instance.</param>
           <notapi />
           <implementation><![CDATA[
 do {
-  __cbdrv_invoke_cb_with_transition(sdcp,
-                                    HAL_DRV_STATE_ERROR,
-                                    HAL_DRV_STATE_READY);
-  _sdc_wakeup_isr(sdcp, MSG_RESET);
+  chSysLockFromISR();
+  _sdc_isr_error_code_i(sdcp);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
         </macro>
       </group>
@@ -592,21 +650,21 @@ return msg;]]></implementation>
 msg_t msg = HAL_RET_SUCCESS;
 
 chDbgCheck(self != NULL);
+
+chSysLock();
 chDbgAssert((self->state == HAL_DRV_STATE_READY) ||
               (self->state == SDC_READING) ||
               (self->state == SDC_WRITING),
               "invalid state");
-
 if ((self->state == SDC_READING) || (self->state == SDC_WRITING)) {
-  chSysLock();
   msg = sdc_lld_stop_transfer(self);
   self->state = HAL_DRV_STATE_READY;
 #if SDC_USE_SYNCHRONIZATION == TRUE
   chThdResumeI(&self->sync_transfer, MSG_RESET);
 #endif
   chSchRescheduleS();
-  chSysUnlock();
 }
+chSysUnlock();
 
 return msg;]]></implementation>
             </method>

@@ -678,12 +678,19 @@ void sdc_lld_serve_interrupt(hal_sdc_driver_c *sdcp) {
   msg_t msg;
 
   chSysLockFromISR();
-  msg = sdc_lld_finish_transfer(sdcp);
-  if (msg == HAL_RET_SUCCESS) {
-    _sdc_isr_complete_code(sdcp);
+  if ((sdcp->state == SDC_READING) || (sdcp->state == SDC_WRITING)) {
+    msg = sdc_lld_finish_transfer(sdcp);
+    if (msg == HAL_RET_SUCCESS) {
+      _sdc_isr_complete_code_i(sdcp);
+    }
+    else {
+      _sdc_isr_error_code_i(sdcp);
+    }
   }
   else {
-    _sdc_isr_error_code(sdcp);
+    /* No transfer running, for example while stopping: the sources are
+       disabled and the flags are left to the polled operations.*/
+    sdcp->sdmmc->MASK = 0U;
   }
   chSysUnlockFromISR();
 }
