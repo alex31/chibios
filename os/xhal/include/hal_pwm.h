@@ -174,7 +174,28 @@
  * @{
  */
 /**
+ * @brief       Common ISR code, PWM event, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if the driver is not ready, for example while it is stopping.
+ *
+ * @param[in,out] pwmp          Pointer to the PWM driver instance.
+ * @param[in]     events        PWM event flags.
+ *
+ * @notapi
+ */
+#define _pwm_isr_invoke_cb_i(pwmp, events)                                  \
+  do {                                                                      \
+    if ((pwmp)->state == HAL_DRV_STATE_READY) {                             \
+      (pwmp)->events |= (events);                                           \
+      __cbdrv_invoke_cb_i(pwmp);                                            \
+    }                                                                       \
+  } while (false)
+
+/**
  * @brief       Common ISR code, PWM event.
+ * @note        The driver state is checked under the system lock, see @p
+ *              _pwm_isr_invoke_cb_i().
  *
  * @param[in,out] pwmp          Pointer to the PWM driver instance.
  * @param[in]     events        PWM event flags.
@@ -183,8 +204,9 @@
  */
 #define _pwm_isr_invoke_cb(pwmp, events)                                    \
   do {                                                                      \
-    (pwmp)->events |= (events);                                             \
-    __cbdrv_invoke_cb(pwmp);                                                \
+    chSysLockFromISR();                                                     \
+    _pwm_isr_invoke_cb_i(pwmp, events);                                     \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 /** @} */
 

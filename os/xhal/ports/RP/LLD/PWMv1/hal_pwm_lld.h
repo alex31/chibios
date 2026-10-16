@@ -49,6 +49,13 @@
  *          on the owner core because the per-core NVIC cannot be
  *          disabled from the other core, the constraint is checked by a
  *          debug assertion.
+ * @note    A slice can be stopped from either core, the wrap events of a
+ *          slice are checked against its driver state under the system
+ *          lock and no callback is invoked once its stop has started.
+ *          When the stop is invoked on the other core, @p drvStop() can
+ *          return while the last callback of the slice is still
+ *          executing on the owner core, the application must not rely
+ *          on that callback having completed.
  *
  * @addtogroup PWM
  * @{
