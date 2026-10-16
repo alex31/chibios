@@ -24,6 +24,9 @@
  * @{
  */
 
+#define _FROM_ASM_
+#include "sbsysc.h"
+
 #if !defined(__DOXYGEN__)
 
                 .syntax unified
@@ -91,7 +94,7 @@ vPortStartFirstTask:
                 .thumb_func
                 .globl  vPortTaskStart
 vPortTaskStart:
-                svc     #125                /* SB_FASTC_VRQ_ENABLE */
+                svc     #SB_FASTC_VRQ_ENABLE
 
                 mov     r0, r5
                 mov     lr, r6

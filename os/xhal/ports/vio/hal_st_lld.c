@@ -84,7 +84,8 @@ void st_lld_init(void) {
 #if (PORT_USE_LOCAL_SYSTICK == FALSE) && (CH_CFG_ST_TIMEDELTA == 0)
   st_alarm_interval = sbGetFrequency() / CH_CFG_ST_FREQUENCY;
 
-  /* The ST layer owns the alarm VRQ when the port-local systick is disabled. */
+  /* The ST layer owns the alarm VRQ when the port-local systick is
+     disabled.*/
   __sb_vrq_seten(1U << SB_VRQ_ALARM);
   sbSetAlarm(st_alarm_interval, true);
 #endif

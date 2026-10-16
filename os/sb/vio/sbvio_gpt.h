@@ -37,16 +37,6 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
-/**
- * @brief   Fast API handler for VIO GPT driver.
- */
-#define SB_SVC101_HANDLER       sb_fastc_vio_gpt
-
-/**
- * @brief   API handler for VIO GPT driver.
- */
-#define SB_SVC229_HANDLER       sb_sysc_vio_gpt
-
 /*===========================================================================*/
 /* Module data structures and types.                                         */
 /*===========================================================================*/

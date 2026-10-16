@@ -37,16 +37,6 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
-/**
- * @brief   Fast API handler for VIO ADC driver.
- */
-#define SB_SVC100_HANDLER       sb_fastc_vio_adc
-
-/**
- * @brief   API handler for VIO ADC driver.
- */
-#define SB_SVC228_HANDLER       sb_sysc_vio_adc
-
 /*===========================================================================*/
 /* Module data structures and types.                                         */
 /*===========================================================================*/

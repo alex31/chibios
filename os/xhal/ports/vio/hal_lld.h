@@ -25,7 +25,7 @@
 #ifndef HAL_LLD_H
 #define HAL_LLD_H
 
-#include "sbuser.h"
+#include "sbuservio.h"
 
 /*===========================================================================*/
 /* Driver constants.                                                         */

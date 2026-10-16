@@ -141,8 +141,7 @@ typedef uint32_t iopadid_t;
 /** @} */
 
 /*===========================================================================*/
-/* Implementation, some of the following macros could be implemented as      */
-/* functions, if so please put them in pal_lld.c.                            */
+/* Driver macros.                                                            */
 /*===========================================================================*/
 
 /**
@@ -160,7 +159,8 @@ typedef uint32_t iopadid_t;
  *
  * @notapi
  */
-#define pal_lld_readport(port) __pal_lld_readport(port)
+#define pal_lld_readport(port)                                              \
+  ((ioportmask_t)vgpioRead((uint32_t)(port)))
 
 /**
  * @brief   Reads the output latch.
@@ -172,7 +172,8 @@ typedef uint32_t iopadid_t;
  *
  * @notapi
  */
-#define pal_lld_readlatch(port) __pal_lld_readlatch(port)
+#define pal_lld_readlatch(port)                                             \
+  ((ioportmask_t)vgpioReadLatch((uint32_t)(port)))
 
 /**
  * @brief   Writes a bits mask on a I/O port.
@@ -182,7 +183,8 @@ typedef uint32_t iopadid_t;
  *
  * @notapi
  */
-#define pal_lld_writeport(port, bits) __pal_lld_writeport(port, bits)
+#define pal_lld_writeport(port, bits)                                       \
+  vgpioWrite((uint32_t)(port), (uint32_t)(bits))
 
 /**
  * @brief   Sets a bits mask on a I/O port.
@@ -195,7 +197,8 @@ typedef uint32_t iopadid_t;
  *
  * @notapi
  */
-#define pal_lld_setport(port, bits) __pal_lld_setport(port, bits)
+#define pal_lld_setport(port, bits)                                         \
+  vgpioSet((uint32_t)(port), (uint32_t)(bits))
 
 /**
  * @brief   Clears a bits mask on a I/O port.
@@ -208,7 +211,8 @@ typedef uint32_t iopadid_t;
  *
  * @notapi
  */
-#define pal_lld_clearport(port, bits) __pal_lld_clearport(port, bits)
+#define pal_lld_clearport(port, bits)                                       \
+  vgpioClear((uint32_t)(port), (uint32_t)(bits))
 
 /**
  * @brief   Toggles a bits mask on a I/O port.
@@ -221,7 +225,8 @@ typedef uint32_t iopadid_t;
  *
  * @notapi
  */
-#define pal_lld_toggleport(port, bits) __pal_lld_toggleport(port, bits)
+#define pal_lld_toggleport(port, bits)                                      \
+  vgpioToggle((uint32_t)(port), (uint32_t)(bits))
 
 /**
  * @brief   Programs a group mode.
@@ -234,7 +239,8 @@ typedef uint32_t iopadid_t;
  * @notapi
  */
 #define pal_lld_setgroupmode(port, mask, offset, mode)                      \
-  __pal_lld_setgroupmode(port, mask, offset, mode)
+  vgpioSetMode((uint32_t)(port), (uint32_t)(mask), (uint32_t)(offset),     \
+               (uint32_t)(mode))
 
 #ifdef __cplusplus
 extern "C" {
@@ -243,53 +249,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
-__attribute__((always_inline))
-static inline uint32_t __pal_lld_readport(ioportid_t port) {
-
-  __syscall1r(96, VIO_CALL(SB_VGPIO_READ, port));
-  return (ioportmask_t)r0;
-}
-
-__attribute__((always_inline))
-static inline uint32_t __pal_lld_readlatch(ioportid_t port) {
-
-  __syscall1r(96, VIO_CALL(SB_VGPIO_READLATCH, port));
-  return (ioportmask_t)r0;
-}
-
-__attribute__((always_inline))
-static inline void __pal_lld_writeport(ioportid_t port, uint32_t bits) {
-
-  __syscall2r(96, VIO_CALL(SB_VGPIO_WRITE, port), bits);
-}
-
-__attribute__((always_inline))
-static inline void __pal_lld_setport(ioportid_t port, uint32_t bits) {
-
-  __syscall2r(96, VIO_CALL(SB_VGPIO_SET, port), bits);
-}
-
-__attribute__((always_inline))
-static inline void __pal_lld_clearport(ioportid_t port, uint32_t bits) {
-
-  __syscall2r(96, VIO_CALL(SB_VGPIO_CLEAR, port), bits);
-}
-
-__attribute__((always_inline))
-static inline void __pal_lld_toggleport(ioportid_t port, uint32_t bits) {
-
-  __syscall2r(96, VIO_CALL(SB_VGPIO_TOGGLE, port), bits);
-}
-
-__attribute__((always_inline))
-static inline void __pal_lld_setgroupmode(ioportid_t port,
-                                          ioportmask_t mask,
-                                          uint32_t offset,
-                                          iomode_t mode) {
-
-  __syscall4r(96, VIO_CALL(SB_VGPIO_SETMODE, port), mask, offset, mode);
-}
 
 #endif /* HAL_USE_PAL == TRUE */
 

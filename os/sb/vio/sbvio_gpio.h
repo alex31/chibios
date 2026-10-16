@@ -34,11 +34,6 @@
 /*===========================================================================*/
 
 /**
- * @brief   Fast API handler for VHAL PAL driver.
- */
-#define SB_SVC96_HANDLER       sb_fastc_vio_gpio
-
-/**
  * @name    VIO GPIO permissions
  * @{
  */

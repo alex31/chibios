@@ -46,28 +46,6 @@ hal_eth_driver_c ETHD2;
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
-CC_FORCE_INLINE
-static inline uint32_t __eth_veth_init(uint32_t nveth, size_t n, void *p) {
-
-  __syscall3r(227, VIO_CALL(SB_VETH_INIT, nveth), n, p);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __eth_veth_deinit(uint32_t nveth) {
-
-  __syscall1r(227, VIO_CALL(SB_VETH_DEINIT, nveth));
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __eth_veth_selcfg(uint32_t nveth, uint32_t ncfg,
-                                         size_t n, void *p) {
-
-  __syscall4r(99, VIO_CALL(SB_VETH_SELCFG, nveth), ncfg, n, p);
-  return (uint32_t)r0;
-}
-
 static void eth_lld_serve_interrupt(hal_eth_driver_c *ethp, uint32_t nvrq) {
   eventflags_t flags;
 
@@ -161,12 +139,12 @@ msg_t eth_lld_start(hal_eth_driver_c *ethp) {
   }
 #if VIO_ETH_USE_VETH1 == TRUE
   else if (&ETHD1 == ethp) {
-    msg = (msg_t)__eth_veth_init(ethp->nveth, sizeof vcfg, &vcfg);
+    msg = vethInit(ethp->nveth, &vcfg);
   }
 #endif
 #if VIO_ETH_USE_VETH2 == TRUE
   else if (&ETHD2 == ethp) {
-    msg = (msg_t)__eth_veth_init(ethp->nveth, sizeof vcfg, &vcfg);
+    msg = vethInit(ethp->nveth, &vcfg);
   }
 #endif
   else {
@@ -188,12 +166,12 @@ void eth_lld_stop(hal_eth_driver_c *ethp) {
   }
 #if VIO_ETH_USE_VETH1 == TRUE
   else if (&ETHD1 == ethp) {
-    msg = (msg_t)__eth_veth_deinit(ethp->nveth);
+    msg = vethDeinit(ethp->nveth);
   }
 #endif
 #if VIO_ETH_USE_VETH2 == TRUE
   else if (&ETHD2 == ethp) {
-    msg = (msg_t)__eth_veth_deinit(ethp->nveth);
+    msg = vethDeinit(ethp->nveth);
   }
 #endif
   else {
@@ -217,7 +195,7 @@ const hal_eth_config_t *eth_lld_selcfg(hal_eth_driver_c *ethp,
   msg_t msg;
   vio_eth_config_t vcfg;
 
-  msg = (msg_t)__eth_veth_selcfg(ethp->nveth, cfgnum, sizeof vcfg, &vcfg);
+  msg = vethSelectCfg(ethp->nveth, (uint32_t)cfgnum, &vcfg);
   if (msg == HAL_RET_SUCCESS) {
     eth_lld_apply_cfgbuf(ethp, &vcfg);
     return &ethp->cfgbuf;
@@ -228,14 +206,12 @@ const hal_eth_config_t *eth_lld_selcfg(hal_eth_driver_c *ethp,
 
 eth_receive_handle_t eth_lld_get_receive_handle(hal_eth_driver_c *ethp) {
 
-  __syscall1r(99, VIO_CALL(SB_VETH_RXGET, ethp->nveth));
-  return (eth_receive_handle_t)r0;
+  return (eth_receive_handle_t)vethGetReceiveHandle(ethp->nveth);
 }
 
 eth_transmit_handle_t eth_lld_get_transmit_handle(hal_eth_driver_c *ethp) {
 
-  __syscall1r(99, VIO_CALL(SB_VETH_TXGET, ethp->nveth));
-  return (eth_transmit_handle_t)r0;
+  return (eth_transmit_handle_t)vethGetTransmitHandle(ethp->nveth);
 }
 
 bool eth_lld_is_receive_handle_valid(hal_eth_driver_c *ethp,
@@ -257,45 +233,46 @@ bool eth_lld_is_transmit_handle_valid(hal_eth_driver_c *ethp,
 bool eth_lld_release_receive_handle(hal_eth_driver_c *ethp,
                                     eth_receive_handle_t rxh) {
 
-  __syscall2r(99, VIO_CALL(SB_VETH_RXREL, ethp->nveth), rxh);
-  return (msg_t)r0 != HAL_RET_SUCCESS;
+  return vethReleaseReceiveHandle(ethp->nveth, (uint32_t)rxh) !=
+         HAL_RET_SUCCESS;
 }
 
 bool eth_lld_release_transmit_handle(hal_eth_driver_c *ethp,
                                      eth_transmit_handle_t txh) {
 
-  __syscall2r(99, VIO_CALL(SB_VETH_TXREL, ethp->nveth), txh);
-  return (msg_t)r0 != HAL_RET_SUCCESS;
+  return vethReleaseTransmitHandle(ethp->nveth, (uint32_t)txh) !=
+         HAL_RET_SUCCESS;
 }
 
 size_t eth_lld_read_receive_handle(hal_eth_driver_c *ethp,
                                    eth_receive_handle_t rxh,
                                    uint8_t *bp, size_t n) {
+  size_t ret;
 
-  __syscall4r(99, VIO_CALL(SB_VETH_RXREAD, ethp->nveth), rxh, bp, n);
-  if (((int32_t)r0) < 0) {
+  ret = vethReadReceiveHandle(ethp->nveth, (uint32_t)rxh, bp, n);
+  if (((int32_t)ret) < 0) {
     return 0U;
   }
 
-  return (size_t)r0;
+  return ret;
 }
 
 size_t eth_lld_write_transmit_handle(hal_eth_driver_c *ethp,
                                      eth_transmit_handle_t txh,
                                      const uint8_t *bp, size_t n) {
+  size_t ret;
 
-  __syscall4r(99, VIO_CALL(SB_VETH_TXWRITE, ethp->nveth), txh, bp, n);
-  if (((int32_t)r0) < 0) {
+  ret = vethWriteTransmitHandle(ethp->nveth, (uint32_t)txh, bp, n);
+  if (((int32_t)ret) < 0) {
     return 0U;
   }
 
-  return (size_t)r0;
+  return ret;
 }
 
 bool eth_lld_poll_link_status(hal_eth_driver_c *ethp) {
 
-  __syscall1r(99, VIO_CALL(SB_VETH_LINK, ethp->nveth));
-  return (bool)r0;
+  return vethPollLinkStatus(ethp->nveth);
 }
 
 #endif /* HAL_USE_ETH */

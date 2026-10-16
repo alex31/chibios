@@ -57,7 +57,8 @@ const hal_rtc_config_t *rtc_lld_setcfg(hal_rtc_driver_c *rtcp,
   return config;
 }
 
-const hal_rtc_config_t *rtc_lld_selcfg(hal_rtc_driver_c *rtcp, unsigned cfgnum) {
+const hal_rtc_config_t *rtc_lld_selcfg(hal_rtc_driver_c *rtcp,
+                                       unsigned cfgnum) {
 
   (void)rtcp;
   (void)cfgnum;

@@ -33,16 +33,6 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
-/**
- * @brief   Fast API handler for VHAL SPI driver.
- */
-#define SB_SVC98_HANDLER        sb_fastc_vio_spi
-
-/**
- * @brief   API handler for VHAL SPI driver.
- */
-#define SB_SVC226_HANDLER       sb_sysc_vio_spi
-
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/

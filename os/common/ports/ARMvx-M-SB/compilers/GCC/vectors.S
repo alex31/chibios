@@ -32,8 +32,9 @@
 #define TRUE    1
 #endif
 
-#if !defined(SB_VECTORS_NORTOS)
 #define _FROM_ASM_
+#include "sbsysc.h"
+#if !defined(SB_VECTORS_NORTOS)
 #include "chlicense.h"
 #include "chconf.h"
 #endif
@@ -113,7 +114,7 @@ __crt0_vrq:
         bl          SB_VECTORS_EPILOGUE_HOOK
 #endif
 
-        svc         #127    /* SB_FASTC_VRQ_RETURN */
+        svc         #SB_FASTC_VRQ_RETURN
 
         .align      2
         .globl      __sb_vectors

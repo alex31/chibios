@@ -95,13 +95,13 @@ static void prvBlinkerTask(void *pvParameters) {
 
   (void)pvParameters;
 
-  gpioWrite(LED_VGPIO_UNIT, 1U);
+  vgpioWrite(LED_VGPIO_UNIT, 1U);
   (void)xTaskNotifyWait(0U, 0U, &ulFailures, portMAX_DELAY);
   xPeriod = (ulFailures == 0U) ? BLINK_PASS_PERIOD : BLINK_FAIL_PERIOD;
 
   for (;;) {
     vTaskDelay(xPeriod);
-    gpioToggle(LED_VGPIO_UNIT, 1U);
+    vgpioToggle(LED_VGPIO_UNIT, 1U);
   }
 }
 

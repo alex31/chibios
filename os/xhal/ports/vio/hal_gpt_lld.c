@@ -50,78 +50,6 @@ hal_gpt_driver_c GPTD1;
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
-CC_FORCE_INLINE
-static inline uint32_t __gpt_vgpt_init(uint32_t nvgpt, size_t n, void *p) {
-
-  __syscall3r(229, VIO_CALL(SB_VGPT_INIT, nvgpt), n, p);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __gpt_vgpt_deinit(uint32_t nvgpt) {
-
-  __syscall1r(229, VIO_CALL(SB_VGPT_DEINIT, nvgpt));
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __gpt_vgpt_pdelay(uint32_t nvgpt, gptcnt_t interval) {
-
-  __syscall2r(101, VIO_CALL(SB_VGPT_PDELAY, nvgpt), interval);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __gpt_vgpt_start(uint32_t nvgpt, uint32_t mode,
-                                        gptcnt_t interval) {
-
-  __syscall3r(101, VIO_CALL(SB_VGPT_START, nvgpt), mode, interval);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __gpt_vgpt_stop(uint32_t nvgpt) {
-
-  __syscall1r(101, VIO_CALL(SB_VGPT_STOP, nvgpt));
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __gpt_vgpt_chgi(uint32_t nvgpt, gptcnt_t interval) {
-
-  __syscall2r(101, VIO_CALL(SB_VGPT_CHGI, nvgpt), interval);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __gpt_vgpt_setcb(uint32_t nvgpt, uint32_t enable) {
-
-  __syscall2r(101, VIO_CALL(SB_VGPT_SETCB, nvgpt), enable);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __gpt_vgpt_selcfg(uint32_t nvgpt, uint32_t ncfg,
-                                         size_t n, void *p) {
-
-  __syscall4r(101, VIO_CALL(SB_VGPT_SELCFG, nvgpt), ncfg, n, p);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __gpt_vgpt_getc(uint32_t nvgpt) {
-
-  __syscall1r(101, VIO_CALL(SB_VGPT_GETC, nvgpt));
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __gpt_vgpt_getfreq(uint32_t nvgpt) {
-
-  __syscall1r(101, VIO_CALL(SB_VGPT_GETFREQ, nvgpt));
-  return (uint32_t)r0;
-}
-
 /**
  * @brief   Shared VGPT interrupt service routine.
  *
@@ -196,9 +124,7 @@ msg_t gpt_lld_start(hal_gpt_driver_c *gptp) {
   }
 #if VIO_GPT_USE_VGPT1 == TRUE
   else if (&GPTD1 == gptp) {
-    msg = (msg_t)__gpt_vgpt_init(gptp->nvgpt,
-                                 sizeof (hal_gpt_config_t),
-                                 &gptp->cfgbuf);
+    msg = vgptInit(gptp->nvgpt, &gptp->cfgbuf, sizeof (hal_gpt_config_t));
   }
 #endif
   else {
@@ -208,7 +134,7 @@ msg_t gpt_lld_start(hal_gpt_driver_c *gptp) {
   if (msg == HAL_RET_SUCCESS) {
     gptp->config = &gptp->cfgbuf;
     if (drvGetCallbackX(gptp) != NULL) {
-      msg = (msg_t)__gpt_vgpt_setcb(gptp->nvgpt, 1U);
+      msg = vgptSetCallback(gptp->nvgpt, true);
     }
   }
 
@@ -229,7 +155,7 @@ void gpt_lld_stop(hal_gpt_driver_c *gptp) {
   }
 #if VIO_GPT_USE_VGPT1 == TRUE
   else if (&GPTD1 == gptp) {
-    msg = (msg_t)__gpt_vgpt_deinit(gptp->nvgpt);
+    msg = vgptDeinit(gptp->nvgpt);
   }
 #endif
   else {
@@ -276,8 +202,8 @@ const hal_gpt_config_t *gpt_lld_selcfg(hal_gpt_driver_c *gptp,
                                        unsigned cfgnum) {
   msg_t msg;
 
-  msg = __gpt_vgpt_selcfg(gptp->nvgpt, cfgnum,
-                          sizeof (hal_gpt_config_t), &gptp->cfgbuf);
+  msg = vgptSelectCfg(gptp->nvgpt, (uint32_t)cfgnum, &gptp->cfgbuf,
+                      sizeof (hal_gpt_config_t));
   if (msg != HAL_RET_SUCCESS) {
     return NULL;
   }
@@ -298,7 +224,7 @@ void gpt_lld_set_callback(hal_gpt_driver_c *gptp, drv_cb_t cb) {
   if (drvGetStateX(gptp) != HAL_DRV_STATE_STOP) {
     msg_t msg;
 
-    msg = (msg_t)__gpt_vgpt_setcb(gptp->nvgpt, cb != NULL ? 1U : 0U);
+    msg = vgptSetCallback(gptp->nvgpt, cb != NULL);
     chDbgAssert(msg == HAL_RET_SUCCESS, "unexpected failure");
   }
 }
@@ -315,7 +241,7 @@ void gpt_lld_change_interval_impl(hal_gpt_driver_c *gptp,
                                   gptcnt_t interval) {
   msg_t msg;
 
-  msg = (msg_t)__gpt_vgpt_chgi(gptp->nvgpt, interval);
+  msg = vgptChangeInterval(gptp->nvgpt, (uint32_t)interval);
   chDbgAssert(msg == HAL_RET_SUCCESS, "unexpected failure");
   gptp->interval = interval;
 }
@@ -330,7 +256,7 @@ void gpt_lld_change_interval_impl(hal_gpt_driver_c *gptp,
  */
 gptcnt_t gpt_lld_get_counter_impl(hal_gpt_driver_c *gptp) {
 
-  return (gptcnt_t)__gpt_vgpt_getc(gptp->nvgpt);
+  return (gptcnt_t)vgptGetCounter(gptp->nvgpt);
 }
 
 /**
@@ -342,18 +268,15 @@ gptcnt_t gpt_lld_get_counter_impl(hal_gpt_driver_c *gptp) {
  * @notapi
  */
 void gpt_lld_start_timer(hal_gpt_driver_c *gptp, gptcnt_t interval) {
-  uint32_t mode;
   msg_t msg;
 
   if (gptp->state == GPT_CONTINUOUS) {
-    mode = SB_VGPT_CONTINUOUS;
+    msg = vgptStartContinuous(gptp->nvgpt, (uint32_t)interval);
   }
   else {
     chDbgAssert(gptp->state == GPT_ONESHOT, "invalid state");
-    mode = SB_VGPT_ONESHOT;
+    msg = vgptStartOneShot(gptp->nvgpt, (uint32_t)interval);
   }
-
-  msg = (msg_t)__gpt_vgpt_start(gptp->nvgpt, mode, interval);
   chDbgAssert(msg == HAL_RET_SUCCESS, "unexpected failure");
   gptp->interval = interval;
 }
@@ -368,7 +291,7 @@ void gpt_lld_start_timer(hal_gpt_driver_c *gptp, gptcnt_t interval) {
 void gpt_lld_stop_timer(hal_gpt_driver_c *gptp) {
   msg_t msg;
 
-  msg = (msg_t)__gpt_vgpt_stop(gptp->nvgpt);
+  msg = vgptStopTimer(gptp->nvgpt);
   chDbgAssert(msg == HAL_RET_SUCCESS, "unexpected failure");
   gptp->interval = (gptcnt_t)0;
 }
@@ -384,7 +307,7 @@ void gpt_lld_stop_timer(hal_gpt_driver_c *gptp) {
 void gpt_lld_polled_delay(hal_gpt_driver_c *gptp, gptcnt_t interval) {
   msg_t msg;
 
-  msg = (msg_t)__gpt_vgpt_pdelay(gptp->nvgpt, interval);
+  msg = vgptPolledDelay(gptp->nvgpt, (uint32_t)interval);
   chDbgAssert(msg == HAL_RET_SUCCESS, "unexpected failure");
 }
 

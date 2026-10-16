@@ -47,57 +47,6 @@ hal_i2c_driver_c I2CD1;
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
-CC_FORCE_INLINE
-static inline uint32_t __i2c_vi2c_init(uint32_t nvi2c, size_t n, void *p) {
-
-  __syscall3r(230, VIO_CALL(SB_VI2C_INIT, nvi2c), n, p);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __i2c_vi2c_deinit(uint32_t nvi2c) {
-
-  __syscall1r(230, VIO_CALL(SB_VI2C_DEINIT, nvi2c));
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __i2c_vi2c_selcfg(uint32_t nvi2c, uint32_t ncfg) {
-
-  __syscall2r(102, VIO_CALL(SB_VI2C_SELCFG, nvi2c), ncfg);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __i2c_vi2c_start_tx(uint32_t nvi2c,
-                                           const sb_vi2c_transfer_t *tp) {
-
-  __syscall2r(102, VIO_CALL(SB_VI2C_TX, nvi2c), tp);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __i2c_vi2c_start_rx(uint32_t nvi2c,
-                                           const sb_vi2c_transfer_t *tp) {
-
-  __syscall2r(102, VIO_CALL(SB_VI2C_RX, nvi2c), tp);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __i2c_vi2c_stop(uint32_t nvi2c) {
-
-  __syscall1r(102, VIO_CALL(SB_VI2C_STOP, nvi2c));
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline i2cflags_t __i2c_vi2c_gcerr(uint32_t nvi2c) {
-
-  __syscall1r(102, VIO_CALL(SB_VI2C_GCERR, nvi2c));
-  return (i2cflags_t)r0;
-}
-
 /**
  * @brief   Shared I2C service routine.
  *
@@ -110,7 +59,7 @@ static void i2c_lld_serve_interrupt(hal_i2c_driver_c *i2cp, uint32_t nvrq) {
   sts = __sb_vrq_gcsts(nvrq);
 
   if ((sts & (1U << HAL_DRV_STATE_ERROR)) != 0U) {
-    i2cp->errors |= __i2c_vi2c_gcerr(i2cp->nvi2c);
+    i2cp->errors |= (i2cflags_t)vi2cGetAndClearErrors(i2cp->nvi2c);
     __i2c_error_isr(i2cp);
     return;
   }
@@ -172,9 +121,7 @@ msg_t i2c_lld_start(hal_i2c_driver_c *i2cp) {
   }
 #if VIO_I2C_USE_VI2C1 == TRUE
   else if (&I2CD1 == i2cp) {
-    msg = (msg_t)__i2c_vi2c_init(i2cp->nvi2c,
-                                 sizeof (hal_i2c_config_t),
-                                 &i2cp->cfgbuf);
+    msg = vi2cInit(i2cp->nvi2c, &i2cp->cfgbuf, sizeof (hal_i2c_config_t));
   }
 #endif
   else {
@@ -203,7 +150,7 @@ void i2c_lld_stop(hal_i2c_driver_c *i2cp) {
   }
 #if VIO_I2C_USE_VI2C1 == TRUE
   else if (&I2CD1 == i2cp) {
-    msg = (msg_t)__i2c_vi2c_deinit(i2cp->nvi2c);
+    msg = vi2cDeinit(i2cp->nvi2c);
   }
 #endif
   else {
@@ -247,7 +194,7 @@ const hal_i2c_config_t *i2c_lld_selcfg(hal_i2c_driver_c *i2cp,
                                        unsigned cfgnum) {
   msg_t msg;
 
-  msg = (msg_t)__i2c_vi2c_selcfg(i2cp->nvi2c, cfgnum);
+  msg = vi2cSelectCfg(i2cp->nvi2c, (uint32_t)cfgnum);
   if (msg != HAL_RET_SUCCESS) {
     return NULL;
   }
@@ -292,7 +239,7 @@ msg_t i2c_lld_start_master_transmit(hal_i2c_driver_c *i2cp, i2caddr_t addr,
   transfer.rxbuf   = rxbuf;
   transfer.rxbytes = (uint32_t)rxbytes;
 
-  return (msg_t)__i2c_vi2c_start_tx(i2cp->nvi2c, &transfer);
+  return vi2cStartMasterTransmit(i2cp->nvi2c, &transfer);
 }
 
 /**
@@ -316,7 +263,7 @@ msg_t i2c_lld_start_master_receive(hal_i2c_driver_c *i2cp, i2caddr_t addr,
   transfer.rxbuf   = rxbuf;
   transfer.rxbytes = (uint32_t)rxbytes;
 
-  return (msg_t)__i2c_vi2c_start_rx(i2cp->nvi2c, &transfer);
+  return vi2cStartMasterReceive(i2cp->nvi2c, &transfer);
 }
 
 /**
@@ -329,7 +276,7 @@ msg_t i2c_lld_start_master_receive(hal_i2c_driver_c *i2cp, i2caddr_t addr,
  */
 msg_t i2c_lld_stop_transfer(hal_i2c_driver_c *i2cp) {
 
-  return (msg_t)__i2c_vi2c_stop(i2cp->nvi2c);
+  return vi2cStopTransfer(i2cp->nvi2c);
 }
 
 #endif /* HAL_USE_I2C */
