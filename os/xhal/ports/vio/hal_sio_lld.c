@@ -414,10 +414,12 @@ void sio_lld_put(hal_sio_driver_c *siop, uint_fast16_t data) {
 
 /**
  * @brief   Control operation on a serial port.
+ * @note    Only operations without argument are supported, the host
+ *          rejects a non-@p NULL @p arg with @p CH_RET_EINVAL.
  *
  * @param[in] siop      pointer to the @p hal_sio_driver_c object
  * @param[in] operation control operation code
- * @param[in,out] arg   operation argument
+ * @param[in,out] arg   operation argument, must be @p NULL
  *
  * @return              The control operation status.
  * @retval MSG_OK       in case of success.

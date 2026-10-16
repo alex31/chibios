@@ -390,10 +390,12 @@ static inline uint32_t vuartGetEvents(uint32_t unit) {
 
 /**
  * @brief   Performs a control operation on the unit.
+ * @note    Only operations without argument are supported, the host
+ *          rejects a non-@p NULL @p arg with @p CH_RET_EINVAL.
  *
  * @param[in] unit      VIO UART unit
  * @param[in] operation host SIO control operation code
- * @param[in,out] arg   operation argument
+ * @param[in,out] arg   operation argument, must be @p NULL
  * @return              The operation status.
  */
 static inline msg_t vuartControl(uint32_t unit, uint32_t operation,
