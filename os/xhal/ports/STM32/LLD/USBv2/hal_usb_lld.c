@@ -1769,6 +1769,15 @@ void usb_lld_clear_in(hal_usb_driver_c *usbp, usbep_t ep) {
 void usb_lld_serve_interrupt(hal_usb_driver_c *usbp) {
   uint32_t istr;
 
+  /* While the driver is stopping no event is served and no callback is
+     invoked, the interrupt sources are disabled so that the interrupt
+     does not fire again before the stop powers the peripheral down.*/
+  if (usbp->state == HAL_DRV_STATE_STOPPING) {
+    usbp->usb->CNTR &= ~(USB_CNTR_CTRM | USB_CNTR_WKUPM | USB_CNTR_SUSPM |
+                         USB_CNTR_RESETM | USB_CNTR_SOFM);
+    return;
+  }
+
   /* Reading interrupt sources and atomically clearing them.*/
   istr = usbp->usb->ISTR;
   usbp->usb->ISTR = ~istr;

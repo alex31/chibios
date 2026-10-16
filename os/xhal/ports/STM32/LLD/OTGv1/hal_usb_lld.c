@@ -1225,6 +1225,14 @@ irq_retry:
   if (usbp->state == USB_ERROR) {
     return;
   }
+
+  /* While the driver is stopping no event is served and no callback is
+     invoked, the interrupts are globally masked so that the interrupt
+     does not fire again before the stop disables the core.*/
+  if (usbp->state == HAL_DRV_STATE_STOPPING) {
+    otgp->GAHBCFG &= ~GAHBCFG_GINTMSK;
+    return;
+  }
   sts  = otgp->GINTSTS;
   sts &= otgp->GINTMSK;
   otgp->GINTSTS = sts;
