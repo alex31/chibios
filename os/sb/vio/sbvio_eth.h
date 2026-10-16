@@ -47,13 +47,6 @@
  */
 #define SB_SVC227_HANDLER       sb_sysc_vio_eth
 
-/**
- * @name    VIO ETH configuration flags
- * @{
- */
-#define VIO_ETH_CFGF_MAC_ADDRESS   (1U << 0)
-/** @} */
-
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -65,15 +58,6 @@
 /*===========================================================================*/
 /* Module data structures and types.                                         */
 /*===========================================================================*/
-
-/**
- * @brief   Type of a VIO ETH configuration representation.
- */
-typedef struct vio_eth_config {
-  uint32_t          flags;
-  uint8_t           mac_address[6];
-  uint8_t           reserved[2];
-} vio_eth_config_t;
 
 /**
  * @brief   Type of a VIO ETH unit representation.

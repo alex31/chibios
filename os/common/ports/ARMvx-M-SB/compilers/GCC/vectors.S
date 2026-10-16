@@ -46,6 +46,18 @@
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
 
+/*
+ * SB_VECTORS_NORTOS
+ *   When defined the VRQ epilogue does not invoke the ChibiOS scheduler
+ *   and chconf.h is not required.
+ *
+ * SB_VECTORS_EPILOGUE_HOOK
+ *   Optional, only considered when SB_VECTORS_NORTOS is defined. Name of
+ *   a function called in the VRQ epilogue, after the handler returned and
+ *   before SB_FASTC_VRQ_RETURN. It allows a non-ChibiOS kernel to perform
+ *   a preemption.
+ */
+
 /*===========================================================================*/
 /* Code section.                                                             */
 /*===========================================================================*/
@@ -95,6 +107,10 @@ __crt0_vrq:
 #if CH_DBG_STATISTICS
         bl          __stats_stop_measure_crit_thd
 #endif
+#elif defined(SB_VECTORS_EPILOGUE_HOOK)
+        /* Non-ChibiOS kernel preemption hook, VRQs are still disabled
+           here and the hook can switch to another thread stack.*/
+        bl          SB_VECTORS_EPILOGUE_HOOK
 #endif
 
         svc         #127    /* SB_FASTC_VRQ_RETURN */

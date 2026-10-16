@@ -175,6 +175,13 @@
 /** @} */
 
 /**
+ * @name    Virtual ETH configuration flags
+ * @{
+ */
+#define VIO_ETH_CFGF_MAC_ADDRESS (1U << 0)
+/** @} */
+
+/**
  * @name    Virtual GPIO syscall sub-codes
  * @{
  */
@@ -252,9 +259,43 @@ typedef struct sb_vi2c_transfer {
   uint32_t                  rxbytes;
 } sb_vi2c_transfer_t;
 
+/**
+ * @brief   ETH configuration information returned by the host.
+ */
+typedef struct vio_eth_config {
+  uint32_t                  flags;
+  uint8_t                   mac_address[6];
+  uint8_t                   reserved[2];
+} vio_eth_config_t;
+
 /*===========================================================================*/
 /* Module macros.                                                            */
 /*===========================================================================*/
+
+/**
+ * @brief   Builds a VIO call 1st parameter.
+ *
+ * @param[in] c         the sub-code
+ * @param[in] u         the unit identifier
+ * @return              The formatted VIO call 1st parameter.
+ */
+#define VIO_CALL(c, u)          (((uint32_t)(u) << 24) | (uint32_t)(c))
+
+/**
+ * @brief   Sub-code part of VIO calls 1st parameter.
+ *
+ * @param[in] n         the VIO 1st parameter
+ * @return              The VIO call sub-code.
+ */
+#define VIO_CALL_SUBCODE(n)     ((uint32_t)(n) & 0xFFU)
+
+/**
+ * @brief   Unit identifier part of VIO calls 1st parameter.
+ *
+ * @param[in] n         the VIO 1st parameter
+ * @return              The VIO call unit identifier.
+ */
+#define VIO_CALL_UNIT(n)        ((uint32_t)(n) >> 24)
 
 /*===========================================================================*/
 /* External declarations.                                                    */
