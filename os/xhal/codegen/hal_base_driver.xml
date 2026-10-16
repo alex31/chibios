@@ -269,6 +269,16 @@ return msg;]]></implementation>
               <details><![CDATA[Stops driver operations. The peripheral
                 is physically uninitialized.]]>
               </details>
+              <note><![CDATA[In SMP systems the callbacks are invoked,
+                outside the system lock, by the core serving the driver
+                interrupts. When called from a different core the function
+                can return while the last callback is still executing,
+                resources used by the callback must not be released until
+                it has returned.]]></note>
+              <note><![CDATA[Low level drivers can require the function to
+                be called from the core that started the driver, for example
+                when the interrupt vector is enabled on that core only, refer
+                to the low level driver documentation.]]></note>
               <api />
               <implementation><![CDATA[
 driver_state_t prevstate;
