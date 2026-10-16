@@ -1315,6 +1315,15 @@ void usb_lld_clear_in(hal_usb_driver_c *usbp, usbep_t ep) {
 void usb_lld_serve_endpoints_interrupt(hal_usb_driver_c *usbp) {
   uint32_t istr;
 
+  /* While the driver is stopping no event is served and no callback is
+     invoked, the interrupt sources are disabled so that the interrupt
+     does not fire again before the stop powers the peripheral down.*/
+  if (usbp->state == HAL_DRV_STATE_STOPPING) {
+    STM32_USB->CNTR &= ~(CNTR_CTRM | CNTR_WKUPM | CNTR_SUSPM | CNTR_RESETM |
+                         CNTR_SOFM);
+    return;
+  }
+
 #if STM32_USB_USE_DOUBLE_BUFFERING
   /* Held packets of double-buffered endpoints, served when a transfer has
      been started.*/
@@ -1336,6 +1345,15 @@ void usb_lld_serve_endpoints_interrupt(hal_usb_driver_c *usbp) {
 
 void usb_lld_serve_interrupt(hal_usb_driver_c *usbp) {
   uint32_t istr;
+
+  /* While the driver is stopping no event is served and no callback is
+     invoked, the interrupt sources are disabled so that the interrupt
+     does not fire again before the stop powers the peripheral down.*/
+  if (usbp->state == HAL_DRV_STATE_STOPPING) {
+    STM32_USB->CNTR &= ~(CNTR_CTRM | CNTR_WKUPM | CNTR_SUSPM | CNTR_RESETM |
+                         CNTR_SOFM);
+    return;
+  }
 
   istr = STM32_USB->ISTR;
   STM32_USB->ISTR = ~istr;
