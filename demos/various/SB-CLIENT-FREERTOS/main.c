@@ -34,7 +34,9 @@
  * then the LED operations have no effect.
  * If the host assigns VIO UART unit 0, on VRQ 8, the result is also
  * printed there, then the received data is echoed back. The UART is
- * handled by the mini serial driver in ./source/vserial.c.
+ * handled by the mini serial driver in ./source/vserial.c. Receiving
+ * Ctrl-D stops the scheduler, main() returns and the sandbox terminates
+ * with exit code zero.
  * Fatal conditions are handled by the default hooks of the port, which
  * terminate the sandbox with one of the portSB_EXIT_xxx codes.
  */
@@ -51,6 +53,8 @@
 #define SWVRQ_CYCLES            100U
 #define TEST_STACK_SIZE         (configMINIMAL_STACK_SIZE * 3)
 #define SERIAL_STACK_SIZE       (configMINIMAL_STACK_SIZE * 3)
+#define SERIAL_END_CHAR         0x04U
+#define SERIAL_DRAIN_TIME       pdMS_TO_TICKS(20)
 
 #define BLINK_PASS_PERIOD       pdMS_TO_TICKS(500)
 #define BLINK_FAIL_PERIOD       pdMS_TO_TICKS(100)
@@ -127,7 +131,9 @@ static void prvSerialPuts(const char *pcString) {
 
 /*
  * Serial task, prints the self-test result then echoes the received data,
- * a line feed is added after each carriage return.
+ * a line feed is added after each carriage return. The end character
+ * stops the scheduler, the output is given some time to be transmitted
+ * because the sandbox termination discards it.
  */
 static void prvSerialTask(void *pvParameters) {
   uint8_t ucBuffer[16];
@@ -153,6 +159,12 @@ static void prvSerialTask(void *pvParameters) {
                             portMAX_DELAY);
         prvSerialPuts("\n");
         xStart = i + 1U;
+      }
+      else if (ucBuffer[i] == SERIAL_END_CHAR) {
+        (void)xVSerialWrite(&ucBuffer[xStart], i - xStart, portMAX_DELAY);
+        prvSerialPuts("\r\nstopping the scheduler\r\n");
+        vTaskDelay(SERIAL_DRAIN_TIME);
+        vTaskEndScheduler();
       }
     }
     (void)xVSerialWrite(&ucBuffer[xStart], xn - xStart, portMAX_DELAY);
@@ -398,6 +410,8 @@ int main(void) {
 
   vTaskStartScheduler();
 
-  /* Only reached if the idle or timer task could not be created.*/
-  return 1;
+  /* Reached after vTaskEndScheduler(), the returned value is the sandbox
+     exit code. Failures creating the idle or timer task are caught by
+     vApplicationMallocFailedHook().*/
+  return 0;
 }

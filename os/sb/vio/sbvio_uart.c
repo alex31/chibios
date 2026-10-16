@@ -317,9 +317,17 @@ void sb_fastc_vio_uart(sb_class_t *sbp, struct port_extctx *ectxp) {
       }
     case SB_VUART_CTL:
       {
+        /* Operation arguments are rejected, their size is specific of the
+           operation and of the LLD, a sandbox pointer could not be
+           validated.*/
+        if (ectxp->r2 != 0U) {
+          ectxp->r0 = (uint32_t)CH_RET_EINVAL;
+          break;
+        }
+
         ectxp->r0 = (uint32_t)sioControlX(unitp->siop,
                                           (unsigned int)ectxp->r1,
-                                          (void *)ectxp->r2);
+                                          NULL);
         break;
       }
     default:

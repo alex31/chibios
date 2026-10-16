@@ -27,8 +27,13 @@
  *          zone active, a yield requested inside a critical zone or by a
  *          VRQ handler is deferred to the critical zone exit or to the VRQ
  *          epilogue, the same way a pended PendSV would be served.
+ *          The FPSCR register is not part of the context saved by
+ *          @p vPortSwitchContext(), it is saved in the VRQ frame when the
+ *          switch is performed on VRQ exit.
  *          Ticks are accounted from the host system time, ticks elapsed
  *          while the sandbox was not running are recovered.
+ *          The scheduler can be stopped using @p vTaskEndScheduler(),
+ *          @p vTaskStartScheduler() then returns to its caller.
  *
  * @addtogroup FREERTOS_ARMVXM_SB
  * @{
@@ -114,13 +119,20 @@ static sysinterval_t xTickInterval;
  */
 static systime_t xLastTickTime;
 
+/**
+ * @brief   Context saved when starting the scheduler.
+ * @details It is resumed when the scheduler is stopped.
+ */
+static void *pvSchedulerCallerContext;
+
 /*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
 
 /* Low level code in portasm.S.*/
 void vPortSwitchContext(void);
-void vPortStartFirstTask(void);
+void vPortStartFirstTask(void **ppvContext);
+void vPortRestoreContext(void *pvContext) __attribute__((noreturn));
 void vPortTaskStart(void);
 
 /* Invoked by the VRQ entry code in vectors.S.*/
@@ -248,7 +260,8 @@ __attribute__((weak)) void vPortSetupTimerInterrupt(void) {
  * @note    VRQs have been disabled by the kernel at this point, they are
  *          enabled when the first task starts.
  *
- * @return              It does not return.
+ * @return              It only returns after @p vTaskEndScheduler().
+ * @retval pdFALSE      the scheduler has been stopped.
  */
 BaseType_t xPortStartScheduler(void) {
 
@@ -263,21 +276,38 @@ BaseType_t xPortStartScheduler(void) {
   uxCriticalNesting = 0U;
   xSwitchPending = pdFALSE;
 
-  /* The current stack is abandoned.*/
-  vPortStartFirstTask();
+  /* The current context is saved, it is resumed by vPortEndScheduler().*/
+  vPortStartFirstTask(&pvSchedulerCallerContext);
 
-  /* Never reached.*/
   return pdFALSE;
 }
 
 /**
  * @brief   Stops the scheduler.
- * @note    Not implemented in this port.
+ * @details Invoked by @p vTaskEndScheduler() with VRQs disabled. The tick
+ *          alarm is stopped and the context saved by
+ *          @p xPortStartScheduler() is resumed, @p vTaskStartScheduler()
+ *          returns with VRQs disabled, as before starting the scheduler.
+ * @note    The stack of the calling task is abandoned, the application is
+ *          responsible for deleting that task and the other remaining
+ *          ones, if required.
+ * @note    The sandbox terminates when @p main() returns, the value
+ *          returned by @p main() is the exit code.
+ * @note    A tick source set up by a redefined
+ *          @p vPortSetupTimerInterrupt() is not stopped.
  */
 void vPortEndScheduler(void) {
 
-  /* Intentionally failing assertion, same as the other ports.*/
-  configASSERT(uxCriticalNesting == 1000UL);
+  configASSERT(xPortIsInsideInterrupt() == pdFALSE);
+
+  sbResetAlarm();
+
+  /* Same state as before starting the scheduler, critical zones leave
+     VRQs disabled.*/
+  uxCriticalNesting = portINITIAL_CRITICAL_NESTING;
+  xSwitchPending    = pdFALSE;
+
+  vPortRestoreContext(pvSchedulerCallerContext);
 }
 
 /**
