@@ -27,6 +27,8 @@
  *          zone active, a yield requested inside a critical zone or by a
  *          VRQ handler is deferred to the critical zone exit or to the VRQ
  *          epilogue, the same way a pended PendSV would be served.
+ *          Ticks are accounted from the host system time, ticks elapsed
+ *          while the sandbox was not running are recovered.
  *
  * @addtogroup FREERTOS_ARMVXM_SB
  * @{
@@ -102,6 +104,16 @@ static UBaseType_t uxCriticalNesting = portINITIAL_CRITICAL_NESTING;
  */
 static volatile BaseType_t xSwitchPending = pdFALSE;
 
+/**
+ * @brief   Tick period in host system time units.
+ */
+static sysinterval_t xTickInterval;
+
+/**
+ * @brief   Host system time of the last accounted tick.
+ */
+static systime_t xLastTickTime;
+
 /*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
@@ -137,12 +149,33 @@ static void prvTaskExitError(void) {
 
 /**
  * @brief   Tick VRQ handler.
+ * @details All the tick periods elapsed since the last accounted tick are
+ *          accounted. The host merges the alarm VRQs triggered while the
+ *          sandbox is not running, those ticks are recovered here.
  * @note    The periodic host alarm is delivered on @p portVRQ_TICK.
  */
 portVRQ_HANDLER(portVRQ_TICK) {
+  systime_t xNow;
+  BaseType_t xSwitchRequired = pdFALSE;
 
   traceISR_ENTER();
-  if (xTaskIncrementTick() != pdFALSE) {
+
+  xNow = sbGetSystemTime();
+
+  /* A negative difference is only possible with a host system time
+     narrower than 32 bits, the elapsed ticks are lost in that case.*/
+  if ((int32_t)(xNow - xLastTickTime) < 0) {
+    xLastTickTime = xNow;
+  }
+
+  while ((sysinterval_t)(xNow - xLastTickTime) >= xTickInterval) {
+    xLastTickTime += xTickInterval;
+    if (xTaskIncrementTick() != pdFALSE) {
+      xSwitchRequired = pdTRUE;
+    }
+  }
+
+  if (xSwitchRequired != pdFALSE) {
     traceISR_EXIT_TO_SCHEDULER();
     xSwitchPending = pdTRUE;
   }
@@ -201,17 +234,13 @@ StackType_t *pxPortInitialiseStack(StackType_t *pxTopOfStack,
  *          VRQ, the tick period is rounded down to the host time
  *          resolution.
  * @note    It is a weak function, an application can redefine it in order
- *          to use a different tick source.
+ *          to use a different tick source, the tick VRQ handler still
+ *          accounts ticks from the host system time.
  */
 __attribute__((weak)) void vPortSetupTimerInterrupt(void) {
-  uint32_t ulInterval;
-
-  ulInterval = sbGetFrequency() / (uint32_t)configTICK_RATE_HZ;
-
-  configASSERT(ulInterval > 0U);
 
   vPortVRQEnable(portVRQ_TICK);
-  (void)sbSetAlarm((sysinterval_t)ulInterval, true);
+  (void)sbSetAlarm(xTickInterval, true);
 }
 
 /**
@@ -223,6 +252,12 @@ __attribute__((weak)) void vPortSetupTimerInterrupt(void) {
  */
 BaseType_t xPortStartScheduler(void) {
 
+  xTickInterval = sbGetFrequency() / (sysinterval_t)configTICK_RATE_HZ;
+
+  configASSERT(xTickInterval > 0U);
+
+  /* Tick accounting base, taken before arming the alarm.*/
+  xLastTickTime = sbGetSystemTime();
   vPortSetupTimerInterrupt();
 
   uxCriticalNesting = 0U;

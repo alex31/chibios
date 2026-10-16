@@ -42,6 +42,18 @@
 /* Module local variables.                                                   */
 /*===========================================================================*/
 
+#if PORT_USE_LOCAL_SYSTICK == TRUE
+/**
+ * @brief   Tick period in host system time units.
+ */
+static sysinterval_t tick_interval;
+
+/**
+ * @brief   Host system time of the last accounted tick.
+ */
+static uint32_t last_tick;
+#endif
+
 /*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
@@ -51,12 +63,32 @@
 /*===========================================================================*/
 
 #if PORT_USE_LOCAL_SYSTICK == TRUE
+/**
+ * @brief   Alarm VRQ handler.
+ * @details All the tick periods elapsed since the last accounted tick are
+ *          accounted. The host merges the alarm VRQs triggered while the
+ *          sandbox is not running, those ticks are recovered here.
+ *
+ * @isr
+ */
 CH_IRQ_HANDLER(__sb_vector0) {
+  uint32_t now;
 
   CH_IRQ_PROLOGUE();
 
+  now = (uint32_t)sbGetSystemTime();
+
+  /* A negative difference is only possible with a host system time
+     narrower than 32 bits, the elapsed ticks are lost in that case.*/
+  if ((int32_t)(now - last_tick) < 0) {
+    last_tick = now;
+  }
+
   chSysLockFromISR();
-  chSysTimerHandlerI();
+  while ((now - last_tick) >= (uint32_t)tick_interval) {
+    last_tick += (uint32_t)tick_interval;
+    chSysTimerHandlerI();
+  }
   chSysUnlockFromISR();
 
   CH_IRQ_EPILOGUE();
@@ -82,9 +114,15 @@ void port_init(os_instance_t *oip) {
   port_disable();
 
 #if PORT_USE_LOCAL_SYSTICK == TRUE
-  /* Enabling alarm VRQ.*/
+  tick_interval = sbGetFrequency() / CH_CFG_ST_FREQUENCY;
+
+  chDbgAssert(tick_interval > (sysinterval_t)0, "invalid frequency");
+
+  /* Enabling alarm VRQ, the tick accounting base is taken before arming
+     the alarm.*/
+  last_tick = (uint32_t)sbGetSystemTime();
   __sb_vrq_seten(1U << 0);
-  sbSetAlarm(sbGetFrequency() / CH_CFG_ST_FREQUENCY, true);
+  sbSetAlarm(tick_interval, true);
 #endif
 }
 
