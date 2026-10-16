@@ -185,8 +185,8 @@ static void adc_lld_drain_fifo(ADC_TypeDef *adc) {
  *          hardware chain trigger starts the partner channel
  *          immediately, without any re-arm dependency on this routine,
  *          which only reprograms the just-completed channel for its
- *          next turn and then invokes @p _adc_isr_half_code() or
- *          @p _adc_isr_full_code(). In linear mode only the errors of
+ *          next turn and then invokes @p _adc_isr_half_code_i() or
+ *          @p _adc_isr_full_code_i(). In linear mode only the errors of
  *          the main channel transfer are served here, the conversion is
  *          completed by the second channel, see
  *          @p adc_lld_serve_stop_interrupt().
@@ -208,6 +208,11 @@ static void adc_lld_drain_fifo(ADC_TypeDef *adc) {
  *          stopping: @p adc_lld_stop() owns the teardown and it only
  *          happens in the @p HAL_DRV_STATE_STOPPING state, which a
  *          completion served before it must not leave.
+ * @note    Called with the system lock held. The state checks, the
+ *          hardware accesses and the transition out of the active state
+ *          happen under the lock, a stop from the other core either
+ *          comes first and the event is discarded or comes after the
+ *          transition; the lock is only released during the callback.
  *
  * @param[in] adcp      pointer to the @p hal_adc_driver_c object
  * @param[in] ct        content of the CTRL_TRIG register
@@ -226,7 +231,7 @@ static void adc_lld_serve_channel_interrupt(hal_adc_driver_c *adcp,
 
   /* DMA errors handling.*/
   if ((ct & (DMA_CTRL_TRIG_READ_ERROR | DMA_CTRL_TRIG_WRITE_ERROR)) != 0U) {
-    _adc_isr_error_code(adcp, ADC_ERR_DMAFAILURE);
+    _adc_isr_error_code_i(adcp, ADC_ERR_DMAFAILURE);
   }
   else {
     /* Conversion group may have been reset by error handler, linear
@@ -243,7 +248,7 @@ static void adc_lld_serve_channel_interrupt(hal_adc_driver_c *adcp,
           emask |= ADC_ERR_CONVERSION;
         }
         if (emask != 0U) {
-          _adc_isr_error_code(adcp, emask);
+          _adc_isr_error_code_i(adcp, emask);
         }
         else {
           /* Geometry of the completed channel, with a single row
@@ -268,10 +273,10 @@ static void adc_lld_serve_channel_interrupt(hal_adc_driver_c *adcp,
             DMA_CTRL_TRIG_EN;
 
           if (second || (adcp->depth == 1U)) {
-            _adc_isr_full_code(adcp);
+            _adc_isr_full_code_i(adcp);
           }
           else {
-            _adc_isr_half_code(adcp);
+            _adc_isr_half_code_i(adcp);
           }
         }
       }
@@ -296,6 +301,8 @@ static void adc_lld_serve_channel_interrupt(hal_adc_driver_c *adcp,
  * @note    The conversions continue until the stop transfer, if that
  *          transfer is delayed until they fill the FIFO an overflow is
  *          reported.
+ * @note    Called with the system lock held, see
+ *          @p adc_lld_serve_channel_interrupt().
  *
  * @param[in] adcp      pointer to the @p hal_adc_driver_c object
  * @param[in] ct        content of the CTRL_TRIG register
@@ -319,10 +326,10 @@ static void adc_lld_serve_stop_interrupt(hal_adc_driver_c *adcp,
       emask |= ADC_ERR_CONVERSION;
     }
     if (emask != 0U) {
-      _adc_isr_error_code(adcp, emask);
+      _adc_isr_error_code_i(adcp, emask);
     }
     else {
-      _adc_isr_full_code(adcp);
+      _adc_isr_full_code_i(adcp);
     }
   }
 }
@@ -338,7 +345,9 @@ static void adc_lld_serve_stop_interrupt(hal_adc_driver_c *adcp,
  */
 static void adc_lld_serve_dma_interrupt(void *p, uint32_t ct) {
 
+  chSysLockFromISR();
   adc_lld_serve_channel_interrupt((hal_adc_driver_c *)p, ct, false);
+  chSysUnlockFromISR();
 }
 
 /**
@@ -353,12 +362,14 @@ static void adc_lld_serve_dma_interrupt(void *p, uint32_t ct) {
 static void adc_lld_serve_dma2_interrupt(void *p, uint32_t ct) {
   hal_adc_driver_c *adcp = (hal_adc_driver_c *)p;
 
+  chSysLockFromISR();
   if (adcp->state == ADC_ACTIVE_LINEAR) {
     adc_lld_serve_stop_interrupt(adcp, ct);
   }
   else {
     adc_lld_serve_channel_interrupt(adcp, ct, true);
   }
+  chSysUnlockFromISR();
 }
 
 /*===========================================================================*/

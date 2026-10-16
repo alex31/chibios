@@ -95,6 +95,36 @@
   } while (false)
 
 /**
+ * @brief       Callback invocation with state transitions management, lock
+ *              held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The final transition
+ *              only happens if the state is still @p cbstate, a state change
+ *              made by another context during the callback is kept.
+ *
+ * @param[in,out] self          Pointer to driver instance.
+ * @param[in]     cbstate       Driver state during callback execution.
+ * @param[in]     endstate      Driver state after callback return.
+ *
+ * @notapi
+ */
+#define __cbdrv_invoke_cb_with_transition_i(self, cbstate, endstate)        \
+  do {                                                                      \
+    if ((self)->cb != NULL) {                                               \
+      (self)->state = (cbstate);                                            \
+      chSysUnlockFromISR();                                                 \
+      (self)->cb(self);                                                     \
+      chSysLockFromISR();                                                   \
+      if ((self)->state == (cbstate)) {                                     \
+        (self)->state = (endstate);                                         \
+      }                                                                     \
+    }                                                                       \
+    else {                                                                  \
+      (self)->state = (endstate);                                           \
+    }                                                                       \
+  } while (false)
+
+/**
  * @brief       Callback invocation with @p HAL_DRV_STATE_HALF transient state.
  * @note        After invoking the callback the driver is returned to the @p
  *              HAL_DRV_STATE_ACTIVE state.

@@ -93,6 +93,24 @@ do {
   chSysUnlockFromISR();
 } while (false)]]></implementation>
           </macro>
+          <macro name="_adc_wakeup_i">
+            <brief>Wakes up a thread waiting for a conversion state, lock held.</brief>
+            <param name="adcp" dir="in">Pointer to the ADC driver instance.</param>
+            <param name="state" dir="in">State being synchronized.</param>
+            <notapi />
+            <implementation><![CDATA[
+do {
+  if ((adcp)->sync_state == (state)) {
+    chThdResumeI(&(adcp)->thread, MSG_OK);
+  }
+} while (false)]]></implementation>
+          </macro>
+          <macro name="_adc_error_wakeup_i">
+            <brief>Wakes up a thread waiting for conversion termination, lock held.</brief>
+            <param name="adcp" dir="in">Pointer to the ADC driver instance.</param>
+            <notapi />
+            <implementation><![CDATA[chThdResumeI(&(adcp)->thread, MSG_RESET)]]></implementation>
+          </macro>
           <elseif />
           <macro name="_adc_reset_i">
             <param name="adcp" dir="in" />
@@ -111,22 +129,39 @@ do {
             <param name="adcp" dir="in" />
             <implementation><![CDATA[]]></implementation>
           </macro>
+          <macro name="_adc_wakeup_i">
+            <param name="adcp" dir="in" />
+            <param name="state" dir="in" />
+            <implementation><![CDATA[]]></implementation>
+          </macro>
+          <macro name="_adc_error_wakeup_i">
+            <param name="adcp" dir="in" />
+            <implementation><![CDATA[]]></implementation>
+          </macro>
         </condition>
-        <macro name="_adc_isr_half_code">
-          <brief>Common ISR code, half buffer event.</brief>
+        <macro name="_adc_isr_half_code_i">
+          <brief>Common ISR code, half buffer event, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a circular conversion is not active, for example after a stop.</note>
           <param name="adcp" dir="both">Pointer to the ADC driver instance.</param>
           <notapi />
           <implementation><![CDATA[
 do {
-  (adcp)->events |= ADC_EVENT_HALF;
-  __cbdrv_invoke_cb_with_transition(adcp,
-                                    HAL_DRV_STATE_HALF,
-                                    ADC_ACTIVE_CIRCULAR);
-  _adc_wakeup_isr(adcp, HAL_DRV_STATE_HALF);
+  if ((adcp)->state == ADC_ACTIVE_CIRCULAR) {
+    (adcp)->events |= ADC_EVENT_HALF;
+    __cbdrv_invoke_cb_with_transition_i(adcp,
+                                        HAL_DRV_STATE_HALF,
+                                        ADC_ACTIVE_CIRCULAR);
+    _adc_wakeup_i(adcp, HAL_DRV_STATE_HALF);
+  }
 } while (false)]]></implementation>
         </macro>
-        <macro name="_adc_isr_full_code">
-          <brief>Common ISR code, full buffer event.</brief>
+        <macro name="_adc_isr_full_code_i">
+          <brief>Common ISR code, full buffer event, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a conversion is not active, for example after a stop.</note>
           <note>Linear completion notifies the matching waiter before the
           callback. A conversion restarted by the callback retains its group.</note>
           <param name="adcp" dir="both">Pointer to the ADC driver instance.</param>
@@ -135,26 +170,31 @@ do {
 do {
   if ((adcp)->state == ADC_ACTIVE_CIRCULAR) {
     (adcp)->events |= ADC_EVENT_FULL;
-    __cbdrv_invoke_cb_with_transition(adcp,
-                                      HAL_DRV_STATE_FULL,
-                                      ADC_ACTIVE_CIRCULAR);
-    _adc_wakeup_isr(adcp, HAL_DRV_STATE_FULL);
+    __cbdrv_invoke_cb_with_transition_i(adcp,
+                                        HAL_DRV_STATE_FULL,
+                                        ADC_ACTIVE_CIRCULAR);
+    _adc_wakeup_i(adcp, HAL_DRV_STATE_FULL);
   }
-  else {
+  else if ((adcp)->state == ADC_ACTIVE_LINEAR) {
     adc_lld_stop_conversion(adcp);
     (adcp)->events |= ADC_EVENT_COMPLETE;
-    _adc_wakeup_isr(adcp, HAL_DRV_STATE_COMPLETE);
-    __cbdrv_invoke_cb_with_transition(adcp,
-                                      HAL_DRV_STATE_COMPLETE,
-                                      HAL_DRV_STATE_READY);
+    _adc_wakeup_i(adcp, HAL_DRV_STATE_COMPLETE);
+    __cbdrv_invoke_cb_with_transition_i(adcp,
+                                        HAL_DRV_STATE_COMPLETE,
+                                        HAL_DRV_STATE_READY);
     if ((adcp)->state == HAL_DRV_STATE_READY) {
       (adcp)->grpp = NULL;
     }
   }
 } while (false)]]></implementation>
         </macro>
-        <macro name="_adc_isr_error_code">
-          <brief>Common ISR code, error event.</brief>
+        <macro name="_adc_isr_error_code_i">
+          <brief>Common ISR code, error event, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a conversion is not active, for example after a stop. A circular
+          conversion is still active while its half or full buffer callback is
+          running.</note>
           <note>The existing waiter is notified before the callback. A conversion
           restarted by the callback retains its group.</note>
           <param name="adcp" dir="both">Pointer to the ADC driver instance.</param>
@@ -162,15 +202,60 @@ do {
           <notapi />
           <implementation><![CDATA[
 do {
-  adc_lld_stop_conversion(adcp);
-  (adcp)->errors |= (err);
-  _adc_error_wakeup_isr(adcp);
-  __cbdrv_invoke_cb_with_transition(adcp,
-                                    HAL_DRV_STATE_ERROR,
-                                    HAL_DRV_STATE_READY);
-  if ((adcp)->state == HAL_DRV_STATE_READY) {
-    (adcp)->grpp = NULL;
+  if (((adcp)->state == ADC_ACTIVE_LINEAR) ||
+      ((adcp)->state == ADC_ACTIVE_CIRCULAR) ||
+      ((adcp)->state == HAL_DRV_STATE_HALF) ||
+      ((adcp)->state == HAL_DRV_STATE_FULL)) {
+    adc_lld_stop_conversion(adcp);
+    (adcp)->errors |= (err);
+    _adc_error_wakeup_i(adcp);
+    __cbdrv_invoke_cb_with_transition_i(adcp,
+                                        HAL_DRV_STATE_ERROR,
+                                        HAL_DRV_STATE_READY);
+    if ((adcp)->state == HAL_DRV_STATE_READY) {
+      (adcp)->grpp = NULL;
+    }
   }
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_adc_isr_half_code">
+          <brief>Common ISR code, half buffer event.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _adc_isr_half_code_i().</note>
+          <param name="adcp" dir="both">Pointer to the ADC driver instance.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _adc_isr_half_code_i(adcp);
+  chSysUnlockFromISR();
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_adc_isr_full_code">
+          <brief>Common ISR code, full buffer event.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _adc_isr_full_code_i().</note>
+          <param name="adcp" dir="both">Pointer to the ADC driver instance.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _adc_isr_full_code_i(adcp);
+  chSysUnlockFromISR();
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_adc_isr_error_code">
+          <brief>Common ISR code, error event.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _adc_isr_error_code_i().</note>
+          <param name="adcp" dir="both">Pointer to the ADC driver instance.</param>
+          <param name="err" dir="in">Platform dependent error code.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _adc_isr_error_code_i(adcp, err);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
         </macro>
       </group>
