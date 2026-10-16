@@ -76,6 +76,24 @@ do {
   chSysUnlockFromISR();
 } while (false)]]></implementation>
           </macro>
+          <macro name="_dac_wakeup_i">
+            <brief>Wakes up a thread waiting for a DAC streaming state, lock held.</brief>
+            <param name="dacp" dir="in">Pointer to the DAC driver instance.</param>
+            <param name="state" dir="in">State being synchronized.</param>
+            <notapi />
+            <implementation><![CDATA[
+do {
+  if ((dacp)->sync_state == (state)) {
+    chThdResumeI(&(dacp)->thread, MSG_OK);
+  }
+} while (false)]]></implementation>
+          </macro>
+          <macro name="_dac_error_wakeup_i">
+            <brief>Wakes up a thread waiting for DAC streaming termination, lock held.</brief>
+            <param name="dacp" dir="in">Pointer to the DAC driver instance.</param>
+            <notapi />
+            <implementation><![CDATA[chThdResumeI(&(dacp)->thread, MSG_RESET)]]></implementation>
+          </macro>
           <elseif />
           <macro name="_dac_reset_i">
             <param name="dacp" dir="in" />
@@ -94,33 +112,59 @@ do {
             <param name="dacp" dir="in" />
             <implementation><![CDATA[]]></implementation>
           </macro>
+          <macro name="_dac_wakeup_i">
+            <param name="dacp" dir="in" />
+            <param name="state" dir="in" />
+            <implementation><![CDATA[]]></implementation>
+          </macro>
+          <macro name="_dac_error_wakeup_i">
+            <param name="dacp" dir="in" />
+            <implementation><![CDATA[]]></implementation>
+          </macro>
         </condition>
-        <macro name="_dac_isr_half_code">
-          <brief>Common ISR code, half buffer event.</brief>
+        <macro name="_dac_isr_half_code_i">
+          <brief>Common ISR code, half buffer event, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a conversion is not active, for example after a stop.</note>
           <param name="dacp" dir="both">Pointer to the DAC driver instance.</param>
           <notapi />
           <implementation><![CDATA[
 do {
-  (dacp)->events |= DAC_EVENT_HALF;
-  __cbdrv_invoke_half_cb(dacp);
-  _dac_wakeup_isr(dacp, HAL_DRV_STATE_HALF);
+  if ((dacp)->state == HAL_DRV_STATE_ACTIVE) {
+    (dacp)->events |= DAC_EVENT_HALF;
+    __cbdrv_invoke_cb_with_transition_i(dacp,
+                                        HAL_DRV_STATE_HALF,
+                                        HAL_DRV_STATE_ACTIVE);
+    _dac_wakeup_i(dacp, HAL_DRV_STATE_HALF);
+  }
 } while (false)]]></implementation>
         </macro>
-        <macro name="_dac_isr_full_code">
-          <brief>Common ISR code, full buffer event.</brief>
+        <macro name="_dac_isr_full_code_i">
+          <brief>Common ISR code, full buffer event, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a conversion is not active, for example after a stop.</note>
           <param name="dacp" dir="both">Pointer to the DAC driver instance.</param>
           <notapi />
           <implementation><![CDATA[
 do {
-  (dacp)->events |= DAC_EVENT_FULL;
-  __cbdrv_invoke_full_cb(dacp);
-  _dac_wakeup_isr(dacp, HAL_DRV_STATE_FULL);
+  if ((dacp)->state == HAL_DRV_STATE_ACTIVE) {
+    (dacp)->events |= DAC_EVENT_FULL;
+    __cbdrv_invoke_cb_with_transition_i(dacp,
+                                        HAL_DRV_STATE_FULL,
+                                        HAL_DRV_STATE_ACTIVE);
+    _dac_wakeup_i(dacp, HAL_DRV_STATE_FULL);
+  }
 } while (false)]]></implementation>
         </macro>
-        <macro name="_dac_isr_error_code">
-          <brief>Common ISR code, error event.</brief>
-          <note>Called from unlocked ISR context. Conversion cleanup is locked,
-          but the user callback is invoked after unlocking.</note>
+        <macro name="_dac_isr_error_code_i">
+          <brief>Common ISR code, error event, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a conversion is not active, for example after a stop. A conversion
+          is still active while its half or full buffer callback is
+          running.</note>
           <note>The existing waiter is notified before the callback. A conversion
           restarted by the callback retains its group.</note>
           <param name="dacp" dir="both">Pointer to the DAC driver instance.</param>
@@ -128,17 +172,59 @@ do {
           <notapi />
           <implementation><![CDATA[
 do {
-  chSysLockFromISR();
-  dac_lld_stop_conversion(dacp);
-  chSysUnlockFromISR();
-  (dacp)->errors |= (err);
-  _dac_error_wakeup_isr(dacp);
-  __cbdrv_invoke_cb_with_transition(dacp,
-                                    HAL_DRV_STATE_ERROR,
-                                    HAL_DRV_STATE_READY);
-  if ((dacp)->state == HAL_DRV_STATE_READY) {
-    (dacp)->grpp = NULL;
+  if (((dacp)->state == HAL_DRV_STATE_ACTIVE) ||
+      ((dacp)->state == HAL_DRV_STATE_HALF) ||
+      ((dacp)->state == HAL_DRV_STATE_FULL)) {
+    dac_lld_stop_conversion(dacp);
+    (dacp)->errors |= (err);
+    _dac_error_wakeup_i(dacp);
+    __cbdrv_invoke_cb_with_transition_i(dacp,
+                                        HAL_DRV_STATE_ERROR,
+                                        HAL_DRV_STATE_READY);
+    if ((dacp)->state == HAL_DRV_STATE_READY) {
+      (dacp)->grpp = NULL;
+    }
   }
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_dac_isr_half_code">
+          <brief>Common ISR code, half buffer event.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _dac_isr_half_code_i().</note>
+          <param name="dacp" dir="both">Pointer to the DAC driver instance.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _dac_isr_half_code_i(dacp);
+  chSysUnlockFromISR();
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_dac_isr_full_code">
+          <brief>Common ISR code, full buffer event.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _dac_isr_full_code_i().</note>
+          <param name="dacp" dir="both">Pointer to the DAC driver instance.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _dac_isr_full_code_i(dacp);
+  chSysUnlockFromISR();
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_dac_isr_error_code">
+          <brief>Common ISR code, error event.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _dac_isr_error_code_i().</note>
+          <param name="dacp" dir="both">Pointer to the DAC driver instance.</param>
+          <param name="err" dir="in">Platform dependent error code.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _dac_isr_error_code_i(dacp, err);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
         </macro>
       </group>

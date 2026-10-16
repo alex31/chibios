@@ -150,15 +150,119 @@
     chSysUnlockFromISR();                                                   \
   } while (false)
 
+/**
+ * @brief       Wakes up a thread waiting for a DAC streaming state, lock held.
+ *
+ * @param[in]     dacp          Pointer to the DAC driver instance.
+ * @param[in]     state         State being synchronized.
+ *
+ * @notapi
+ */
+#define _dac_wakeup_i(dacp, state)                                          \
+  do {                                                                      \
+    if ((dacp)->sync_state == (state)) {                                    \
+      chThdResumeI(&(dacp)->thread, MSG_OK);                                \
+    }                                                                       \
+  } while (false)
+
+/**
+ * @brief       Wakes up a thread waiting for DAC streaming termination, lock
+ *              held.
+ *
+ * @param[in]     dacp          Pointer to the DAC driver instance.
+ *
+ * @notapi
+ */
+#define _dac_error_wakeup_i(dacp)                                           \
+  chThdResumeI(&(dacp)->thread, MSG_RESET)
+
 #else
 #define _dac_reset_i(dacp)
 #define _dac_reset_s(dacp)
 #define _dac_wakeup_isr(dacp, state)
 #define _dac_error_wakeup_isr(dacp)
+#define _dac_wakeup_i(dacp, state)
+#define _dac_error_wakeup_i(dacp)
 #endif /* DAC_USE_SYNCHRONIZATION == TRUE */
 
 /**
+ * @brief       Common ISR code, half buffer event, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if a conversion is not active, for example after a stop.
+ *
+ * @param[in,out] dacp          Pointer to the DAC driver instance.
+ *
+ * @notapi
+ */
+#define _dac_isr_half_code_i(dacp)                                          \
+  do {                                                                      \
+    if ((dacp)->state == HAL_DRV_STATE_ACTIVE) {                            \
+      (dacp)->events |= DAC_EVENT_HALF;                                     \
+      __cbdrv_invoke_cb_with_transition_i(dacp,                             \
+                                          HAL_DRV_STATE_HALF,               \
+                                          HAL_DRV_STATE_ACTIVE);            \
+      _dac_wakeup_i(dacp, HAL_DRV_STATE_HALF);                              \
+    }                                                                       \
+  } while (false)
+
+/**
+ * @brief       Common ISR code, full buffer event, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if a conversion is not active, for example after a stop.
+ *
+ * @param[in,out] dacp          Pointer to the DAC driver instance.
+ *
+ * @notapi
+ */
+#define _dac_isr_full_code_i(dacp)                                          \
+  do {                                                                      \
+    if ((dacp)->state == HAL_DRV_STATE_ACTIVE) {                            \
+      (dacp)->events |= DAC_EVENT_FULL;                                     \
+      __cbdrv_invoke_cb_with_transition_i(dacp,                             \
+                                          HAL_DRV_STATE_FULL,               \
+                                          HAL_DRV_STATE_ACTIVE);            \
+      _dac_wakeup_i(dacp, HAL_DRV_STATE_FULL);                              \
+    }                                                                       \
+  } while (false)
+
+/**
+ * @brief       Common ISR code, error event, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if a conversion is not active, for example after a stop. A
+ *              conversion is still active while its half or full buffer
+ *              callback is running.
+ * @note        The existing waiter is notified before the callback. A
+ *              conversion restarted by the callback retains its group.
+ *
+ * @param[in,out] dacp          Pointer to the DAC driver instance.
+ * @param[in]     err           Platform dependent error code.
+ *
+ * @notapi
+ */
+#define _dac_isr_error_code_i(dacp, err)                                    \
+  do {                                                                      \
+    if (((dacp)->state == HAL_DRV_STATE_ACTIVE) ||                          \
+        ((dacp)->state == HAL_DRV_STATE_HALF) ||                            \
+        ((dacp)->state == HAL_DRV_STATE_FULL)) {                            \
+      dac_lld_stop_conversion(dacp);                                        \
+      (dacp)->errors |= (err);                                              \
+      _dac_error_wakeup_i(dacp);                                            \
+      __cbdrv_invoke_cb_with_transition_i(dacp,                             \
+                                          HAL_DRV_STATE_ERROR,              \
+                                          HAL_DRV_STATE_READY);             \
+      if ((dacp)->state == HAL_DRV_STATE_READY) {                           \
+        (dacp)->grpp = NULL;                                                \
+      }                                                                     \
+    }                                                                       \
+  } while (false)
+
+/**
  * @brief       Common ISR code, half buffer event.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _dac_isr_half_code_i().
  *
  * @param[in,out] dacp          Pointer to the DAC driver instance.
  *
@@ -166,13 +270,15 @@
  */
 #define _dac_isr_half_code(dacp)                                            \
   do {                                                                      \
-    (dacp)->events |= DAC_EVENT_HALF;                                       \
-    __cbdrv_invoke_half_cb(dacp);                                           \
-    _dac_wakeup_isr(dacp, HAL_DRV_STATE_HALF);                              \
+    chSysLockFromISR();                                                     \
+    _dac_isr_half_code_i(dacp);                                             \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 
 /**
  * @brief       Common ISR code, full buffer event.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _dac_isr_full_code_i().
  *
  * @param[in,out] dacp          Pointer to the DAC driver instance.
  *
@@ -180,17 +286,15 @@
  */
 #define _dac_isr_full_code(dacp)                                            \
   do {                                                                      \
-    (dacp)->events |= DAC_EVENT_FULL;                                       \
-    __cbdrv_invoke_full_cb(dacp);                                           \
-    _dac_wakeup_isr(dacp, HAL_DRV_STATE_FULL);                              \
+    chSysLockFromISR();                                                     \
+    _dac_isr_full_code_i(dacp);                                             \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 
 /**
  * @brief       Common ISR code, error event.
- * @note        Called from unlocked ISR context. Conversion cleanup is locked,
- *              but the user callback is invoked after unlocking.
- * @note        The existing waiter is notified before the callback. A
- *              conversion restarted by the callback retains its group.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _dac_isr_error_code_i().
  *
  * @param[in,out] dacp          Pointer to the DAC driver instance.
  * @param[in]     err           Platform dependent error code.
@@ -200,16 +304,8 @@
 #define _dac_isr_error_code(dacp, err)                                      \
   do {                                                                      \
     chSysLockFromISR();                                                     \
-    dac_lld_stop_conversion(dacp);                                          \
+    _dac_isr_error_code_i(dacp, err);                                       \
     chSysUnlockFromISR();                                                   \
-    (dacp)->errors |= (err);                                                \
-    _dac_error_wakeup_isr(dacp);                                            \
-    __cbdrv_invoke_cb_with_transition(dacp,                                 \
-                                      HAL_DRV_STATE_ERROR,                  \
-                                      HAL_DRV_STATE_READY);                 \
-    if ((dacp)->state == HAL_DRV_STATE_READY) {                             \
-      (dacp)->grpp = NULL;                                                  \
-    }                                                                       \
   } while (false)
 /** @} */
 
