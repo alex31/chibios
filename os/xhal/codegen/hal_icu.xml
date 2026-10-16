@@ -37,15 +37,34 @@
     </configs>
     <macros>
       <group description="Low level driver helper macros">
-        <macro name="_icu_isr_invoke_cb">
-          <brief>Common ISR code, ICU event.</brief>
+        <macro name="_icu_isr_invoke_cb_i">
+          <brief>Common ISR code, ICU event, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a capture is not running, for example after a stop.</note>
           <param name="icup" dir="both">Pointer to the ICU driver instance.</param>
           <param name="events" dir="in">ICU event flags.</param>
           <notapi />
           <implementation><![CDATA[
 do {
-  (icup)->events |= (events);
-  __cbdrv_invoke_cb(icup);
+  if (((icup)->state == ICU_WAITING) || ((icup)->state == ICU_ACTIVE)) {
+    (icup)->events |= (events);
+    __cbdrv_invoke_cb_i(icup);
+  }
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_icu_isr_invoke_cb">
+          <brief>Common ISR code, ICU event.</brief>
+          <note>The driver state is checked under the system lock, see
+          @p _icu_isr_invoke_cb_i().</note>
+          <param name="icup" dir="both">Pointer to the ICU driver instance.</param>
+          <param name="events" dir="in">ICU event flags.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _icu_isr_invoke_cb_i(icup, events);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
         </macro>
       </group>

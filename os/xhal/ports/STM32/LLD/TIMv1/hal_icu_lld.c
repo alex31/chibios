@@ -806,6 +806,12 @@ void icu_lld_serve_interrupt(hal_icu_driver_c *icup) {
     return;
   }
 
+  /* Events are only served while a capture is running, the state is not
+     changed otherwise, for example while the driver is stopping.*/
+  if ((icup->state != ICU_WAITING) && (icup->state != ICU_ACTIVE)) {
+    return;
+  }
+
   if (cfg->channel == ICU_CHANNEL_1) {
     if (((sr & STM32_TIM_SR_CC2IF) != 0U) &&
         (icup->state == ICU_ACTIVE)) {
