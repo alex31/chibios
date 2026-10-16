@@ -6,8 +6,9 @@ regions:
 - SB1 runs the ChibiOS/RT XSHELL client (`demos/various/SB-CLIENT-RT-XHAL-XSHELL`).
   It owns the console UART through VIO UART unit 0, VRQ 8.
 - SB2 runs the FreeRTOS client (`demos/various/SB-CLIENT-FREERTOS`). It owns
-  the board LED through VIO GPIO unit 0. Its standard input, output and error
-  are connected to `/dev/null`.
+  the board LED through VIO GPIO unit 0 and, on targets defining one, a
+  serial port through VIO UART unit 0, VRQ 8. Its standard input, output and
+  error are connected to `/dev/null`.
 
 The host restarts a sandbox when it terminates and reports the exit code on
 its serial port. The host port can be shared with the SB1 console, the host
@@ -29,6 +30,14 @@ restarts it, so the LED goes back to steady on while the self-test runs again:
 - `0xA5nnnnnn`: `configASSERT()` failed, `nnnnnn` is the line number.
 - `0xA6000000`: task stack overflow.
 - `0xA7000000`: FreeRTOS heap allocation failure.
+
+If the serial port is assigned, the FreeRTOS client prints a banner on it at
+start and the self-test result at the end of the test, then it echoes back
+the received data, a line feed is added after each carriage return. Receive
+errors and receive buffer overflows are reported as `<errors 0xnn>`, using
+the `SB_VUART_EV_xxx` error bits. The port is handled by a mini serial
+driver based on FreeRTOS stream buffers, see
+`demos/various/SB-CLIENT-FREERTOS/source/vserial.c`.
 
 The RT XSHELL client also toggles VIO GPIO unit 0 from its blinker thread,
 SB1 has no GPIO units assigned so those operations are ignored by the host.
@@ -86,6 +95,8 @@ openocd -f board/st_nucleo_g4.cfg \
   8N1.
 - Host messages: USART1 on PA9/PA10 (Arduino D8/D2), 38400 baud, 8N1. A
   separate USB-serial adapter is required.
+- Serial port (SB2): USART3 on PC10/PC11 (TX/RX, CN7 pins 1 and 2), 38400
+  baud, 8N1. A separate USB-serial adapter is required.
 - LED (SB2): the board's green LED on PA5.
 - Memory map, see `ld/stm32g474re_nucleo64.ld`:
 
@@ -107,6 +118,7 @@ openocd -f board/st_nucleo_g4.cfg \
 - Console (SB1): ST-LINK virtual COM port, USART3 on PD8/PD9, 38400 baud,
   8N1.
 - Host messages: same port as the SB1 console.
+- Serial port (SB2): not assigned.
 - LED (SB2): the board's green LED1 on PB0.
 - Uses the ARMv8-M Mainline alternate port, the target runs without
   TrustZone.
@@ -130,7 +142,8 @@ openocd -f board/st_nucleo_g4.cfg \
 
 Add `make/<target>.make` and a self-contained `cfg/<target>/` with the RT,
 XHAL, MCU, sandbox, VIO and VFS configurations plus `portab.c/h`. Define the
-host serial port, the SB1 console SIO and the LED port and pad in `portab.h`.
+host serial port, the SB1 console SIO and the LED port and pad in `portab.h`,
+optionally the SB2 serial port SIO as `PORTAB_SIO_SB2`.
 Provide a linker script defining the host and the two sandbox regions, then
 select the sandbox images matching those regions in the `sandboxes` rule of
 the target makefile. Add a build configuration in `.cproject` and the launch
