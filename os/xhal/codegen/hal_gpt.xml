@@ -24,19 +24,37 @@
     </configs>
     <macros>
       <group description="Low level driver helper macros">
-        <macro name="_gpt_isr_invoke_cb">
-          <brief>Common ISR code, GPT period event.</brief>
+        <macro name="_gpt_isr_invoke_cb_i">
+          <brief>Common ISR code, GPT period event, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          the timer is not running, for example after a stop.</note>
           <param name="gptp" dir="both">Pointer to the GPT driver instance.</param>
           <notapi />
           <implementation><![CDATA[
 do {
   if ((gptp)->state == GPT_ONESHOT) {
     gpt_lld_stop_timer(gptp);
-    __cbdrv_invoke_complete_cb(gptp);
+    __cbdrv_invoke_cb_with_transition_i(gptp,
+                                        HAL_DRV_STATE_COMPLETE,
+                                        HAL_DRV_STATE_READY);
   }
-  else {
-    __cbdrv_invoke_cb(gptp);
+  else if ((gptp)->state == GPT_CONTINUOUS) {
+    __cbdrv_invoke_cb_i(gptp);
   }
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_gpt_isr_invoke_cb">
+          <brief>Common ISR code, GPT period event.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _gpt_isr_invoke_cb_i().</note>
+          <param name="gptp" dir="both">Pointer to the GPT driver instance.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _gpt_isr_invoke_cb_i(gptp);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
         </macro>
       </group>

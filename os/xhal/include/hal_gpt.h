@@ -78,7 +78,32 @@
  * @{
  */
 /**
+ * @brief       Common ISR code, GPT period event, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if the timer is not running, for example after a stop.
+ *
+ * @param[in,out] gptp          Pointer to the GPT driver instance.
+ *
+ * @notapi
+ */
+#define _gpt_isr_invoke_cb_i(gptp)                                          \
+  do {                                                                      \
+    if ((gptp)->state == GPT_ONESHOT) {                                     \
+      gpt_lld_stop_timer(gptp);                                             \
+      __cbdrv_invoke_cb_with_transition_i(gptp,                             \
+                                          HAL_DRV_STATE_COMPLETE,           \
+                                          HAL_DRV_STATE_READY);             \
+    }                                                                       \
+    else if ((gptp)->state == GPT_CONTINUOUS) {                             \
+      __cbdrv_invoke_cb_i(gptp);                                            \
+    }                                                                       \
+  } while (false)
+
+/**
  * @brief       Common ISR code, GPT period event.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _gpt_isr_invoke_cb_i().
  *
  * @param[in,out] gptp          Pointer to the GPT driver instance.
  *
@@ -86,13 +111,9 @@
  */
 #define _gpt_isr_invoke_cb(gptp)                                            \
   do {                                                                      \
-    if ((gptp)->state == GPT_ONESHOT) {                                     \
-      gpt_lld_stop_timer(gptp);                                             \
-      __cbdrv_invoke_complete_cb(gptp);                                     \
-    }                                                                       \
-    else {                                                                  \
-      __cbdrv_invoke_cb(gptp);                                              \
-    }                                                                       \
+    chSysLockFromISR();                                                     \
+    _gpt_isr_invoke_cb_i(gptp);                                             \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 /** @} */
 
