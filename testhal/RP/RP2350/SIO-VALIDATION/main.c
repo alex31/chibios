@@ -49,8 +49,31 @@
  * 3. Invalid rate rejection.  sioStart() with a 0 baud configuration
  *    must return an error instead of dividing by zero.
  *
+ * 4. RX-idle synchronization (sioSynchronizeRXIdle).  The PL011 signals
+ *    idle through its receive timeout: 32 bit periods without new data
+ *    while the RX FIFO is not empty.  UART1 runs in internal loopback
+ *    (UARTCR.LBE, no pins involved); 8 frames are written and the time
+ *    from the first write to sioSynchronizeRXIdle() returning is measured
+ *    with TIMER0.  8 frames plus the 32-bit timeout take 112 bit periods,
+ *    about 2.9 ms at 38400 bauds; the test passes when the call returns
+ *    MSG_OK within [2.5 ms, 10 ms] and the 8 frames are then read back
+ *    intact.  RX must not read as idle once the first frame has arrived,
+ *    and the idle state must survive the FIFO being drained.  It runs
+ *    twice so that re-arming over a drained idle state is covered too.
+ *    On a driver that loses the idle condition the call returns
+ *    MSG_TIMEOUT after the 100 ms timeout.
+ *
+ * 5. RX-idle with a draining callback.  Same timing as test 4, but a
+ *    UART1 callback drains the RX FIFO from the interrupt handler, as
+ *    Buffered SIO does.  The callback runs after the idle waiter has
+ *    been woken and before it re-checks the idle state, the call must
+ *    still return MSG_OK within [2.5 ms, 10 ms] and the callback must
+ *    have collected the 8 frames intact.
+ *
  * Single-core only (no SMP).
  */
+
+#include <string.h>
 
 #include "ch.h"
 #include "hal.h"
@@ -66,6 +89,12 @@
 /* 256 frames x 10 bits at 38400 bauds is ~66.7 ms.*/
 #define TXEND_MIN_US         60000U
 #define TXEND_MAX_US         80000U
+
+/* 8 frames x 10 bits plus the 32-bit receive timeout at 38400 bauds is
+   ~2.9 ms.*/
+#define RXIDLE_TEST_LEN      8U
+#define RXIDLE_MIN_US        2500U
+#define RXIDLE_MAX_US        10000U
 
 static BaseSequentialStream *chp;
 static unsigned pass_count;
@@ -95,6 +124,18 @@ static const SIOConfig cfg_zero_baud = {
 };
 
 /*
+ * UART1 configuration for the RX-idle test: internal loopback, TX is
+ * routed straight to RX.
+ */
+static const SIOConfig cfg_loopback = {
+  .baud         = TEST_BAUD,
+  .UARTLCR_H    = UART_UARTLCR_H_WLEN_8BITS | UART_UARTLCR_H_FEN,
+  .UARTCR       = UART_UARTCR_LBE,
+  .UARTIFLS     = UART_UARTIFLS_RXIFLSEL_1_2F | UART_UARTIFLS_TXIFLSEL_1_2E,
+  .UARTDMACR    = 0U
+};
+
+/*
  * Watchdog configuration, 5 seconds (rlr is in milliseconds).  An
  * unfixed sioSynchronizeTXEnd() hangs forever, the watchdog turns that
  * into a visible reset.
@@ -104,6 +145,14 @@ static const WDGConfig wdg_cfg = {
 };
 
 static uint8_t txbuf[TXEND_TEST_LEN];
+
+static const uint8_t rxidle_pattern[RXIDLE_TEST_LEN] = {
+  'I', 'D', 'L', 'E', 'T', 'E', 'S', 'T'
+};
+
+/* Frames collected by the draining callback of test 5.*/
+static uint8_t cb_rxbuf[RXIDLE_TEST_LEN];
+static volatile size_t cb_rxn;
 
 /*===========================================================================*/
 /* Test helpers.                                                             */
@@ -284,6 +333,120 @@ static void test_zero_baud_rejected(void) {
   report("console recovered after rejection", msg2 == MSG_OK);
 }
 
+/*
+ * Test: RX-idle synchronization timing, UART1 in loopback.
+ */
+static void test_rxidle_loopback(void) {
+  uint8_t rxbuf[RXIDLE_TEST_LEN];
+  unsigned pass;
+
+  if (sioStart(&SIOD1, &cfg_loopback) != MSG_OK) {
+    report("UART1 loopback started", false);
+    return;
+  }
+
+  for (pass = 1U; pass <= 2U; pass++) {
+    uint32_t t0, t1, elapsed;
+    size_t n, sent;
+    bool busy, drained_idle;
+    msg_t msg;
+
+    t0 = TIMER0->TIMERAWL;
+    sent = sioAsyncWrite(&SIOD1, rxidle_pattern, sizeof rxidle_pattern);
+
+    /* Waiting for the first frame, from then on the line is busy and the
+       idle state latched by the previous pass no longer holds.*/
+    while (sioIsRXEmptyX(&SIOD1) &&
+           ((uint32_t)(TIMER0->TIMERAWL - t0) < RXIDLE_MAX_US)) {
+    }
+    busy = !sioIsRXIdleX(&SIOD1);
+
+    msg = sioSynchronizeRXIdle(&SIOD1, TIME_MS2I(100));
+    t1 = TIMER0->TIMERAWL;
+    elapsed = t1 - t0;
+
+    n = sioAsyncRead(&SIOD1, rxbuf, sizeof rxbuf);
+
+    /* The idle state survives the FIFO being drained.*/
+    drained_idle = sioIsRXIdleX(&SIOD1);
+
+    wdgReset(&WDGD1);
+
+    chprintf(chp, "  RXIDLE pass %u: msg %d, elapsed %u us (expected %u..%u)"
+                  ", %u frames read\r\n",
+             pass, (int)msg, elapsed, RXIDLE_MIN_US, RXIDLE_MAX_US,
+             (unsigned)n);
+
+    report("RX-idle pattern queued", sent == sizeof rxidle_pattern);
+    report("RX not idle once frames arrive", busy);
+    report("sioSynchronizeRXIdle returned MSG_OK", msg == MSG_OK);
+    report("RX-idle synchronized with the receive timeout",
+           (elapsed >= RXIDLE_MIN_US) && (elapsed <= RXIDLE_MAX_US));
+    report("RX-idle frames read back intact",
+           (n == sizeof rxidle_pattern) &&
+           (memcmp(rxbuf, rxidle_pattern, n) == 0));
+    report("RX idle survives draining the FIFO", drained_idle);
+  }
+
+  sioStop(&SIOD1);
+}
+
+/*
+ * UART1 callback of test 5, drains the RX FIFO from the interrupt
+ * handler as Buffered SIO does.
+ */
+static void rxidle_drain_cb(SIODriver *siop) {
+
+  while (!sioIsRXEmptyX(siop)) {
+    msg_t c = sioGetX(siop);
+
+    if (cb_rxn < sizeof cb_rxbuf) {
+      cb_rxbuf[cb_rxn++] = (uint8_t)c;
+    }
+  }
+}
+
+/*
+ * Test: RX-idle synchronization with a callback draining the RX FIFO,
+ * UART1 in loopback.
+ */
+static void test_rxidle_callback_drain(void) {
+  uint32_t t0, t1, elapsed;
+  size_t sent, n;
+  msg_t msg;
+
+  if (sioStart(&SIOD1, &cfg_loopback) != MSG_OK) {
+    report("UART1 loopback started", false);
+    return;
+  }
+  cb_rxn = 0U;
+  sioSetCallbackX(&SIOD1, rxidle_drain_cb);
+
+  t0 = TIMER0->TIMERAWL;
+  sent = sioAsyncWrite(&SIOD1, rxidle_pattern, sizeof rxidle_pattern);
+  msg = sioSynchronizeRXIdle(&SIOD1, TIME_MS2I(100));
+  t1 = TIMER0->TIMERAWL;
+  elapsed = t1 - t0;
+  n = cb_rxn;
+
+  sioStop(&SIOD1);
+
+  wdgReset(&WDGD1);
+
+  chprintf(chp, "  RXIDLE drain callback: msg %d, elapsed %u us "
+                "(expected %u..%u), %u frames collected\r\n",
+           (int)msg, elapsed, RXIDLE_MIN_US, RXIDLE_MAX_US, (unsigned)n);
+
+  report("RX-idle pattern queued", sent == sizeof rxidle_pattern);
+  report("sioSynchronizeRXIdle returned MSG_OK with a draining callback",
+         msg == MSG_OK);
+  report("RX-idle synchronized with the receive timeout",
+         (elapsed >= RXIDLE_MIN_US) && (elapsed <= RXIDLE_MAX_US));
+  report("RX-idle frames collected intact by the callback",
+         (n == sizeof rxidle_pattern) &&
+         (memcmp(cb_rxbuf, rxidle_pattern, n) == 0));
+}
+
 /*===========================================================================*/
 /* Blinker thread.                                                           */
 /*===========================================================================*/
@@ -354,6 +517,14 @@ int main(void) {
   /* Test 3: zero rate rejection.*/
   chprintf(chp, "\r\n");
   test_zero_baud_rejected();
+
+  /* Test 4: RX-idle synchronization timing.*/
+  chprintf(chp, "\r\n");
+  test_rxidle_loopback();
+
+  /* Test 5: RX-idle with a draining callback.*/
+  chprintf(chp, "\r\n");
+  test_rxidle_callback_drain();
 
   chprintf(chp, "\r\n========================================\r\n");
   chprintf(chp, "  Results: %u pass, %u fail\r\n", pass_count, fail_count);
