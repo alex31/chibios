@@ -49,6 +49,13 @@ do {
   chSysUnlockFromISR();
 } while (false)]]></implementation>
           </macro>
+          <macro name="_wspi_wakeup_i">
+            <brief>Wakes up the waiting thread, lock held.</brief>
+            <param name="wspip" dir="in">Pointer to the WSPI driver instance.</param>
+            <param name="msg" dir="in">Wakeup message.</param>
+            <notapi />
+            <implementation><![CDATA[chThdResumeI(&(wspip)->sync_transfer, msg)]]></implementation>
+          </macro>
         </condition>
         <condition check="WSPI_USE_SYNCHRONIZATION != TRUE">
           <macro name="_wspi_wakeup_isr">
@@ -62,27 +69,82 @@ do {
   (void)(msg);
 } while (false)]]></implementation>
           </macro>
+          <macro name="_wspi_wakeup_i">
+            <brief>Wakes up the waiting thread, lock held.</brief>
+            <param name="wspip" dir="in">Pointer to the WSPI driver instance.</param>
+            <param name="msg" dir="in">Wakeup message.</param>
+            <notapi />
+            <implementation><![CDATA[
+do {
+  (void)(wspip);
+  (void)(msg);
+} while (false)]]></implementation>
+          </macro>
         </condition>
-        <macro name="_wspi_isr_complete_code">
-          <brief>Common ISR code for successful operation completion.</brief>
+        <macro name="_wspi_isr_complete_code_i">
+          <brief>Common ISR code for successful operation completion, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a command, send or receive operation is not running, for example
+          after a stop.</note>
           <param name="wspip" dir="both">Pointer to the WSPI driver instance.</param>
           <notapi />
           <implementation><![CDATA[
 do {
-  __cbdrv_invoke_complete_cb(wspip);
-  _wspi_wakeup_isr(wspip, MSG_OK);
+  if (((wspip)->state == WSPI_STATE_COMMAND) ||
+      ((wspip)->state == WSPI_STATE_SEND) ||
+      ((wspip)->state == WSPI_STATE_RECEIVE)) {
+    __cbdrv_invoke_cb_with_transition_i(wspip,
+                                        HAL_DRV_STATE_COMPLETE,
+                                        HAL_DRV_STATE_READY);
+    _wspi_wakeup_i(wspip, MSG_OK);
+  }
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_wspi_isr_error_code_i">
+          <brief>Common ISR code for operation errors, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          a command, send or receive operation is not running, for example
+          after a stop.</note>
+          <param name="wspip" dir="both">Pointer to the WSPI driver instance.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  if (((wspip)->state == WSPI_STATE_COMMAND) ||
+      ((wspip)->state == WSPI_STATE_SEND) ||
+      ((wspip)->state == WSPI_STATE_RECEIVE)) {
+    __cbdrv_invoke_cb_with_transition_i(wspip,
+                                        HAL_DRV_STATE_ERROR,
+                                        HAL_DRV_STATE_READY);
+    _wspi_wakeup_i(wspip, MSG_RESET);
+  }
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_wspi_isr_complete_code">
+          <brief>Common ISR code for successful operation completion.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _wspi_isr_complete_code_i().</note>
+          <param name="wspip" dir="both">Pointer to the WSPI driver instance.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _wspi_isr_complete_code_i(wspip);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
         </macro>
         <macro name="_wspi_isr_error_code">
           <brief>Common ISR code for operation errors.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _wspi_isr_error_code_i().</note>
           <param name="wspip" dir="both">Pointer to the WSPI driver instance.</param>
           <notapi />
           <implementation><![CDATA[
 do {
-  __cbdrv_invoke_cb_with_transition(wspip,
-                                    HAL_DRV_STATE_ERROR,
-                                    HAL_DRV_STATE_READY);
-  _wspi_wakeup_isr(wspip, MSG_RESET);
+  chSysLockFromISR();
+  _wspi_isr_error_code_i(wspip);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
         </macro>
       </group>

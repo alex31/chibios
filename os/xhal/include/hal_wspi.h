@@ -106,6 +106,17 @@
     chThdResumeI(&(wspip)->sync_transfer, msg);                             \
     chSysUnlockFromISR();                                                   \
   } while (false)
+
+/**
+ * @brief       Wakes up the waiting thread, lock held.
+ *
+ * @param[in]     wspip         Pointer to the WSPI driver instance.
+ * @param[in]     msg           Wakeup message.
+ *
+ * @notapi
+ */
+#define _wspi_wakeup_i(wspip, msg)                                          \
+  chThdResumeI(&(wspip)->sync_transfer, msg)
 #endif /* WSPI_USE_SYNCHRONIZATION == TRUE */
 
 #if (WSPI_USE_SYNCHRONIZATION != TRUE) || defined (__DOXYGEN__)
@@ -122,10 +133,72 @@
     (void)(wspip);                                                          \
     (void)(msg);                                                            \
   } while (false)
+
+/**
+ * @brief       Wakes up the waiting thread, lock held.
+ *
+ * @param[in]     wspip         Pointer to the WSPI driver instance.
+ * @param[in]     msg           Wakeup message.
+ *
+ * @notapi
+ */
+#define _wspi_wakeup_i(wspip, msg)                                          \
+  do {                                                                      \
+    (void)(wspip);                                                          \
+    (void)(msg);                                                            \
+  } while (false)
 #endif /* WSPI_USE_SYNCHRONIZATION != TRUE */
 
 /**
+ * @brief       Common ISR code for successful operation completion, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if a command, send or receive operation is not running, for
+ *              example after a stop.
+ *
+ * @param[in,out] wspip         Pointer to the WSPI driver instance.
+ *
+ * @notapi
+ */
+#define _wspi_isr_complete_code_i(wspip)                                    \
+  do {                                                                      \
+    if (((wspip)->state == WSPI_STATE_COMMAND) ||                           \
+        ((wspip)->state == WSPI_STATE_SEND) ||                              \
+        ((wspip)->state == WSPI_STATE_RECEIVE)) {                           \
+      __cbdrv_invoke_cb_with_transition_i(wspip,                            \
+                                          HAL_DRV_STATE_COMPLETE,           \
+                                          HAL_DRV_STATE_READY);             \
+      _wspi_wakeup_i(wspip, MSG_OK);                                        \
+    }                                                                       \
+  } while (false)
+
+/**
+ * @brief       Common ISR code for operation errors, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if a command, send or receive operation is not running, for
+ *              example after a stop.
+ *
+ * @param[in,out] wspip         Pointer to the WSPI driver instance.
+ *
+ * @notapi
+ */
+#define _wspi_isr_error_code_i(wspip)                                       \
+  do {                                                                      \
+    if (((wspip)->state == WSPI_STATE_COMMAND) ||                           \
+        ((wspip)->state == WSPI_STATE_SEND) ||                              \
+        ((wspip)->state == WSPI_STATE_RECEIVE)) {                           \
+      __cbdrv_invoke_cb_with_transition_i(wspip,                            \
+                                          HAL_DRV_STATE_ERROR,              \
+                                          HAL_DRV_STATE_READY);             \
+      _wspi_wakeup_i(wspip, MSG_RESET);                                     \
+    }                                                                       \
+  } while (false)
+
+/**
  * @brief       Common ISR code for successful operation completion.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _wspi_isr_complete_code_i().
  *
  * @param[in,out] wspip         Pointer to the WSPI driver instance.
  *
@@ -133,12 +206,15 @@
  */
 #define _wspi_isr_complete_code(wspip)                                      \
   do {                                                                      \
-    __cbdrv_invoke_complete_cb(wspip);                                      \
-    _wspi_wakeup_isr(wspip, MSG_OK);                                        \
+    chSysLockFromISR();                                                     \
+    _wspi_isr_complete_code_i(wspip);                                       \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 
 /**
  * @brief       Common ISR code for operation errors.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _wspi_isr_error_code_i().
  *
  * @param[in,out] wspip         Pointer to the WSPI driver instance.
  *
@@ -146,10 +222,9 @@
  */
 #define _wspi_isr_error_code(wspip)                                         \
   do {                                                                      \
-    __cbdrv_invoke_cb_with_transition(wspip,                                \
-                                      HAL_DRV_STATE_ERROR,                  \
-                                      HAL_DRV_STATE_READY);                 \
-    _wspi_wakeup_isr(wspip, MSG_RESET);                                     \
+    chSysLockFromISR();                                                     \
+    _wspi_isr_error_code_i(wspip);                                          \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 /** @} */
 
