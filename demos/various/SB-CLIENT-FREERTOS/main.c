@@ -22,6 +22,8 @@
 #include "semphr.h"
 #include "timers.h"
 
+#include "sbuservio.h"
+
 /*
  * FreeRTOS sandbox guest demo. A self-test exercises the port at startup,
  * the LED is on while the test runs, then it blinks slowly on success or
@@ -85,24 +87,6 @@ static volatile uint32_t ulIdleCount;
 /*===========================================================================*/
 
 /*
- * Writes the LED state using a VIO GPIO fast call.
- */
-static void prvLedWrite(uint32_t ulState) {
-
-  __syscall2r(96, ((uint32_t)LED_VGPIO_UNIT << 24) | SB_VGPIO_WRITE, ulState);
-  (void)r0;
-}
-
-/*
- * Toggles the LED using a VIO GPIO fast call.
- */
-static void prvLedToggle(void) {
-
-  __syscall2r(96, ((uint32_t)LED_VGPIO_UNIT << 24) | SB_VGPIO_TOGGLE, 1U);
-  (void)r0;
-}
-
-/*
  * LED blinker task, the blink period shows the self-test result.
  */
 static void prvBlinkerTask(void *pvParameters) {
@@ -111,13 +95,13 @@ static void prvBlinkerTask(void *pvParameters) {
 
   (void)pvParameters;
 
-  prvLedWrite(1U);
+  gpioWrite(LED_VGPIO_UNIT, 1U);
   (void)xTaskNotifyWait(0U, 0U, &ulFailures, portMAX_DELAY);
   xPeriod = (ulFailures == 0U) ? BLINK_PASS_PERIOD : BLINK_FAIL_PERIOD;
 
   for (;;) {
     vTaskDelay(xPeriod);
-    prvLedToggle();
+    gpioToggle(LED_VGPIO_UNIT, 1U);
   }
 }
 

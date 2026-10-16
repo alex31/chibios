@@ -36,11 +36,6 @@
  */
 #define ETH_SUPPORTS_ZERO_COPY              FALSE
 
-/**
- * @brief   Mirrored ETH configuration has a MAC address.
- */
-#define VIO_ETH_CFGF_MAC_ADDRESS            (1U << 0)
-
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -95,15 +90,6 @@
 /*===========================================================================*/
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
-
-/**
- * @brief   Type of a mirrored VIO ETH configuration.
- */
-typedef struct vio_eth_config {
-  uint32_t                  flags;
-  uint8_t                   mac_address[6];
-  uint8_t                   reserved[2];
-} vio_eth_config_t;
 
 /*===========================================================================*/
 /* Driver macros.                                                            */
