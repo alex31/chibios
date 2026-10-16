@@ -442,6 +442,12 @@ msg_t sio_lld_control(hal_sio_driver_c *siop, unsigned int operation,
 void sio_lld_serve_interrupt(hal_sio_driver_c *siop) {
   sioevents_t events;
 
+  /* While the driver is stopping the events are discarded, the stop path
+     deinitializes the virtual UART shortly after.*/
+  if (siop->state == HAL_DRV_STATE_STOPPING) {
+    return;
+  }
+
 #if SIO_USE_SYNCHRONIZATION == TRUE
   /* Processing enabled events, if any.*/
   events = (sioevents_t)vuartGetEvents(siop->nvuart) & siop->enabled;
