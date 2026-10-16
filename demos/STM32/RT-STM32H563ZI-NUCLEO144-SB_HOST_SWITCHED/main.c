@@ -176,6 +176,17 @@ static const char *sbx2_envp[] = {
 /* Main and generic code.                                                    */
 /*===========================================================================*/
 
+/*
+ * Reports a sandbox termination. The port is started again because it is
+ * shared with the SB1 console, the sandbox cleanup stops it.
+ */
+static void host_message(const char *name, msg_t msg) {
+
+  if (drvStart(&SIOD3, NULL) == HAL_RET_SUCCESS) {
+    chprintf(oopGetIf(&SIOD3, chn), "%s terminated: 0x%08x\r\n", name, msg);
+  }
+}
+
 static void start_sb1(void) {
   thread_t *utp;
 
@@ -264,13 +275,17 @@ int main(void) {
    * Sandbox objects initialization.
    */
   sbObjectInit(&sbx1);
-  sbSetRegion(&sbx1, 0, STARTUP_FLASH1_BASE, STARTUP_FLASH1_SIZE, SB_REG_IS_CODE);
-  sbSetRegion(&sbx1, 1, STARTUP_RAM1_BASE,   STARTUP_RAM1_SIZE, SB_REG_IS_DATA);
+  sbSetRegion(&sbx1, 0, STARTUP_FLASH1_BASE, STARTUP_FLASH1_SIZE,
+              SB_REG_IS_CODE);
+  sbSetRegion(&sbx1, 1, STARTUP_RAM1_BASE, STARTUP_RAM1_SIZE,
+              SB_REG_IS_DATA);
   sbSetVirtualIO(&sbx1, &vio_config1);
 
   sbObjectInit(&sbx2);
-  sbSetRegion(&sbx2, 0, STARTUP_FLASH2_BASE, STARTUP_FLASH2_SIZE, SB_REG_IS_CODE);
-  sbSetRegion(&sbx2, 1, STARTUP_RAM2_BASE,   STARTUP_RAM2_SIZE, SB_REG_IS_DATA);
+  sbSetRegion(&sbx2, 0, STARTUP_FLASH2_BASE, STARTUP_FLASH2_SIZE,
+              SB_REG_IS_CODE);
+  sbSetRegion(&sbx2, 1, STARTUP_RAM2_BASE, STARTUP_RAM2_SIZE,
+              SB_REG_IS_DATA);
   sbSetVirtualIO(&sbx2, &vio_config2);
   sbSetRoot(&sbx2, &sb2_root_driver);
 
@@ -297,7 +312,7 @@ int main(void) {
         if (!sbFinalize(&sbx1)) {
           chSysHalt("SB1 finalize");
         }
-        chprintf(oopGetIf(&SIOD3, chn), "SB1 terminated: 0x%08x\r\n", msg);
+        host_message("SB1", msg);
         chThdSleepMilliseconds(100);
         start_sb1();
       }
@@ -308,7 +323,7 @@ int main(void) {
         if (!sbFinalize(&sbx2)) {
           chSysHalt("SB2 finalize");
         }
-        chprintf(oopGetIf(&SIOD3, chn), "SB2 terminated: 0x%08x\r\n", msg);
+        host_message("SB2", msg);
         chThdSleepMilliseconds(100);
         start_sb2();
       }
