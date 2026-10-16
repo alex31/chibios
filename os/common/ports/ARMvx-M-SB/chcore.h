@@ -345,7 +345,7 @@ struct port_context {
 
 #else
   #define port_switch(ntp, otp) do {                                        \
-    struct port_intctx *r13 = (struct port_intctx *)__get_PSP();            \
+    struct port_intctx *r13 = (struct port_intctx *)__port_get_current_sp();\
     if ((stkline_t *)(void *)(r13 - 1) < (otp)->wabase) {                   \
       chSysHalt("stack overflow");                                          \
     }                                                                       \
@@ -374,6 +374,21 @@ extern "C" {
 /*===========================================================================*/
 /* Module inline functions.                                                  */
 /*===========================================================================*/
+
+/**
+ * @brief   Returns the current stack pointer.
+ * @note    The sandbox runs unprivileged and cannot read PSP using MRS, the
+ *          current stack pointer is read directly.
+ *
+ * @return              The current stack pointer.
+ */
+static inline void *__port_get_current_sp(void) {
+  void *sp;
+
+  __asm volatile ("mov %0, sp" : "=r" (sp));
+
+  return sp;
+}
 
 /**
  * @brief   Returns a word encoding the current interrupts status.

@@ -148,6 +148,18 @@ static const char *sbx2_envp[] = {
 /* Main and generic code.                                                    */
 /*===========================================================================*/
 
+/*
+ * Reports a sandbox termination. The port is started again because it can
+ * be shared with a sandbox console, the sandbox cleanup stops it.
+ */
+static void host_message(const char *name, msg_t msg) {
+
+  if (drvStart(&PORTAB_SIO_HOST, NULL) == HAL_RET_SUCCESS) {
+    chprintf((sequential_stream_i *)oopGetIf(&PORTAB_SIO_HOST, chn),
+             "%s terminated: 0x%08x\r\n", name, msg);
+  }
+}
+
 static void start_sb1(void) {
   thread_t *utp;
 
@@ -186,7 +198,6 @@ static void start_sb2(void) {
  */
 int main(void) {
   event_listener_t el1;
-  sequential_stream_i *hoststream;
   msg_t ret;
 
   /*
@@ -208,7 +219,6 @@ int main(void) {
    * Starting the host messages serial port, initializing other streams too.
    */
   drvStart(&PORTAB_SIO_HOST, NULL);
-  hoststream = (sequential_stream_i *)oopGetIf(&PORTAB_SIO_HOST, chn);
   nullstmObjectInit(&nullstream);
 
   /*
@@ -275,7 +285,7 @@ int main(void) {
         if (!sbFinalize(&sbx1)) {
           chSysHalt("SB1 finalize");
         }
-        chprintf(hoststream, "SB1 terminated: 0x%08x\r\n", msg);
+        host_message("SB1", msg);
         chThdSleepMilliseconds(100);
         start_sb1();
       }
@@ -286,7 +296,7 @@ int main(void) {
         if (!sbFinalize(&sbx2)) {
           chSysHalt("SB2 finalize");
         }
-        chprintf(hoststream, "SB2 terminated: 0x%08x\r\n", msg);
+        host_message("SB2", msg);
         chThdSleepMilliseconds(100);
         start_sb2();
       }

@@ -11,7 +11,7 @@ all:
 	@for m in $(SUB_MAKES); do \
 		echo; \
 		echo "=== Building $$m ==="; \
-		$(MAKE) --no-print-directory -f $$m sandboxes all || exit $$?; \
+		$(MAKE) --no-print-directory -f $$m all || exit $$?; \
 		echo; \
 	done
 	@echo

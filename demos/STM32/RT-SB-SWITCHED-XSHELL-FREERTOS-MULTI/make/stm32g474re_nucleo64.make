@@ -194,16 +194,25 @@ include $(RULESPATH)/rules.mk
 #
 
 # Sandbox images matching the flash and RAM slots of this target, they are
-# built by their own projects.
+# built by their own projects as part of the default goal.
 SB1_PROJECT := $(CHIBIOS)/demos/various/SB-CLIENT-RT-XHAL-XSHELL
 SB1_MAKE    := make/128k-08040000-16k-20018000.make
 SB2_PROJECT := $(CHIBIOS)/demos/various/SB-CLIENT-FREERTOS
 SB2_MAKE    := make/128k-08060000-16k-2001C000.make
 
+# The sandbox projects use their own directories, also when the host ones
+# are overridden on the command line.
+SB_DIRS = CONFDIR=./cfg BUILDDIR=./build/$(basename $(notdir $(1)))        \
+          DEPDIR=./.dep/$(basename $(notdir $(1)))
+
 .PHONY: sandboxes
 sandboxes:
-	+$(MAKE) --no-print-directory -C $(SB1_PROJECT) -f $(SB1_MAKE) all
-	+$(MAKE) --no-print-directory -C $(SB2_PROJECT) -f $(SB2_MAKE) all
+	+$(MAKE) --no-print-directory -C $(SB1_PROJECT) -f $(SB1_MAKE)         \
+	         $(call SB_DIRS,$(SB1_MAKE)) all
+	+$(MAKE) --no-print-directory -C $(SB2_PROJECT) -f $(SB2_MAKE)         \
+	         $(call SB_DIRS,$(SB2_MAKE)) all
+
+all: sandboxes
 
 #
 # Custom rules
