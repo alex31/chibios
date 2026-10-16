@@ -13,6 +13,7 @@ build/
 !tools/eclipse/**/*.launch
 !demos/LPC21xx/RT-LPC214x-OLIMEX/debug/*.launch
 !demos/RP/RT-RP2040-PICO/debug/*.launch
+!demos/STM32/RT-SB-SWITCHED-XSHELL-FREERTOS-MULTI/debug/*.launch
 !demos/STM32/RT-STM32G474RE-NUCLEO64-SB_HOST_NOSWITCH/debug/*.launch
 !demos/STM32/RT-STM32G474RE-NUCLEO64-SB_HOST_SWITCHED/debug/*.launch
 !demos/STM32/RT-STM32H563ZI-NUCLEO144-SB_HOST_SWITCHED/debug/*.launch
