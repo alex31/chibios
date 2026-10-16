@@ -213,19 +213,19 @@ static uint32_t sdc_get_capacity(const uint32_t *csd) {
 
   switch (sdc_get_slice(csd, MMCSD_CSD_10_CSD_STRUCTURE_END,
                         MMCSD_CSD_10_CSD_STRUCTURE_START)) {
-    case 0U:
-      a = sdc_get_slice(csd, MMCSD_CSD_10_C_SIZE_END,
-                        MMCSD_CSD_10_C_SIZE_START);
-      b = sdc_get_slice(csd, MMCSD_CSD_10_C_SIZE_MULT_END,
-                        MMCSD_CSD_10_C_SIZE_MULT_START);
-      c = sdc_get_slice(csd, MMCSD_CSD_10_READ_BL_LEN_END,
-                        MMCSD_CSD_10_READ_BL_LEN_START);
-      return ((a + 1U) << (b + 2U)) << (c - 9U);
-    case 1U:
-      return 1024U * (sdc_get_slice(csd, MMCSD_CSD_20_C_SIZE_END,
-                                    MMCSD_CSD_20_C_SIZE_START) + 1U);
-    default:
-      break;
+  case 0U:
+    a = sdc_get_slice(csd, MMCSD_CSD_10_C_SIZE_END,
+                      MMCSD_CSD_10_C_SIZE_START);
+    b = sdc_get_slice(csd, MMCSD_CSD_10_C_SIZE_MULT_END,
+                      MMCSD_CSD_10_C_SIZE_MULT_START);
+    c = sdc_get_slice(csd, MMCSD_CSD_10_READ_BL_LEN_END,
+                      MMCSD_CSD_10_READ_BL_LEN_START);
+    return ((a + 1U) << (b + 2U)) << (c - 9U);
+  case 1U:
+    return 1024U * (sdc_get_slice(csd, MMCSD_CSD_20_C_SIZE_END,
+                                  MMCSD_CSD_20_C_SIZE_START) + 1U);
+  default:
+    break;
   }
 
   return 0U;
@@ -269,8 +269,8 @@ static bool sdc_mode_detect(hal_sdc_driver_c *sdcp) {
     }
   }
   else {
-      if (sdc_lld_send_cmd_short_crc(sdcp, MMCSD_CMD_APP_CMD, 0U, resp) ||
-          sdc_r1_error(resp[0])) {
+    if (sdc_lld_send_cmd_short_crc(sdcp, MMCSD_CMD_APP_CMD, 0U, resp) ||
+        sdc_r1_error(resp[0])) {
       sdcp->cardmode = SDC_MODE_CARDTYPE_MMC;
     }
     else {
@@ -335,7 +335,7 @@ static bool sdc_sd_init(hal_sdc_driver_c *sdcp) {
         sdc_r1_error(resp[0])) {
       return HAL_FAILED;
     }
-      if (sdc_lld_send_cmd_short(sdcp, MMCSD_CMD_APP_OP_COND, ocr, resp)) {
+    if (sdc_lld_send_cmd_short(sdcp, MMCSD_CMD_APP_OP_COND, ocr, resp)) {
       return HAL_FAILED;
     }
     if ((resp[0] & 0x80000000U) != 0U) {
@@ -453,7 +453,7 @@ static bool sdc_detect_bus_clk(hal_sdc_driver_c *sdcp, sdcbusclk_t *clk) {
   }
 
   cmdarg = sdc_sd_cmd6_construct(SD_SWITCH_CHECK, SD_SWITCH_FUNCTION_SPEED, 1U);
-      if (sdc_lld_read_special(sdcp, buf, 64U, MMCSD_CMD_SWITCH, cmdarg)) {
+  if (sdc_lld_read_special(sdcp, buf, 64U, MMCSD_CMD_SWITCH, cmdarg)) {
     return HAL_FAILED;
   }
 
@@ -486,26 +486,27 @@ static bool sdc_set_bus_width(hal_sdc_driver_c *sdcp) {
   uint32_t resp[1];
 
   switch (((const hal_sdc_config_t *)sdcp->config)->bus_width) {
-    case SDC_MODE_4BIT:
-      arg = MMCSD_ACMD6_BUS_WIDTH_4;
-      break;
-    case SDC_MODE_1BIT:
-      return HAL_SUCCESS;
-    default:
-      return HAL_FAILED;
-  }
-
-    if (sdc_lld_send_cmd_short_crc(sdcp, MMCSD_CMD_APP_CMD, sdcp->rca, resp) ||
-        sdc_r1_error(resp[0])) {
+  case SDC_MODE_4BIT:
+    arg = MMCSD_ACMD6_BUS_WIDTH_4;
+    break;
+  case SDC_MODE_1BIT:
+    return HAL_SUCCESS;
+  default:
     return HAL_FAILED;
   }
 
-    if (sdc_lld_send_cmd_short_crc(sdcp, MMCSD_CMD_SET_BUS_WIDTH, arg, resp) ||
-        sdc_r1_error(resp[0])) {
+  if (sdc_lld_send_cmd_short_crc(sdcp, MMCSD_CMD_APP_CMD, sdcp->rca, resp) ||
+      sdc_r1_error(resp[0])) {
     return HAL_FAILED;
   }
 
-  sdc_lld_set_bus_mode(sdcp, ((const hal_sdc_config_t *)sdcp->config)->bus_width);
+  if (sdc_lld_send_cmd_short_crc(sdcp, MMCSD_CMD_SET_BUS_WIDTH, arg, resp) ||
+      sdc_r1_error(resp[0])) {
+    return HAL_FAILED;
+  }
+
+  sdc_lld_set_bus_mode(sdcp,
+                       ((const hal_sdc_config_t *)sdcp->config)->bus_width);
 
   return HAL_SUCCESS;
 }
@@ -521,24 +522,25 @@ static bool sdc_mmc_set_bus_width(hal_sdc_driver_c *sdcp) {
   uint32_t resp[1];
 
   switch (((const hal_sdc_config_t *)sdcp->config)->bus_width) {
-    case SDC_MODE_1BIT:
-      return HAL_SUCCESS;
-    case SDC_MODE_4BIT:
-      cmdarg = sdc_mmc_cmd6_construct(MMC_SWITCH_WRITE_BYTE, 183U, 1U, 0U);
-      break;
-    case SDC_MODE_8BIT:
-      cmdarg = sdc_mmc_cmd6_construct(MMC_SWITCH_WRITE_BYTE, 183U, 2U, 0U);
-      break;
-    default:
-      return HAL_FAILED;
-  }
-
-    if (sdc_lld_send_cmd_short_crc(sdcp, MMCSD_CMD_SWITCH, cmdarg, resp) ||
-        sdc_r1_error(resp[0])) {
+  case SDC_MODE_1BIT:
+    return HAL_SUCCESS;
+  case SDC_MODE_4BIT:
+    cmdarg = sdc_mmc_cmd6_construct(MMC_SWITCH_WRITE_BYTE, 183U, 1U, 0U);
+    break;
+  case SDC_MODE_8BIT:
+    cmdarg = sdc_mmc_cmd6_construct(MMC_SWITCH_WRITE_BYTE, 183U, 2U, 0U);
+    break;
+  default:
     return HAL_FAILED;
   }
 
-  sdc_lld_set_bus_mode(sdcp, ((const hal_sdc_config_t *)sdcp->config)->bus_width);
+  if (sdc_lld_send_cmd_short_crc(sdcp, MMCSD_CMD_SWITCH, cmdarg, resp) ||
+      sdc_r1_error(resp[0])) {
+    return HAL_FAILED;
+  }
+
+  sdc_lld_set_bus_mode(sdcp,
+                       ((const hal_sdc_config_t *)sdcp->config)->bus_width);
 
   return HAL_SUCCESS;
 }
@@ -1057,7 +1059,8 @@ bool sdcConnect(void *ip) {
                       MMCSD_CSD_MMC_CSD_STRUCTURE_START) > 1U) {
       uint8_t *ext_csd = self->buf;
 
-      if (sdc_lld_read_special(self, ext_csd, 512U, MMCSD_CMD_SEND_EXT_CSD, 0U)) {
+      if (sdc_lld_read_special(self, ext_csd, 512U,
+                               MMCSD_CMD_SEND_EXT_CSD, 0U)) {
         goto failed;
       }
       self->capacity = sdc_get_capacity_ext(ext_csd);
@@ -1077,19 +1080,19 @@ bool sdcConnect(void *ip) {
   }
 
   switch (self->cardmode & SDC_MODE_CARDTYPE_MASK) {
-    case SDC_MODE_CARDTYPE_SDV11:
-    case SDC_MODE_CARDTYPE_SDV20:
-      if (sdc_set_bus_width(self)) {
-        goto failed;
-      }
-      break;
-    case SDC_MODE_CARDTYPE_MMC:
-      if (sdc_mmc_set_bus_width(self)) {
-        goto failed;
-      }
-      break;
-    default:
+  case SDC_MODE_CARDTYPE_SDV11:
+  case SDC_MODE_CARDTYPE_SDV20:
+    if (sdc_set_bus_width(self)) {
       goto failed;
+    }
+    break;
+  case SDC_MODE_CARDTYPE_MMC:
+    if (sdc_mmc_set_bus_width(self)) {
+      goto failed;
+    }
+    break;
+  default:
+    goto failed;
   }
 
   self->state = HAL_DRV_STATE_READY;
