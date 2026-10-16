@@ -181,7 +181,9 @@
  *            implementation resumes the waiter in a critical section of
  *            its own. Generation closing, state transition and waiter
  *            resumption are therefore separate sections there, the
- *            driver is being torn down and no start can interleave.
+ *            driver is being torn down: the interrupt dispatcher serves
+ *            no event while the driver is stopping, the generation is
+ *            closed by the low level stop and no start can interleave.
  *          - An error service which loses the claim may still clear the
  *            @p abort_pending flag, this is the abort completion
  *            notification and it touches no transfer state.
@@ -216,10 +218,18 @@
  *          between: the ACTIVITY status only reflects the current
  *          transfer state machine state and can read idle while the
  *          abort is still flushing the FIFO engine.
+ * @note    RP devices have one NVIC per core, @p drvStart() enables the
+ *          I2C vector on the calling core only and the low level stop
+ *          disables it on the calling core: @p drvStop() must be invoked
+ *          from the core that started the driver, it is checked by an
+ *          assertion. The transfer operations, @p i2cStopTransferI()
+ *          included, can be invoked from either core.
  */
 #define i2c_lld_driver_fields                                               \
   /* Pointer to the I2Cx registers block.*/                                 \
   I2C_TypeDef               *i2c;                                           \
+  /* Core which started the driver, see the notes above.*/                  \
+  uint32_t                  core;                                           \
   /* Pointer to the next TX buffer location.*/                              \
   const uint8_t             *txptr;                                         \
   /* Number of bytes in TX phase not yet queued.*/                          \

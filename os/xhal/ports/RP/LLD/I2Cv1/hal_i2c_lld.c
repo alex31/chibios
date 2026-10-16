@@ -1007,10 +1007,20 @@ static void i2c_lld_serve_interrupt(hal_i2c_driver_c *i2cp) {
      the transfer generation which is live right now.*/
   intr = dp->INTRSTAT;
 
+  /* While the driver is stopping no event is served, the low level stop
+     closes the generation and owns the waiter and the callback is not
+     invoked. The sources are silenced so that the interrupt does not
+     fire again until the vector is disabled.*/
+  if (i2cp->state == HAL_DRV_STATE_STOPPING) {
+    if (intr != 0U) {
+      dp->INTRMASK = 0U;
+      (void)dp->CLRINTR;
+    }
+  }
   /* Transmission error detected, includes the abort completion of a
      stopped transfer. This is the only service which is meaningful with
      the generation already closed, it arbitrates the claim itself.*/
-  if ((intr & I2C_ERROR_INTERRUPTS) != 0U) {
+  else if ((intr & I2C_ERROR_INTERRUPTS) != 0U) {
     claimed = i2c_lld_serve_errors(i2cp);
   }
   else if ((i2cp->tgen & 1U) == 0U) {
@@ -1175,6 +1185,10 @@ msg_t i2c_lld_start(hal_i2c_driver_c *i2cp) {
     return HAL_RET_NO_RESOURCE;
   }
 
+  /* The calling core owns the vector, see the notes in the driver
+     header.*/
+  i2cp->core = SIO->CPUID;
+
   /* Register programming is delegated to the configuration method, a
      NULL configuration selects the driver default.*/
   i2cp->config = i2c_lld_setcfg(i2cp, (const hal_i2c_config_t *)i2cp->config);
@@ -1200,6 +1214,8 @@ msg_t i2c_lld_start(hal_i2c_driver_c *i2cp) {
 void i2c_lld_stop(hal_i2c_driver_c *i2cp) {
 
   if (i2cp->state != HAL_DRV_STATE_STOP) {
+    chDbgAssert(SIO->CPUID == i2cp->core, "wrong core");
+
     /* Any late terminal event loses its claim before the peripheral
        goes away, interrupt sources are silenced under the same lock.
        The peripheral reset below also cancels a still flushing
