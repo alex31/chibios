@@ -52,7 +52,7 @@
    SDMMC_STA_CTIMEOUT | SDMMC_STA_DTIMEOUT |                                \
    SDMMC_STA_TXUNDERR | SDMMC_STA_RXOVERR)
 
-#if defined(STM32H5XX) || defined(STM32U3XX)
+#if defined(STM32H5XX) || defined(STM32U3XX) || defined(STM32U5XX)
 #define IDMABASE0 IDMABASER
 #endif
 

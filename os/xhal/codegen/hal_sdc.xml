@@ -339,9 +339,11 @@ return sdcDisconnect(self);]]></implementation>
             </method>
             <method shortname="read">
               <implementation><![CDATA[
+
 #if SDC_USE_SYNCHRONIZATION == TRUE
 return sdcRead(self, startblk, buffer, n);
 #else
+(void)self;
 (void)startblk;
 (void)buffer;
 (void)n;
@@ -351,9 +353,11 @@ return HAL_FAILED;
             </method>
             <method shortname="write">
               <implementation><![CDATA[
+
 #if SDC_USE_SYNCHRONIZATION == TRUE
 return sdcWrite(self, startblk, buffer, n);
 #else
+(void)self;
 (void)startblk;
 (void)buffer;
 (void)n;
@@ -671,10 +675,16 @@ return msg;]]></implementation>
             <condition check="SDC_USE_SYNCHRONIZATION == TRUE">
               <method name="sdcSynchronizeS" ctype="msg_t">
                 <brief>Waits for transfer completion.</brief>
+                <note><![CDATA[If the transfer already ended the result is
+                  derived from the cached error flags, which are cleared when
+                  the transfer is started.]]></note>
                 <param name="timeout" ctype="sysinterval_t" dir="in">
                   Synchronization timeout.
                 </param>
                 <return>The synchronization result.</return>
+                <retval value="MSG_OK">If the transfer completed successfully.</retval>
+                <retval value="MSG_TIMEOUT">If the timeout expired, the transfer has been stopped.</retval>
+                <retval value="MSG_RESET">If the transfer failed, or has been stopped while waiting.</retval>
                 <sclass />
                 <implementation><![CDATA[
 msg_t msg;
@@ -692,6 +702,10 @@ if ((self->state == SDC_READING) || (self->state == SDC_WRITING)) {
     self->state = HAL_DRV_STATE_READY;
   }
 }
+else if (self->errors != SDC_NO_ERROR) {
+  /* The transfer already ended with an error.*/
+  msg = MSG_RESET;
+}
 else {
   msg = MSG_OK;
 }
@@ -700,10 +714,16 @@ return msg;]]></implementation>
               </method>
               <method name="sdcSynchronize" ctype="msg_t">
                 <brief>Waits for transfer completion.</brief>
+                <note><![CDATA[If the transfer already ended the result is
+                  derived from the cached error flags, which are cleared when
+                  the transfer is started.]]></note>
                 <param name="timeout" ctype="sysinterval_t" dir="in">
                   Synchronization timeout.
                 </param>
                 <return>The synchronization result.</return>
+                <retval value="MSG_OK">If the transfer completed successfully.</retval>
+                <retval value="MSG_TIMEOUT">If the timeout expired, the transfer has been stopped.</retval>
+                <retval value="MSG_RESET">If the transfer failed, or has been stopped while waiting.</retval>
                 <api />
                 <implementation><![CDATA[
 msg_t msg;

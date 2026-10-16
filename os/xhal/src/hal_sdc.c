@@ -726,9 +726,11 @@ static bool __sdc_blk_disconnect_impl(void *ip) {
 static bool __sdc_blk_read_impl(void *ip, uint32_t startblk, uint8_t *buffer,
                                 uint32_t n) {
   hal_sdc_driver_c *self = oopIfGetOwner(hal_sdc_driver_c, ip);
+
 #if SDC_USE_SYNCHRONIZATION == TRUE
   return sdcRead(self, startblk, buffer, n);
 #else
+  (void)self;
   (void)startblk;
   (void)buffer;
   (void)n;
@@ -749,9 +751,11 @@ static bool __sdc_blk_read_impl(void *ip, uint32_t startblk, uint8_t *buffer,
 static bool __sdc_blk_write_impl(void *ip, uint32_t startblk,
                                  const uint8_t *buffer, uint32_t n) {
   hal_sdc_driver_c *self = oopIfGetOwner(hal_sdc_driver_c, ip);
+
 #if SDC_USE_SYNCHRONIZATION == TRUE
   return sdcWrite(self, startblk, buffer, n);
 #else
+  (void)self;
   (void)startblk;
   (void)buffer;
   (void)n;
@@ -1232,10 +1236,18 @@ msg_t sdcStopTransfer(void *ip) {
 #if (SDC_USE_SYNCHRONIZATION == TRUE) || defined (__DOXYGEN__)
 /**
  * @brief       Waits for transfer completion.
+ * @note        If the transfer already ended the result is derived from the
+ *              cached error flags, which are cleared when the transfer is
+ *              started.
  *
  * @param[in,out] ip            Pointer to a @p hal_sdc_driver_c instance.
  * @param[in]     timeout       Synchronization timeout.
  * @return                      The synchronization result.
+ * @retval MSG_OK               If the transfer completed successfully.
+ * @retval MSG_TIMEOUT          If the timeout expired, the transfer has been
+ *                              stopped.
+ * @retval MSG_RESET            If the transfer failed, or has been stopped
+ *                              while waiting.
  *
  * @sclass
  */
@@ -1256,6 +1268,10 @@ msg_t sdcSynchronizeS(void *ip, sysinterval_t timeout) {
       self->state = HAL_DRV_STATE_READY;
     }
   }
+  else if (self->errors != SDC_NO_ERROR) {
+    /* The transfer already ended with an error.*/
+    msg = MSG_RESET;
+  }
   else {
     msg = MSG_OK;
   }
@@ -1265,10 +1281,18 @@ msg_t sdcSynchronizeS(void *ip, sysinterval_t timeout) {
 
 /**
  * @brief       Waits for transfer completion.
+ * @note        If the transfer already ended the result is derived from the
+ *              cached error flags, which are cleared when the transfer is
+ *              started.
  *
  * @param[in,out] ip            Pointer to a @p hal_sdc_driver_c instance.
  * @param[in]     timeout       Synchronization timeout.
  * @return                      The synchronization result.
+ * @retval MSG_OK               If the transfer completed successfully.
+ * @retval MSG_TIMEOUT          If the timeout expired, the transfer has been
+ *                              stopped.
+ * @retval MSG_RESET            If the transfer failed, or has been stopped
+ *                              while waiting.
  *
  * @api
  */
