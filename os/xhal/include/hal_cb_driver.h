@@ -95,12 +95,35 @@
   } while (false)
 
 /**
+ * @brief       Callback invocation, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The callback pointer is
+ *              sampled under the lock, a concurrent change from another core
+ *              does not affect the invocation.
+ *
+ * @param[in,out] self          Pointer to driver instance.
+ *
+ * @notapi
+ */
+#define __cbdrv_invoke_cb_i(self)                                           \
+  do {                                                                      \
+    drv_cb_t cbdrv_cb = (self)->cb;                                         \
+    if (cbdrv_cb != NULL) {                                                 \
+      chSysUnlockFromISR();                                                 \
+      cbdrv_cb(self);                                                       \
+      chSysLockFromISR();                                                   \
+    }                                                                       \
+  } while (false)
+
+/**
  * @brief       Callback invocation with state transitions management, lock
  *              held.
  * @note        Invoked from ISR context with the system lock held, the lock is
- *              released during the callback execution. The final transition
- *              only happens if the state is still @p cbstate, a state change
- *              made by another context during the callback is kept.
+ *              released during the callback execution. The callback pointer is
+ *              sampled under the lock, a concurrent change from another core
+ *              does not affect the invocation. The final transition only
+ *              happens if the state is still @p cbstate, a state change made
+ *              by another context during the callback is kept.
  *
  * @param[in,out] self          Pointer to driver instance.
  * @param[in]     cbstate       Driver state during callback execution.
@@ -110,10 +133,11 @@
  */
 #define __cbdrv_invoke_cb_with_transition_i(self, cbstate, endstate)        \
   do {                                                                      \
-    if ((self)->cb != NULL) {                                               \
+    drv_cb_t cbdrv_cb = (self)->cb;                                         \
+    if (cbdrv_cb != NULL) {                                                 \
       (self)->state = (cbstate);                                            \
       chSysUnlockFromISR();                                                 \
-      (self)->cb(self);                                                     \
+      cbdrv_cb(self);                                                       \
       chSysLockFromISR();                                                   \
       if ((self)->state == (cbstate)) {                                     \
         (self)->state = (endstate);                                         \
