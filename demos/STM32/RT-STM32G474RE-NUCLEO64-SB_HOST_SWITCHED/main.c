@@ -240,7 +240,11 @@ int main(void) {
 
   /*
    * Starting a serial port for I/O, initializing other streams too.
+   * USART1 is on PA9/PA10 (Arduino D8/D2), those pins are not configured by
+   * the board files.
    */
+  palSetPadMode(GPIOA, 9U, PAL_MODE_ALTERNATE(7U));
+  palSetPadMode(GPIOA, 10U, PAL_MODE_ALTERNATE(7U));
   drvStart(&SIOD1, NULL);
   nullstmObjectInit(&nullstream);
 
