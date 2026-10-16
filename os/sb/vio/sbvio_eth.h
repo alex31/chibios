@@ -37,16 +37,6 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
-/**
- * @brief   Fast API handler for VIO ETH driver.
- */
-#define SB_SVC99_HANDLER        sb_fastc_vio_eth
-
-/**
- * @brief   API handler for VIO ETH driver.
- */
-#define SB_SVC227_HANDLER       sb_sysc_vio_eth
-
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/

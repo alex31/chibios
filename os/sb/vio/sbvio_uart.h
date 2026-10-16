@@ -33,16 +33,6 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
-/**
- * @brief   Fast API handler for VHAL UART driver.
- */
-#define SB_SVC97_HANDLER        sb_fastc_vio_uart
-
-/**
- * @brief   API handler for VHAL UART driver.
- */
-#define SB_SVC225_HANDLER       sb_sysc_vio_uart
-
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/

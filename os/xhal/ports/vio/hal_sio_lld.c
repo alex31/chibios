@@ -56,37 +56,6 @@ hal_sio_driver_c SIOD2;
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
-CC_FORCE_INLINE
-static inline uint32_t __sio_vuart_init(uint32_t nvuart, size_t n, void *p) {
-
-  __syscall3r(225, VIO_CALL(SB_VUART_INIT, nvuart), n, p);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __sio_vuart_deinit(uint32_t nvuart) {
-
-  __syscall1r(225, VIO_CALL(SB_VUART_DEINIT, nvuart));
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __sio_vuart_selcfg(uint32_t nvuart, uint32_t ncfg,
-                                          size_t n, void *p) {
-
-  __syscall4r(97, VIO_CALL(SB_VUART_SELCFG, nvuart), ncfg, n, p);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __sio_vuart_ctl(uint32_t nvuart,
-                                       unsigned int operation,
-                                       void *arg) {
-
-  __syscall3r(97, VIO_CALL(SB_VUART_CTL, nvuart), operation, arg);
-  return (uint32_t)r0;
-}
-
 /*===========================================================================*/
 /* Driver interrupt handlers.                                                */
 /*===========================================================================*/
@@ -157,16 +126,14 @@ msg_t sio_lld_start(hal_sio_driver_c *siop) {
   }
 #if VIO_SIO_USE_VUART1 == TRUE
   else if (&SIOD1 == siop) {
-    msg = (msg_t)__sio_vuart_init(siop->nvuart,
-                                  sizeof (hal_sio_config_t),
-                                  &siop->cfgbuf);
+    msg = vuartInit(siop->nvuart, &siop->cfgbuf,
+                    sizeof (hal_sio_config_t));
   }
 #endif
 #if VIO_SIO_USE_VUART2 == TRUE
   else if (&SIOD2 == siop) {
-    msg = (msg_t)__sio_vuart_init(siop->nvuart,
-                                  sizeof (hal_sio_config_t),
-                                  &siop->cfgbuf);
+    msg = vuartInit(siop->nvuart, &siop->cfgbuf,
+                    sizeof (hal_sio_config_t));
   }
 #endif
   else {
@@ -195,12 +162,12 @@ void sio_lld_stop(hal_sio_driver_c *siop) {
   }
 #if VIO_SIO_USE_VUART1 == TRUE
   else if (&SIOD1 == siop) {
-    msg = __sio_vuart_deinit(siop->nvuart);
+    msg = vuartDeinit(siop->nvuart);
   }
 #endif
 #if VIO_SIO_USE_VUART2 == TRUE
   else if (&SIOD2 == siop) {
-    msg = __sio_vuart_deinit(siop->nvuart);
+    msg = vuartDeinit(siop->nvuart);
   }
 #endif
   else {
@@ -222,7 +189,8 @@ void sio_lld_stop(hal_sio_driver_c *siop) {
  *
  * @notapi
  */
-const hal_sio_config_t *sio_lld_setcfg(hal_sio_driver_c *siop, const hal_sio_config_t *config) {
+const hal_sio_config_t *sio_lld_setcfg(hal_sio_driver_c *siop,
+                                       const hal_sio_config_t *config) {
 
   (void)siop;
   (void)config;
@@ -242,11 +210,12 @@ const hal_sio_config_t *sio_lld_setcfg(hal_sio_driver_c *siop, const hal_sio_con
  *
  * @notapi
  */
-const hal_sio_config_t *sio_lld_selcfg(hal_sio_driver_c *siop, unsigned cfgnum) {
+const hal_sio_config_t *sio_lld_selcfg(hal_sio_driver_c *siop,
+                                       unsigned cfgnum) {
   msg_t msg;
 
-  msg = __sio_vuart_selcfg(siop->nvuart, cfgnum,
-                           sizeof (hal_sio_config_t), &siop->cfgbuf);
+  msg = vuartSelectCfg(siop->nvuart, (uint32_t)cfgnum, &siop->cfgbuf,
+                       sizeof (hal_sio_config_t));
   if (msg == HAL_RET_SUCCESS) {
 
     return &siop->cfgbuf;
@@ -267,10 +236,7 @@ const hal_sio_config_t *sio_lld_selcfg(hal_sio_driver_c *siop, unsigned cfgnum) 
  */
 bool sio_lld_is_rx_empty(hal_sio_driver_c *siop) {
 
-  __syscall1r(97, VIO_CALL(SB_VUART_ISRXE, siop->nvuart));
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
-
-  return (bool)r0;
+  return vuartIsRXEmpty(siop->nvuart);
 }
 
 /**
@@ -285,10 +251,7 @@ bool sio_lld_is_rx_empty(hal_sio_driver_c *siop) {
  */
 bool sio_lld_is_rx_idle(hal_sio_driver_c *siop) {
 
-  __syscall1r(97, VIO_CALL(SB_VUART_ISRXI, siop->nvuart));
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
-
-  return (bool)r0;
+  return vuartIsRXIdle(siop->nvuart);
 }
 
 /**
@@ -305,10 +268,7 @@ bool sio_lld_is_rx_idle(hal_sio_driver_c *siop) {
  */
 bool sio_lld_has_rx_errors(hal_sio_driver_c *siop) {
 
-  __syscall1r(97, VIO_CALL(SB_VUART_HASERR, siop->nvuart));
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
-
-  return (bool)r0;
+  return vuartHasRXErrors(siop->nvuart);
 }
 
 /**
@@ -323,10 +283,7 @@ bool sio_lld_has_rx_errors(hal_sio_driver_c *siop) {
  */
 bool sio_lld_is_tx_full(hal_sio_driver_c *siop) {
 
-  __syscall1r(97, VIO_CALL(SB_VUART_ISTXF, siop->nvuart));
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
-
-  return (bool)r0;
+  return vuartIsTXFull(siop->nvuart);
 }
 
 /**
@@ -341,10 +298,7 @@ bool sio_lld_is_tx_full(hal_sio_driver_c *siop) {
  */
 bool sio_lld_is_tx_ongoing(hal_sio_driver_c *siop) {
 
-  __syscall1r(97, VIO_CALL(SB_VUART_ISTXO, siop->nvuart));
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
-
-  return (bool)r0;
+  return vuartIsTXOngoing(siop->nvuart);
 }
 
 /**
@@ -354,8 +308,7 @@ bool sio_lld_is_tx_ongoing(hal_sio_driver_c *siop) {
  */
 void sio_lld_update_enable_flags(hal_sio_driver_c *siop) {
 
-  __syscall2r(97, VIO_CALL(SB_VUART_WREN, siop->nvuart), siop->enabled);
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
+  vuartWriteEnableFlags(siop->nvuart, (uint32_t)siop->enabled);
 }
 
 /**
@@ -368,10 +321,7 @@ void sio_lld_update_enable_flags(hal_sio_driver_c *siop) {
  */
 sioevents_t sio_lld_get_and_clear_errors(hal_sio_driver_c *siop) {
 
-  __syscall1r(97, VIO_CALL(SB_VUART_GCERR, siop->nvuart));
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
-
-  return (sioevents_t)r0;
+  return (sioevents_t)vuartGetAndClearErrors(siop->nvuart);
 }
 
 /**
@@ -383,12 +333,10 @@ sioevents_t sio_lld_get_and_clear_errors(hal_sio_driver_c *siop) {
  *
  * @notapi
  */
-sioevents_t sio_lld_get_and_clear_events(hal_sio_driver_c *siop, sioevents_t events) {
+sioevents_t sio_lld_get_and_clear_events(hal_sio_driver_c *siop,
+                                         sioevents_t events) {
 
-  __syscall2r(97, VIO_CALL(SB_VUART_GCEVT, siop->nvuart), events);
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
-
-  return (sioevents_t)r0;
+  return (sioevents_t)vuartGetAndClearEvents(siop->nvuart, (uint32_t)events);
 }
 
 /**
@@ -401,10 +349,7 @@ sioevents_t sio_lld_get_and_clear_events(hal_sio_driver_c *siop, sioevents_t eve
  */
 sioevents_t sio_lld_get_events(hal_sio_driver_c *siop) {
 
-  __syscall1r(97, VIO_CALL(SB_VUART_GEVT, siop->nvuart));
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
-
-  return (sioevents_t)r0;
+  return (sioevents_t)vuartGetEvents(siop->nvuart);
 }
 
 /**
@@ -420,10 +365,7 @@ sioevents_t sio_lld_get_events(hal_sio_driver_c *siop) {
  */
 size_t sio_lld_read(hal_sio_driver_c *siop, uint8_t *buffer, size_t n) {
 
-  __syscall3r(97, VIO_CALL(SB_VUART_READ, siop->nvuart), buffer, n);
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
-
-  return (size_t)r0;
+  return vuartRead(siop->nvuart, buffer, n);
 }
 
 /**
@@ -439,10 +381,7 @@ size_t sio_lld_read(hal_sio_driver_c *siop, uint8_t *buffer, size_t n) {
  */
 size_t sio_lld_write(hal_sio_driver_c *siop, const uint8_t *buffer, size_t n) {
 
-  __syscall3r(97, VIO_CALL(SB_VUART_WRITE, siop->nvuart), buffer, n);
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
-
-  return (size_t)r0;
+  return vuartWrite(siop->nvuart, buffer, n);
 }
 
 /**
@@ -456,10 +395,7 @@ size_t sio_lld_write(hal_sio_driver_c *siop, const uint8_t *buffer, size_t n) {
  */
 msg_t sio_lld_get(hal_sio_driver_c *siop) {
 
-  __syscall1r(97, VIO_CALL(SB_VUART_GET, siop->nvuart));
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
-
-  return (size_t)r0;
+  return vuartGet(siop->nvuart);
 }
 
 /**
@@ -473,8 +409,7 @@ msg_t sio_lld_get(hal_sio_driver_c *siop) {
  */
 void sio_lld_put(hal_sio_driver_c *siop, uint_fast16_t data) {
 
-  __syscall2r(97, VIO_CALL(SB_VUART_PUT, siop->nvuart), data);
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
+  vuartPut(siop->nvuart, (uint32_t)data);
 }
 
 /**
@@ -491,14 +426,10 @@ void sio_lld_put(hal_sio_driver_c *siop, uint_fast16_t data) {
  *
  * @notapi
  */
-msg_t sio_lld_control(hal_sio_driver_c *siop, unsigned int operation, void *arg) {
+msg_t sio_lld_control(hal_sio_driver_c *siop, unsigned int operation,
+                      void *arg) {
 
-  uint32_t ret;
-
-  ret = __sio_vuart_ctl(siop->nvuart, operation, arg);
-  chDbgAssert(ret != (uint32_t)-1, "unexpected failure");
-
-  return (msg_t)ret;
+  return vuartControl(siop->nvuart, (uint32_t)operation, arg);
 }
 
 /**
@@ -512,11 +443,8 @@ void sio_lld_serve_interrupt(hal_sio_driver_c *siop) {
   sioevents_t events;
 
 #if SIO_USE_SYNCHRONIZATION == TRUE
-  __syscall1rr(97, VIO_CALL(SB_VUART_GEVT, siop->nvuart));
-  chDbgAssert(r0 != (uint32_t)-1, "unexpected failure");
-
   /* Processing enabled events, if any.*/
-  events = (sioevents_t)r0 & siop->enabled;
+  events = (sioevents_t)vuartGetEvents(siop->nvuart) & siop->enabled;
   if (events != (sioevents_t)0) {
 
     /* Error events handled as a group.*/

@@ -4,7 +4,8 @@ STARTUPSRC =
 STARTUPASM = $(CHIBIOS)/os/common/startup/ARMCMx-SB/compilers/GCC/crt0.S
 
 STARTUPINC = $(CHIBIOS)/os/common/portability/GCC \
-             $(CHIBIOS)/os/common/startup/ARMCMx-SB/compilers/GCC
+             $(CHIBIOS)/os/common/startup/ARMCMx-SB/compilers/GCC \
+             $(CHIBIOS)/os/sb/common
 
 STARTUPLD  = $(CHIBIOS)/os/common/startup/ARMCMx-SB/compilers/GCC/ld
 

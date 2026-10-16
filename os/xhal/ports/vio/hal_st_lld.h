@@ -51,7 +51,8 @@
 #error "VIO system timer does not support tickless mode"
 #endif
 
-#if (PORT_USE_LOCAL_SYSTICK == FALSE) && ((SB_VRQ_ALARM < 0) || (SB_VRQ_ALARM > 31))
+#if (PORT_USE_LOCAL_SYSTICK == FALSE) &&                                     \
+    ((SB_VRQ_ALARM < 0) || (SB_VRQ_ALARM > 31))
 #error "invalid SB_VRQ_ALARM value"
 #endif
 

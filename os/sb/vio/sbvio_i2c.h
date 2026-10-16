@@ -37,16 +37,6 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
-/**
- * @brief   Fast API handler for VIO I2C driver.
- */
-#define SB_SVC102_HANDLER       sb_fastc_vio_i2c
-
-/**
- * @brief   API handler for VIO I2C driver.
- */
-#define SB_SVC230_HANDLER       sb_sysc_vio_i2c
-
 /*===========================================================================*/
 /* Module data structures and types.                                         */
 /*===========================================================================*/

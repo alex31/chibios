@@ -156,79 +156,88 @@ typedef uint32_t eventflags_t;
 /** @} */
 
 /**
- * @name   SVC instruction wrappers.
+ * @name    SVC instruction wrappers
+ * @note    The @p x parameter is the SVC number, it can be any integer
+ *          constant expression, normally one of the @p SB_FASTC_xxx or
+ *          @p SB_SYSC_xxx definitions.
  * @{
  */
 #define __syscall0(x)                                                       \
-  asm volatile ("svc " #x : : : "memory")
+  asm volatile ("svc %[nr]" : : [nr] "i" (x) : "memory")
 
 #define __syscall0r(x)                                                      \
   register uint32_t r0 asm ("r0");                                          \
-  asm volatile ("svc " #x : "=r" (r0) : : "memory")
+  asm volatile ("svc %[nr]" : "=r" (r0) : [nr] "i" (x) : "memory")
 
 #define __syscall0rr(x)                                                     \
   register uint32_t r0 asm ("r0");                                          \
   register uint32_t r1 asm ("r1");                                          \
-  asm volatile ("svc " #x : "=r" (r0), "=r" (r1) : : "memory")
+  asm volatile ("svc %[nr]" : "=r" (r0), "=r" (r1) : [nr] "i" (x) :         \
+                "memory")
 
 #define __syscall1r(x, p1)                                                  \
   register uint32_t r0 asm ("r0") = (uint32_t)(p1);                         \
-  asm volatile ("svc " #x : "=r" (r0) : "r" (r0) : "memory")
+  asm volatile ("svc %[nr]" : "=r" (r0) : [nr] "i" (x), "r" (r0) :          \
+                "memory")
 
 #define __syscall1rr(x, p1)                                                 \
   register uint32_t r0 asm ("r0") = (uint32_t)(p1);                         \
   register uint32_t r1 asm ("r1");                                          \
-  asm volatile ("svc " #x : "=r" (r0), "=r" (r1) :                          \
-                             "r" (r0) :                                     \
-                             "memory")
+  asm volatile ("svc %[nr]" : "=r" (r0), "=r" (r1) :                        \
+                              [nr] "i" (x), "r" (r0) :                      \
+                              "memory")
 
 #define __syscall2r(x, p1, p2)                                              \
   register uint32_t r0 asm ("r0") = (uint32_t)(p1);                         \
   register uint32_t r1 asm ("r1") = (uint32_t)(p2);                         \
-  asm volatile ("svc " #x : "=r" (r0) :                                     \
-                            "r" (r0), "r" (r1) :                            \
-                            "memory")
+  asm volatile ("svc %[nr]" : "=r" (r0) :                                   \
+                              [nr] "i" (x), "r" (r0), "r" (r1) :            \
+                              "memory")
 
 #define __syscall2rr(x, p1, p2)                                             \
   register uint32_t r0 asm ("r0") = (uint32_t)(p1);                         \
   register uint32_t r1 asm ("r1") = (uint32_t)(p2);                         \
-  asm volatile ("svc " #x : "=r" (r0), "=r" (r1) :                          \
-                            "r" (r0), "r" (r1) :                            \
-                            "memory")
+  asm volatile ("svc %[nr]" : "=r" (r0), "=r" (r1) :                        \
+                              [nr] "i" (x), "r" (r0), "r" (r1) :            \
+                              "memory")
 
 #define __syscall3r(x, p1, p2, p3)                                          \
   register uint32_t r0 asm ("r0") = (uint32_t)(p1);                         \
   register uint32_t r1 asm ("r1") = (uint32_t)(p2);                         \
   register uint32_t r2 asm ("r2") = (uint32_t)(p3);                         \
-  asm volatile ("svc " #x : "=r" (r0) : "r" (r0), "r" (r1),                 \
-                                        "r" (r2) :                          \
-                                        "memory")
+  asm volatile ("svc %[nr]" : "=r" (r0) :                                   \
+                              [nr] "i" (x), "r" (r0), "r" (r1),             \
+                              "r" (r2) :                                    \
+                              "memory")
 
 #define __syscall3rr(x, p1, p2, p3)                                         \
   register uint32_t r0 asm ("r0") = (uint32_t)(p1);                         \
   register uint32_t r1 asm ("r1") = (uint32_t)(p2);                         \
   register uint32_t r2 asm ("r2") = (uint32_t)(p3);                         \
-  asm volatile ("svc " #x : "=r" (r0), "=r" (r1) :                          \
-                            "r" (r0), "r" (r1), "r" (r2) :                  \
-                            "memory")
+  asm volatile ("svc %[nr]" : "=r" (r0), "=r" (r1) :                        \
+                              [nr] "i" (x), "r" (r0), "r" (r1),             \
+                              "r" (r2) :                                    \
+                              "memory")
 
 #define __syscall4r(x, p1, p2, p3, p4)                                      \
   register uint32_t r0 asm ("r0") = (uint32_t)(p1);                         \
   register uint32_t r1 asm ("r1") = (uint32_t)(p2);                         \
   register uint32_t r2 asm ("r2") = (uint32_t)(p3);                         \
   register uint32_t r3 asm ("r3") = (uint32_t)(p4);                         \
-  asm volatile ("svc " #x : "=r" (r0) : "r" (r0), "r" (r1),                 \
-                                        "r" (r2), "r" (r3) :                \
-                                        "memory")
+  asm volatile ("svc %[nr]" : "=r" (r0) :                                   \
+                              [nr] "i" (x), "r" (r0), "r" (r1),             \
+                              "r" (r2), "r" (r3) :                          \
+                              "memory")
 
 #define __syscall4rr(x, p1, p2, p3, p4)                                     \
   register uint32_t r0 asm ("r0") = (uint32_t)(p1);                         \
   register uint32_t r1 asm ("r1") = (uint32_t)(p2);                         \
   register uint32_t r2 asm ("r2") = (uint32_t)(p3);                         \
   register uint32_t r3 asm ("r3") = (uint32_t)(p4);                         \
-  asm volatile ("svc " #x : "=r" (r0), "=r" (r1) :                          \
-                            "r" (r0), "r" (r1), "r" (r2), "r" (r3) :        \
-                            "memory")
+  asm volatile ("svc %[nr]" : "=r" (r0), "=r" (r1) :                        \
+                              [nr] "i" (x), "r" (r0), "r" (r1),             \
+                              "r" (r2), "r" (r3) :                          \
+                              "memory")
 /** @} */
 
 /**
@@ -236,7 +245,7 @@ typedef uint32_t eventflags_t;
  *
  * @api
  */
-#define __sb_vrq_return()   __syscall0(127)
+#define __sb_vrq_return()   __syscall0(SB_FASTC_VRQ_RETURN)
 
 /*===========================================================================*/
 /* External declarations.                                                    */
@@ -265,7 +274,7 @@ extern "C" {
  */
 static inline msg_t sbStat(const char *pathname, struct stat *statbuf) {
 
-  __syscall3r(128, SB_POSIX_STAT, pathname, statbuf);
+  __syscall3r(SB_SYSC_POSIX, SB_POSIX_STAT, pathname, statbuf);
   return (msg_t)r0;
 }
 
@@ -278,7 +287,7 @@ static inline msg_t sbStat(const char *pathname, struct stat *statbuf) {
  */
 static inline msg_t sbOpen(const char *pathname, int flags) {
 
-  __syscall3r(128, SB_POSIX_OPEN, pathname, flags);
+  __syscall3r(SB_SYSC_POSIX, SB_POSIX_OPEN, pathname, flags);
   return (msg_t)r0;
 }
 
@@ -290,7 +299,7 @@ static inline msg_t sbOpen(const char *pathname, int flags) {
  */
 static inline msg_t sbClose(int fd) {
 
-  __syscall2r(128, SB_POSIX_CLOSE, fd);
+  __syscall2r(SB_SYSC_POSIX, SB_POSIX_CLOSE, fd);
   return (msg_t)r0;
 }
 
@@ -302,7 +311,7 @@ static inline msg_t sbClose(int fd) {
  */
 static inline msg_t sbDup(int fd) {
 
-  __syscall2r(128, SB_POSIX_DUP, fd);
+  __syscall2r(SB_SYSC_POSIX, SB_POSIX_DUP, fd);
   return (msg_t)r0;
 }
 
@@ -315,7 +324,7 @@ static inline msg_t sbDup(int fd) {
  */
 static inline msg_t sbDup2(int oldfd, int newfd) {
 
-  __syscall3r(128, SB_POSIX_DUP2, oldfd, newfd);
+  __syscall3r(SB_SYSC_POSIX, SB_POSIX_DUP2, oldfd, newfd);
   return (msg_t)r0;
 }
 
@@ -328,7 +337,7 @@ static inline msg_t sbDup2(int oldfd, int newfd) {
  */
 static inline msg_t sbFstat(int fd, struct stat *statbuf) {
 
-  __syscall3r(128, SB_POSIX_FSTAT, fd, statbuf);
+  __syscall3r(SB_SYSC_POSIX, SB_POSIX_FSTAT, fd, statbuf);
   return (msg_t)r0;
 }
 
@@ -341,7 +350,7 @@ static inline msg_t sbFstat(int fd, struct stat *statbuf) {
  */
 static inline msg_t sbTcgetattr(int fd, struct termios *attrp) {
 
-  __syscall3r(128, SB_POSIX_TCGETATTR, fd, attrp);
+  __syscall3r(SB_SYSC_POSIX, SB_POSIX_TCGETATTR, fd, attrp);
   return (msg_t)r0;
 }
 
@@ -354,9 +363,9 @@ static inline msg_t sbTcgetattr(int fd, struct termios *attrp) {
  * @return              Operation result.
  */
 static inline msg_t sbTcsetattr(int fd, int action,
-                               const struct termios *attrp) {
+                                const struct termios *attrp) {
 
-  __syscall4r(128, SB_POSIX_TCSETATTR, fd, action, attrp);
+  __syscall4r(SB_SYSC_POSIX, SB_POSIX_TCSETATTR, fd, action, attrp);
   return (msg_t)r0;
 }
 
@@ -370,7 +379,7 @@ static inline msg_t sbTcsetattr(int fd, int action,
  */
 static inline msg_t sbRead(int fd, void *buf, size_t count) {
 
-  __syscall4r(128, SB_POSIX_READ, fd, buf, count);
+  __syscall4r(SB_SYSC_POSIX, SB_POSIX_READ, fd, buf, count);
   return (msg_t)r0;
 }
 
@@ -384,7 +393,7 @@ static inline msg_t sbRead(int fd, void *buf, size_t count) {
  */
 static inline msg_t sbWrite(int fd, const void *buf, size_t count) {
 
-  __syscall4r(128, SB_POSIX_WRITE, fd, buf, count);
+  __syscall4r(SB_SYSC_POSIX, SB_POSIX_WRITE, fd, buf, count);
   return (msg_t)r0;
 }
 
@@ -398,7 +407,7 @@ static inline msg_t sbWrite(int fd, const void *buf, size_t count) {
  */
 static inline msg_t sbSeek(int fd, off_t offset, int whence) {
 
-  __syscall4r(128, SB_POSIX_LSEEK, fd, offset, whence);
+  __syscall4r(SB_SYSC_POSIX, SB_POSIX_LSEEK, fd, offset, whence);
   return (msg_t)r0;
 }
 
@@ -411,7 +420,7 @@ static inline msg_t sbSeek(int fd, off_t offset, int whence) {
  */
 static inline msg_t sbGetdents(int fd, void *buf, size_t count) {
 
-  __syscall4r(128, SB_POSIX_GETDENTS, fd, buf, count);
+  __syscall4r(SB_SYSC_POSIX, SB_POSIX_GETDENTS, fd, buf, count);
   return (msg_t)r0;
 }
 
@@ -423,7 +432,7 @@ static inline msg_t sbGetdents(int fd, void *buf, size_t count) {
  */
 static inline msg_t sbChdir(const char *path) {
 
-  __syscall2r(128, SB_POSIX_CHDIR, path);
+  __syscall2r(SB_SYSC_POSIX, SB_POSIX_CHDIR, path);
   return (msg_t)r0;
 }
 
@@ -436,7 +445,7 @@ static inline msg_t sbChdir(const char *path) {
  */
 static inline msg_t sbGetcwd(char *buf, size_t size) {
 
-  __syscall3r(128, SB_POSIX_GETCWD, buf, size);
+  __syscall3r(SB_SYSC_POSIX, SB_POSIX_GETCWD, buf, size);
   return (msg_t)r0;
 }
 
@@ -448,7 +457,7 @@ static inline msg_t sbGetcwd(char *buf, size_t size) {
  */
 static inline msg_t sbUnlink(const char *path) {
 
-  __syscall2r(128, SB_POSIX_UNLINK, path);
+  __syscall2r(SB_SYSC_POSIX, SB_POSIX_UNLINK, path);
   return (msg_t)r0;
 }
 
@@ -461,7 +470,7 @@ static inline msg_t sbUnlink(const char *path) {
  */
 static inline msg_t sbRename(const char *oldpath, const char *newpath) {
 
-  __syscall3r(128, SB_POSIX_RENAME, oldpath, newpath);
+  __syscall3r(SB_SYSC_POSIX, SB_POSIX_RENAME, oldpath, newpath);
   return (msg_t)r0;
 }
 
@@ -474,7 +483,7 @@ static inline msg_t sbRename(const char *oldpath, const char *newpath) {
  */
 static inline msg_t sbMkdir(const char *path, mode_t mode) {
 
-  __syscall3r(128, SB_POSIX_MKDIR, path, mode);
+  __syscall3r(SB_SYSC_POSIX, SB_POSIX_MKDIR, path, mode);
   return (msg_t)r0;
 }
 
@@ -486,7 +495,7 @@ static inline msg_t sbMkdir(const char *path, mode_t mode) {
  */
 static inline msg_t sbRmdir(const char *path) {
 
-  __syscall2r(128, SB_POSIX_RMDIR, path);
+  __syscall2r(SB_SYSC_POSIX, SB_POSIX_RMDIR, path);
   return (msg_t)r0;
 }
 
@@ -497,7 +506,7 @@ static inline msg_t sbRmdir(const char *path) {
  */
 static inline systime_t sbGetSystemTime(void) {
 
-  __syscall0r(1);
+  __syscall0r(SB_FASTC_GET_SYSTIME);
   return (systime_t)r0;
 }
 
@@ -508,7 +517,7 @@ static inline systime_t sbGetSystemTime(void) {
  */
 static inline uint32_t sbGetFrequency(void) {
 
-  __syscall0r(2);
+  __syscall0r(SB_FASTC_GET_FREQUENCY);
   return (uint32_t)r0;
 }
 
@@ -521,7 +530,7 @@ static inline uint32_t sbGetFrequency(void) {
  */
 static inline void sbExit(msg_t msg) {
 
-  __syscall1r(129, msg);
+  __syscall1r(SB_SYSC_EXIT, msg);
 }
 
 /**
@@ -533,7 +542,7 @@ static inline void sbExit(msg_t msg) {
  */
 static inline void sbSleep(sysinterval_t interval) {
 
-  __syscall1r(130, interval);
+  __syscall1r(SB_SYSC_SLEEP, interval);
 }
 
 /**
@@ -551,7 +560,7 @@ static inline void sbSleep(sysinterval_t interval) {
  */
 static inline void sbSleepUntil(systime_t prev, systime_t next) {
 
-  __syscall2r(131, prev, next);
+  __syscall2r(SB_SYSC_SLEEP_UNTIL, prev, next);
 }
 
 /**
@@ -561,7 +570,7 @@ static inline void sbSleepUntil(systime_t prev, systime_t next) {
  */
 static inline msg_t sbMsgWait(void) {
 
-  __syscall0r(132);
+  __syscall0r(SB_SYSC_MESSAGE_WAIT);
   return (uint32_t)r0;
 }
 
@@ -574,7 +583,7 @@ static inline msg_t sbMsgWait(void) {
  */
 static inline uint32_t sbMsgReply(msg_t msg) {
 
-  __syscall1r(133, msg);
+  __syscall1r(SB_SYSC_MESSAGE_REPLY, msg);
   return (uint32_t)r0;
 }
 
@@ -603,7 +612,7 @@ static inline uint32_t sbMsgReply(msg_t msg) {
 static inline eventmask_t sbEventWaitOneTimeout(eventmask_t events,
                                                 sysinterval_t timeout) {
 
-  __syscall2r(134, events, timeout);
+  __syscall2r(SB_SYSC_EVENT_WAIT_ONE, events, timeout);
   return (uint32_t)r0;
 }
 
@@ -628,7 +637,7 @@ static inline eventmask_t sbEventWaitOneTimeout(eventmask_t events,
 static inline eventmask_t sbEventWaitAnyTimeout(eventmask_t events,
                                                 sysinterval_t timeout) {
 
-  __syscall2r(135, events, timeout);
+  __syscall2r(SB_SYSC_EVENT_WAIT_ANY, events, timeout);
   return (uint32_t)r0;
 }
 
@@ -652,7 +661,7 @@ static inline eventmask_t sbEventWaitAnyTimeout(eventmask_t events,
 static inline eventmask_t sbEventWaitAllTimeout(eventmask_t events,
                                                 sysinterval_t timeout) {
 
-  __syscall2r(136, events, timeout);
+  __syscall2r(SB_SYSC_EVENT_WAIT_ALL, events, timeout);
   return (uint32_t)r0;
 }
 
@@ -666,7 +675,7 @@ static inline eventmask_t sbEventWaitAllTimeout(eventmask_t events,
  */
 static inline uint32_t sbEventBroadcastFlags(eventflags_t flags) {
 
-  __syscall1r(3, flags);
+  __syscall1r(SB_FASTC_EVENT_BROADCAST, flags);
   return (uint32_t)r0;
 }
 
@@ -683,7 +692,7 @@ static inline uint32_t sbEventBroadcastFlags(eventflags_t flags) {
  */
 static inline msg_t sbLoadElf(const char *fname, uint8_t *buf, size_t size) {
 
-  __syscall3r(138, fname, buf, size);
+  __syscall3r(SB_SYSC_LOADELF, fname, buf, size);
   return (msg_t)r0;
 
 }
@@ -704,9 +713,6 @@ static inline sysinterval_t sbTimeS2I(time_secs_t secs) {
 
   ticks = (time_conv_t)secs * f;
 
-/*  sbDbgAssert(ticks <= (time_conv_t)TIME_MAX_INTERVAL,
-              "conversion overflow");*/
-
   return (sysinterval_t)ticks;
 }
 
@@ -726,9 +732,6 @@ static inline sysinterval_t sbTimeMS2I(time_msecs_t msec) {
 
   ticks = (((time_conv_t)msec * f) + (time_conv_t)999) / (time_conv_t)1000;
 
-/*  chDbgAssert(ticks <= (time_conv_t)TIME_MAX_INTERVAL,
-              "conversion overflow");*/
-
   return (sysinterval_t)ticks;
 }
 
@@ -746,10 +749,8 @@ static inline sysinterval_t sbTimeUS2I(time_usecs_t usec) {
   time_conv_t ticks;
   uint32_t f = sbGetFrequency();
 
-  ticks = (((time_conv_t)usec * f) + (time_conv_t)999999) / (time_conv_t)1000000;
-
-/*  chDbgAssert(ticks <= (time_conv_t)TIME_MAX_INTERVAL,
-              "conversion overflow");*/
+  ticks = (((time_conv_t)usec * f) + (time_conv_t)999999) /
+          (time_conv_t)1000000;
 
   return (sysinterval_t)ticks;
 }
@@ -770,9 +771,6 @@ static inline time_secs_t sbTimeI2S(sysinterval_t interval) {
 
   secs = ((time_conv_t)interval + f - (time_conv_t)1) / f;
 
-/*  sbDbgAssert(secs < (time_conv_t)((time_secs_t)-1),
-              "conversion overflow");*/
-
   return (time_secs_t)secs;
 }
 
@@ -790,10 +788,8 @@ static inline time_msecs_t sbTimeI2MS(sysinterval_t interval) {
   time_conv_t msecs;
   uint32_t f = sbGetFrequency();
 
-  msecs = (((time_conv_t)interval * (time_conv_t)1000) + f - (time_conv_t)1) / f;
-
-/*  sbDbgAssert(msecs < (time_conv_t)((time_msecs_t)-1),
-              "conversion overflow");*/
+  msecs = (((time_conv_t)interval * (time_conv_t)1000) + f -
+           (time_conv_t)1) / f;
 
   return (time_msecs_t)msecs;
 }
@@ -812,10 +808,8 @@ static inline time_usecs_t sbTimeI2US(sysinterval_t interval) {
   time_conv_t usecs;
   uint32_t f = sbGetFrequency();
 
-  usecs = (((time_conv_t)interval * (time_conv_t)1000000) + f - (time_conv_t)1) / f;
-
-/*  sbDbgAssert(usecs <= (time_conv_t)((time_usecs_t)-1),
-              "conversion overflow");*/
+  usecs = (((time_conv_t)interval * (time_conv_t)1000000) + f -
+           (time_conv_t)1) / f;
 
   return (time_usecs_t)usecs;
 }
@@ -862,7 +856,8 @@ static inline sysinterval_t sbTimeDiffX(systime_t start, systime_t end) {
  *
  * @xclass
  */
-static inline bool sbTimeIsInRangeX(systime_t time, systime_t start, systime_t end) {
+static inline bool sbTimeIsInRangeX(systime_t time, systime_t start,
+                                    systime_t end) {
 
   return (bool)((systime_t)((systime_t)time - (systime_t)start) <
                 (systime_t)((systime_t)end - (systime_t)start));
@@ -927,7 +922,7 @@ static inline void sbSleepMicroseconds(time_usecs_t usecs) {
  */
 static inline msg_t sbSetAlarm(sysinterval_t interval, bool reload) {
 
-  __syscall2r(117, (uint32_t)interval, (uint32_t)reload);
+  __syscall2r(SB_FASTC_VRQ_SET_ALARM, (uint32_t)interval, (uint32_t)reload);
   return (msg_t)r0;
 }
 
@@ -938,7 +933,7 @@ static inline msg_t sbSetAlarm(sysinterval_t interval, bool reload) {
  */
 static inline void sbResetAlarm(void) {
 
-  __syscall0(118);
+  __syscall0(SB_FASTC_VRQ_RESET_ALARM);
 }
 
 /**
@@ -953,7 +948,7 @@ static inline void sbResetAlarm(void) {
  */
 static inline void __sb_vrq_wait(void) {
 
-  __syscall0(255);
+  __syscall0(SB_SYSC_VRQ_WAIT);
 }
 
 /**
@@ -966,7 +961,7 @@ static inline void __sb_vrq_wait(void) {
  */
 static inline uint32_t __sb_vrq_gcsts(uint32_t nvrq) {
 
-  __syscall1r(119, nvrq);
+  __syscall1r(SB_FASTC_VRQ_GCSTS, nvrq);
   return r0;
 }
 
@@ -980,7 +975,7 @@ static inline uint32_t __sb_vrq_gcsts(uint32_t nvrq) {
  */
 static inline uint32_t __sb_vrq_setwt(uint32_t m) {
 
-  __syscall1r(120, m);
+  __syscall1r(SB_FASTC_VRQ_SETWT, m);
   return r0;
 }
 
@@ -994,7 +989,7 @@ static inline uint32_t __sb_vrq_setwt(uint32_t m) {
  */
 static inline uint32_t __sb_vrq_clrwt(uint32_t m) {
 
-  __syscall1r(121, m);
+  __syscall1r(SB_FASTC_VRQ_CLRWT, m);
   return r0;
 }
 
@@ -1008,7 +1003,7 @@ static inline uint32_t __sb_vrq_clrwt(uint32_t m) {
  */
 static inline uint32_t __sb_vrq_seten(uint32_t m) {
 
-  __syscall1r(122, m);
+  __syscall1r(SB_FASTC_VRQ_SETEN, m);
   return r0;
 }
 
@@ -1022,7 +1017,7 @@ static inline uint32_t __sb_vrq_seten(uint32_t m) {
  */
 static inline uint32_t __sb_vrq_clren(uint32_t m) {
 
-  __syscall1r(123, m);
+  __syscall1r(SB_FASTC_VRQ_CLREN, m);
   return r0;
 }
 
@@ -1033,7 +1028,7 @@ static inline uint32_t __sb_vrq_clren(uint32_t m) {
  */
 static inline void __sb_vrq_disable(void) {
 
-  __syscall0(124);
+  __syscall0(SB_FASTC_VRQ_DISABLE);
 }
 
 /**
@@ -1043,7 +1038,7 @@ static inline void __sb_vrq_disable(void) {
  */
 static inline void __sb_vrq_enable(void) {
 
-  __syscall0(125);
+  __syscall0(SB_FASTC_VRQ_ENABLE);
 }
 
 /**
@@ -1055,7 +1050,7 @@ static inline void __sb_vrq_enable(void) {
  */
 static inline uint32_t __sb_vrq_getisr(void) {
 
-  __syscall0r(126);
+  __syscall0r(SB_FASTC_VRQ_GETISR);
   return r0;
 }
 

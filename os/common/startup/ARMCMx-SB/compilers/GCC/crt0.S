@@ -34,6 +34,9 @@
 #define TRUE                                1
 #endif
 
+#define _FROM_ASM_
+#include "sbsysc.h"
+
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -141,14 +144,14 @@ environ:
                 .weak       __crt0_vrq
 __crt0_vrq:
                 ldr         r0, =0xFFFFFFFF
-                svc         #129    /* SB_SYSC_EXIT */
+                svc         #SB_SYSC_EXIT
 
                 /* Default exit method, calling OS exit().*/
                 .align      2
                 .thumb_func
                 .global     __crt0_exit
 __crt0_exit:
-                svc         #129    /* SB_SYSC_EXIT */
+                svc         #SB_SYSC_EXIT
 .Lexitloop:      b           .Lexitloop
 
                 /* Default entry point, note, the "nop" is meant to be there

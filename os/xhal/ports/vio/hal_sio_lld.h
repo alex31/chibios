@@ -129,7 +129,8 @@ extern "C" {
   void sio_lld_stop(hal_sio_driver_c *siop);
   const hal_sio_config_t *sio_lld_setcfg(hal_sio_driver_c *siop,
                                          const hal_sio_config_t *config);
-  const hal_sio_config_t *sio_lld_selcfg(hal_sio_driver_c *siop, unsigned cfgnum);
+  const hal_sio_config_t *sio_lld_selcfg(hal_sio_driver_c *siop,
+                                         unsigned cfgnum);
   bool sio_lld_is_rx_empty(hal_sio_driver_c *siop);
   bool sio_lld_is_rx_idle(hal_sio_driver_c *siop);
   bool sio_lld_has_rx_errors(hal_sio_driver_c *siop);
@@ -141,10 +142,12 @@ extern "C" {
                                            sioevents_t events);
   sioevents_t sio_lld_get_events(hal_sio_driver_c *siop);
   size_t sio_lld_read(hal_sio_driver_c *siop, uint8_t *buffer, size_t n);
-  size_t sio_lld_write(hal_sio_driver_c *siop, const uint8_t *buffer, size_t n);
+  size_t sio_lld_write(hal_sio_driver_c *siop, const uint8_t *buffer,
+                       size_t n);
   msg_t sio_lld_get(hal_sio_driver_c *siop);
   void sio_lld_put(hal_sio_driver_c *siop, uint_fast16_t data);
-  msg_t sio_lld_control(hal_sio_driver_c *siop, unsigned int operation, void *arg);
+  msg_t sio_lld_control(hal_sio_driver_c *siop, unsigned int operation,
+                        void *arg);
   void sio_lld_serve_interrupt(hal_sio_driver_c *siop);
 #ifdef __cplusplus
 }

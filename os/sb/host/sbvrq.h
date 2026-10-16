@@ -40,25 +40,6 @@
 #define SB_VRQ_ISR_DISABLED     1U
 /** @} */
 
-/**
- * @name    VRQ pseudo-instructions handlers
- * @{
- */
-#define SB_SVC117_HANDLER       sb_fastc_vrq_set_alarm
-#define SB_SVC118_HANDLER       sb_fastc_vrq_reset_alarm
-#define SB_SVC119_HANDLER       sb_fastc_vrq_gcsts
-#define SB_SVC120_HANDLER       sb_fastc_vrq_setwt
-#define SB_SVC121_HANDLER       sb_fastc_vrq_clrwt
-#define SB_SVC122_HANDLER       sb_fastc_vrq_seten
-#define SB_SVC123_HANDLER       sb_fastc_vrq_clren
-#define SB_SVC124_HANDLER       sb_fastc_vrq_disable
-#define SB_SVC125_HANDLER       sb_fastc_vrq_enable
-#define SB_SVC126_HANDLER       sb_fastc_vrq_getisr
-#define SB_SVC127_HANDLER       sb_fastc_vrq_return
-
-#define SB_SVC255_HANDLER       sb_sysc_vrq_wait
-/** @} */
-
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/

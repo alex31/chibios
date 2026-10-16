@@ -52,28 +52,6 @@ hal_spi_driver_c SPID2;
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
-CC_FORCE_INLINE
-static inline uint32_t __spi_vspi_init(uint32_t nvuart, size_t n, void *p) {
-
-  __syscall3r(226, VIO_CALL(SB_VSPI_INIT, nvuart), n, p);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __spi_vspi_deinit(uint32_t nvuart) {
-
-  __syscall1r(226, VIO_CALL(SB_VSPI_DEINIT, nvuart));
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __spi_vspi_selcfg(uint32_t nvuart, uint32_t ncfg,
-                                         size_t n, void *p) {
-
-  __syscall4r(98, VIO_CALL(SB_VSPI_SELCFG, nvuart), ncfg, n, p);
-  return (uint32_t)r0;
-}
-
 /**
  * @brief   Shared end-of-rx service routine.
  *
@@ -173,16 +151,12 @@ msg_t spi_lld_start(hal_spi_driver_c *spip) {
   }
 #if VIO_SPI_USE_VSPI1 == TRUE
   else if (&SPID1 == spip) {
-    msg = (msg_t)__spi_vspi_init(spip->nvspi,
-                                 sizeof (hal_spi_config_t),
-                                 &spip->cfgbuf);
+    msg = vspiInit(spip->nvspi, &spip->cfgbuf, sizeof (hal_spi_config_t));
   }
 #endif
 #if VIO_SPI_USE_VSPI2 == TRUE
   else if (&SPID2 == spip) {
-    msg = (msg_t)__spi_vspi_init(spip->nvspi,
-                                 sizeof (hal_spi_config_t),
-                                 &spip->cfgbuf);
+    msg = vspiInit(spip->nvspi, &spip->cfgbuf, sizeof (hal_spi_config_t));
   }
 #endif
   else {
@@ -211,12 +185,12 @@ void spi_lld_stop(hal_spi_driver_c *spip) {
   }
 #if VIO_SPI_USE_VSPI1 == TRUE
   else if (&SPID1 == spip) {
-    msg = __spi_vspi_deinit(spip->nvspi);
+    msg = vspiDeinit(spip->nvspi);
   }
 #endif
 #if VIO_SPI_USE_VSPI2 == TRUE
   else if (&SPID2 == spip) {
-    msg = __spi_vspi_deinit(spip->nvspi);
+    msg = vspiDeinit(spip->nvspi);
   }
 #endif
   else {
@@ -238,7 +212,8 @@ void spi_lld_stop(hal_spi_driver_c *spip) {
  *
  * @notapi
  */
-const hal_spi_config_t *spi_lld_setcfg(hal_spi_driver_c *spip, const hal_spi_config_t *config) {
+const hal_spi_config_t *spi_lld_setcfg(hal_spi_driver_c *spip,
+                                       const hal_spi_config_t *config) {
 
   (void)spip;
   (void)config;
@@ -258,11 +233,12 @@ const hal_spi_config_t *spi_lld_setcfg(hal_spi_driver_c *spip, const hal_spi_con
  *
  * @notapi
  */
-const hal_spi_config_t *spi_lld_selcfg(hal_spi_driver_c *spip, unsigned cfgnum) {
+const hal_spi_config_t *spi_lld_selcfg(hal_spi_driver_c *spip,
+                                       unsigned cfgnum) {
   msg_t msg;
 
-  msg = __spi_vspi_selcfg(spip->nvspi, cfgnum,
-                          sizeof (hal_spi_config_t), &spip->cfgbuf);
+  msg = vspiSelectCfg(spip->nvspi, (uint32_t)cfgnum, &spip->cfgbuf,
+                      sizeof (hal_spi_config_t));
   if (msg == HAL_RET_SUCCESS) {
 
     return &spip->cfgbuf;
@@ -280,7 +256,7 @@ const hal_spi_config_t *spi_lld_selcfg(hal_spi_driver_c *spip, unsigned cfgnum) 
  */
 void spi_lld_select(hal_spi_driver_c *spip) {
 
-  __syscall1r(98, VIO_CALL(SB_VSPI_SELECT, spip->nvspi));
+  (void)vspiSelect(spip->nvspi);
 }
 
 /**
@@ -293,7 +269,7 @@ void spi_lld_select(hal_spi_driver_c *spip) {
  */
 void spi_lld_unselect(hal_spi_driver_c *spip) {
 
-  __syscall1r(98, VIO_CALL(SB_VSPI_UNSELECT, spip->nvspi));
+  (void)vspiUnselect(spip->nvspi);
 }
 
 /**
@@ -311,9 +287,7 @@ void spi_lld_unselect(hal_spi_driver_c *spip) {
  */
 msg_t spi_lld_ignore(hal_spi_driver_c *spip, size_t n) {
 
-  __syscall2r(98, VIO_CALL(SB_VSPI_PULSES, spip->nvspi), n);
-
-  return (msg_t)r0;
+  return vspiStartIgnore(spip->nvspi, n);
 }
 
 /**
@@ -335,9 +309,7 @@ msg_t spi_lld_ignore(hal_spi_driver_c *spip, size_t n) {
 msg_t spi_lld_exchange(hal_spi_driver_c *spip, size_t n,
                        const void *txbuf, void *rxbuf) {
 
-  __syscall4r(98, VIO_CALL(SB_VSPI_EXCHANGE, spip->nvspi), n, txbuf, rxbuf);
-
-  return (msg_t)r0;
+  return vspiStartExchange(spip->nvspi, n, txbuf, rxbuf);
 }
 
 /**
@@ -356,9 +328,7 @@ msg_t spi_lld_exchange(hal_spi_driver_c *spip, size_t n,
  */
 msg_t spi_lld_send(hal_spi_driver_c *spip, size_t n, const void *txbuf) {
 
-  __syscall3r(98, VIO_CALL(SB_VSPI_SEND, spip->nvspi), n, txbuf);
-
-  return (msg_t)r0;
+  return vspiStartSend(spip->nvspi, n, txbuf);
 }
 
 /**
@@ -377,9 +347,7 @@ msg_t spi_lld_send(hal_spi_driver_c *spip, size_t n, const void *txbuf) {
  */
 msg_t spi_lld_receive(hal_spi_driver_c *spip, size_t n, void *rxbuf) {
 
-  __syscall3r(98, VIO_CALL(SB_VSPI_RECEIVE, spip->nvspi), n, rxbuf);
-
-  return (msg_t)r0;
+  return vspiStartReceive(spip->nvspi, n, rxbuf);
 }
 
 /**
@@ -393,10 +361,10 @@ msg_t spi_lld_receive(hal_spi_driver_c *spip, size_t n, void *rxbuf) {
  * @notapi
  */
 msg_t spi_lld_stop_transfer(hal_spi_driver_c *spip, size_t *sizep) {
+  size_t n;
 
-  __syscall2r(98, VIO_CALL(SB_VSPI_STOP, spip->nvspi), sizep);
-
-  return (msg_t)r0;
+  /* The host requires a valid counter pointer.*/
+  return vspiStopTransfer(spip->nvspi, sizep != NULL ? sizep : &n);
 }
 
 /**

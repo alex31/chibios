@@ -36,6 +36,7 @@
 #include "chlicense.h"
 #include "chconf.h"
 #include "chcore.h"
+#include "sbsysc.h"
 
 /*===========================================================================*/
 /* Module constants.                                                         */
@@ -69,7 +70,7 @@
 __sb_dispatch_syscall:
                 movw        r3, #:lower16:sb_syscalls
                 movt        r3, #:upper16:sb_syscalls
-                subs        r2, #128
+                subs        r2, #SB_SYSC_BASE
                 ldr.w       r3, [r3, r2, lsl #2]
                 blx         r3
                 svc         1

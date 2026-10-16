@@ -38,52 +38,60 @@
 
 /**
  * @name    Fastcall codes
+ * @note    The host fastcalls table is indexed by these codes.
  * @{
  */
-#define SB_FASTC_GET_SYSTIME    1
-#define SB_FASTC_GET_FREQUENCY  2
-#define SB_FASTC_VIO_VGPIO      96
-#define SB_FASTC_VIO_VUART      97
-#define SB_FASTC_VIO_VSPI       98
-#define SB_FASTC_VIO_VETH       99
-#define SB_FASTC_VIO_VADC       100
-#define SB_FASTC_VIO_VGPT       101
-#define SB_FASTC_VIO_VI2C       102
-#define SB_FASTC_VRQ_GCSTS      119
-#define SB_FASTC_VRQ_SETWT      120
-#define SB_FASTC_VRQ_CLRWT      121
-#define SB_FASTC_VRQ_SETEN      122
-#define SB_FASTC_VRQ_CLREN      123
-#define SB_FASTC_VRQ_DISABLE    124
-#define SB_FASTC_VRQ_ENABLE     125
-#define SB_FASTC_VRQ_GETISR     126
-#define SB_FASTC_VRQ_RETURN     127
+#define SB_FASTC_GET_SYSTIME     1
+#define SB_FASTC_GET_FREQUENCY   2
+#define SB_FASTC_EVENT_BROADCAST 3
+#define SB_FASTC_VIO_VGPIO       96
+#define SB_FASTC_VIO_VUART       97
+#define SB_FASTC_VIO_VSPI        98
+#define SB_FASTC_VIO_VETH        99
+#define SB_FASTC_VIO_VADC        100
+#define SB_FASTC_VIO_VGPT        101
+#define SB_FASTC_VIO_VI2C        102
+#define SB_FASTC_VRQ_SET_ALARM   117
+#define SB_FASTC_VRQ_RESET_ALARM 118
+#define SB_FASTC_VRQ_GCSTS       119
+#define SB_FASTC_VRQ_SETWT       120
+#define SB_FASTC_VRQ_CLRWT       121
+#define SB_FASTC_VRQ_SETEN       122
+#define SB_FASTC_VRQ_CLREN       123
+#define SB_FASTC_VRQ_DISABLE     124
+#define SB_FASTC_VRQ_ENABLE      125
+#define SB_FASTC_VRQ_GETISR      126
+#define SB_FASTC_VRQ_RETURN      127
 /** @} */
 
 /**
+ * @brief   First syscall code, lower codes are fastcalls.
+ */
+#define SB_SYSC_BASE             128
+
+/**
  * @name    Syscall codes
+ * @note    The host syscalls table is indexed by these codes minus
+ *          @p SB_SYSC_BASE.
  * @{
  */
-#define SB_SYSC_POSIX           128
-#define SB_SYSC_EXIT            129
-#define SB_SYSC_SLEEP           130
-#define SB_SYSC_SLEEP_UNTIL     131
-#define SB_SYSC_MESSAGE_WAIT    132
-#define SB_SYSC_MESSAGE_REPLY   133
-#define SB_SYSC_EVENT_WAIT_ONE  134
-#define SB_SYSC_EVENT_WAIT_ANY  135
-#define SB_SYSC_EVENT_WAIT_ALL  136
-#define SB_SYSC_EVENT_BROADCAST 137
-#define SB_SYSC_LOADELF         138
-#define SB_SYSC_VIO_VUART       225
-#define SB_SYSC_VIO_VSPI        226
-#define SB_SYSC_VIO_VETH        227
-#define SB_SYSC_VIO_VADC        228
-#define SB_SYSC_VIO_VGPT        229
-#define SB_SYSC_VIO_VI2C        230
-#define SB_SYSC_VRQ_SET_ALARM   253
-#define SB_SYSC_VRQ_RESET_ALARM 254
-#define SB_SYSC_VRQ_WAIT        255
+#define SB_SYSC_POSIX            128
+#define SB_SYSC_EXIT             129
+#define SB_SYSC_SLEEP            130
+#define SB_SYSC_SLEEP_UNTIL      131
+#define SB_SYSC_MESSAGE_WAIT     132
+#define SB_SYSC_MESSAGE_REPLY    133
+#define SB_SYSC_EVENT_WAIT_ONE   134
+#define SB_SYSC_EVENT_WAIT_ANY   135
+#define SB_SYSC_EVENT_WAIT_ALL   136
+#define SB_SYSC_LOADELF          138
+#define SB_SYSC_VIO_VUART        225
+#define SB_SYSC_VIO_VSPI         226
+#define SB_SYSC_VIO_VETH         227
+#define SB_SYSC_VIO_VADC         228
+#define SB_SYSC_VIO_VGPT         229
+#define SB_SYSC_VIO_VI2C         230
+#define SB_SYSC_VRQ_WAIT         255
 /** @} */
 
 /**
@@ -248,6 +256,10 @@
 /* Module data structures and types.                                         */
 /*===========================================================================*/
 
+/* The following code is not processed when the file is included from an
+   asm module.*/
+#if !defined(_FROM_ASM_)
+
 /**
  * @brief   I2C transfer descriptor shared by the sandbox and host.
  */
@@ -267,6 +279,8 @@ typedef struct vio_eth_config {
   uint8_t                   mac_address[6];
   uint8_t                   reserved[2];
 } vio_eth_config_t;
+
+#endif /* !defined(_FROM_ASM_) */
 
 /*===========================================================================*/
 /* Module macros.                                                            */
@@ -301,6 +315,7 @@ typedef struct vio_eth_config {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
+#if !defined(_FROM_ASM_)
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -308,6 +323,7 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+#endif /* !defined(_FROM_ASM_) */
 
 /*===========================================================================*/
 /* Module inline functions.                                                  */

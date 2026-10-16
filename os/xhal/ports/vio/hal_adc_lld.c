@@ -51,54 +51,6 @@ static const hal_adc_config_t default_config = {
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
-CC_FORCE_INLINE
-static inline uint32_t __adc_vadc_init(uint32_t nvadc, size_t n, void *p) {
-
-  __syscall3r(228, VIO_CALL(SB_VADC_INIT, nvadc), n, p);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __adc_vadc_deinit(uint32_t nvadc) {
-
-  __syscall1r(228, VIO_CALL(SB_VADC_DEINIT, nvadc));
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __adc_vadc_selcfg(uint32_t nvadc, uint32_t ncfg,
-                                         size_t n, void *p) {
-
-  __syscall4r(100, VIO_CALL(SB_VADC_SELCFG, nvadc), ncfg, n, p);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __adc_vadc_start(hal_adc_driver_c *adcp, unsigned grpnum,
-                                        adcsample_t *samples, size_t depth) {
-  uint32_t subcode;
-
-  subcode = (drvGetStateX(adcp) == ADC_ACTIVE_CIRCULAR) ?
-            SB_VADC_START_CIRCULAR : SB_VADC_START_LINEAR;
-  __syscall4r(100, VIO_CALL(subcode, adcp->nvadc),
-              grpnum, samples, depth);
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __adc_vadc_stop(uint32_t nvadc) {
-
-  __syscall1r(100, VIO_CALL(SB_VADC_STOP, nvadc));
-  return (uint32_t)r0;
-}
-
-CC_FORCE_INLINE
-static inline uint32_t __adc_vadc_gcerr(uint32_t nvadc) {
-
-  __syscall1r(100, VIO_CALL(SB_VADC_GCERR, nvadc));
-  return (uint32_t)r0;
-}
-
 /**
  * @brief   Shared VADC interrupt service routine.
  *
@@ -111,7 +63,7 @@ static void adc_lld_serve_interrupt(hal_adc_driver_c *adcp, uint32_t nvrq) {
   sts = __sb_vrq_gcsts(nvrq);
 
   if ((sts & (1U << HAL_DRV_STATE_ERROR)) != 0U) {
-    adcerror_t errors = (adcerror_t)__adc_vadc_gcerr(adcp->nvadc);
+    adcerror_t errors = (adcerror_t)vadcGetAndClearErrors(adcp->nvadc);
 
     if (errors == (adcerror_t)0U) {
       errors = ADC_ERR_DMAFAILURE;
@@ -194,9 +146,7 @@ msg_t adc_lld_start(hal_adc_driver_c *adcp) {
   }
 #if VIO_ADC_USE_VADC1 == TRUE
   else if (&ADCD1 == adcp) {
-    msg = (msg_t)__adc_vadc_init(adcp->nvadc,
-                                 sizeof (hal_adc_config_t),
-                                 &adcp->cfgbuf);
+    msg = vadcInit(adcp->nvadc, &adcp->cfgbuf, sizeof (hal_adc_config_t));
   }
 #endif
   else {
@@ -224,7 +174,7 @@ void adc_lld_stop(hal_adc_driver_c *adcp) {
   }
 #if VIO_ADC_USE_VADC1 == TRUE
   else if (&ADCD1 == adcp) {
-    msg = (msg_t)__adc_vadc_deinit(adcp->nvadc);
+    msg = vadcDeinit(adcp->nvadc);
   }
 #endif
   else {
@@ -273,8 +223,8 @@ const hal_adc_config_t *adc_lld_selcfg(hal_adc_driver_c *adcp,
                                        unsigned cfgnum) {
   msg_t msg;
 
-  msg = __adc_vadc_selcfg(adcp->nvadc, cfgnum,
-                          sizeof (hal_adc_config_t), &adcp->cfgbuf);
+  msg = vadcSelectCfg(adcp->nvadc, (uint32_t)cfgnum, &adcp->cfgbuf,
+                      sizeof (hal_adc_config_t));
   if (msg == HAL_RET_SUCCESS) {
 
     return &adcp->cfgbuf;
@@ -315,7 +265,14 @@ void adc_lld_set_callback(hal_adc_driver_c *adcp, drv_cb_t cb) {
 msg_t adc_lld_start_conversion(hal_adc_driver_c *adcp, unsigned grpnum,
                                adcsample_t *samples,
                                size_t depth) {
-  return (msg_t)__adc_vadc_start(adcp, grpnum, samples, depth);
+
+  if (drvGetStateX(adcp) == ADC_ACTIVE_CIRCULAR) {
+    return vadcStartConversionCircular(adcp->nvadc, (uint32_t)grpnum,
+                                       samples, depth);
+  }
+
+  return vadcStartConversionLinear(adcp->nvadc, (uint32_t)grpnum,
+                                   samples, depth);
 }
 
 /**
@@ -328,7 +285,7 @@ msg_t adc_lld_start_conversion(hal_adc_driver_c *adcp, unsigned grpnum,
 void adc_lld_stop_conversion(hal_adc_driver_c *adcp) {
   msg_t msg;
 
-  msg = (msg_t)__adc_vadc_stop(adcp->nvadc);
+  msg = vadcStopConversion(adcp->nvadc);
   chDbgAssert(msg == HAL_RET_SUCCESS, "unexpected failure");
 }
 
