@@ -142,12 +142,15 @@
  *          owning core.  Consequently @p drvStop() must be invoked from
  *          the same core that started the driver, a constraint already
  *          imposed by the per-core NVIC because the stop path could not
- *          disable the vector from another core anyway.
+ *          disable the vector from another core anyway, it is checked
+ *          by an assertion.
  */
 #if defined(__CHIBIOS_RT__) || defined(__DOXYGEN__)
 #define sio_lld_driver_fields                                               \
   /* Pointer to the UARTx registers block.*/                                \
   UART_TypeDef              *uart;                                          \
+  /* Core which started the driver, see the SMP notes above.*/              \
+  uint32_t                  core;                                           \
   /* Software events latch, see the notes above.*/                          \
   sioevents_t               latched_events;                                 \
   /* TX generation counter, incremented on each write, detects              \
@@ -163,6 +166,8 @@
 #define sio_lld_driver_fields                                               \
   /* Pointer to the UARTx registers block.*/                                \
   UART_TypeDef              *uart;                                          \
+  /* Core which started the driver, see the SMP notes above.*/              \
+  uint32_t                  core;                                           \
   /* Software events latch, see the notes above.*/                          \
   sioevents_t               latched_events;                                 \
   /* TX generation counter, incremented on each write, detects              \
