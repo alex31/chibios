@@ -96,7 +96,28 @@
  * @{
  */
 /**
+ * @brief       Common ISR code, ICU event, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if a capture is not running, for example after a stop.
+ *
+ * @param[in,out] icup          Pointer to the ICU driver instance.
+ * @param[in]     events        ICU event flags.
+ *
+ * @notapi
+ */
+#define _icu_isr_invoke_cb_i(icup, events)                                  \
+  do {                                                                      \
+    if (((icup)->state == ICU_WAITING) || ((icup)->state == ICU_ACTIVE)) {  \
+      (icup)->events |= (events);                                           \
+      __cbdrv_invoke_cb_i(icup);                                            \
+    }                                                                       \
+  } while (false)
+
+/**
  * @brief       Common ISR code, ICU event.
+ * @note        The driver state is checked under the system lock, see @p
+ *              _icu_isr_invoke_cb_i().
  *
  * @param[in,out] icup          Pointer to the ICU driver instance.
  * @param[in]     events        ICU event flags.
@@ -105,8 +126,9 @@
  */
 #define _icu_isr_invoke_cb(icup, events)                                    \
   do {                                                                      \
-    (icup)->events |= (events);                                             \
-    __cbdrv_invoke_cb(icup);                                                \
+    chSysLockFromISR();                                                     \
+    _icu_isr_invoke_cb_i(icup, events);                                     \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 /** @} */
 
