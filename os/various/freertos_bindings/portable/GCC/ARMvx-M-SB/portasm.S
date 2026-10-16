@@ -69,15 +69,32 @@ vPortSwitchContext:
                 pop     {r3, r4, r5, r6, r7, r8, r9, r10, r11, pc}
 
 /*--------------------------------------------------------------------------*
- * Restores the context of the first task, the current stack is
- * abandoned.
+ * Saves the current context and stores its stack pointer at the address
+ * in R0, then restores the context of the first task. The saved context
+ * is resumed by vPortRestoreContext(), returning from this function.
  *--------------------------------------------------------------------------*/
                 .thumb_func
                 .globl  vPortStartFirstTask
 vPortStartFirstTask:
+                /* R3 is saved only in order to keep the stack aligned.*/
+                push    {r3, r4, r5, r6, r7, r8, r9, r10, r11, lr}
+#if defined(__ARM_FP)
+                vpush   {s16-s31}
+#endif
+                str     sp, [r0]
+
                 ldr     r0, =pxCurrentTCB
                 ldr     r0, [r0]
                 ldr     r0, [r0]
+                /* Falls through.*/
+
+/*--------------------------------------------------------------------------*
+ * Restores the context saved at the stack pointer in R0, the current
+ * stack is abandoned.
+ *--------------------------------------------------------------------------*/
+                .thumb_func
+                .globl  vPortRestoreContext
+vPortRestoreContext:
                 mov     sp, r0
 
 #if defined(__ARM_FP)

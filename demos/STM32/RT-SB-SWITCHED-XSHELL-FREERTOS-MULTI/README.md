@@ -35,7 +35,9 @@ If the serial port is assigned, the FreeRTOS client prints a banner on it at
 start and the self-test result at the end of the test, then it echoes back
 the received data, a line feed is added after each carriage return. Receive
 errors and receive buffer overflows are reported as `<errors 0xnn>`, using
-the `SB_VUART_EV_xxx` error bits. The port is handled by a mini serial
+the `SB_VUART_EV_xxx` error bits. Ctrl-D stops the FreeRTOS scheduler using
+`vTaskEndScheduler()`, `main()` returns and the sandbox terminates with exit
+code `0x00000000`, then the host restarts it. The port is handled by a mini serial
 driver based on FreeRTOS stream buffers, see
 `demos/various/SB-CLIENT-FREERTOS/source/vserial.c`.
 
