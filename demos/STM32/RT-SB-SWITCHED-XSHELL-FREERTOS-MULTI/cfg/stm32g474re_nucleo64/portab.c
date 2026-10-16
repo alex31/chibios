@@ -23,4 +23,8 @@ void portab_setup(void) {
   /* USART1 pins, not configured by the board files.*/
   palSetPadMode(GPIOA, 9U, PAL_MODE_ALTERNATE(7U));
   palSetPadMode(GPIOA, 10U, PAL_MODE_ALTERNATE(7U));
+
+  /* USART3 pins, not configured by the board files.*/
+  palSetPadMode(GPIOC, 10U, PAL_MODE_ALTERNATE(7U));
+  palSetPadMode(GPIOC, 11U, PAL_MODE_ALTERNATE(7U));
 }

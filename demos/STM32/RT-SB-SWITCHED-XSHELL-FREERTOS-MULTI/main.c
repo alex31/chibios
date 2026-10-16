@@ -74,6 +74,26 @@ static vio_gpio_units_t gpio_units2 = {
   }
 };
 
+/* SB2 owns the FreeRTOS serial port, if the target defines one.*/
+#if defined(PORTAB_SIO_SB2)
+static vio_uart_units_t uart_units2 = {
+  .n            = 1U,
+  .units = {
+    [0] = {
+      .siop     = &PORTAB_SIO_SB2,
+      .vrqsb    = &sbx2,
+      .vrqn     = 8
+    }
+  }
+};
+
+static sio_configurations_t uart_configs2 = {
+  .cfgsnum      = 1U,
+  .cfgs = {
+    [0]         = SIO_DEFAULT_CONFIGURATION
+  }
+};
+#else
 static vio_uart_units_t uart_units2 = {
   .n            = 0U
 };
@@ -81,6 +101,7 @@ static vio_uart_units_t uart_units2 = {
 static sio_configurations_t uart_configs2 = {
   .cfgsnum      = 0U
 };
+#endif
 
 static vio_conf_t vio_config2 = {
   .gpios        = &gpio_units2,

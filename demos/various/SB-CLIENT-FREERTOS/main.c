@@ -15,6 +15,7 @@
 */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -23,6 +24,7 @@
 #include "timers.h"
 
 #include "sbuservio.h"
+#include "vserial.h"
 
 /*
  * FreeRTOS sandbox guest demo. A self-test exercises the port at startup,
@@ -30,6 +32,9 @@
  * fast on failure. The result is also printed on the standard output.
  * The LED is expected as VIO GPIO unit 0, if the host does not assign it
  * then the LED operations have no effect.
+ * If the host assigns VIO UART unit 0, on VRQ 8, the result is also
+ * printed there, then the received data is echoed back. The UART is
+ * handled by the mini serial driver in ./source/vserial.c.
  * Fatal conditions are handled by the default hooks of the port, which
  * terminate the sandbox with one of the portSB_EXIT_xxx codes.
  */
@@ -45,6 +50,7 @@
 #define CATCHUP_DURATION_MS     100U
 #define SWVRQ_CYCLES            100U
 #define TEST_STACK_SIZE         (configMINIMAL_STACK_SIZE * 3)
+#define SERIAL_STACK_SIZE       (configMINIMAL_STACK_SIZE * 3)
 
 #define BLINK_PASS_PERIOD       pdMS_TO_TICKS(500)
 #define BLINK_FAIL_PERIOD       pdMS_TO_TICKS(100)
@@ -76,6 +82,9 @@ static TimerHandle_t xTimer;
 static TaskHandle_t xProducerHandle;
 static TaskHandle_t xPeriodicHandle;
 static TaskHandle_t xBlinkerHandle;
+static TaskHandle_t xSerialHandle;
+
+static char cResult[128];
 
 static volatile uint32_t ulPeriodicCount;
 static volatile uint32_t ulTimerCount;
@@ -104,6 +113,56 @@ static void prvBlinkerTask(void *pvParameters) {
   for (;;) {
     vTaskDelay(xPeriod);
     vgpioToggle(LED_VGPIO_UNIT, 1U);
+  }
+}
+
+/*===========================================================================*/
+/* Serial functions.                                                         */
+/*===========================================================================*/
+
+static void prvSerialPuts(const char *pcString) {
+
+  (void)xVSerialWrite(pcString, strlen(pcString), portMAX_DELAY);
+}
+
+/*
+ * Serial task, prints the self-test result then echoes the received data,
+ * a line feed is added after each carriage return.
+ */
+static void prvSerialTask(void *pvParameters) {
+  uint8_t ucBuffer[16];
+  char cErrors[32];
+  uint32_t ulFailures, ulErrors;
+  size_t i, xStart, xn;
+
+  (void)pvParameters;
+
+  prvSerialPuts("\r\nFreeRTOS sandbox, self-test running...\r\n");
+  (void)xTaskNotifyWait(0U, 0U, &ulFailures, portMAX_DELAY);
+  prvSerialPuts(cResult);
+  prvSerialPuts((ulFailures == 0U) ? "\r\nPASSED, echo active\r\n" :
+                                     "\r\nFAILED, echo active\r\n");
+
+  for (;;) {
+    xn = xVSerialRead(ucBuffer, sizeof (ucBuffer), portMAX_DELAY);
+
+    xStart = 0U;
+    for (i = 0U; i < xn; i++) {
+      if (ucBuffer[i] == (uint8_t)'\r') {
+        (void)xVSerialWrite(&ucBuffer[xStart], (i + 1U) - xStart,
+                            portMAX_DELAY);
+        prvSerialPuts("\n");
+        xStart = i + 1U;
+      }
+    }
+    (void)xVSerialWrite(&ucBuffer[xStart], xn - xStart, portMAX_DELAY);
+
+    ulErrors = ulVSerialGetAndClearErrors();
+    if (ulErrors != 0U) {
+      (void)snprintf(cErrors, sizeof (cErrors), "\r\n<errors 0x%02lx>\r\n",
+                     (unsigned long)ulErrors);
+      prvSerialPuts(cErrors);
+    }
   }
 }
 
@@ -270,17 +329,23 @@ static void prvTestTask(void *pvParameters) {
     ulFailures |= FAIL_TICK_CATCHUP;
   }
 
-  printf("FreeRTOS %s on %s: periodic=%lu timer=%lu consumer=%lu "
-         "idle=%lu result=0x%08lx\n",
-         tskKERNEL_VERSION_NUMBER, portARCH_NAME,
-         (unsigned long)ulPeriodic, (unsigned long)ulTimer,
-         (unsigned long)ulConsumer, (unsigned long)ulIdle,
-         (unsigned long)ulFailures);
+  (void)snprintf(cResult, sizeof (cResult),
+                 "FreeRTOS %s on %s: periodic=%lu timer=%lu consumer=%lu "
+                 "idle=%lu result=0x%08lx",
+                 tskKERNEL_VERSION_NUMBER, portARCH_NAME,
+                 (unsigned long)ulPeriodic, (unsigned long)ulTimer,
+                 (unsigned long)ulConsumer, (unsigned long)ulIdle,
+                 (unsigned long)ulFailures);
+  printf("%s\n", cResult);
 
-  /* Stopping the test activity, only the blinker remains active.*/
+  /* Stopping the test activity, only the blinker and the serial task
+     remain active.*/
   vTaskSuspend(xPeriodicHandle);
   (void)xTimerStop(xTimer, portMAX_DELAY);
   (void)xTaskNotify(xBlinkerHandle, ulFailures, eSetValueWithOverwrite);
+  if (xSerialHandle != NULL) {
+    (void)xTaskNotify(xSerialHandle, ulFailures, eSetValueWithOverwrite);
+  }
   vTaskDelete(NULL);
 }
 
@@ -319,6 +384,13 @@ int main(void) {
                     NULL, 3U, &xPeriodicHandle);
   (void)xTaskCreate(prvBlinkerTask, "blinker", configMINIMAL_STACK_SIZE,
                     NULL, 3U, &xBlinkerHandle);
+
+  /* The serial task only exists if the host assigned the UART.*/
+  if (xVSerialStart() == pdPASS) {
+    (void)xTaskCreate(prvSerialTask, "serial", SERIAL_STACK_SIZE,
+                      NULL, 3U, &xSerialHandle);
+  }
+
   (void)xTaskCreate(prvConsumerTask, "consumer", configMINIMAL_STACK_SIZE,
                     NULL, 2U, NULL);
   (void)xTaskCreate(prvProducerTask, "producer", configMINIMAL_STACK_SIZE,

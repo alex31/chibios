@@ -32,6 +32,10 @@
 /* Console of the XSHELL sandbox, LPUART1 on the ST-LINK virtual COM port.*/
 #define PORTAB_SIO_SB1                      LPSIOD1
 
+/* Serial port of the FreeRTOS sandbox, USART3 on PC10/PC11 (CN7 pins 1
+   and 2), not connected to the ST-LINK.*/
+#define PORTAB_SIO_SB2                      SIOD3
+
 /* LED of the FreeRTOS sandbox.*/
 #define PORTAB_LED1_PORT                    GPIOA
 #define PORTAB_LED1_PAD                     GPIOA_LED_GREEN
