@@ -742,7 +742,18 @@ void sio_lld_serve_interrupt(SIODriver *siop) {
   uint32_t cr1, cr2, cr3, isr, isrmask;
 
   chDbgAssert((siop->state == HAL_DRV_STATE_STARTING) ||
-                (siop->state == HAL_DRV_STATE_READY), "invalid state");
+                (siop->state == HAL_DRV_STATE_READY) ||
+                (siop->state == HAL_DRV_STATE_STOPPING), "invalid state");
+
+  /* While the driver is stopping the interrupt sources are masked and the
+     events discarded, the stop path resets the peripheral shortly after.*/
+  if (siop->state == HAL_DRV_STATE_STOPPING) {
+    u->CR1 &= ~(USART_CR1_TXEIE  | USART_CR1_RXNEIE | USART_CR1_IDLEIE |
+                USART_CR1_TCIE   | USART_CR1_PEIE);
+    u->CR2 &= ~USART_CR2_LBDIE;
+    u->CR3 &= ~USART_CR3_EIE;
+    return;
+  }
 
   /* Read on control registers.*/
   cr1 = u->CR1;
