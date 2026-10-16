@@ -27,6 +27,9 @@
  *          zone active, a yield requested inside a critical zone or by a
  *          VRQ handler is deferred to the critical zone exit or to the VRQ
  *          epilogue, the same way a pended PendSV would be served.
+ *          The FPSCR register is not part of the context saved by
+ *          @p vPortSwitchContext(), it is saved in the VRQ frame when the
+ *          switch is performed on VRQ exit.
  *          Ticks are accounted from the host system time, ticks elapsed
  *          while the sandbox was not running are recovered.
  *          The scheduler can be stopped using @p vTaskEndScheduler(),
