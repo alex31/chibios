@@ -186,11 +186,9 @@ static bool sdc_lld_prepare_read_bytes(hal_sdc_driver_c *sdcp,
   sdcp->sdmmc->IDMABASE0 = (uint32_t)buf;
   sdcp->sdmmc->IDMACTRL  = SDMMC_IDMA_IDMAEN;
 
+  /* The transfer is polled, data interrupts are left disabled because the
+     ISR would consume the flags being polled.*/
   sdcp->sdmmc->ICR   = SDMMC_ICR_ALL_FLAGS;
-  sdcp->sdmmc->MASK  = SDMMC_MASK_DCRCFAILIE |
-                       SDMMC_MASK_DTIMEOUTIE |
-                       SDMMC_MASK_RXOVERRIE |
-                       SDMMC_MASK_DATAENDIE;
   sdcp->sdmmc->DLEN  = bytes;
 
   sdcp->sdmmc->DCTRL = SDMMC_DCTRL_DTDIR |
