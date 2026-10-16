@@ -150,15 +150,114 @@
     chSysUnlockFromISR();                                                   \
   } while (false)
 
+/**
+ * @brief       Wakes up a thread waiting for an I2S exchange state, lock held.
+ *
+ * @param[in]     i2sp          Pointer to the I2S driver instance.
+ * @param[in]     state         State being synchronized.
+ *
+ * @notapi
+ */
+#define _i2s_wakeup_i(i2sp, state)                                          \
+  do {                                                                      \
+    if ((i2sp)->sync_state == (state)) {                                    \
+      chThdResumeI(&(i2sp)->thread, MSG_OK);                                \
+    }                                                                       \
+  } while (false)
+
+/**
+ * @brief       Wakes up a thread waiting for I2S exchange termination, lock
+ *              held.
+ *
+ * @param[in]     i2sp          Pointer to the I2S driver instance.
+ *
+ * @notapi
+ */
+#define _i2s_error_wakeup_i(i2sp)                                           \
+  chThdResumeI(&(i2sp)->thread, MSG_RESET)
+
 #else
 #define _i2s_reset_i(i2sp)
 #define _i2s_reset_s(i2sp)
 #define _i2s_wakeup_isr(i2sp, state)
 #define _i2s_error_wakeup_isr(i2sp)
+#define _i2s_wakeup_i(i2sp, state)
+#define _i2s_error_wakeup_i(i2sp)
 #endif /* I2S_USE_SYNCHRONIZATION == TRUE */
 
 /**
+ * @brief       Common ISR code, half buffer event, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if an exchange is not active, for example after a stop.
+ *
+ * @param[in,out] i2sp          Pointer to the I2S driver instance.
+ *
+ * @notapi
+ */
+#define _i2s_isr_half_code_i(i2sp)                                          \
+  do {                                                                      \
+    if ((i2sp)->state == HAL_DRV_STATE_ACTIVE) {                            \
+      (i2sp)->events |= I2S_EVENT_HALF;                                     \
+      __cbdrv_invoke_cb_with_transition_i(i2sp,                             \
+                                          HAL_DRV_STATE_HALF,               \
+                                          HAL_DRV_STATE_ACTIVE);            \
+      _i2s_wakeup_i(i2sp, HAL_DRV_STATE_HALF);                              \
+    }                                                                       \
+  } while (false)
+
+/**
+ * @brief       Common ISR code, full buffer event, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if an exchange is not active, for example after a stop.
+ *
+ * @param[in,out] i2sp          Pointer to the I2S driver instance.
+ *
+ * @notapi
+ */
+#define _i2s_isr_full_code_i(i2sp)                                          \
+  do {                                                                      \
+    if ((i2sp)->state == HAL_DRV_STATE_ACTIVE) {                            \
+      (i2sp)->events |= I2S_EVENT_FULL;                                     \
+      __cbdrv_invoke_cb_with_transition_i(i2sp,                             \
+                                          HAL_DRV_STATE_FULL,               \
+                                          HAL_DRV_STATE_ACTIVE);            \
+      _i2s_wakeup_i(i2sp, HAL_DRV_STATE_FULL);                              \
+    }                                                                       \
+  } while (false)
+
+/**
+ * @brief       Common ISR code, error event, lock held.
+ * @note        Invoked from ISR context with the system lock held, the lock is
+ *              released during the callback execution. The event is discarded
+ *              if an exchange is not active, for example after a stop. An
+ *              exchange is still active while its half or full buffer callback
+ *              is running.
+ *
+ * @param[in,out] i2sp          Pointer to the I2S driver instance.
+ * @param[in]     err           Platform dependent error code.
+ *
+ * @notapi
+ */
+#define _i2s_isr_error_code_i(i2sp, err)                                    \
+  do {                                                                      \
+    if (((i2sp)->state == HAL_DRV_STATE_ACTIVE) ||                          \
+        ((i2sp)->state == HAL_DRV_STATE_HALF) ||                            \
+        ((i2sp)->state == HAL_DRV_STATE_FULL)) {                            \
+      i2s_lld_stop_exchange(i2sp);                                          \
+      (i2sp)->errors |= (err);                                              \
+      __cbdrv_invoke_cb_with_transition_i(i2sp,                             \
+                                          HAL_DRV_STATE_ERROR,              \
+                                          HAL_DRV_STATE_READY);             \
+      _i2s_error_wakeup_i(i2sp);                                            \
+    }                                                                       \
+  } while (false)
+
+/**
  * @brief       Common ISR code, half buffer event.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _i2s_isr_half_code_i().
  *
  * @param[in,out] i2sp          Pointer to the I2S driver instance.
  *
@@ -166,13 +265,15 @@
  */
 #define _i2s_isr_half_code(i2sp)                                            \
   do {                                                                      \
-    (i2sp)->events |= I2S_EVENT_HALF;                                       \
-    __cbdrv_invoke_half_cb(i2sp);                                           \
-    _i2s_wakeup_isr(i2sp, HAL_DRV_STATE_HALF);                              \
+    chSysLockFromISR();                                                     \
+    _i2s_isr_half_code_i(i2sp);                                             \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 
 /**
  * @brief       Common ISR code, full buffer event.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _i2s_isr_full_code_i().
  *
  * @param[in,out] i2sp          Pointer to the I2S driver instance.
  *
@@ -180,13 +281,15 @@
  */
 #define _i2s_isr_full_code(i2sp)                                            \
   do {                                                                      \
-    (i2sp)->events |= I2S_EVENT_FULL;                                       \
-    __cbdrv_invoke_full_cb(i2sp);                                           \
-    _i2s_wakeup_isr(i2sp, HAL_DRV_STATE_FULL);                              \
+    chSysLockFromISR();                                                     \
+    _i2s_isr_full_code_i(i2sp);                                             \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 
 /**
  * @brief       Common ISR code, error event.
+ * @note        The driver state is checked and changed under the system lock,
+ *              see @p _i2s_isr_error_code_i().
  *
  * @param[in,out] i2sp          Pointer to the I2S driver instance.
  * @param[in]     err           Platform dependent error code.
@@ -195,12 +298,9 @@
  */
 #define _i2s_isr_error_code(i2sp, err)                                      \
   do {                                                                      \
-    i2s_lld_stop_exchange(i2sp);                                            \
-    (i2sp)->errors |= (err);                                                \
-    __cbdrv_invoke_cb_with_transition(i2sp,                                 \
-                                      HAL_DRV_STATE_ERROR,                  \
-                                      HAL_DRV_STATE_READY);                 \
-    _i2s_error_wakeup_isr(i2sp);                                            \
+    chSysLockFromISR();                                                     \
+    _i2s_isr_error_code_i(i2sp, err);                                       \
+    chSysUnlockFromISR();                                                   \
   } while (false)
 /** @} */
 

@@ -76,6 +76,24 @@ do {
   chSysUnlockFromISR();
 } while (false)]]></implementation>
           </macro>
+          <macro name="_i2s_wakeup_i">
+            <brief>Wakes up a thread waiting for an I2S exchange state, lock held.</brief>
+            <param name="i2sp" dir="in">Pointer to the I2S driver instance.</param>
+            <param name="state" dir="in">State being synchronized.</param>
+            <notapi />
+            <implementation><![CDATA[
+do {
+  if ((i2sp)->sync_state == (state)) {
+    chThdResumeI(&(i2sp)->thread, MSG_OK);
+  }
+} while (false)]]></implementation>
+          </macro>
+          <macro name="_i2s_error_wakeup_i">
+            <brief>Wakes up a thread waiting for I2S exchange termination, lock held.</brief>
+            <param name="i2sp" dir="in">Pointer to the I2S driver instance.</param>
+            <notapi />
+            <implementation><![CDATA[chThdResumeI(&(i2sp)->thread, MSG_RESET)]]></implementation>
+          </macro>
           <elseif />
           <macro name="_i2s_reset_i">
             <param name="i2sp" dir="in" />
@@ -94,42 +112,114 @@ do {
             <param name="i2sp" dir="in" />
             <implementation><![CDATA[]]></implementation>
           </macro>
+          <macro name="_i2s_wakeup_i">
+            <param name="i2sp" dir="in" />
+            <param name="state" dir="in" />
+            <implementation><![CDATA[]]></implementation>
+          </macro>
+          <macro name="_i2s_error_wakeup_i">
+            <param name="i2sp" dir="in" />
+            <implementation><![CDATA[]]></implementation>
+          </macro>
         </condition>
-        <macro name="_i2s_isr_half_code">
-          <brief>Common ISR code, half buffer event.</brief>
+        <macro name="_i2s_isr_half_code_i">
+          <brief>Common ISR code, half buffer event, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          an exchange is not active, for example after a stop.</note>
           <param name="i2sp" dir="both">Pointer to the I2S driver instance.</param>
           <notapi />
           <implementation><![CDATA[
 do {
-  (i2sp)->events |= I2S_EVENT_HALF;
-  __cbdrv_invoke_half_cb(i2sp);
-  _i2s_wakeup_isr(i2sp, HAL_DRV_STATE_HALF);
+  if ((i2sp)->state == HAL_DRV_STATE_ACTIVE) {
+    (i2sp)->events |= I2S_EVENT_HALF;
+    __cbdrv_invoke_cb_with_transition_i(i2sp,
+                                        HAL_DRV_STATE_HALF,
+                                        HAL_DRV_STATE_ACTIVE);
+    _i2s_wakeup_i(i2sp, HAL_DRV_STATE_HALF);
+  }
 } while (false)]]></implementation>
         </macro>
-        <macro name="_i2s_isr_full_code">
-          <brief>Common ISR code, full buffer event.</brief>
+        <macro name="_i2s_isr_full_code_i">
+          <brief>Common ISR code, full buffer event, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          an exchange is not active, for example after a stop.</note>
           <param name="i2sp" dir="both">Pointer to the I2S driver instance.</param>
           <notapi />
           <implementation><![CDATA[
 do {
-  (i2sp)->events |= I2S_EVENT_FULL;
-  __cbdrv_invoke_full_cb(i2sp);
-  _i2s_wakeup_isr(i2sp, HAL_DRV_STATE_FULL);
+  if ((i2sp)->state == HAL_DRV_STATE_ACTIVE) {
+    (i2sp)->events |= I2S_EVENT_FULL;
+    __cbdrv_invoke_cb_with_transition_i(i2sp,
+                                        HAL_DRV_STATE_FULL,
+                                        HAL_DRV_STATE_ACTIVE);
+    _i2s_wakeup_i(i2sp, HAL_DRV_STATE_FULL);
+  }
 } while (false)]]></implementation>
         </macro>
-        <macro name="_i2s_isr_error_code">
-          <brief>Common ISR code, error event.</brief>
+        <macro name="_i2s_isr_error_code_i">
+          <brief>Common ISR code, error event, lock held.</brief>
+          <note>Invoked from ISR context with the system lock held, the lock is
+          released during the callback execution. The event is discarded if
+          an exchange is not active, for example after a stop. An exchange
+          is still active while its half or full buffer callback is
+          running.</note>
           <param name="i2sp" dir="both">Pointer to the I2S driver instance.</param>
           <param name="err" dir="in">Platform dependent error code.</param>
           <notapi />
           <implementation><![CDATA[
 do {
-  i2s_lld_stop_exchange(i2sp);
-  (i2sp)->errors |= (err);
-  __cbdrv_invoke_cb_with_transition(i2sp,
-                                    HAL_DRV_STATE_ERROR,
-                                    HAL_DRV_STATE_READY);
-  _i2s_error_wakeup_isr(i2sp);
+  if (((i2sp)->state == HAL_DRV_STATE_ACTIVE) ||
+      ((i2sp)->state == HAL_DRV_STATE_HALF) ||
+      ((i2sp)->state == HAL_DRV_STATE_FULL)) {
+    i2s_lld_stop_exchange(i2sp);
+    (i2sp)->errors |= (err);
+    __cbdrv_invoke_cb_with_transition_i(i2sp,
+                                        HAL_DRV_STATE_ERROR,
+                                        HAL_DRV_STATE_READY);
+    _i2s_error_wakeup_i(i2sp);
+  }
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_i2s_isr_half_code">
+          <brief>Common ISR code, half buffer event.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _i2s_isr_half_code_i().</note>
+          <param name="i2sp" dir="both">Pointer to the I2S driver instance.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _i2s_isr_half_code_i(i2sp);
+  chSysUnlockFromISR();
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_i2s_isr_full_code">
+          <brief>Common ISR code, full buffer event.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _i2s_isr_full_code_i().</note>
+          <param name="i2sp" dir="both">Pointer to the I2S driver instance.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _i2s_isr_full_code_i(i2sp);
+  chSysUnlockFromISR();
+} while (false)]]></implementation>
+        </macro>
+        <macro name="_i2s_isr_error_code">
+          <brief>Common ISR code, error event.</brief>
+          <note>The driver state is checked and changed under the system lock,
+          see @p _i2s_isr_error_code_i().</note>
+          <param name="i2sp" dir="both">Pointer to the I2S driver instance.</param>
+          <param name="err" dir="in">Platform dependent error code.</param>
+          <notapi />
+          <implementation><![CDATA[
+do {
+  chSysLockFromISR();
+  _i2s_isr_error_code_i(i2sp, err);
+  chSysUnlockFromISR();
 } while (false)]]></implementation>
         </macro>
       </group>
