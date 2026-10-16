@@ -205,8 +205,16 @@ typedef struct {
 
 /**
  * @brief   Low level fields of the USB driver structure.
+ * @note    RP devices have one NVIC per core, @p drvStart() enables the
+ *          USB vector on the calling core only and the low level stop
+ *          disables it on the calling core: @p drvStop() must be invoked
+ *          from the core that started the driver, it is checked by an
+ *          assertion. That core serves all the USB events and invokes
+ *          all the USB callbacks.
  */
 #define usb_lld_driver_fields                                               \
+  /* Core which started the driver, see the notes above.*/                  \
+  uint32_t                      core;                                       \
   /* Next allocation offset in the DPRAM data pool.*/                       \
   uint16_t                      noffset;                                    \
   /* Endpoints hardware contexts, index zero is endpoint zero.*/            \

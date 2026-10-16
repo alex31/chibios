@@ -641,6 +641,10 @@ msg_t usb_lld_start(hal_usb_driver_c *usbp) {
     USB->SET.INTE = USB_INTE_ERROR_DATA_SEQ;
 #endif /* RP_USB_USE_ERROR_DATA_SEQ_INTR */
 
+    /* The calling core owns the vector, see the notes in the driver
+       header.*/
+    usbp->core = SIO->CPUID;
+
     /* Enable USB interrupt. */
     nvicEnableVector(RP_USBCTRL_IRQ_NUMBER, RP_IRQ_USB0_PRIORITY);
   }
@@ -663,6 +667,8 @@ msg_t usb_lld_start(hal_usb_driver_c *usbp) {
 void usb_lld_stop(hal_usb_driver_c *usbp) {
 
   if (usbp->state != HAL_DRV_STATE_STOP) {
+    chDbgAssert(SIO->CPUID == usbp->core, "wrong core");
+
 #if RP_USB_USE_USB1 == TRUE
     if (&USBD1 == usbp) {
       /* Disable USB interrupt */
@@ -1101,6 +1107,14 @@ void usb_lld_clear_in(hal_usb_driver_c *usbp, usbep_t ep) {
  */
 void usb_lld_serve_interrupt(hal_usb_driver_c *usbp) {
   uint32_t ints;
+
+  /* While the driver is stopping no event is served and no callback is
+     invoked, the interrupt sources are disabled so that the interrupt
+     does not fire again until the stop disables the vector.*/
+  if (usbp->state == HAL_DRV_STATE_STOPPING) {
+    USB->INTE = 0U;
+    return;
+  }
 
   ints = USB->INTS;
 
