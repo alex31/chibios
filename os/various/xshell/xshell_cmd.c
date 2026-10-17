@@ -42,6 +42,9 @@
 #if (XSHELL_CMD_TEST_ENABLED == TRUE) || defined(__DOXYGEN__)
 #include "rt_test_root.h"
 #include "oslib_test_root.h"
+#if (XSHELL_CMD_TEST_SB_ENABLED == TRUE) || defined(__DOXYGEN__)
+#include "sb_test_root.h"
+#endif
 #endif
 
 /*===========================================================================*/
@@ -339,17 +342,25 @@ static void cmd_threads(xshell_t *xshp, int argc, char *argv[], char *envp[]) {
 
 #if (XSHELL_CMD_TEST_ENABLED == TRUE) || defined(__DOXYGEN__)
 static void cmd_test(xshell_t *xshp, int argc, char *argv[], char *envp[]) {
+#if XSHELL_CMD_TEST_SB_ENABLED == TRUE
+  static const char usage[] = "[rt|oslib|sb]";
+#else
+  static const char usage[] = "[rt|oslib]";
+#endif
 
   (void)argv;
   (void)envp;
 
   if (argc > 2) {
-    xshellUsage(xshp, "[rt|oslib]");
+    xshellUsage(xshp, usage);
     return;
   }
   else if (argc == 1) {
     test_execute(xshp->stream, &rt_test_suite);
     test_execute(xshp->stream, &oslib_test_suite);
+#if XSHELL_CMD_TEST_SB_ENABLED == TRUE
+    test_execute(xshp->stream, &sb_test_suite);
+#endif
   }
   else if (!strcmp(argv[1], "rt")) {
     test_execute(xshp->stream, &rt_test_suite);
@@ -357,8 +368,13 @@ static void cmd_test(xshell_t *xshp, int argc, char *argv[], char *envp[]) {
   else if (!strcmp(argv[1], "oslib")) {
     test_execute(xshp->stream, &oslib_test_suite);
   }
+#if XSHELL_CMD_TEST_SB_ENABLED == TRUE
+  else if (!strcmp(argv[1], "sb")) {
+    test_execute(xshp->stream, &sb_test_suite);
+  }
+#endif
   else {
-    xshellUsage(xshp, "rt|oslib");
+    xshellUsage(xshp, usage);
     return;
   }
 }

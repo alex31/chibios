@@ -61,6 +61,10 @@
 #define XSHELL_CMD_TEST_ENABLED             TRUE
 #endif
 
+#if !defined(XSHELL_CMD_TEST_SB_ENABLED) || defined(__DOXYGEN__)
+#define XSHELL_CMD_TEST_SB_ENABLED          FALSE
+#endif
+
 #if !defined(XSHELL_CMD_FILES_ENABLED) || defined(__DOXYGEN__)
 #define XSHELL_CMD_FILES_ENABLED            FALSE
 #endif
@@ -95,6 +99,10 @@
 
 #if (XSHELL_CMD_FILES_ENABLED == TRUE) && (CH_CFG_USE_HEAP == FALSE)
 #error "XSHELL_CMD_FILES_ENABLED requires CH_CFG_USE_HEAP"
+#endif
+
+#if (XSHELL_CMD_TEST_SB_ENABLED == TRUE) && (XSHELL_CMD_TEST_ENABLED == FALSE)
+#error "XSHELL_CMD_TEST_SB_ENABLED requires XSHELL_CMD_TEST_ENABLED"
 #endif
 
 /*===========================================================================*/

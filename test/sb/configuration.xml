@@ -1,0 +1,986 @@
+<instance locked="false"
+  id="org.chibios.spc5.components.portable.chibios_unitary_tests_engine"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://www.chibios.org/xml/schema/unittest.xsd">
+  <description>
+    <brief>
+      <value>ChibiOS/SB Test Suite.</value>
+    </brief>
+    <copyright>
+      <value><![CDATA[/*
+    ChibiOS - Copyright (C) 2006-2026 Giovanni Di Sirio.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+*/]]></value>
+    </copyright>
+    <introduction>
+      <value>Test suite for the ChibiOS/SB sandbox interface. The suite
+        is executed inside a sandbox running ChibiOS/RT on the sandbox
+        port, it verifies the host services from the sandbox side and
+        measures the cost of crossing the sandbox boundary.</value>
+    </introduction>
+  </description>
+  <global_data_and_code>
+    <code_prefix>
+      <value>sb_</value>
+    </code_prefix>
+    <global_definitions>
+      <value><![CDATA[/*
+ * VRQ reserved to the test suite, it must be a plain decimal number and
+ * the application must not use it.
+ */
+#if !defined(SB_TEST_VRQ)
+#define SB_TEST_VRQ                 31
+#endif
+
+#if (SB_TEST_VRQ < 1) || (SB_TEST_VRQ > 31)
+#error "invalid SB_TEST_VRQ value"
+#endif
+
+/*
+ * Mask of the test VRQ.
+ */
+#define SB_TEST_VRQ_MASK            (1U << SB_TEST_VRQ)
+
+/*
+ * Fastcall and syscall codes not assigned by the host, they are served as
+ * not implemented. The fastcall code zero is never assigned.
+ */
+#define SB_TEST_UNASSIGNED_FASTC    0
+#define SB_TEST_UNASSIGNED_SYSC     200
+
+/*
+ * Allowed delay in host system time checks.
+ */
+#define SB_TEST_ALLOWED_DELAY       sbTimeMS2I(2)
+
+extern volatile uint32_t sb_test_vrq_count;
+
+systime_t sb_test_wait_tick(void);
+msg_t sb_test_unassigned_fastcall(void);
+msg_t sb_test_unassigned_syscall(void);
+uint32_t sb_test_get_pending(void);]]></value>
+    </global_definitions>
+    <global_code>
+      <value><![CDATA[/*
+ * Name of the test VRQ handler.
+ */
+#define __SB_TEST_MK_VECTOR(n)      __sb_vector##n
+#define SB_TEST_MK_VECTOR(n)        __SB_TEST_MK_VECTOR(n)
+
+/*
+ * Counter of the test VRQ activations.
+ */
+volatile uint32_t sb_test_vrq_count;
+
+/*
+ * Test VRQ handler.
+ */
+CH_IRQ_HANDLER(SB_TEST_MK_VECTOR(SB_TEST_VRQ)) {
+
+  CH_IRQ_PROLOGUE();
+
+  sb_test_vrq_count++;
+
+  CH_IRQ_EPILOGUE();
+}
+
+/*
+ * Delays execution until next system time tick.
+ */
+systime_t sb_test_wait_tick(void) {
+
+  chThdSleep(1);
+  return chVTGetSystemTime();
+}
+
+/*
+ * Invokes an unassigned fastcall code.
+ */
+msg_t sb_test_unassigned_fastcall(void) {
+
+  __syscall0r(SB_TEST_UNASSIGNED_FASTC);
+  return (msg_t)r0;
+}
+
+/*
+ * Invokes an unassigned syscall code.
+ */
+msg_t sb_test_unassigned_syscall(void) {
+
+  __syscall0r(SB_TEST_UNASSIGNED_SYSC);
+  return (msg_t)r0;
+}
+
+/*
+ * Returns the mask of the pending VRQs without changing it.
+ */
+uint32_t sb_test_get_pending(void) {
+
+  return __sb_vrq_clrwt(0U);
+}]]></value>
+    </global_code>
+  </global_data_and_code>
+  <sequences>
+    <sequence>
+      <type index="0">
+        <value>Internal Tests</value>
+      </type>
+      <brief>
+        <value>Information.</value>
+      </brief>
+      <description>
+        <value>This sequence reports configuration and version
+          information about the sandbox environment.
+        </value>
+      </description>
+      <condition>
+        <value />
+      </condition>
+      <shared_code>
+        <value><![CDATA[#include "ch.h"]]></value>
+      </shared_code>
+      <cases>
+        <case>
+          <brief>
+            <value>Sandbox Info.</value>
+          </brief>
+          <description>
+            <value>Sandbox-related info are reported.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value />
+            </setup_code>
+            <teardown_code>
+              <value />
+            </teardown_code>
+            <local_variables>
+              <value />
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>Prints the sandbox settings.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[test_print("--- Host time frequency:                ");
+test_printn(sbGetFrequency());
+test_println(" Hz");
+test_print("--- Sandbox tick frequency:             ");
+test_printn(CH_CFG_ST_FREQUENCY);
+test_println(" Hz");
+#if defined(PORT_USE_LOCAL_SYSTICK)
+test_print("--- Sandbox local system tick:          ");
+test_println(PORT_USE_LOCAL_SYSTICK == TRUE ? "yes" : "no");
+#endif
+test_print("--- Test VRQ:                           ");
+test_printn(SB_TEST_VRQ);
+test_println("");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+      </cases>
+    </sequence>
+    <sequence>
+      <type index="0">
+        <value>Internal Tests</value>
+      </type>
+      <brief>
+        <value>Host services.</value>
+      </brief>
+      <description>
+        <value>This sequence tests the basic host services available to
+          the sandbox through fastcalls and syscalls.</value>
+      </description>
+      <condition>
+        <value />
+      </condition>
+      <shared_code>
+        <value><![CDATA[#include "ch.h"]]></value>
+      </shared_code>
+      <cases>
+        <case>
+          <brief>
+            <value>Unassigned codes.</value>
+          </brief>
+          <description>
+            <value>Fastcall and syscall codes not assigned by the host are
+              invoked, the host is expected to serve them as not
+              implemented.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value />
+            </setup_code>
+            <teardown_code>
+              <value />
+            </teardown_code>
+            <local_variables>
+              <value><![CDATA[msg_t msg;]]></value>
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>An unassigned fastcall code is invoked,
+                  CH_RET_ENOSYS is expected.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[msg = sb_test_unassigned_fastcall();
+test_assert(msg == CH_RET_ENOSYS, "unexpected fastcall result");]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>An unassigned syscall code is invoked,
+                  CH_RET_ENOSYS is expected.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[msg = sb_test_unassigned_syscall();
+test_assert(msg == CH_RET_ENOSYS, "unexpected syscall result");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+        <case>
+          <brief>
+            <value>Null calls.</value>
+          </brief>
+          <description>
+            <value>The null fastcall and the null syscall are invoked, the
+              host is expected to serve them successfully.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value />
+            </setup_code>
+            <teardown_code>
+              <value />
+            </teardown_code>
+            <local_variables>
+              <value><![CDATA[msg_t msg;]]></value>
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>The null fastcall is invoked, CH_RET_SUCCESS is
+                  expected.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[msg = sbNopFastcall();
+test_assert(msg == CH_RET_SUCCESS, "unexpected fastcall result");]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>The null syscall is invoked, CH_RET_SUCCESS is
+                  expected.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[msg = sbNopSyscall();
+test_assert(msg == CH_RET_SUCCESS, "unexpected syscall result");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+        <case>
+          <brief>
+            <value>Host system time.</value>
+          </brief>
+          <description>
+            <value>The host system time services are tested.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value />
+            </setup_code>
+            <teardown_code>
+              <value />
+            </teardown_code>
+            <local_variables>
+              <value><![CDATA[systime_t t0, t1;]]></value>
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>The host system time frequency is read, a non-zero
+                  value is expected.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[test_assert(sbGetFrequency() > 0U, "invalid frequency");]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>The sandbox sleeps for 10 milliseconds, the host
+                  system time is expected to advance within the allowed
+                  window.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[t0 = sbGetSystemTime();
+sbSleepMilliseconds(10);
+t1 = sbGetSystemTime();
+test_assert(sbTimeDiffX(t0, t1) >= sbTimeMS2I(10), "too early");
+test_assert(sbTimeDiffX(t0, t1) <= sbTimeMS2I(10) + SB_TEST_ALLOWED_DELAY,
+            "too late");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+      </cases>
+    </sequence>
+    <sequence>
+      <type index="0">
+        <value>Internal Tests</value>
+      </type>
+      <brief>
+        <value>Virtual IRQs.</value>
+      </brief>
+      <description>
+        <value>This sequence tests the delivery of software-triggered
+          VRQs to the sandbox, the per-VRQ enable and the global VRQ
+          disable are tested.</value>
+      </description>
+      <condition>
+        <value />
+      </condition>
+      <shared_code>
+        <value><![CDATA[#include "ch.h"]]></value>
+      </shared_code>
+      <cases>
+        <case>
+          <brief>
+            <value>Software-triggered VRQ.</value>
+          </brief>
+          <description>
+            <value>The test VRQ is made pending while enabled, it is
+              expected to be served on return from the triggering
+              fastcall.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value><![CDATA[(void)__sb_vrq_clren(SB_TEST_VRQ_MASK);
+(void)__sb_vrq_clrwt(SB_TEST_VRQ_MASK);
+sb_test_vrq_count = 0U;]]></value>
+            </setup_code>
+            <teardown_code>
+              <value><![CDATA[(void)__sb_vrq_clren(SB_TEST_VRQ_MASK);
+(void)__sb_vrq_clrwt(SB_TEST_VRQ_MASK);]]></value>
+            </teardown_code>
+            <local_variables>
+              <value />
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>The test VRQ is enabled, no activation is expected
+                  without a pending request.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[(void)__sb_vrq_seten(SB_TEST_VRQ_MASK);
+test_assert(sb_test_vrq_count == 0U, "spurious activation");]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>The test VRQ is made pending, the handler is
+                  expected to run once and the request to be
+                  cleared.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[(void)__sb_vrq_setwt(SB_TEST_VRQ_MASK);
+test_assert(sb_test_vrq_count == 1U, "not activated");
+test_assert((sb_test_get_pending() & SB_TEST_VRQ_MASK) == 0U,
+            "still pending");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+        <case>
+          <brief>
+            <value>Per-VRQ enable.</value>
+          </brief>
+          <description>
+            <value>The test VRQ is made pending while individually
+              disabled, it is expected to be served when enabled. A
+              request withdrawn while disabled is expected to be
+              discarded.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value><![CDATA[(void)__sb_vrq_clren(SB_TEST_VRQ_MASK);
+(void)__sb_vrq_clrwt(SB_TEST_VRQ_MASK);
+sb_test_vrq_count = 0U;]]></value>
+            </setup_code>
+            <teardown_code>
+              <value><![CDATA[(void)__sb_vrq_clren(SB_TEST_VRQ_MASK);
+(void)__sb_vrq_clrwt(SB_TEST_VRQ_MASK);]]></value>
+            </teardown_code>
+            <local_variables>
+              <value />
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>The test VRQ is made pending while disabled, no
+                  activation is expected and the request is expected to
+                  stay pending.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[(void)__sb_vrq_setwt(SB_TEST_VRQ_MASK);
+test_assert(sb_test_vrq_count == 0U, "activated while disabled");
+test_assert((sb_test_get_pending() & SB_TEST_VRQ_MASK) != 0U,
+            "not pending");]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>The test VRQ is enabled, the pending request is
+                  expected to be served on return from the enabling
+                  fastcall.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[(void)__sb_vrq_seten(SB_TEST_VRQ_MASK);
+test_assert(sb_test_vrq_count == 1U, "not activated");
+test_assert((sb_test_get_pending() & SB_TEST_VRQ_MASK) == 0U,
+            "still pending");]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>The test VRQ is disabled, made pending and then
+                  withdrawn, no activation is expected after enabling
+                  it again.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[(void)__sb_vrq_clren(SB_TEST_VRQ_MASK);
+(void)__sb_vrq_setwt(SB_TEST_VRQ_MASK);
+(void)__sb_vrq_clrwt(SB_TEST_VRQ_MASK);
+(void)__sb_vrq_seten(SB_TEST_VRQ_MASK);
+test_assert(sb_test_vrq_count == 1U, "withdrawn request activated");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+        <case>
+          <brief>
+            <value>Global VRQ disable.</value>
+          </brief>
+          <description>
+            <value>The test VRQ is made pending inside the kernel critical
+              zone, which globally disables VRQs in the sandbox port, it
+              is expected to be served when leaving the zone.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value><![CDATA[(void)__sb_vrq_clren(SB_TEST_VRQ_MASK);
+(void)__sb_vrq_clrwt(SB_TEST_VRQ_MASK);
+sb_test_vrq_count = 0U;]]></value>
+            </setup_code>
+            <teardown_code>
+              <value><![CDATA[(void)__sb_vrq_clren(SB_TEST_VRQ_MASK);
+(void)__sb_vrq_clrwt(SB_TEST_VRQ_MASK);]]></value>
+            </teardown_code>
+            <local_variables>
+              <value><![CDATA[uint32_t n;]]></value>
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>The test VRQ is enabled and made pending inside
+                  the critical zone, no activation is expected inside
+                  the zone.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[(void)__sb_vrq_seten(SB_TEST_VRQ_MASK);
+chSysLock();
+(void)__sb_vrq_setwt(SB_TEST_VRQ_MASK);
+n = sb_test_vrq_count;
+chSysUnlock();
+test_assert(n == 0U, "activated while globally disabled");]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>The pending request is expected to have been served
+                  when leaving the critical zone.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[test_assert(sb_test_vrq_count == 1U, "not activated");
+test_assert((sb_test_get_pending() & SB_TEST_VRQ_MASK) == 0U,
+            "still pending");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+        <case>
+          <brief>
+            <value>VRQ wait.</value>
+          </brief>
+          <description>
+            <value>A VRQ wait is performed while an enabled VRQ is pending
+              and VRQs are globally disabled, the wait is expected to
+              return without serving the request.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value><![CDATA[(void)__sb_vrq_clren(SB_TEST_VRQ_MASK);
+(void)__sb_vrq_clrwt(SB_TEST_VRQ_MASK);
+sb_test_vrq_count = 0U;]]></value>
+            </setup_code>
+            <teardown_code>
+              <value><![CDATA[(void)__sb_vrq_clren(SB_TEST_VRQ_MASK);
+(void)__sb_vrq_clrwt(SB_TEST_VRQ_MASK);]]></value>
+            </teardown_code>
+            <local_variables>
+              <value><![CDATA[uint32_t n;]]></value>
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>The test VRQ is enabled and made pending inside
+                  the critical zone then a VRQ wait is performed, the
+                  wait is expected to return without activations.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[(void)__sb_vrq_seten(SB_TEST_VRQ_MASK);
+chSysLock();
+(void)__sb_vrq_setwt(SB_TEST_VRQ_MASK);
+__sb_vrq_wait();
+n = sb_test_vrq_count;
+chSysUnlock();
+test_assert(n == 0U, "activated while globally disabled");]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>The pending request is expected to have been served
+                  when leaving the critical zone.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[test_assert(sb_test_vrq_count == 1U, "not activated");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+      </cases>
+    </sequence>
+    <sequence>
+      <type index="2">
+        <value>Benchmarks</value>
+      </type>
+      <brief>
+        <value>Benchmarks.</value>
+      </brief>
+      <description>
+        <value>This module implements a series of sandbox benchmarks. The
+          benchmarks measure the cost of crossing the sandbox boundary,
+          the numbers allow to discover performance regressions in the
+          host and sandbox ports.&lt;br&gt;&#xD;
+          The performance is calculated by measuring the number of
+          iterations after a second of continuous operations, the loop
+          overhead is included.
+        </value>
+      </description>
+      <condition>
+        <value />
+      </condition>
+      <shared_code>
+        <value><![CDATA[#include "ch.h"]]></value>
+      </shared_code>
+      <cases>
+        <case>
+          <brief>
+            <value>Null fastcall performance.</value>
+          </brief>
+          <description>
+            <value>The null fastcall is invoked in a continuous
+              loop.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value />
+            </setup_code>
+            <teardown_code>
+              <value />
+            </teardown_code>
+            <local_variables>
+              <value><![CDATA[uint32_t n;]]></value>
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>The fastcall is invoked continuously in a
+                  one-second time window.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[systime_t start, end;
+
+n = 0;
+start = sb_test_wait_tick();
+end = chTimeAddX(start, TIME_MS2I(1000));
+do {
+  (void)sbNopFastcall();
+  n++;
+} while (chVTIsSystemTimeWithinX(start, end));]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>Score is printed.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[test_print("--- Score : ");
+test_printn(n);
+test_println(" fastcalls/S");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+        <case>
+          <brief>
+            <value>System time fastcall performance.</value>
+          </brief>
+          <description>
+            <value>The host system time is read in a continuous
+              loop.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value />
+            </setup_code>
+            <teardown_code>
+              <value />
+            </teardown_code>
+            <local_variables>
+              <value><![CDATA[uint32_t n;]]></value>
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>The fastcall is invoked continuously in a
+                  one-second time window.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[systime_t start, end;
+
+n = 0;
+start = sb_test_wait_tick();
+end = chTimeAddX(start, TIME_MS2I(1000));
+do {
+  (void)sbGetSystemTime();
+  n++;
+} while (chVTIsSystemTimeWithinX(start, end));]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>Score is printed.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[test_print("--- Score : ");
+test_printn(n);
+test_println(" fastcalls/S");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+        <case>
+          <brief>
+            <value>Null syscall performance.</value>
+          </brief>
+          <description>
+            <value>The null syscall is invoked in a continuous loop, each
+              iteration includes the check for pending VRQs on return
+              from the syscall.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value />
+            </setup_code>
+            <teardown_code>
+              <value />
+            </teardown_code>
+            <local_variables>
+              <value><![CDATA[uint32_t n;]]></value>
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>The syscall is invoked continuously in a
+                  one-second time window.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[systime_t start, end;
+
+n = 0;
+start = sb_test_wait_tick();
+end = chTimeAddX(start, TIME_MS2I(1000));
+do {
+  (void)sbNopSyscall();
+  n++;
+} while (chVTIsSystemTimeWithinX(start, end));]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>Score is printed.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[test_print("--- Score : ");
+test_printn(n);
+test_println(" syscalls/S");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+        <case>
+          <brief>
+            <value>Software-triggered VRQ performance.</value>
+          </brief>
+          <description>
+            <value>The test VRQ is made pending in a continuous loop, each
+              iteration includes the triggering fastcall, the delivery
+              to the handler and the VRQ return fastcall.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value><![CDATA[(void)__sb_vrq_clrwt(SB_TEST_VRQ_MASK);
+sb_test_vrq_count = 0U;
+(void)__sb_vrq_seten(SB_TEST_VRQ_MASK);]]></value>
+            </setup_code>
+            <teardown_code>
+              <value><![CDATA[(void)__sb_vrq_clren(SB_TEST_VRQ_MASK);
+(void)__sb_vrq_clrwt(SB_TEST_VRQ_MASK);]]></value>
+            </teardown_code>
+            <local_variables>
+              <value><![CDATA[uint32_t n;]]></value>
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>The test VRQ is triggered continuously in a
+                  one-second time window, each trigger is expected to
+                  activate the handler once.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[systime_t start, end;
+
+n = 0;
+start = sb_test_wait_tick();
+end = chTimeAddX(start, TIME_MS2I(1000));
+do {
+  (void)__sb_vrq_setwt(SB_TEST_VRQ_MASK);
+  n++;
+} while (chVTIsSystemTimeWithinX(start, end));
+test_assert(sb_test_vrq_count == n, "activations mismatch");]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>Score is printed.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[test_print("--- Score : ");
+test_printn(n);
+test_println(" VRQs/S");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+        <case>
+          <brief>
+            <value>Critical zone performance.</value>
+          </brief>
+          <description>
+            <value>The kernel critical zone is entered and left in a
+              continuous loop, in the sandbox port each iteration
+              includes the global VRQ disable and enable
+              fastcalls.</value>
+          </description>
+          <condition>
+            <value />
+          </condition>
+          <various_code>
+            <setup_code>
+              <value />
+            </setup_code>
+            <teardown_code>
+              <value />
+            </teardown_code>
+            <local_variables>
+              <value><![CDATA[uint32_t n;]]></value>
+            </local_variables>
+          </various_code>
+          <steps>
+            <step>
+              <description>
+                <value>The critical zone is entered and left continuously
+                  in a one-second time window.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[systime_t start, end;
+
+n = 0;
+start = sb_test_wait_tick();
+end = chTimeAddX(start, TIME_MS2I(1000));
+do {
+  chSysLock();
+  chSysUnlock();
+  n++;
+} while (chVTIsSystemTimeWithinX(start, end));]]></value>
+              </code>
+            </step>
+            <step>
+              <description>
+                <value>Score is printed.</value>
+              </description>
+              <tags>
+                <value />
+              </tags>
+              <code>
+                <value><![CDATA[test_print("--- Score : ");
+test_printn(n);
+test_println(" lock/unlock cycles/S");]]></value>
+              </code>
+            </step>
+          </steps>
+        </case>
+      </cases>
+    </sequence>
+  </sequences>
+</instance>
