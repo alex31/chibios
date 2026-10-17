@@ -1,0 +1,235 @@
+.DEFAULT_GOAL := all
+
+##############################################################################
+# Build global options
+# NOTE: Can be overridden externally.
+#
+
+# Compiler options here.
+ifeq ($(USE_OPT),)
+  USE_OPT = -Og -ggdb -fomit-frame-pointer -falign-functions=16 --specs=nano.specs
+endif
+
+# C specific options here (added to USE_OPT).
+ifeq ($(USE_COPT),)
+  USE_COPT =
+endif
+
+# C++ specific options here (added to USE_OPT).
+ifeq ($(USE_CPPOPT),)
+  USE_CPPOPT = -fno-rtti
+endif
+
+# Enable this if you want the linker to remove unused code and data.
+ifeq ($(USE_LINK_GC),)
+  USE_LINK_GC = yes
+endif
+
+# Linker extra options here.
+ifeq ($(USE_LDOPT),)
+  USE_LDOPT =
+endif
+
+# Enable this if you want link time optimizations (LTO).
+ifeq ($(USE_LTO),)
+  USE_LTO = yes
+endif
+
+# Enable this if you want to see the full log while compiling.
+ifeq ($(USE_VERBOSE_COMPILE),)
+  USE_VERBOSE_COMPILE = no
+endif
+
+# If enabled, this option makes the build process faster by not compiling
+# modules not used in the current configuration.
+ifeq ($(USE_SMART_BUILD),)
+  USE_SMART_BUILD = yes
+endif
+
+#
+# Build global options
+##############################################################################
+
+##############################################################################
+# Architecture or project specific options
+#
+
+# Stack size to be allocated to the Cortex-M process stack. This stack is
+# the stack used by the main() thread.
+ifeq ($(USE_PROCESS_STACKSIZE),)
+  USE_PROCESS_STACKSIZE = 0x800
+endif
+
+# Stack size to the allocated to the Cortex-M main/exceptions stack. This
+# stack is used for processing interrupts and exceptions.
+ifeq ($(USE_EXCEPTIONS_STACKSIZE),)
+  USE_EXCEPTIONS_STACKSIZE = 0x400
+endif
+
+# Enables the use of FPU (no, softfp, hard).
+ifeq ($(USE_FPU),)
+  USE_FPU = no
+endif
+
+# FPU-related options.
+ifeq ($(USE_FPU_OPT),)
+  USE_FPU_OPT = -mfloat-abi=$(USE_FPU) -mfpu=fpv4-sp-d16
+endif
+
+#
+# Architecture or project specific options
+##############################################################################
+
+##############################################################################
+# Project, target, sources and paths
+#
+
+# Define project name here
+PROJECT = ch
+
+# Target settings.
+MCU  = cortex-m4
+
+# Imported source files and paths.
+CHIBIOS  := ../../..
+CONFDIR  := ./cfg/stm32g474re_nucleo64
+BUILDDIR := ./build/stm32g474re_nucleo64
+DEPDIR   := ./.dep/stm32g474re_nucleo64
+
+# Required modules.
+OOPSELECT := base referenced chprintf nullstreams
+UTILSSELECT :=
+
+# Licensing files.
+include $(CHIBIOS)/os/license/license.mk
+# Startup files.
+include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32g4xx.mk
+# Common files.
+include $(CHIBIOS)/os/common/oop/oop.mk
+include $(CHIBIOS)/os/common/utils/utils.mk
+# XHAL files.
+include $(CHIBIOS)/os/xhal/xhal.mk
+include $(CHIBIOS)/os/xhal/ports/STM32/STM32G4xx/platform.mk
+include $(CHIBIOS)/os/hal/boards/ST_NUCLEO64_G474RE/board.mk
+# RTOS files (optional).
+include $(CHIBIOS)/os/rt/rt.mk
+include $(CHIBIOS)/os/common/ports/ARMv7-M-ALT/compilers/GCC/mk/port.mk
+# SB files (optional).
+include $(CHIBIOS)/os/sb/host/compilers/GCC/sbhost.mk
+include $(CHIBIOS)/os/sb/vio/sbvio.mk
+# VFS files (optional).
+include $(CHIBIOS)/os/vfs/vfs.mk
+# Auto-build files in ./source recursively.
+include $(CHIBIOS)/tools/mk/autobuild.mk
+
+# Define linker script file here
+LDSCRIPT = ./ld/stm32g474re_nucleo64.ld
+
+# C sources that can be compiled in ARM or THUMB mode depending on the global
+# setting.
+CSRC = $(ALLCSRC) \
+       $(CONFDIR)/portab.c \
+       main.c
+
+# C++ sources that can be compiled in ARM or THUMB mode depending on the global
+# setting.
+CPPSRC = $(ALLCPPSRC)
+
+# List ASM source files here.
+ASMSRC = $(ALLASMSRC)
+
+# List ASM with preprocessor source files here.
+ASMXSRC = $(ALLXASMSRC)
+
+# Inclusion directories.
+INCDIR = $(CONFDIR) $(ALLINC)
+
+# Define C warning options here.
+CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes -Wcast-align=strict
+
+# Define C++ warning options here.
+CPPWARN = -Wall -Wextra -Wundef
+
+#
+# Project, target, sources and paths
+##############################################################################
+
+##############################################################################
+# Start of user section
+#
+
+# List all user C define here, like -D_DEBUG=1
+UDEFS = -DOOP_USE_LEGACY
+
+# Define ASM defines here
+UADEFS =
+
+# List all user directories here
+UINCDIR =
+
+# List the user directory to look for the libraries here
+ULIBDIR =
+
+# List all user libraries here
+ULIBS =
+
+#
+# End of user section
+##############################################################################
+
+##############################################################################
+# Common rules
+#
+
+RULESPATH = $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk
+include $(RULESPATH)/arm-none-eabi.mk
+include $(RULESPATH)/rules.mk
+
+#
+# Common rules
+##############################################################################
+
+##############################################################################
+# Custom rules
+#
+
+# Sandbox images matching the flash and RAM slots of this target, they are
+# built by their own projects as part of the default goal.
+SB1_PROJECT := $(CHIBIOS)/demos/various/SB-CLIENT-RT-XHAL-XSHELL
+SB1_MAKE    := make/128k-08040000-16k-20018000.make
+SB2_PROJECT := $(CHIBIOS)/demos/various/SB-CLIENT-ZEPHYR
+SB2_SLOT    := 128k-08060000-16k-2001C000
+
+# The sandbox projects use their own directories, also when the host ones
+# are overridden on the command line.
+SB_DIRS = CONFDIR=./cfg BUILDDIR=./build/$(basename $(notdir $(1)))        \
+          DEPDIR=./.dep/$(basename $(notdir $(1)))
+
+# The Zephyr image is built with CMake and Ninja, see ext/zephyr_readme.md
+# for the Zephyr tree and the Python environment. The environment in
+# ext/zephyr-venv is used if present, else the active one. Ninja runs its
+# own jobs, the make jobserver is not passed to it.
+ZEPHYR_VENV ?= $(CHIBIOS)/ext/zephyr-venv
+ifneq ($(wildcard $(ZEPHYR_VENV)/bin/python3),)
+  ZEPHYR_ENV := VIRTUAL_ENV=$(ZEPHYR_VENV) PATH=$(ZEPHYR_VENV)/bin:$$PATH
+endif
+SB2_BUILDDIR := $(SB2_PROJECT)/build/$(SB2_SLOT)
+
+.PHONY: sandboxes
+sandboxes:
+	+$(MAKE) --no-print-directory -C $(SB1_PROJECT) -f $(SB1_MAKE)         \
+	         $(call SB_DIRS,$(SB1_MAKE)) all
+	@if [ -z "$$ZEPHYR_BASE" ] && [ ! -f $(CHIBIOS)/ext/zephyr/VERSION ];  \
+	then                                                                    \
+	  echo "Zephyr tree not found, see ext/zephyr_readme.md";              \
+	  exit 1;                                                               \
+	fi
+	$(ZEPHYR_ENV) cmake -GNinja -S $(SB2_PROJECT) -B $(SB2_BUILDDIR)       \
+	         -DSB_SLOT=$(SB2_SLOT)
+	$(ZEPHYR_ENV) MAKEFLAGS= cmake --build $(SB2_BUILDDIR)
+
+all: sandboxes
+
+#
+# Custom rules
+##############################################################################
