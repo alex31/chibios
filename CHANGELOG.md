@@ -169,6 +169,12 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Changed
 
+- [SB] The guest-side sandbox files (`os/sb/common`, `os/sb/user`, the
+  ARMvx-M-SB VRQ entry code and `errcodes.h`) and the FreeRTOS ARMvx-M-SB port
+  are relicensed from GPLv3 to the Apache License 2.0, so guests running on
+  bare metal or on non-ChibiOS kernels such as FreeRTOS are no longer bound by
+  the GPL; license notices only, no code change
+  ([#520](https://github.com/chibios-upstream/chibios/pull/520)).
 - [RT] Removed the optional `PORT_SYSTEM_STATE_ACQUIRE()`/`_RELEASE()` startup
   hooks (the only merged implementation was Hazard3's)
   ([#244](https://github.com/chibios-upstream/chibios/pull/244)).
