@@ -7,3 +7,4 @@ pico-sdk*/
 *.zip
 zephyr/
 zephyr-venv/
+threadx/
