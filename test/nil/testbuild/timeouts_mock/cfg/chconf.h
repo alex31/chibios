@@ -8,6 +8,7 @@
 #define CH_CFG_AUTOSTART_THREADS            TRUE
 #define CH_CFG_ST_FREQUENCY                 1000
 /* Resolution, time delta and assertion setting are supplied by the runner. */
+#define CH_CFG_SMP_MODE                     FALSE
 #define CH_CFG_USE_WAITEXIT                 TRUE
 #define CH_CFG_USE_SEMAPHORES               TRUE
 #define CH_CFG_USE_MUTEXES                  FALSE

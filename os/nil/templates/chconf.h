@@ -58,6 +58,18 @@
 #define CH_CFG_AUTOSTART_THREADS            TRUE
 #endif
 
+/**
+ * @brief   Handling of instances.
+ * @details If enabled then threads assigned to various instances can
+ *          interact with each other using the same synchronization objects.
+ *
+ * @note    Feature not currently implemented.
+ * @note    The default is @p FALSE.
+ */
+#if !defined(CH_CFG_SMP_MODE)
+#define CH_CFG_SMP_MODE                     FALSE
+#endif
+
 /** @} */
 
 /*===========================================================================*/
