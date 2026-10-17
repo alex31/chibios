@@ -17,12 +17,12 @@ Requirements
   only dispatch to the in-tree ones. Until an equivalent change is
   available upstream, apply `patches/zephyr-arch-external.patch` to the
   Zephyr tree, the patch header describes the changes and the base
-  revision.
-- The west tool and the Zephyr Python requirements.
+  revision. `ext/zephyr_readme.md` describes how to fetch and patch the
+  tree as `ext/zephyr`.
+- The Zephyr Python requirements, CMake and Ninja.
 - An ARM GCC toolchain, the ChibiStudio one can be used through the
-  "gnuarmemb" Zephyr toolchain variant:
-  ZEPHYR_TOOLCHAIN_VARIANT=gnuarmemb
-  GNUARMEMB_TOOLCHAIN_PATH=<ChibiStudio>/tools/arm-none-eabi/<version>
+  "gnuarmemb" Zephyr toolchain variant. The demo selects it automatically
+  if found in PATH.
 
 Layout
 ------
@@ -67,15 +67,17 @@ Layout
 Usage
 -----
 
-See `demos/various/SB-CLIENT-ZEPHYR`, from a shell where the Zephyr
-environment is active:
+See `demos/various/SB-CLIENT-ZEPHYR` and `ext/zephyr_readme.md`, from the
+ChibiOS root directory with the Python environment active:
 
-  west build -b chibios_sb <ChibiOS>/demos/various/SB-CLIENT-ZEPHYR
-  west build -b chibios_sb <ChibiOS>/demos/various/SB-CLIENT-ZEPHYR \
-    -- -DSB_SLOT=128k-081E0000-16k-20004000
+  cmake -GNinja -S demos/various/SB-CLIENT-ZEPHYR \
+    -B demos/various/SB-CLIENT-ZEPHYR/build
+  ninja -C demos/various/SB-CLIENT-ZEPHYR/build
 
-The application CMakeLists.txt adds this directory to ZEPHYR_EXTRA_MODULES
-and the slot overlay to EXTRA_DTC_OVERLAY_FILE. The output is
+The slot is selected with -DSB_SLOT=<slot>. The application CMakeLists.txt
+uses `ext/zephyr` if ZEPHYR_BASE is not set, adds this directory to
+ZEPHYR_MODULES and the slot overlay to EXTRA_DTC_OVERLAY_FILE. In a west
+workspace `west build` can be used as well. The output is
 `build/zephyr/zephyr.elf`, it is loaded in the sandbox slot like the other
 sandbox images.
 
