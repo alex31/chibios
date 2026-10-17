@@ -246,6 +246,11 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Fixed
 
+- [SB] The RT/NIL `ARMvx-M-SB` sandbox port did not save FPSCR in the thread
+  context of FPU builds, threads switched voluntarily could see the FPU
+  rounding modes and flags of other threads; FPSCR is now saved as in the
+  `ARMv7-M` port
+  ([#526](https://github.com/chibios-upstream/chibios/pull/526)).
 - [XHAL] SPI transfer-start failures now restore the driver to `READY` instead
   of leaving it `ACTIVE` with no transfer in progress, allowing immediate
   retries and avoiding waits for a nonexistent transfer
