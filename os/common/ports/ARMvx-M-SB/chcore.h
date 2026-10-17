@@ -152,12 +152,13 @@
 #endif
 
 /**
- * @brief   Makes the system tick a responsibility of the local ST layer.
+ * @brief   Makes the system tick a responsibility of the sandbox port.
  * @details If set to @p TRUE then the sandbox core port owns VRQ0 and
  *          programs the host alarm directly. If set to @p FALSE then the
  *          timer setup is delegated to the local HAL ST implementation.
- * @note    The default is @p TRUE in order to preserve configurations not
- *          using HAL/XHAL ST support.
+ * @note    The default is @p FALSE, the XHAL VIO port provides the ST
+ *          implementation. Configurations not using HAL/XHAL ST support
+ *          must set this option to @p TRUE.
  */
 #if !defined(PORT_USE_LOCAL_SYSTICK) || defined(__DOXYGEN__)
 #define PORT_USE_LOCAL_SYSTICK          FALSE
