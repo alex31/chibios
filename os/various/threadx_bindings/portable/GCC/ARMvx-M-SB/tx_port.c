@@ -23,7 +23,8 @@
  *          user mode by a function call saving the callee-saved registers
  *          on the outgoing stack, the caller-saved registers are either
  *          dead at the call site or already saved in the VRQ frame built by
- *          the sandbox host. A preemption requested by a VRQ handler is
+ *          the sandbox host, in FPU builds the saved context includes
+ *          S16-S31 and FPSCR. A preemption requested by a VRQ handler is
  *          performed in the VRQ epilogue, the VRQ frame of a preempted
  *          thread is popped when that thread is switched in again.
  *          Ticks are accounted from the host system time, ticks elapsed
@@ -39,19 +40,29 @@
 #include "tx_timer.h"
 
 /*===========================================================================*/
+/* Module local definitions.                                                 */
+/*===========================================================================*/
+
+/**
+ * @brief   Initial FPSCR value of a thread, IEEE 754 default modes.
+ */
+#define TX_SB_INITIAL_FPSCR             0U
+
+/*===========================================================================*/
 /* Module local types.                                                       */
 /*===========================================================================*/
 
 /**
  * @brief   Context saved by @p _tx_sb_switch().
- * @note    R3 is not part of the context, it is only saved in order to
- *          keep the stack aligned to 8 bytes.
+ * @note    In FPU builds the @p fpscr field holds FPSCR, else it holds R3
+ *          which is only saved in order to keep the stack aligned to 8
+ *          bytes.
  */
 struct port_switch_frame {
 #if defined(__ARM_FP)
   uint32_t      s16_s31[16];
 #endif
-  uint32_t      r3;
+  uint32_t      fpscr;
   uint32_t      r4;
   uint32_t      r5;
   uint32_t      r6;
@@ -255,6 +266,7 @@ VOID _tx_thread_stack_build(TX_THREAD *thread_ptr, VOID (*function_ptr)(VOID)) {
         ~(uintptr_t)7U;
   fp = (struct port_switch_frame *)top - 1;
   (void)memset(fp, 0, sizeof (*fp));
+  fp->fpscr = TX_SB_INITIAL_FPSCR;
   fp->r4 = (uint32_t)function_ptr;
   fp->lr = (uint32_t)_tx_sb_thread_start;
 
