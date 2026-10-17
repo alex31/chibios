@@ -586,6 +586,11 @@ static inline rtcnt_t port_rt_get_counter_value(void) {
 #error "tickless mode not implemented in this port"
 #endif /* CH_CFG_ST_TIMEDELTA > 0 */
 
+/* The system time types are shared with the sandbox API.*/
+#if CH_CFG_ST_RESOLUTION != 32
+#error "this port requires CH_CFG_ST_RESOLUTION set to 32"
+#endif /* CH_CFG_ST_RESOLUTION != 32 */
+
 #endif /* !defined(_FROM_ASM_) */
 
 #endif /* CHCORE_H */
