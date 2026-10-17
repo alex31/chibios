@@ -39,6 +39,8 @@
  * with exit code zero.
  * Fatal conditions are handled by the default hooks of the port, which
  * terminate the sandbox with one of the portSB_EXIT_xxx codes.
+ * In FPU builds the FPU registers are also checked, they must be preserved
+ * by voluntary context switches and by VRQ preemptions.
  */
 
 /*===========================================================================*/
@@ -55,6 +57,9 @@
 #define SERIAL_STACK_SIZE       (configMINIMAL_STACK_SIZE * 3)
 #define SERIAL_END_CHAR         0x04U
 #define SERIAL_DRAIN_TIME       pdMS_TO_TICKS(20)
+#define FPU_SPIN_DURATION_MS    200U
+#define FPU_SPIN_LOOPS          20000U
+#define FPU_STACK_SIZE          (configMINIMAL_STACK_SIZE * 2)
 
 #define BLINK_PASS_PERIOD       pdMS_TO_TICKS(500)
 #define BLINK_FAIL_PERIOD       pdMS_TO_TICKS(100)
@@ -75,6 +80,7 @@
 #define FAIL_IDLE_TIME          (1U << 5)
 #define FAIL_IDLE_SPIN          (1U << 6)
 #define FAIL_TICK_CATCHUP       (1U << 7)
+#define FAIL_FPU                (1U << 8)
 
 /*===========================================================================*/
 /* Demo variables.                                                           */
@@ -96,6 +102,8 @@ static volatile uint32_t ulConsumerCount;
 static volatile uint32_t ulSequenceErrors;
 static volatile uint32_t ulSwvrqCount;
 static volatile uint32_t ulIdleCount;
+static volatile uint32_t ulFpuChecks;
+static volatile uint32_t ulFpuSwitches;
 
 /*===========================================================================*/
 /* LED functions.                                                            */
@@ -177,6 +185,125 @@ static void prvSerialTask(void *pvParameters) {
     }
   }
 }
+
+/*===========================================================================*/
+/* FPU check functions.                                                      */
+/*===========================================================================*/
+
+#if defined(__ARM_FP)
+/*
+ * FPU registers pattern, the FPSCR value selects a rounding mode.
+ */
+typedef struct {
+  uint32_t      ulS[32];
+  uint32_t      ulFpscr;
+} FpuPattern_t;
+
+static FpuPattern_t xFpuPatternTest, xFpuPatternA, xFpuPatternB;
+static TaskHandle_t xFpuAHandle, xFpuBHandle;
+static volatile uint32_t ulFpuErrors;
+
+#define FPU_CLOBBERS                                                        \
+  "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7",                           \
+  "s8", "s9", "s10", "s11", "s12", "s13", "s14", "s15",                     \
+  "s16", "s17", "s18", "s19", "s20", "s21", "s22", "s23",                   \
+  "s24", "s25", "s26", "s27", "s28", "s29", "s30", "s31"
+
+static void prvFpuPatternInit(FpuPattern_t *pxPattern, uint32_t ulId,
+                              uint32_t ulFpscr) {
+  unsigned i;
+
+  for (i = 0U; i < 32U; i++) {
+    pxPattern->ulS[i] = 0xA5000000U | (ulId << 16) | i;
+  }
+  pxPattern->ulFpscr = ulFpscr;
+}
+
+/*
+ * Loads a pattern in all the FPU registers and spins, the task is
+ * preempted by VRQs meanwhile, then checks the registers.
+ */
+static bool prvFpuSpinCheck(const FpuPattern_t *pxPattern, uint32_t ulLoops) {
+  uint32_t ulS[32];
+  uint32_t ulFpscr;
+
+  __asm__ volatile ("vmsr     FPSCR, %[fpscr_in]          \n\t"
+                    "vldmia   %[src], {s0-s31}            \n\t"
+                    "1:                                   \n\t"
+                    "subs     %[n], %[n], #1              \n\t"
+                    "bne      1b                          \n\t"
+                    "vstmia   %[dst], {s0-s31}            \n\t"
+                    "vmrs     %[fpscr_out], FPSCR"
+                    : [n] "+r" (ulLoops), [fpscr_out] "=r" (ulFpscr)
+                    : [src] "r" (pxPattern->ulS), [dst] "r" (ulS),
+                      [fpscr_in] "r" (pxPattern->ulFpscr)
+                    : FPU_CLOBBERS, "cc", "memory");
+
+  return (memcmp(ulS, pxPattern->ulS, sizeof (ulS)) == 0) &&
+         (ulFpscr == pxPattern->ulFpscr);
+}
+
+/*
+ * FPU task, loads its pattern in all the FPU registers then sleeps, the
+ * callee-saved registers and FPSCR must be preserved by the switches.
+ */
+static void prvFpuTask(void *pvParameters) {
+  const FpuPattern_t *pxPattern = (const FpuPattern_t *)pvParameters;
+  uint32_t ulS[16];
+  uint32_t ulFpscr;
+
+  for (;;) {
+    __asm__ volatile ("vmsr     FPSCR, %[fpscr_in]        \n\t"
+                      "vldmia   %[src], {s0-s31}"
+                      :
+                      : [src] "r" (pxPattern->ulS),
+                        [fpscr_in] "r" (pxPattern->ulFpscr)
+                      : FPU_CLOBBERS, "memory");
+    vTaskDelay(1U);
+    __asm__ volatile ("vstmia   %[dst], {s16-s31}         \n\t"
+                      "vmrs     %[fpscr_out], FPSCR"
+                      : [fpscr_out] "=r" (ulFpscr)
+                      : [dst] "r" (ulS)
+                      : "memory");
+    if ((memcmp(ulS, &pxPattern->ulS[16], sizeof (ulS)) != 0) ||
+        (ulFpscr != pxPattern->ulFpscr)) {
+      ulFpuErrors++;
+    }
+    ulFpuSwitches++;
+  }
+}
+
+/*
+ * FPU check, the FPU tasks load their patterns on each tick while the
+ * test task spins with its own pattern.
+ */
+static uint32_t prvFpuCheck(void) {
+  systime_t xStart;
+  sysinterval_t xDuration;
+  uint32_t ulFailures = 0U;
+
+  vTaskResume(xFpuAHandle);
+  vTaskResume(xFpuBHandle);
+
+  xDuration = (sbGetFrequency() / 1000U) * FPU_SPIN_DURATION_MS;
+  xStart    = sbGetSystemTime();
+  while ((sysinterval_t)(sbGetSystemTime() - xStart) < xDuration) {
+    if (!prvFpuSpinCheck(&xFpuPatternTest, FPU_SPIN_LOOPS)) {
+      ulFailures |= FAIL_FPU;
+    }
+    ulFpuChecks++;
+  }
+
+  vTaskSuspend(xFpuAHandle);
+  vTaskSuspend(xFpuBHandle);
+
+  if ((ulFpuErrors != 0U) || (ulFpuSwitches == 0U)) {
+    ulFailures |= FAIL_FPU;
+  }
+
+  return ulFailures;
+}
+#endif /* defined(__ARM_FP) */
 
 /*===========================================================================*/
 /* Self-test functions.                                                      */
@@ -315,6 +442,11 @@ static void prvTestTask(void *pvParameters) {
     }
   }
 
+#if defined(__ARM_FP)
+  /* FPU registers preservation.*/
+  ulFailures |= prvFpuCheck();
+#endif
+
   /* Idle phase, the idle hook waits for VRQs instead of spinning.*/
   ulIdle     = ulIdleCount;
   xHostStart = sbGetSystemTime();
@@ -343,10 +475,11 @@ static void prvTestTask(void *pvParameters) {
 
   (void)snprintf(cResult, sizeof (cResult),
                  "FreeRTOS %s on %s: periodic=%lu timer=%lu consumer=%lu "
-                 "idle=%lu result=0x%08lx",
+                 "idle=%lu fpu=%lu/%lu result=0x%08lx",
                  tskKERNEL_VERSION_NUMBER, portARCH_NAME,
                  (unsigned long)ulPeriodic, (unsigned long)ulTimer,
                  (unsigned long)ulConsumer, (unsigned long)ulIdle,
+                 (unsigned long)ulFpuChecks, (unsigned long)ulFpuSwitches,
                  (unsigned long)ulFailures);
   printf("%s\n", cResult);
 
@@ -407,6 +540,20 @@ int main(void) {
                     NULL, 2U, NULL);
   (void)xTaskCreate(prvProducerTask, "producer", configMINIMAL_STACK_SIZE,
                     NULL, 1U, &xProducerHandle);
+
+#if defined(__ARM_FP)
+  /* The FPU tasks are resumed by the FPU check, they have the same
+     priority of the swvrq task, higher than the test task.*/
+  prvFpuPatternInit(&xFpuPatternTest, 0U, 0x00C00000U);
+  prvFpuPatternInit(&xFpuPatternA, 1U, 0x00400000U);
+  prvFpuPatternInit(&xFpuPatternB, 2U, 0x00800000U);
+  (void)xTaskCreate(prvFpuTask, "fpu_a", FPU_STACK_SIZE,
+                    &xFpuPatternA, 5U, &xFpuAHandle);
+  (void)xTaskCreate(prvFpuTask, "fpu_b", FPU_STACK_SIZE,
+                    &xFpuPatternB, 5U, &xFpuBHandle);
+  vTaskSuspend(xFpuAHandle);
+  vTaskSuspend(xFpuBHandle);
+#endif
 
   vTaskStartScheduler();
 

@@ -30,6 +30,8 @@
  * then the LED operations have no effect.
  * A thread stack overflow terminates the sandbox with exit code
  * EXIT_STACK_OVERFLOW.
+ * In FPU builds the FPU registers are also checked, they must be preserved
+ * by voluntary context switches and by VRQ preemptions.
  */
 
 /*===========================================================================*/
@@ -45,6 +47,8 @@
 #define SWVRQ_CYCLES            100U
 #define STACK_SIZE              1024U
 #define QUEUE_LENGTH            4U
+#define FPU_SPIN_DURATION_MS    200U
+#define FPU_SPIN_LOOPS          20000U
 
 #define BLINK_PASS_PERIOD       (500UL * TICKS_PER_MS)
 #define BLINK_FAIL_PERIOD       (100UL * TICKS_PER_MS)
@@ -66,6 +70,7 @@
 #define BLINKER_PRIO            3U
 #define CONSUMER_PRIO           4U
 #define PRODUCER_PRIO           5U
+#define FPU_PRIO                1U
 
 /* Failure bits.*/
 #define FAIL_PERIODIC           (1U << 0)
@@ -76,6 +81,7 @@
 #define FAIL_IDLE_TIME          (1U << 5)
 #define FAIL_TICK_CATCHUP       (1U << 6)
 #define FAIL_CREATE             (1U << 7)
+#define FAIL_FPU                (1U << 8)
 
 /*===========================================================================*/
 /* Demo variables.                                                           */
@@ -92,6 +98,8 @@ struct test_result {
   uint32_t      consumer;
   uint32_t      swvrq;
   uint32_t      host_frequency;
+  uint32_t      fpu_checks;
+  uint32_t      fpu_switches;
 };
 
 volatile struct test_result test_result;
@@ -117,6 +125,124 @@ static volatile uint32_t timer_count;
 static volatile uint32_t consumer_count;
 static volatile uint32_t sequence_errors;
 static volatile uint32_t swvrq_count;
+
+/*===========================================================================*/
+/* FPU check functions.                                                      */
+/*===========================================================================*/
+
+#if defined(__ARM_FP)
+/*
+ * FPU registers pattern, the FPSCR value selects a rounding mode.
+ */
+struct fpu_pattern {
+  uint32_t      s[32];
+  uint32_t      fpscr;
+};
+
+static struct fpu_pattern fpu_pattern_test, fpu_pattern_a, fpu_pattern_b;
+static TX_THREAD fpu_a_thread, fpu_b_thread;
+static ULONG fpu_a_stack[STACK_SIZE / sizeof (ULONG)];
+static ULONG fpu_b_stack[STACK_SIZE / sizeof (ULONG)];
+static volatile uint32_t fpu_errors;
+
+#define FPU_CLOBBERS                                                        \
+  "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7",                           \
+  "s8", "s9", "s10", "s11", "s12", "s13", "s14", "s15",                     \
+  "s16", "s17", "s18", "s19", "s20", "s21", "s22", "s23",                   \
+  "s24", "s25", "s26", "s27", "s28", "s29", "s30", "s31"
+
+static void fpu_pattern_init(struct fpu_pattern *p, uint32_t id,
+                             uint32_t fpscr) {
+  unsigned i;
+
+  for (i = 0U; i < 32U; i++) {
+    p->s[i] = 0xA5000000U | (id << 16) | i;
+  }
+  p->fpscr = fpscr;
+}
+
+/*
+ * Loads a pattern in all the FPU registers and spins, the thread is
+ * preempted by VRQs meanwhile, then checks the registers.
+ */
+static bool fpu_spin_check(const struct fpu_pattern *p, uint32_t loops) {
+  uint32_t s[32];
+  uint32_t fpscr;
+
+  __asm__ volatile ("vmsr     FPSCR, %[fpscr_in]          \n\t"
+                    "vldmia   %[src], {s0-s31}            \n\t"
+                    "1:                                   \n\t"
+                    "subs     %[n], %[n], #1              \n\t"
+                    "bne      1b                          \n\t"
+                    "vstmia   %[dst], {s0-s31}            \n\t"
+                    "vmrs     %[fpscr_out], FPSCR"
+                    : [n] "+r" (loops), [fpscr_out] "=r" (fpscr)
+                    : [src] "r" (p->s), [dst] "r" (s),
+                      [fpscr_in] "r" (p->fpscr)
+                    : FPU_CLOBBERS, "cc", "memory");
+
+  return (memcmp(s, p->s, sizeof (s)) == 0) && (fpscr == p->fpscr);
+}
+
+/*
+ * FPU thread, loads its pattern in all the FPU registers then sleeps, the
+ * callee-saved registers and FPSCR must be preserved by the switches.
+ */
+static VOID fpu_entry(ULONG input) {
+  const struct fpu_pattern *p = (const struct fpu_pattern *)input;
+  uint32_t s[16];
+  uint32_t fpscr;
+
+  for (;;) {
+    __asm__ volatile ("vmsr     FPSCR, %[fpscr_in]        \n\t"
+                      "vldmia   %[src], {s0-s31}"
+                      :
+                      : [src] "r" (p->s), [fpscr_in] "r" (p->fpscr)
+                      : FPU_CLOBBERS, "memory");
+    (void)tx_thread_sleep(1U);
+    __asm__ volatile ("vstmia   %[dst], {s16-s31}         \n\t"
+                      "vmrs     %[fpscr_out], FPSCR"
+                      : [fpscr_out] "=r" (fpscr)
+                      : [dst] "r" (s)
+                      : "memory");
+    if ((memcmp(s, &p->s[16], sizeof (s)) != 0) || (fpscr != p->fpscr)) {
+      fpu_errors++;
+    }
+    test_result.fpu_switches++;
+  }
+}
+
+/*
+ * FPU check, the FPU threads load their patterns on each tick while the
+ * test thread spins with its own pattern.
+ */
+static uint32_t fpu_check(void) {
+  systime_t start;
+  sysinterval_t duration;
+  uint32_t failures = 0U;
+
+  (void)tx_thread_resume(&fpu_a_thread);
+  (void)tx_thread_resume(&fpu_b_thread);
+
+  duration = (sbGetFrequency() / 1000U) * FPU_SPIN_DURATION_MS;
+  start    = sbGetSystemTime();
+  while ((sysinterval_t)(sbGetSystemTime() - start) < duration) {
+    if (!fpu_spin_check(&fpu_pattern_test, FPU_SPIN_LOOPS)) {
+      failures |= FAIL_FPU;
+    }
+    test_result.fpu_checks++;
+  }
+
+  (void)tx_thread_suspend(&fpu_a_thread);
+  (void)tx_thread_suspend(&fpu_b_thread);
+
+  if ((fpu_errors != 0U) || (test_result.fpu_switches == 0U)) {
+    failures |= FAIL_FPU;
+  }
+
+  return failures;
+}
+#endif /* defined(__ARM_FP) */
 
 /*===========================================================================*/
 /* Self-test functions.                                                      */
@@ -284,6 +410,11 @@ static VOID test_entry(ULONG input) {
   }
   test_result.swvrq = swvrq_count;
 
+#if defined(__ARM_FP)
+  /* FPU registers preservation.*/
+  failures |= fpu_check();
+#endif
+
   /* Idle phase, the scheduler releases the CPU to the host.*/
   host_start = sbGetSystemTime();
   (void)tx_thread_sleep(IDLE_DURATION);
@@ -366,6 +497,23 @@ VOID tx_application_define(VOID *first_unused_memory) {
                 consumer_stack, CONSUMER_PRIO);
   create_thread(&producer_thread, "producer", producer_entry,
                 producer_stack, PRODUCER_PRIO);
+
+#if defined(__ARM_FP)
+  /* The FPU threads are started by the FPU check.*/
+  fpu_pattern_init(&fpu_pattern_test, 0U, 0x00C00000U);
+  fpu_pattern_init(&fpu_pattern_a, 1U, 0x00400000U);
+  fpu_pattern_init(&fpu_pattern_b, 2U, 0x00800000U);
+  if ((tx_thread_create(&fpu_a_thread, "fpu_a", fpu_entry,
+                        (ULONG)&fpu_pattern_a, fpu_a_stack, STACK_SIZE,
+                        FPU_PRIO, FPU_PRIO, TX_NO_TIME_SLICE,
+                        TX_DONT_START) != TX_SUCCESS) ||
+      (tx_thread_create(&fpu_b_thread, "fpu_b", fpu_entry,
+                        (ULONG)&fpu_pattern_b, fpu_b_stack, STACK_SIZE,
+                        FPU_PRIO, FPU_PRIO, TX_NO_TIME_SLICE,
+                        TX_DONT_START) != TX_SUCCESS)) {
+    test_result.failures |= FAIL_CREATE;
+  }
+#endif
 }
 
 /*===========================================================================*/
