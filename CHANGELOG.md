@@ -8,6 +8,12 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Added
 
+- [SB] FPU support in the FreeRTOS, ThreadX and Zephyr sandbox guests: the
+  context switch also preserves FPSCR, the Zephyr guest is built for the FPU
+  with `CONFIG_FPU`, the self-test clients check the FPU registers and
+  `make USE_FPU=hard` builds the multi-target host demos and their sandbox
+  images for the FPU
+  ([#525](https://github.com/chibios-upstream/chibios/pull/525)).
 - [SB] Eclipse ThreadX as a sandbox guest: ThreadX bindings in
   `os/various/threadx_bindings` with the `ARMvx-M-SB` port, the ThreadX
   kernel in `ext/threadx-6.5.2.202603.7z`, the `SB-CLIENT-THREADX` self-test
