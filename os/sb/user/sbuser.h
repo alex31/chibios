@@ -500,6 +500,41 @@ static inline msg_t sbRmdir(const char *path) {
 }
 
 /**
+ * @brief   Null fastcall.
+ * @details The host performs no operation, the call is meant for measuring
+ *          the fastcall round trip.
+ *
+ * @return              The operation status.
+ * @retval CH_RET_SUCCESS if the host implements the null fastcall.
+ * @retval CH_RET_ENOSYS  if the host does not implement it.
+ *
+ * @api
+ */
+static inline msg_t sbNopFastcall(void) {
+
+  __syscall0r(SB_FASTC_NOP);
+  return (msg_t)r0;
+}
+
+/**
+ * @brief   Null syscall.
+ * @details The host performs no operation, the call is meant for measuring
+ *          the syscall round trip. Pending VRQs are processed on return as
+ *          for any other syscall.
+ *
+ * @return              The operation status.
+ * @retval CH_RET_SUCCESS if the host implements the null syscall.
+ * @retval CH_RET_ENOSYS  if the host does not implement it.
+ *
+ * @api
+ */
+static inline msg_t sbNopSyscall(void) {
+
+  __syscall0r(SB_SYSC_NOP);
+  return (msg_t)r0;
+}
+
+/**
  * @brief   Returns the system time.
  *
  * @return              The current system time.

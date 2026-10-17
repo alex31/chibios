@@ -77,9 +77,11 @@ struct sb_apiblock {
 #ifdef __cplusplus
 extern "C" {
 #endif
+  void sb_fastc_nop(sb_class_t *sbp, struct port_extctx *ectxp);
   void sb_fastc_get_systime(sb_class_t *sbp, struct port_extctx *ectxp);
   void sb_fastc_get_frequency(sb_class_t *sbp, struct port_extctx *ectxp);
   void sb_fastc_broadcast_flags(sb_class_t *sbp, struct port_extctx *ectxp);
+  void sb_sysc_nop(sb_class_t *sbp, struct port_extctx *ectxp);
   void sb_sysc_exit(sb_class_t *sbp, struct port_extctx *ectxp);
   void sb_sysc_sleep(sb_class_t *sbp, struct port_extctx *ectxp);
   void sb_sysc_sleep_until_windowed(sb_class_t *sbp,

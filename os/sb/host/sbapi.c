@@ -77,6 +77,13 @@ static thread_t *sb_msg_wait_timeout_s(sysinterval_t timeout) {
 /* Module exported functions.                                                */
 /*===========================================================================*/
 
+void sb_fastc_nop(sb_class_t *sbp, struct port_extctx *ectxp) {
+
+  (void)sbp;
+
+  ectxp->r0 = (uint32_t)CH_RET_SUCCESS;
+}
+
 void sb_fastc_get_systime(sb_class_t *sbp, struct port_extctx *ectxp) {
 
   (void)sbp;
@@ -89,6 +96,13 @@ void sb_fastc_get_frequency(sb_class_t *sbp, struct port_extctx *ectxp) {
   (void)sbp;
 
   ectxp->r0 = (uint32_t)CH_CFG_ST_FREQUENCY;
+}
+
+void sb_sysc_nop(sb_class_t *sbp, struct port_extctx *ectxp) {
+
+  (void)sbp;
+
+  ectxp->r0 = (uint32_t)CH_RET_SUCCESS;
 }
 
 void sb_sysc_exit(sb_class_t *sbp, struct port_extctx *ectxp) {

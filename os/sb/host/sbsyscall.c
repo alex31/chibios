@@ -53,6 +53,7 @@ const port_syscall_t sb_fastcalls[SB_SYSC_BASE] = {
   [SB_FASTC_GET_SYSTIME]                  = sb_fastc_get_systime,
   [SB_FASTC_GET_FREQUENCY]                = sb_fastc_get_frequency,
   [SB_FASTC_EVENT_BROADCAST]              = sb_fastc_broadcast_flags,
+  [SB_FASTC_NOP]                          = sb_fastc_nop,
 #if SB_CFG_ENABLE_VIO == TRUE
 #if VIO_CFG_ENABLE_GPIO == TRUE
   [SB_FASTC_VIO_VGPIO]                    = sb_fastc_vio_gpio,
@@ -111,6 +112,7 @@ const port_syscall_t sb_syscalls[256 - SB_SYSC_BASE] = {
   [SB_SYSC_EVENT_WAIT_ANY - SB_SYSC_BASE] = sb_sysc_wait_any_timeout,
   [SB_SYSC_EVENT_WAIT_ALL - SB_SYSC_BASE] = sb_sysc_wait_all_timeout,
   [SB_SYSC_LOADELF - SB_SYSC_BASE]        = sb_sysc_loadelf,
+  [SB_SYSC_NOP - SB_SYSC_BASE]            = sb_sysc_nop,
 #if SB_CFG_ENABLE_VIO == TRUE
 #if VIO_CFG_ENABLE_UART == TRUE
   [SB_SYSC_VIO_VUART - SB_SYSC_BASE]      = sb_sysc_vio_uart,
