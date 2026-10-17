@@ -113,11 +113,15 @@ Architecture
   terminates the sandbox with exit code `0xA8000000` ORed with the reason.
 - printk() writes on the sandbox standard output, buffered by line.
 - irq_offload() uses VRQ 31, CONFIG_CHIBIOS_SB_IRQ_OFFLOAD_VRQ.
+- With CONFIG_FPU the guest is built for the FPU with the hard float ABI,
+  the host must be built with FPU support too, else FPU instructions fault.
+  The thread context includes S16-S31 and FPSCR, S0-S15 are saved in the
+  VRQ frame by the host, all threads can use the FPU (CONFIG_FPU_SHARING is
+  enabled by default).
 
 Limitations
 -----------
 
-- Soft-float only, FPU registers are not part of the thread context.
 - No user mode, no SMP, no Zephyr devices.
 - Blocking sandbox services, for example host sleeps or blocking file
   operations, suspend the whole guest, not just the calling thread.

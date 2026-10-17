@@ -3,3 +3,4 @@
 
 config SOC_CHIBIOS_SB
 	select CHIBIOS_SB
+	select CPU_HAS_FPU
