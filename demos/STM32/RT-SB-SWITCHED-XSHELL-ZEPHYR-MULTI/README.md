@@ -63,6 +63,11 @@ image is `build/<slot>/zephyr/zephyr.elf` in its client project. The sandbox
 projects always use their own configuration and build directories, also when
 the host ones are overridden on the command line.
 
+The FPU is not used by default. `make USE_FPU=hard` builds the host with FPU
+support and the sandbox images for the FPU, a host built with FPU support
+also runs sandbox images not using it. Clean the host and the sandbox
+projects when changing this option.
+
 `make clean` cleans the host only. The sandbox images are cleaned from their
 own projects.
 
