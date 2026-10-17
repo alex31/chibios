@@ -60,6 +60,25 @@
  */
 
 /*===========================================================================*/
+/* Derived constants and error checks.                                       */
+/*===========================================================================*/
+
+/*
+ * RTOS-specific preemption function invoked by the VRQ epilogue.
+ */
+#if !defined(SB_VECTORS_NORTOS)
+#if defined(_CHIBIOS_RT_CONF_)
+#define SB_VECTORS_PREEMPTION   chSchPreemption
+
+#elif defined(_CHIBIOS_NIL_CONF_)
+#define SB_VECTORS_PREEMPTION   chSchRescheduleS
+
+#else
+#error "invalid chconf.h"
+#endif
+#endif /* !defined(SB_VECTORS_NORTOS) */
+
+/*===========================================================================*/
 /* Code section.                                                             */
 /*===========================================================================*/
 
@@ -101,7 +120,7 @@ __crt0_vrq:
 #if CH_DBG_SYSTEM_STATE_CHECK
         bl          __dbg_check_lock
 #endif
-        bl          chSchPreemption
+        bl          SB_VECTORS_PREEMPTION
 #if CH_DBG_SYSTEM_STATE_CHECK
         bl          __dbg_check_unlock
 #endif
