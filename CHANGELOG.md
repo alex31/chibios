@@ -8,6 +8,11 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Added
 
+- [SB] Eclipse ThreadX as a sandbox guest: ThreadX bindings in
+  `os/various/threadx_bindings` with the `ARMvx-M-SB` port, the ThreadX
+  kernel in `ext/threadx-6.5.2.202603.7z`, the `SB-CLIENT-THREADX` self-test
+  client and the `RT-SB-SWITCHED-XSHELL-THREADX-MULTI` host demo
+  ([#524](https://github.com/chibios-upstream/chibios/pull/524)).
 - [SB] Zephyr kernel as a sandbox guest: Zephyr module in
   `os/various/zephyr_bindings` providing the `chibios_sb` architecture, SoC,
   board and tickless system timer, plus the `SB-CLIENT-ZEPHYR` self-test
