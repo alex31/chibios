@@ -212,11 +212,14 @@ K_THREAD_DEFINE(producer_tid, THREADS_STACK_SIZE, producer_thread,
 
 static uint32_t self_test(void) {
   uint32_t failures = 0U;
-  uint32_t host_per_ms, periodic, timer, consumer, host_start, host_elapsed;
+  uint32_t host_per_ms, host_per_tick, periodic, timer, consumer;
+  uint32_t host_start, host_elapsed;
   int64_t start, elapsed;
   unsigned i;
 
-  host_per_ms = chibios_sb_get_frequency() / 1000U;
+  host_per_ms   = chibios_sb_get_frequency() / 1000U;
+  host_per_tick = chibios_sb_get_frequency() /
+                  (uint32_t)CONFIG_SYS_CLOCK_TICKS_PER_SEC;
   test_result.host_frequency = chibios_sb_get_frequency();
 
   /* Concurrent activity, the producer runs whenever the other threads
@@ -282,12 +285,14 @@ static uint32_t self_test(void) {
   }
   test_result.offload = offload_count;
 
-  /* Idle phase, the idle thread releases the CPU to the host.*/
+  /* Idle phase, the idle thread releases the CPU to the host. Relative
+     timeouts are rounded up by one tick, the sleep lasts up to one tick
+     more than requested.*/
   host_start = chibios_sb_get_systime();
   k_msleep(IDLE_DURATION_MS);
   host_elapsed = chibios_sb_get_systime() - host_start;
-  if (!in_range(host_elapsed, IDLE_DURATION_MS * host_per_ms,
-                host_per_ms)) {
+  if (!in_range(host_elapsed, (IDLE_DURATION_MS * host_per_ms) +
+                              host_per_tick, host_per_tick)) {
     failures |= FAIL_IDLE_TIME;
   }
 
