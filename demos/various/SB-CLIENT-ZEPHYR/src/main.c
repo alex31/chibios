@@ -14,6 +14,8 @@
     limitations under the License.
 */
 
+#include <string.h>
+
 #include <zephyr/kernel.h>
 #include <zephyr/irq.h>
 #include <zephyr/irq_offload.h>
@@ -28,6 +30,8 @@
  * then the LED operations have no effect.
  * Fatal errors terminate the sandbox with the CHIBIOS_SB_EXIT_HALT exit
  * code ORed with the reason.
+ * In FPU builds the FPU registers are also checked, they must be preserved
+ * by voluntary context switches and by VRQ preemptions.
  */
 
 /*===========================================================================*/
@@ -42,6 +46,8 @@
 #define SWVRQ_CYCLES            100U
 #define OFFLOAD_CYCLES          10U
 #define THREADS_STACK_SIZE      1024
+#define FPU_SPIN_DURATION_MS    200U
+#define FPU_SPIN_LOOPS          20000U
 
 #define BLINK_PASS_PERIOD_MS    500
 #define BLINK_FAIL_PERIOD_MS    100
@@ -59,6 +65,7 @@
 #define PERIODIC_PRIO           3
 #define CONSUMER_PRIO           4
 #define PRODUCER_PRIO           5
+#define FPU_PRIO                1
 
 /* Failure bits.*/
 #define FAIL_PERIODIC           (1U << 0)
@@ -69,6 +76,7 @@
 #define FAIL_OFFLOAD            (1U << 5)
 #define FAIL_IDLE_TIME          (1U << 6)
 #define FAIL_TICK_CATCHUP       (1U << 7)
+#define FAIL_FPU                (1U << 8)
 
 /*===========================================================================*/
 /* Demo variables.                                                           */
@@ -86,6 +94,8 @@ struct test_result {
   uint32_t      swvrq;
   uint32_t      offload;
   uint32_t      host_frequency;
+  uint32_t      fpu_checks;
+  uint32_t      fpu_switches;
 };
 
 volatile struct test_result test_result;
@@ -99,6 +109,132 @@ static volatile uint32_t offload_count;
 
 K_MSGQ_DEFINE(queue, sizeof (uint32_t), 4, 4);
 K_SEM_DEFINE(swvrq_sem, 0, 1);
+
+/*===========================================================================*/
+/* FPU check functions.                                                      */
+/*===========================================================================*/
+
+#if defined(__ARM_FP)
+/*
+ * FPU registers pattern, the FPSCR value selects a rounding mode.
+ */
+struct fpu_pattern {
+  uint32_t      s[32];
+  uint32_t      fpscr;
+};
+
+static struct fpu_pattern fpu_pattern_test, fpu_pattern_a, fpu_pattern_b;
+static volatile uint32_t fpu_errors;
+
+#define FPU_CLOBBERS                                                        \
+  "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7",                           \
+  "s8", "s9", "s10", "s11", "s12", "s13", "s14", "s15",                     \
+  "s16", "s17", "s18", "s19", "s20", "s21", "s22", "s23",                   \
+  "s24", "s25", "s26", "s27", "s28", "s29", "s30", "s31"
+
+static void fpu_pattern_init(struct fpu_pattern *p, uint32_t id,
+                             uint32_t fpscr) {
+  unsigned i;
+
+  for (i = 0U; i < 32U; i++) {
+    p->s[i] = 0xA5000000U | (id << 16) | i;
+  }
+  p->fpscr = fpscr;
+}
+
+/*
+ * Loads a pattern in all the FPU registers and spins, the thread is
+ * preempted by VRQs meanwhile, then checks the registers.
+ */
+static bool fpu_spin_check(const struct fpu_pattern *p, uint32_t loops) {
+  uint32_t s[32];
+  uint32_t fpscr;
+
+  __asm__ volatile ("vmsr     FPSCR, %[fpscr_in]          \n\t"
+                    "vldmia   %[src], {s0-s31}            \n\t"
+                    "1:                                   \n\t"
+                    "subs     %[n], %[n], #1              \n\t"
+                    "bne      1b                          \n\t"
+                    "vstmia   %[dst], {s0-s31}            \n\t"
+                    "vmrs     %[fpscr_out], FPSCR"
+                    : [n] "+r" (loops), [fpscr_out] "=r" (fpscr)
+                    : [src] "r" (p->s), [dst] "r" (s),
+                      [fpscr_in] "r" (p->fpscr)
+                    : FPU_CLOBBERS, "cc", "memory");
+
+  return (memcmp(s, p->s, sizeof (s)) == 0) && (fpscr == p->fpscr);
+}
+
+/*
+ * FPU thread, loads its pattern in all the FPU registers then sleeps, the
+ * callee-saved registers and FPSCR must be preserved by the switches.
+ */
+static void fpu_thread(void *p1, void *p2, void *p3) {
+  const struct fpu_pattern *p = (const struct fpu_pattern *)p1;
+  uint32_t s[16];
+  uint32_t fpscr;
+
+  ARG_UNUSED(p2);
+  ARG_UNUSED(p3);
+
+  for (;;) {
+    __asm__ volatile ("vmsr     FPSCR, %[fpscr_in]        \n\t"
+                      "vldmia   %[src], {s0-s31}"
+                      :
+                      : [src] "r" (p->s), [fpscr_in] "r" (p->fpscr)
+                      : FPU_CLOBBERS, "memory");
+    (void)k_sleep(K_TICKS(1));
+    __asm__ volatile ("vstmia   %[dst], {s16-s31}         \n\t"
+                      "vmrs     %[fpscr_out], FPSCR"
+                      : [fpscr_out] "=r" (fpscr)
+                      : [dst] "r" (s)
+                      : "memory");
+    if ((memcmp(s, &p->s[16], sizeof (s)) != 0) || (fpscr != p->fpscr)) {
+      fpu_errors++;
+    }
+    test_result.fpu_switches++;
+  }
+}
+
+/* Started by the FPU check.*/
+K_THREAD_DEFINE(fpu_a_tid, THREADS_STACK_SIZE, fpu_thread,
+                &fpu_pattern_a, NULL, NULL, FPU_PRIO, 0, SYS_FOREVER_MS);
+K_THREAD_DEFINE(fpu_b_tid, THREADS_STACK_SIZE, fpu_thread,
+                &fpu_pattern_b, NULL, NULL, FPU_PRIO, 0, SYS_FOREVER_MS);
+
+/*
+ * FPU check, the FPU threads load their patterns on each tick while the
+ * test thread spins with its own pattern.
+ */
+static uint32_t fpu_check(void) {
+  uint32_t start, duration;
+  uint32_t failures = 0U;
+
+  fpu_pattern_init(&fpu_pattern_test, 0U, 0x00C00000U);
+  fpu_pattern_init(&fpu_pattern_a, 1U, 0x00400000U);
+  fpu_pattern_init(&fpu_pattern_b, 2U, 0x00800000U);
+  k_thread_start(fpu_a_tid);
+  k_thread_start(fpu_b_tid);
+
+  duration = (chibios_sb_get_frequency() / 1000U) * FPU_SPIN_DURATION_MS;
+  start    = chibios_sb_get_systime();
+  while ((chibios_sb_get_systime() - start) < duration) {
+    if (!fpu_spin_check(&fpu_pattern_test, FPU_SPIN_LOOPS)) {
+      failures |= FAIL_FPU;
+    }
+    test_result.fpu_checks++;
+  }
+
+  k_thread_suspend(fpu_a_tid);
+  k_thread_suspend(fpu_b_tid);
+
+  if ((fpu_errors != 0U) || (test_result.fpu_switches == 0U)) {
+    failures |= FAIL_FPU;
+  }
+
+  return failures;
+}
+#endif /* defined(__ARM_FP) */
 
 /*===========================================================================*/
 /* Self-test functions.                                                      */
@@ -285,6 +421,11 @@ static uint32_t self_test(void) {
   }
   test_result.offload = offload_count;
 
+#if defined(__ARM_FP)
+  /* FPU registers preservation.*/
+  failures |= fpu_check();
+#endif
+
   /* Idle phase, the idle thread releases the CPU to the host. Relative
      timeouts are rounded up by one tick, the sleep lasts up to one tick
      more than requested.*/
@@ -331,9 +472,10 @@ int main(void) {
   test_result.state    = 1U;
 
   printk("periodic=%u timer=%u consumer=%u swvrq=%u offload=%u "
-         "result=0x%08x %s\n",
+         "fpu=%u/%u result=0x%08x %s\n",
          test_result.periodic, test_result.timer, test_result.consumer,
-         test_result.swvrq, test_result.offload, failures,
+         test_result.swvrq, test_result.offload, test_result.fpu_checks,
+         test_result.fpu_switches, failures,
          (failures == 0U) ? "PASSED" : "FAILED");
 
   period = (failures == 0U) ? BLINK_PASS_PERIOD_MS : BLINK_FAIL_PERIOD_MS;

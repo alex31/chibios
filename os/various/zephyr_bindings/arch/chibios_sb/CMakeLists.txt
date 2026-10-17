@@ -8,8 +8,17 @@ set(CHIBIOS_SB_TARGET_FLAGS
   -mcpu=${CONFIG_CHIBIOS_SB_GCC_CPU}
   -mthumb
   -mabi=aapcs
-  -mfloat-abi=soft
 )
+if(CONFIG_FPU)
+  list(APPEND CHIBIOS_SB_TARGET_FLAGS
+    -mfloat-abi=hard
+    -mfpu=${CONFIG_CHIBIOS_SB_GCC_FPU}
+  )
+else()
+  list(APPEND CHIBIOS_SB_TARGET_FLAGS
+    -mfloat-abi=soft
+  )
+endif()
 zephyr_compile_options(${CHIBIOS_SB_TARGET_FLAGS})
 zephyr_ld_options(${CHIBIOS_SB_TARGET_FLAGS})
 

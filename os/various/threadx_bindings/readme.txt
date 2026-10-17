@@ -77,6 +77,16 @@ VRQs
 - VRQ 0 is used by the port, the VRQs of VIO units are assigned by the host
   configuration.
 
+FPU
+---
+
+- The port supports guests built for the FPU (`USE_FPU=hard`), the host
+  must be built with FPU support too, else FPU instructions fault. With the
+  multi-target host demos `make USE_FPU=hard` builds the host and the
+  sandbox images for the FPU.
+- In FPU builds the thread context includes S16-S31 and FPSCR, S0-S15 are
+  saved in the VRQ frame by the host. All threads can use the FPU.
+
 Limitations
 -----------
 
@@ -85,6 +95,3 @@ Limitations
 - Blocking sandbox services, for example `sbSleepMilliseconds()` or
   blocking file operations, suspend the whole guest, not just the calling
   thread.
-- The FPSCR register is not part of the context saved by voluntary context
-  switches, threads must not depend on different FPU rounding modes or
-  flags.

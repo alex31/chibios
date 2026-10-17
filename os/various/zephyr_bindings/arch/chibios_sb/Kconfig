@@ -28,6 +28,21 @@ config CHIBIOS_SB_GCC_CPU
 	  Value passed to the compiler -mcpu option. The sandbox code runs on
 	  any ARMv7-M or ARMv8-M Mainline core able to execute it.
 
+config CHIBIOS_SB_GCC_FPU
+	string "Compiler FPU name"
+	default "fpv4-sp-d16"
+	depends on FPU
+	help
+	  Value passed to the compiler -mfpu option when the FPU is enabled,
+	  the hard float ABI is used. The host must be built with FPU support
+	  too.
+
+# The FPU context, S16-S31 and FPSCR, is part of the thread context and
+# S0-S15 are saved in the VRQ frame by the host, all threads can use the
+# FPU.
+config FPU_SHARING
+	default y if FPU
+
 config CHIBIOS_SB_IRQ_OFFLOAD_VRQ
 	int "VRQ used by irq_offload()"
 	range 1 31

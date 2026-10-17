@@ -48,7 +48,12 @@
 
 #define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
+#if defined(__ARM_FP)
+/* FPU builds have two more tasks, the FPU check ones.*/
+#define configTOTAL_HEAP_SIZE                   (11U * 1024U + 512U)
+#else
 #define configTOTAL_HEAP_SIZE                   (9U * 1024U)
+#endif
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 /*===========================================================================*/

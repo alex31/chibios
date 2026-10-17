@@ -110,6 +110,16 @@ Virtual I/O and sandbox services
 - `demos/various/SB-CLIENT-FREERTOS/source/vserial.c`: example of buffered
   serial driver over a VIO UART unit, based on FreeRTOS stream buffers.
 
+FPU
+---
+
+- The port supports guests built for the FPU (`USE_FPU=hard`), the host
+  must be built with FPU support too, else FPU instructions fault. With the
+  multi-target host demos `make USE_FPU=hard` builds the host and the
+  sandbox images for the FPU.
+- In FPU builds the task context includes S16-S31 and FPSCR, S0-S15 are
+  saved in the VRQ frame by the host. All tasks can use the FPU.
+
 Limitations
 -----------
 
@@ -117,8 +127,5 @@ Limitations
 - Blocking sandbox services, for example `sbSleepMilliseconds()`,
   `sbMsgWait()` or blocking file operations, suspend the whole guest, not
   just the calling task.
-- The FPSCR register is not part of the context saved by voluntary context
-  switches, tasks must not depend on different FPU rounding modes or flags.
-  Switches performed on VRQ exit preserve it as part of the VRQ frame.
 - With a host system time narrower than 32 bits, the ticks elapsed across a
   host system time wrap are lost.

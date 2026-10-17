@@ -26,19 +26,29 @@
 #include <kernel_internal.h>
 
 /*===========================================================================*/
+/* Module local definitions.                                                 */
+/*===========================================================================*/
+
+/**
+ * @brief   Initial FPSCR value of a thread, IEEE 754 default modes.
+ */
+#define INITIAL_FPSCR                   0U
+
+/*===========================================================================*/
 /* Module local types.                                                       */
 /*===========================================================================*/
 
 /**
  * @brief   Context saved by @p z_chibios_sb_switch().
- * @note    R3 is not part of the context, it is only saved in order to
- *          keep the stack aligned to 8 bytes.
+ * @note    In FPU builds the @p fpscr field holds FPSCR, else it holds R3
+ *          which is only saved in order to keep the stack aligned to 8
+ *          bytes.
  */
 struct switch_frame {
 #if defined(__ARM_FP)
   uint32_t      s16_s31[16];
 #endif
-  uint32_t      r3;
+  uint32_t      fpscr;
   uint32_t      r4;
   uint32_t      r5;
   uint32_t      r6;
@@ -83,6 +93,7 @@ void arch_new_thread(struct k_thread *thread, k_thread_stack_t *stack,
 
   fp = Z_STACK_PTR_TO_FRAME(struct switch_frame, stack_ptr);
   (void)memset(fp, 0, sizeof (*fp));
+  fp->fpscr = INITIAL_FPSCR;
   fp->r4 = (uint32_t)entry;
   fp->r5 = (uint32_t)p1;
   fp->r6 = (uint32_t)p2;
@@ -91,6 +102,38 @@ void arch_new_thread(struct k_thread *thread, k_thread_stack_t *stack,
 
   thread->switch_handle = (void *)fp;
 }
+
+#if defined(CONFIG_FPU_SHARING) || defined(__DOXYGEN__)
+/**
+ * @brief   Disables the FPU for a thread, not supported.
+ * @note    The FPU context is always part of the thread context.
+ *
+ * @param[in] thread    the thread
+ * @return              The operation result.
+ */
+int arch_float_disable(struct k_thread *thread) {
+
+  ARG_UNUSED(thread);
+
+  return -ENOTSUP;
+}
+
+/**
+ * @brief   Enables the FPU for a thread, not supported.
+ * @note    The FPU context is always part of the thread context.
+ *
+ * @param[in] thread    the thread
+ * @param[in] options   the thread FPU options
+ * @return              The operation result.
+ */
+int arch_float_enable(struct k_thread *thread, unsigned int options) {
+
+  ARG_UNUSED(thread);
+  ARG_UNUSED(options);
+
+  return -ENOTSUP;
+}
+#endif
 
 /**
  * @brief   Disables the coprocessors of a thread, not supported.

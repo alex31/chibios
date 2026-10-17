@@ -215,6 +215,13 @@ ifneq ($(wildcard $(ZEPHYR_VENV)/bin/python3),)
 endif
 SB2_BUILDDIR := $(SB2_PROJECT)/build/$(SB2_SLOT)
 
+# The Zephyr image is built for the FPU when the host is.
+ifeq ($(USE_FPU),no)
+  SB2_FPU := n
+else
+  SB2_FPU := y
+endif
+
 .PHONY: sandboxes
 sandboxes:
 	+$(MAKE) --no-print-directory -C $(SB1_PROJECT) -f $(SB1_MAKE)         \
@@ -225,7 +232,7 @@ sandboxes:
 	  exit 1;                                                               \
 	fi
 	$(ZEPHYR_ENV) cmake -GNinja -S $(SB2_PROJECT) -B $(SB2_BUILDDIR)       \
-	         -DSB_SLOT=$(SB2_SLOT)
+	         -DSB_SLOT=$(SB2_SLOT) -DCONFIG_FPU=$(SB2_FPU)
 	$(ZEPHYR_ENV) MAKEFLAGS= cmake --build $(SB2_BUILDDIR)
 
 all: sandboxes

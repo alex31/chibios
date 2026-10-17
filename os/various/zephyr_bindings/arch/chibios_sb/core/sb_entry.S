@@ -97,13 +97,17 @@ z_chibios_sb_vrq:
  * pointer is the switch handle of the outgoing thread, then restores the
  * context saved at the stack pointer in R0. It must be invoked with VRQs
  * disabled. The caller-saved registers are either dead at the call site
- * or already saved in a VRQ frame. R3 is saved only in order to keep the
- * stack aligned to 8 bytes.
+ * or already saved in a VRQ frame. In FPU builds FPSCR is saved in place of
+ * R3, which is otherwise saved only in order to keep the stack aligned to
+ * 8 bytes.
  *--------------------------------------------------------------------------*/
                 .align      2
                 .thumb_func
                 .globl      z_chibios_sb_switch
 z_chibios_sb_switch:
+#if defined(__ARM_FP)
+                vmrs        r3, FPSCR
+#endif
                 push        {r3, r4, r5, r6, r7, r8, r9, r10, r11, lr}
 #if defined(__ARM_FP)
                 vpush       {s16-s31}
@@ -116,8 +120,12 @@ z_chibios_sb_switch:
                 mov         sp, r0
 #if defined(__ARM_FP)
                 vpop        {s16-s31}
-#endif
+                pop         {r3, r4, r5, r6, r7, r8, r9, r10, r11, lr}
+                vmsr        FPSCR, r3
+                bx          lr
+#else
                 pop         {r3, r4, r5, r6, r7, r8, r9, r10, r11, pc}
+#endif
 
 /*--------------------------------------------------------------------------*
  * Threads start here, from the context built by arch_new_thread(). R4

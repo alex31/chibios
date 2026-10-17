@@ -20,14 +20,12 @@
  * @details Context switches are performed in user mode by a function call
  *          saving the callee-saved registers on the outgoing task stack,
  *          the caller-saved registers are either dead at the call site or
- *          already saved in the VRQ frame built by the sandbox host.
+ *          already saved in the VRQ frame built by the sandbox host. In FPU
+ *          builds the saved context includes S16-S31 and FPSCR.
  *          Switches are performed with VRQs disabled and with no critical
  *          zone active, a yield requested inside a critical zone or by a
  *          VRQ handler is deferred to the critical zone exit or to the VRQ
  *          epilogue, the same way a pended PendSV would be served.
- *          The FPSCR register is not part of the context saved by
- *          @p vPortSwitchContext(), it is saved in the VRQ frame when the
- *          switch is performed on VRQ exit.
  *          Ticks are accounted from the host system time, ticks elapsed
  *          while the sandbox was not running are recovered.
  *          The scheduler can be stopped using @p vTaskEndScheduler(),
@@ -52,6 +50,11 @@
 #define portINITIAL_CRITICAL_NESTING    0xAAAAAAAAUL
 
 /**
+ * @brief   Initial FPSCR value of a task, IEEE 754 default modes.
+ */
+#define portINITIAL_FPSCR               0UL
+
+/**
  * @brief   Address a task returns to when exiting its function.
  */
 #if defined(configTASK_RETURN_ADDRESS)
@@ -72,14 +75,15 @@
  * @brief   Task saved context.
  * @details This structure represents the stack frame saved by
  *          @p vPortSwitchContext().
- * @note    R3 is not part of the context, it is only saved in order to
- *          keep the stack aligned to 8 bytes.
+ * @note    In FPU builds the @p fpscr field holds FPSCR, else it holds R3
+ *          which is only saved in order to keep the stack aligned to 8
+ *          bytes.
  */
 struct port_intctx {
 #if defined(__ARM_FP)
   uint32_t      s16_s31[16];
 #endif
-  uint32_t      r3;
+  uint32_t      fpscr;
   uint32_t      r4;
   uint32_t      r5;
   uint32_t      r6;
@@ -230,6 +234,7 @@ StackType_t *pxPortInitialiseStack(StackType_t *pxTopOfStack,
   struct port_intctx *ctxp;
 
   ctxp = (struct port_intctx *)(void *)pxTopOfStack - 1;
+  ctxp->fpscr = portINITIAL_FPSCR;
   ctxp->r4 = (uint32_t)pxCode;
   ctxp->r5 = (uint32_t)pvParameters;
   ctxp->r6 = (uint32_t)portTASK_RETURN_ADDRESS;

@@ -32,6 +32,21 @@
                 .text
 
 /*--------------------------------------------------------------------------*
+ * Saves the callee-saved registers on the current stack. In FPU builds
+ * FPSCR is saved in place of R3, which is otherwise saved only in order to
+ * keep the stack aligned to 8 bytes.
+ *--------------------------------------------------------------------------*/
+                .macro  port_save_context
+#if defined(__ARM_FP)
+                vmrs    r3, FPSCR
+#endif
+                push    {r3, r4, r5, r6, r7, r8, r9, r10, r11, lr}
+#if defined(__ARM_FP)
+                vpush   {s16-s31}
+#endif
+                .endm
+
+/*--------------------------------------------------------------------------*
  * Saves the current task context, invokes vTaskSwitchContext() and
  * restores the context of the task selected in pxCurrentTCB. It must be
  * invoked with VRQs disabled. The stack pointer is saved before invoking
@@ -41,11 +56,7 @@
                 .thumb_func
                 .globl  vPortSwitchContext
 vPortSwitchContext:
-                /* R3 is saved only in order to keep the stack aligned.*/
-                push    {r3, r4, r5, r6, r7, r8, r9, r10, r11, lr}
-#if defined(__ARM_FP)
-                vpush   {s16-s31}
-#endif
+                port_save_context
 
                 /* Saving the stack pointer in pxTopOfStack, the first
                    field of the TCB.*/
@@ -55,16 +66,9 @@ vPortSwitchContext:
 
                 bl      vTaskSwitchContext
 
-                /* Workaround for ARM errata 752419, always applied
-                   because the sandboxed code could run on any core.*/
                 ldr     r0, [r4]
                 ldr     r0, [r0]
-                mov     sp, r0
-
-#if defined(__ARM_FP)
-                vpop    {s16-s31}
-#endif
-                pop     {r3, r4, r5, r6, r7, r8, r9, r10, r11, pc}
+                b       vPortRestoreContext
 
 /*--------------------------------------------------------------------------*
  * Saves the current context and stores its stack pointer at the address
@@ -74,11 +78,7 @@ vPortSwitchContext:
                 .thumb_func
                 .globl  vPortStartFirstTask
 vPortStartFirstTask:
-                /* R3 is saved only in order to keep the stack aligned.*/
-                push    {r3, r4, r5, r6, r7, r8, r9, r10, r11, lr}
-#if defined(__ARM_FP)
-                vpush   {s16-s31}
-#endif
+                port_save_context
                 str     sp, [r0]
 
                 ldr     r0, =pxCurrentTCB
@@ -88,7 +88,9 @@ vPortStartFirstTask:
 
 /*--------------------------------------------------------------------------*
  * Restores the context saved at the stack pointer in R0, the current
- * stack is abandoned.
+ * stack is abandoned. The stack pointer is loaded from a register, this is
+ * the workaround for ARM errata 752419, always applied because the
+ * sandboxed code could run on any core.
  *--------------------------------------------------------------------------*/
                 .thumb_func
                 .globl  vPortRestoreContext
@@ -97,8 +99,12 @@ vPortRestoreContext:
 
 #if defined(__ARM_FP)
                 vpop    {s16-s31}
-#endif
+                pop     {r3, r4, r5, r6, r7, r8, r9, r10, r11, lr}
+                vmsr    FPSCR, r3
+                bx      lr
+#else
                 pop     {r3, r4, r5, r6, r7, r8, r9, r10, r11, pc}
+#endif
 
 /*--------------------------------------------------------------------------*
  * Tasks execution starts here. VRQs are disabled because switches are
