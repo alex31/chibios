@@ -123,6 +123,11 @@
 #define PORT_INFO                       "Sandboxed kernel mode"
 /** @} */
 
+/**
+ * @brief   Initial FPSCR value of a thread, IEEE 754 default modes.
+ */
+#define PORT_INITIAL_FPSCR              0U
+
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -216,7 +221,8 @@ struct port_extctx {
 /**
  * @brief   System saved context.
  * @details This structure represents the inner stack frame during a context
- *          switch.
+ *          switch. In FPU builds it includes S16-S31 and FPSCR, S0-S15 are
+ *          saved in the VRQ frame by the host.
  */
 struct port_intctx {
 #if CORTEX_USE_FPU
@@ -236,6 +242,7 @@ struct port_intctx {
   uint32_t      s29;
   uint32_t      s30;
   uint32_t      s31;
+  uint32_t      fpscr;
 #endif /* CORTEX_USE_FPU */
   uint32_t      r4;
   uint32_t      r5;
@@ -559,6 +566,9 @@ static inline void port_setup_context(struct port_context *ctxp,
 
   ctxp->sp = (struct port_intctx *)(void *)((uint8_t *)wtop -
                                             sizeof (struct port_intctx));
+#if CORTEX_USE_FPU
+  ctxp->sp->fpscr = PORT_INITIAL_FPSCR;
+#endif
   ctxp->sp->r4 = (uint32_t)pf;
   ctxp->sp->r5 = (uint32_t)arg;
   ctxp->sp->lr = (uint32_t)__port_thread_start;
