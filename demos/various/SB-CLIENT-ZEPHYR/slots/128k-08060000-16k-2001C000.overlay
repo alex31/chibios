@@ -1,0 +1,28 @@
+/*
+ * ChibiOS - Copyright (C) 2006-2026 Giovanni Di Sirio.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Sandbox slot, 128k of code at 0x08060000 and 16k of data at 0x2001c000,
+ * SB2 of the STM32G474RE hosts.
+ */
+
+#include <mem.h>
+
+/ {
+	sb_code: flash@8060000 {
+		compatible = "soc-nv-flash";
+		reg = <0x08060000 DT_SIZE_K(128)>;
+	};
+
+	sb_data: memory@2001c000 {
+		compatible = "mmio-sram";
+		reg = <0x2001c000 DT_SIZE_K(16)>;
+	};
+
+	chosen {
+		zephyr,flash = &sb_code;
+		zephyr,sram = &sb_data;
+	};
+};
