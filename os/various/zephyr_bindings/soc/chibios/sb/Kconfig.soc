@@ -1,0 +1,11 @@
+# ChibiOS - Copyright (C) 2006-2026 Giovanni Di Sirio.
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_CHIBIOS_SB
+	bool
+	help
+	  ChibiOS sandbox, the code runs unprivileged on an ARMv7-M or ARMv8-M
+	  Mainline core.
+
+config SOC
+	default "chibios_sb" if SOC_CHIBIOS_SB

@@ -1,0 +1,5 @@
+board:
+  name: chibios_sb
+  full_name: ChibiOS sandbox
+  socs:
+    - name: chibios_sb

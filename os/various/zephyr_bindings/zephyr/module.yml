@@ -1,0 +1,11 @@
+# ChibiOS bindings for the Zephyr kernel, Zephyr runs as a ChibiOS sandbox
+# guest. The module provides the chibios_sb architecture, SoC and board,
+# the system timer driver is part of the module itself.
+name: chibios_sb
+build:
+  cmake: .
+  kconfig: Kconfig
+  settings:
+    arch_root: .
+    soc_root: .
+    board_root: .

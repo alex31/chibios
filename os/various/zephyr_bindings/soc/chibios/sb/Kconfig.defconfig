@@ -1,0 +1,10 @@
+# ChibiOS - Copyright (C) 2006-2026 Giovanni Di Sirio.
+# SPDX-License-Identifier: Apache-2.0
+
+if SOC_CHIBIOS_SB
+
+# The tick rate must not exceed the host system time frequency.
+config SYS_CLOCK_TICKS_PER_SEC
+	default 1000
+
+endif # SOC_CHIBIOS_SB

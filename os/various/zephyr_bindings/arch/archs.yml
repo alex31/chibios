@@ -1,0 +1,4 @@
+archs:
+  - name: chibios_sb
+    path: chibios_sb
+    full_name: ChibiOS sandbox

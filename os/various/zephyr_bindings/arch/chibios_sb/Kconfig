@@ -1,0 +1,70 @@
+# ChibiOS sandbox architecture configuration options.
+#
+# ChibiOS - Copyright (C) 2006-2026 Giovanni Di Sirio.
+# SPDX-License-Identifier: Apache-2.0
+
+config CHIBIOS_SB
+	bool
+	select ARCH_EXTERNAL
+	select USE_SWITCH
+	select USE_SWITCH_SUPPORTED
+	select ATOMIC_OPERATIONS_BUILTIN
+	help
+	  ChibiOS sandbox architecture. Zephyr runs unprivileged inside a
+	  ChibiOS sandbox, interrupts are replaced by the sandbox Virtual IRQs
+	  (VRQs) and context switches are performed in user mode.
+
+menu "ChibiOS sandbox Options"
+	depends on CHIBIOS_SB
+
+config ARCH
+	string
+	default "chibios_sb"
+
+config CHIBIOS_SB_GCC_CPU
+	string "Compiler CPU name"
+	default "cortex-m4"
+	help
+	  Value passed to the compiler -mcpu option. The sandbox code runs on
+	  any ARMv7-M or ARMv8-M Mainline core able to execute it.
+
+config CHIBIOS_SB_IRQ_OFFLOAD_VRQ
+	int "VRQ used by irq_offload()"
+	range 1 31
+	default 31
+	depends on IRQ_OFFLOAD
+	help
+	  Software-triggered VRQ used to run the irq_offload() routines.
+
+config XIP
+	default y
+
+config NUM_IRQS
+	default 32
+
+config GEN_ISR_TABLES
+	default y
+
+config GEN_SW_ISR_TABLE
+	default y
+
+config GEN_IRQ_VECTOR_TABLE
+	default n
+
+# The interrupt stack is only used during the kernel initialization, VRQ
+# handlers run on the stack of the interrupted thread.
+config ISR_STACK_SIZE
+	default 640
+
+# VRQ handlers run on the stack of the interrupted thread, also the idle
+# thread stack must accommodate the deepest handler.
+config IDLE_STACK_SIZE
+	default 512
+
+config MAIN_STACK_SIZE
+	default 1024
+
+config TEST_EXTRA_STACK_SIZE
+	default 512
+
+endmenu

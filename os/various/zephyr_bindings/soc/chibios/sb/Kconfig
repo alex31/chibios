@@ -1,0 +1,5 @@
+# ChibiOS - Copyright (C) 2006-2026 Giovanni Di Sirio.
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_CHIBIOS_SB
+	select CHIBIOS_SB
