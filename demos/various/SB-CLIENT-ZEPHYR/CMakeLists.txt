@@ -17,16 +17,28 @@ endif()
 # modules of a west workspace are not needed.
 list(APPEND ZEPHYR_MODULES ${CHIBIOS}/os/various/zephyr_bindings)
 
-# The ARM GCC found in PATH is used if no Zephyr toolchain is selected, for
-# example the ChibiStudio one.
-if(NOT DEFINED ZEPHYR_TOOLCHAIN_VARIANT AND
-   NOT DEFINED ENV{ZEPHYR_TOOLCHAIN_VARIANT})
-  find_program(CHIBIOS_ARM_GCC arm-none-eabi-gcc)
-  if(CHIBIOS_ARM_GCC)
-    get_filename_component(CHIBIOS_ARM_GCC_BIN ${CHIBIOS_ARM_GCC} DIRECTORY)
-    get_filename_component(GNUARMEMB_TOOLCHAIN_PATH ${CHIBIOS_ARM_GCC_BIN}
-                           DIRECTORY)
-    set(ZEPHYR_TOOLCHAIN_VARIANT gnuarmemb)
+# The ARM GCC found in PATH, for example the ChibiStudio one, is used when no
+# Zephyr toolchain is selected, or when the gnuarmemb toolchain is selected
+# without a toolchain path. The path is cached, as the variant is, so that it
+# is still defined when the build is configured again.
+if(NOT DEFINED GNUARMEMB_TOOLCHAIN_PATH AND
+   NOT DEFINED ENV{GNUARMEMB_TOOLCHAIN_PATH})
+  if(DEFINED ZEPHYR_TOOLCHAIN_VARIANT)
+    set(CHIBIOS_TOOLCHAIN_VARIANT ${ZEPHYR_TOOLCHAIN_VARIANT})
+  else()
+    set(CHIBIOS_TOOLCHAIN_VARIANT "$ENV{ZEPHYR_TOOLCHAIN_VARIANT}")
+  endif()
+  if((CHIBIOS_TOOLCHAIN_VARIANT STREQUAL "") OR
+     (CHIBIOS_TOOLCHAIN_VARIANT STREQUAL "gnuarmemb"))
+    find_program(CHIBIOS_ARM_GCC arm-none-eabi-gcc)
+    if(CHIBIOS_ARM_GCC)
+      get_filename_component(CHIBIOS_ARM_GCC_BIN ${CHIBIOS_ARM_GCC} DIRECTORY)
+      get_filename_component(CHIBIOS_ARM_GCC_ROOT ${CHIBIOS_ARM_GCC_BIN}
+                             DIRECTORY)
+      set(GNUARMEMB_TOOLCHAIN_PATH ${CHIBIOS_ARM_GCC_ROOT} CACHE PATH
+          "ARM GCC toolchain found in PATH")
+      set(ZEPHYR_TOOLCHAIN_VARIANT gnuarmemb)
+    endif()
   endif()
 endif()
 
