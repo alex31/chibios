@@ -120,6 +120,7 @@ include $(CHIBIOS)/tools/mk/autobuild.mk
 include $(CHIBIOS)/os/test/test.mk
 include $(CHIBIOS)/test/rt/rt_test.mk
 include $(CHIBIOS)/test/oslib/oslib_test.mk
+include $(CHIBIOS)/test/sb/sb_test.mk
 include $(CHIBIOS)/os/various/xshell/xshell.mk
 
 # Define linker script file here.
@@ -159,7 +160,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS = -DOOP_USE_LEGACY
+UDEFS = -DOOP_USE_LEGACY -DXSHELL_CMD_TEST_SB_ENABLED=TRUE
 
 # Define ASM defines here
 UADEFS =

@@ -39,11 +39,13 @@
 /**
  * @name    Fastcall codes
  * @note    The host fastcalls table is indexed by these codes.
+ * @note    Code zero is never assigned, it is served as not implemented.
  * @{
  */
 #define SB_FASTC_GET_SYSTIME     1
 #define SB_FASTC_GET_FREQUENCY   2
 #define SB_FASTC_EVENT_BROADCAST 3
+#define SB_FASTC_NOP             4
 #define SB_FASTC_VIO_VGPIO       96
 #define SB_FASTC_VIO_VUART       97
 #define SB_FASTC_VIO_VSPI        98
@@ -85,6 +87,7 @@
 #define SB_SYSC_EVENT_WAIT_ANY   135
 #define SB_SYSC_EVENT_WAIT_ALL   136
 #define SB_SYSC_LOADELF          138
+#define SB_SYSC_NOP              139
 #define SB_SYSC_VIO_VUART        225
 #define SB_SYSC_VIO_VSPI         226
 #define SB_SYSC_VIO_VETH         227
