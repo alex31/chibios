@@ -181,17 +181,33 @@
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
 
-/**
- * @name    Unavailable options
- * @{
- */
-#define CH_CFG_USE_MUTEXES          FALSE
-#define CH_CFG_SMP_MODE             FALSE
-#define CH_DBG_STATISTICS           FALSE
-/** @} */
-
 #include "chconf.h"
 #include "chlicense.h"
+
+/**
+ * @name    Unavailable options
+ * @note    These options are not available in ChibiOS/NIL, they can be
+ *          left undefined or set to @p FALSE in @p chconf.h.
+ * @{
+ */
+#if !defined(CH_CFG_USE_MUTEXES) || defined(__DOXYGEN__)
+#define CH_CFG_USE_MUTEXES          FALSE
+#elif CH_CFG_USE_MUTEXES != FALSE
+#error "CH_CFG_USE_MUTEXES not available in ChibiOS/NIL"
+#endif
+
+#if !defined(CH_CFG_SMP_MODE) || defined(__DOXYGEN__)
+#define CH_CFG_SMP_MODE             FALSE
+#elif CH_CFG_SMP_MODE != FALSE
+#error "CH_CFG_SMP_MODE not available in ChibiOS/NIL"
+#endif
+
+#if !defined(CH_DBG_STATISTICS) || defined(__DOXYGEN__)
+#define CH_DBG_STATISTICS           FALSE
+#elif CH_DBG_STATISTICS != FALSE
+#error "CH_DBG_STATISTICS not available in ChibiOS/NIL"
+#endif
+/** @} */
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */

@@ -146,13 +146,32 @@ typedef uint32_t eventflags_t;
 /** @} */
 
 /**
- * @name   Time and intervals related macros
+ * @name   Sandbox API time and intervals related macros
+ * @note   These values follow the host conventions, they must be used with
+ *         the sandbox API functions taking an interval or a timeout.
  * @{
  */
+#define SB_TIME_IMMEDIATE       ((sysinterval_t)0)
+#define SB_TIME_INFINITE        ((sysinterval_t)-1)
+#define SB_TIME_MAX_INTERVAL    ((sysinterval_t)-2)
+#define SB_TIME_MAX_SYSTIME     ((systime_t)-1)
+/** @} */
+
+/**
+ * @name   Time and intervals related macros
+ * @note   Not defined when a ChibiOS kernel runs inside the sandbox, the
+ *         kernel definitions apply in that case. NIL definitions of
+ *         @p TIME_IMMEDIATE and @p TIME_INFINITE differ from the host ones,
+ *         use the @p SB_TIME_xxx macros with the sandbox API.
+ * @{
+ */
+#if (!defined(_CHIBIOS_RT_CONF_) && !defined(_CHIBIOS_NIL_CONF_)) ||        \
+    defined(__DOXYGEN__)
 #define TIME_IMMEDIATE      ((sysinterval_t)0)
 #define TIME_INFINITE       ((sysinterval_t)-1)
 #define TIME_MAX_INTERVAL   ((sysinterval_t)-2)
 #define TIME_MAX_SYSTIME    ((systime_t)-1)
+#endif
 /** @} */
 
 /**
@@ -636,8 +655,8 @@ static inline uint32_t sbMsgReply(msg_t msg) {
  *                      for, @p ALL_EVENTS enables all the events
  * @param[in] timeout   the number of ticks before the operation timeouts,
  *                      the following special values are allowed:
- *                      - @a TIME_IMMEDIATE immediate timeout.
- *                      - @a TIME_INFINITE no timeout.
+ *                      - @a SB_TIME_IMMEDIATE immediate timeout.
+ *                      - @a SB_TIME_INFINITE no timeout.
  *                      .
  * @return              The mask of the lowest event id served and cleared.
  * @retval 0            if the operation has timed out.
@@ -661,8 +680,8 @@ static inline eventmask_t sbEventWaitOneTimeout(eventmask_t events,
  *                      for, @p ALL_EVENTS enables all the events
  * @param[in] timeout   the number of ticks before the operation timeouts,
  *                      the following special values are allowed:
- *                      - @a TIME_IMMEDIATE immediate timeout.
- *                      - @a TIME_INFINITE no timeout.
+ *                      - @a SB_TIME_IMMEDIATE immediate timeout.
+ *                      - @a SB_TIME_INFINITE no timeout.
  *                      .
  * @return              The mask of the served and cleared events.
  * @retval 0            if the operation has timed out.
@@ -685,8 +704,8 @@ static inline eventmask_t sbEventWaitAnyTimeout(eventmask_t events,
  *                      for, @p ALL_EVENTS requires all the events
  * @param[in] timeout   the number of ticks before the operation timeouts,
  *                      the following special values are allowed:
- *                      - @a TIME_IMMEDIATE immediate timeout.
- *                      - @a TIME_INFINITE no timeout.
+ *                      - @a SB_TIME_IMMEDIATE immediate timeout.
+ *                      - @a SB_TIME_INFINITE no timeout.
  *                      .
  * @return              The mask of the served and cleared events.
  * @retval 0            if the operation has timed out.
@@ -945,13 +964,13 @@ static inline void sbSleepMicroseconds(time_usecs_t usecs) {
 /**
  * @brief   Sets an alarm.
  * @note    On alarm a VRQ is triggered on vector @p SB_VRQ_ALARM.
- * @note    The interval @p TIME_IMMEDIATE is not allowed.
+ * @note    The interval @p SB_TIME_IMMEDIATE is not allowed.
  *
  * @param[in] interval  the interval in system ticks
  * @param[in] reload    specifies a periodic alarm
  * @return              The operation result.
  * @retval CH_RET_SUCCESS if the alarm has been accepted.
- * @retval CH_RET_EINVAL  if @p interval is @p TIME_IMMEDIATE.
+ * @retval CH_RET_EINVAL  if @p interval is @p SB_TIME_IMMEDIATE.
  *
  * @api
  */
