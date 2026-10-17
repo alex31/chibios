@@ -1,0 +1,4 @@
+# ChibiOS - Copyright (C) 2006-2026 Giovanni Di Sirio.
+# SPDX-License-Identifier: Apache-2.0
+
+CONFIG_BUILD_OUTPUT_BIN=y

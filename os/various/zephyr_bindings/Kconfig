@@ -1,0 +1,13 @@
+# ChibiOS - Copyright (C) 2006-2026 Giovanni Di Sirio.
+# SPDX-License-Identifier: Apache-2.0
+
+config CHIBIOS_SB_TIMER
+	bool "ChibiOS sandbox system timer"
+	default y
+	depends on CHIBIOS_SB && SYS_CLOCK_EXISTS
+	select TICKLESS_CAPABLE
+	select TIMER_READS_ITS_FREQUENCY_AT_RUNTIME
+	select SYSTEM_TIMER_HAS_DISABLE_SUPPORT
+	help
+	  System timer based on the host system time and on the host alarm,
+	  the frequency is the one of the host system time.

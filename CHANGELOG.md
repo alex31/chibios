@@ -8,6 +8,12 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Added
 
+- [SB] Zephyr kernel as a sandbox guest: Zephyr module in
+  `os/various/zephyr_bindings` providing the `chibios_sb` architecture, SoC,
+  board and tickless system timer, plus the `SB-CLIENT-ZEPHYR` self-test
+  client; it requires a Zephyr external architecture patch, provided in the
+  module until an equivalent change is available upstream
+  ([#521](https://github.com/chibios-upstream/chibios/pull/521)).
 - [STM32] OCTOSPIv3 WSPI driver for STM32U5, built on GPDMA (DMA3v1) rather
   than the OCTOSPIv2 MDMA path: the driver and its OCTOSPI IRQ handlers, the
   OCTOSPIM clock wiring, and the STM32U575/U595 mcuconf templates, with the

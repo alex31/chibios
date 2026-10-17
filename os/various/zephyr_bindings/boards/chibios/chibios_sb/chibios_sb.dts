@@ -1,0 +1,33 @@
+/*
+ * ChibiOS - Copyright (C) 2006-2026 Giovanni Di Sirio.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * ChibiOS sandbox. The memory of the sandbox slot, code and data regions,
+ * is defined by an overlay matching the host configuration, it provides
+ * the zephyr,flash and zephyr,sram chosen nodes.
+ */
+
+/dts-v1/;
+
+/ {
+	model = "ChibiOS sandbox";
+	compatible = "chibios,sb";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-m4";
+			reg = <0>;
+		};
+	};
+
+	chosen {
+	};
+};
