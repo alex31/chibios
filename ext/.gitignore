@@ -5,3 +5,5 @@ lwip/
 wolfssl/
 pico-sdk*/
 *.zip
+zephyr/
+zephyr-venv/
