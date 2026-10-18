@@ -979,6 +979,9 @@ void stm32_clock_init(void) {
 
   /* Backup domain initializations.*/
   bd_init();
+
+  /* Cache enable.*/
+  icache_init();
 #endif /* STM32_NO_INIT */
 }
 
