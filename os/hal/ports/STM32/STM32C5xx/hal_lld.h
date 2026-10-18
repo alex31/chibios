@@ -121,6 +121,9 @@
 #include "stm32_clock_usage.h"
 #include "clocktree.h"
 
+/* ICache handler.*/
+#include "stm32_icache.inc"
+
 /* Clock compatibility aliases used by STM32 LLD drivers.*/
 #define STM32_SYSCLK                        STM32_SYSCLK_CLOCK
 #define STM32_HCLK                          STM32_HCLK_CLOCK
