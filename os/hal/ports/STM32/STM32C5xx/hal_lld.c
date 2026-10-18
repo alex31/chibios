@@ -207,6 +207,9 @@ void stm32_clock_init(void) {
 
   /* Selecting the default clock configuration.*/
   hal_lld_clock_configure(&hal_clkcfg_default);
+
+  /* Cache enable.*/
+  icache_init();
 #endif /* STM32_NO_INIT */
 }
 

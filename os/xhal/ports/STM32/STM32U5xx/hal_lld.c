@@ -1652,6 +1652,9 @@ void stm32_clock_init(void) {
 
   /* Selecting the default clock configuration. */
   halSftFailOnError(hal_lld_clock_configure(&hal_clkcfg_default), "clkinit");
+
+  /* Cache enable.*/
+  icache_init();
 #endif /* STM32_NO_INIT */
 }
 
