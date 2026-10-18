@@ -54,12 +54,9 @@ hal_gpt_driver_c GPTD1;
  * @brief   Shared VGPT interrupt service routine.
  *
  * @param[in] gptp      pointer to the @p hal_gpt_driver_c object
- * @param[in] nvrq      VGPT virtual IRQ number
+ * @param[in] sts       VRQ flags
  */
-static void gpt_lld_serve_interrupt(hal_gpt_driver_c *gptp, uint32_t nvrq) {
-  uint32_t sts;
-
-  sts = __sb_vrq_gcsts(nvrq);
+static void gpt_lld_serve_interrupt(hal_gpt_driver_c *gptp, uint32_t sts) {
 
   if ((sts & (1U << HAL_DRV_STATE_COMPLETE)) != 0U) {
     gptp->interval = (gptcnt_t)0;
@@ -78,11 +75,11 @@ static void gpt_lld_serve_interrupt(hal_gpt_driver_c *gptp, uint32_t nvrq) {
 
 #if VIO_GPT_USE_VGPT1 || defined(__DOXYGEN__)
 #if !defined(VIO_VGPT1_SUPPRESS_ISR)
-CH_IRQ_HANDLER(MK_VECTOR(VIO_VGPT1_IRQ)) {
+SB_VRQ_HANDLER(MK_VECTOR(VIO_VGPT1_IRQ)) {
 
   CH_IRQ_PROLOGUE();
 
-  gpt_lld_serve_interrupt(&GPTD1, VIO_VGPT1_IRQ);
+  gpt_lld_serve_interrupt(&GPTD1, flags);
 
   CH_IRQ_EPILOGUE();
 }

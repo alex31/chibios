@@ -58,7 +58,8 @@
  * - [3.1.1] The test VRQ is enabled, no activation is expected without
  *   a pending request.
  * - [3.1.2] The test VRQ is made pending, the handler is expected to
- *   run once and the request to be cleared.
+ *   run once and the request to be cleared. The handler is expected to
+ *   receive the VRQ number and no flags.
  * .
  */
 
@@ -85,13 +86,18 @@ static void sb_test_003_001_execute(void) {
   test_end_step(1);
 
   /* [3.1.2] The test VRQ is made pending, the handler is expected to
-     run once and the request to be cleared.*/
+     run once and the request to be cleared. The handler is expected to
+     receive the VRQ number and no flags.*/
   test_set_step(2);
   {
+    sb_test_vrq_nvrq  = 0xFFFFFFFFU;
+    sb_test_vrq_flags = 0xFFFFFFFFU;
     (void)__sb_vrq_setwt(SB_TEST_VRQ_MASK);
     test_assert(sb_test_vrq_count == 1U, "not activated");
     test_assert((sb_test_get_pending() & SB_TEST_VRQ_MASK) == 0U,
                 "still pending");
+    test_assert(sb_test_vrq_nvrq == (uint32_t)SB_TEST_VRQ, "wrong VRQ number");
+    test_assert(sb_test_vrq_flags == 0U, "unexpected flags");
   }
   test_end_step(2);
 }

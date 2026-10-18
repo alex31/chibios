@@ -78,6 +78,8 @@ extern "C" {
 #define SB_TEST_ALLOWED_DELAY       sbTimeMS2I(2)
 
 extern volatile uint32_t sb_test_vrq_count;
+extern volatile uint32_t sb_test_vrq_nvrq;
+extern volatile uint32_t sb_test_vrq_flags;
 
 systime_t sb_test_wait_tick(void);
 msg_t sb_test_unassigned_fastcall(void);

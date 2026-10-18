@@ -225,6 +225,8 @@ typedef unsigned short                  USHORT;
  * @brief   VRQ handler definition.
  * @details Handlers run with VRQs disabled on the stack of the interrupted
  *          thread, they can use the ThreadX services allowed from ISRs.
+ *          The handler receives the VRQ number in @p vrq and the VRQ flags
+ *          in @p flags, the host clears the flags on delivery.
  * @note    @p n must be a decimal integer literal without suffixes, or a
  *          macro expanding to one, because it is pasted into the vector
  *          name. A handler with a malformed name is never invoked.
@@ -233,7 +235,9 @@ typedef unsigned short                  USHORT;
  * @param[in] n         VRQ number
  */
 #define TX_SB_VRQ_HANDLER(n)            TX_SB_VRQ_HANDLER_PASTE(n)
-#define TX_SB_VRQ_HANDLER_PASTE(n)      void __sb_vector##n(void)
+#define TX_SB_VRQ_HANDLER_PASTE(n)                                          \
+  void __sb_vector##n(ULONG vrq __attribute__((unused)),                    \
+                      ULONG flags __attribute__((unused)))
 
 /*===========================================================================*/
 /* External declarations.                                                    */
@@ -320,17 +324,6 @@ static inline void tx_sb_vrq_disable(UINT vrq) {
 static inline void tx_sb_vrq_trigger(UINT vrq) {
 
   (void)__sb_vrq_setwt(1UL << vrq);
-}
-
-/**
- * @brief   Returns and clears the flags associated to a VRQ.
- *
- * @param[in] vrq       VRQ number
- * @return              The VRQ flags.
- */
-static inline ULONG tx_sb_vrq_get_flags(UINT vrq) {
-
-  return (ULONG)__sb_vrq_gcsts((uint32_t)vrq);
 }
 
 #endif /* TX_PORT_H */

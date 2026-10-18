@@ -35,9 +35,23 @@
 #define SB_VRQ_ALARM            0
 
 /**
+ * @name    Virtual ISR register bit definitions
+ * @{
+ */
+#define SB_VRQ_ISR_DISABLED     1U
+/** @} */
+
+/**
+ * @brief   Alignment of the system block.
+ */
+#define SB_SYSBLOCK_ALIGN       32U
+
+/**
  * @name    Fastcall codes
  * @note    The host fastcalls table is indexed by these codes.
  * @note    Code zero is never assigned, it is served as not implemented.
+ * @note    Code 119 is retired, it was the VRQ flags fetch, the flags are
+ *          passed to the VRQ handlers.
  * @{
  */
 #define SB_FASTC_GET_SYSTIME     1
@@ -53,7 +67,6 @@
 #define SB_FASTC_VIO_VI2C        102
 #define SB_FASTC_VRQ_SET_ALARM   117
 #define SB_FASTC_VRQ_RESET_ALARM 118
-#define SB_FASTC_VRQ_GCSTS       119
 #define SB_FASTC_VRQ_SETWT       120
 #define SB_FASTC_VRQ_CLRWT       121
 #define SB_FASTC_VRQ_SETEN       122
@@ -362,6 +375,39 @@ typedef struct vio_eth_config {
   uint8_t                   mac_address[6];
   uint8_t                   reserved[2];
 } vio_eth_config_t;
+
+/**
+ * @brief   System block shared by the host and the sandbox.
+ * @details The host allocates it at the top of the sandbox data area and
+ *          passes its address in the sandbox startup parameters.
+ * @note    The sandbox can write any field, the host treats all values as
+ *          untrusted.
+ * @note    The fields are not volatile, the host accesses them under the
+ *          VRQ atomicity rules of its own state while the sandbox accesses
+ *          them through a volatile pointer.
+ */
+typedef struct sb_sysblock {
+  /**
+   * @brief   Global VRQ status register.
+   * @note    Written by the host on VRQ delivery and return, by the sandbox
+   *          when its VRQ fast path is enabled.
+   */
+  uint32_t                  vrq_isr;
+  /**
+   * @brief   Mask of pending VRQs.
+   * @note    Written by the host only.
+   */
+  uint32_t                  vrq_wtmask;
+  /**
+   * @brief   Mask of enabled VRQs.
+   * @note    Written by the host only.
+   */
+  uint32_t                  vrq_enmask;
+  /**
+   * @brief   Reserved, zero.
+   */
+  uint32_t                  reserved[5];
+} sb_sysblock_t;
 
 #endif /* !defined(_FROM_ASM_) */
 

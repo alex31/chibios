@@ -25,6 +25,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/arch/common/init.h>
 #include <zephyr/arch/common/xip.h>
+#include <zephyr/linker/linker-defs.h>
 #include <kernel_internal.h>
 
 /* The entry code places the initial stack pointer at the end of the
@@ -41,8 +42,16 @@ BUILD_ASSERT(K_KERNEL_STACK_RESERVED == 0,
 /**
  * @brief   Initializes the C environment and starts the kernel.
  * @note    Invoked by the entry code with VRQs disabled.
+ *
+ * @param[in] sysblk    address of the host system block
  */
-FUNC_NORETURN void z_chibios_sb_prep_c(void) {
+FUNC_NORETURN void z_chibios_sb_prep_c(uintptr_t sysblk) {
+
+  /* The host keeps the VRQ state in the system block at the top of the
+     data region, the slot overlay must exclude it from the kernel RAM.*/
+  if (sysblk < (uintptr_t)__kernel_ram_end) {
+    chibios_sb_exit((uint32_t)CHIBIOS_SB_EXIT_HALT | K_ERR_KERNEL_PANIC);
+  }
 
   arch_bss_zero();
   arch_data_copy();

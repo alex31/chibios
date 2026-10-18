@@ -68,11 +68,11 @@ VRQs
 
 - `TX_SB_VRQ_HANDLER(n)` defines the handler of VRQ `n`, a decimal literal
   without suffixes or a macro expanding to one. Handlers run with VRQs
-  disabled, they can use the ThreadX services allowed from ISRs.
+  disabled, they can use the ThreadX services allowed from ISRs. They
+  receive the VRQ number in `vrq` and the flags set by the host, for
+  example by VIO drivers, in `flags`.
 - `tx_sb_vrq_enable()`, `tx_sb_vrq_disable()`: enable or disable a VRQ.
 - `tx_sb_vrq_trigger()`: triggers a VRQ on the guest itself.
-- `tx_sb_vrq_get_flags()`: returns and clears the flags set by the host
-  for a VRQ, for example by VIO drivers.
 - `tx_interrupt_control()` enables or disables all the VRQs.
 - VRQ 0 is used by the port, the VRQs of VIO units are assigned by the host
   configuration.

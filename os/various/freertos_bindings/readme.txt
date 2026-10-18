@@ -90,10 +90,10 @@ VRQs
 - `portVRQ_HANDLER(n)` defines the handler of VRQ `n`, a decimal literal
   without suffixes or a macro expanding to one. Handlers run with VRQs
   disabled, they can use the "FromISR" API and `portYIELD_FROM_ISR()`.
+  They receive the VRQ number in `ulVRQ` and the flags set by the host, for
+  example by VIO drivers, in `ulFlags`.
 - `vPortVRQEnable()`, `vPortVRQDisable()`: enable or disable a VRQ.
 - `vPortVRQTrigger()`: triggers a VRQ on the guest itself.
-- `ulPortVRQGetFlags()`: returns and clears the flags set by the host for a
-  VRQ, for example by VIO drivers.
 - VRQ 0 is used by the port, the VRQs of VIO units are assigned by the host
   configuration.
 

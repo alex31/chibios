@@ -16,9 +16,10 @@
 		reg = <0x081e0000 DT_SIZE_K(128)>;
 	};
 
+	/* The last 32 bytes are the system block of the host.*/
 	sb_data: memory@20004000 {
 		compatible = "mmio-sram";
-		reg = <0x20004000 DT_SIZE_K(16)>;
+		reg = <0x20004000 (DT_SIZE_K(16) - 32)>;
 	};
 
 	chosen {

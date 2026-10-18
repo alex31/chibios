@@ -56,7 +56,10 @@ Layout
   The "chibios_sb" SoC and board. The board does not define memory, the
   sandbox slot is defined by an application overlay providing the
   zephyr,flash and zephyr,sram chosen nodes, it must match the host
-  configuration of the sandbox regions.
+  configuration of the sandbox regions. The zephyr,sram node excludes the
+  last 32 bytes of the data region, the host keeps the system block there
+  (`sb_sysblock_t` in `os/sb/common/sbsysc.h`), the sandbox halts at
+  startup if they overlap.
 
 - `drivers/timer/chibios_sb_timer.c`
   System timer, based on the Zephyr generic timer core.
@@ -88,7 +91,7 @@ Architecture
   the sandbox at `__start` with VRQs disabled. The kernel initialization
   runs on the interrupt stack, the startup stack, arguments and
   environment placed by the host at the top of the data region are not
-  used.
+  used, only the system block address is checked.
 - The IRQ lock is the VRQs global disable, `irq_lock()` and `irq_unlock()`
   are fastcalls. IRQ numbers are VRQ numbers, 0 to 31, priorities and
   flags are ignored. `IRQ_CONNECT()` places the handler in the software

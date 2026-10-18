@@ -39,9 +39,38 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
+/**
+ * @brief   Generic 'false' preprocessor boolean constant.
+ * @note    It is meant to be used in configuration files as switch.
+ */
+#if !defined(FALSE) || defined(__DOXYGEN__)
+#define FALSE                               0
+#endif
+
+/**
+ * @brief   Generic 'true' preprocessor boolean constant.
+ * @note    It is meant to be used in configuration files as switch.
+ */
+#if !defined(TRUE) || defined(__DOXYGEN__)
+#define TRUE                                1
+#endif
+
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
+
+/**
+ * @brief   Enables the VRQ fast path.
+ * @details If enabled then the VRQ global disable, enable and status query
+ *          operations access the system block directly, the enable
+ *          operation invokes the fastcall only if enabled VRQs became
+ *          pending while disabled. If disabled then all the VRQ operations
+ *          are fastcalls.
+ * @note    Requires a host providing the system block.
+ */
+#if !defined(SB_USER_CFG_FAST_VRQ) || defined(__DOXYGEN__)
+#define SB_USER_CFG_FAST_VRQ                TRUE
+#endif
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
@@ -68,9 +97,10 @@ typedef struct sb_parameters {
    */
   char                      **envp;
   /**
-   * @brief   Address of the physical sandbox end.
+   * @brief   Pointer to the system block.
+   * @note    Volatile because the host updates the block asynchronously.
    */
-  uint8_t                   *sb_end;
+  volatile sb_sysblock_t    *sysblk;
   /**
    * @brief   Address of heap end.
    */
@@ -125,6 +155,25 @@ typedef uint32_t eventflags_t;
 /*===========================================================================*/
 /* Module macros.                                                            */
 /*===========================================================================*/
+
+/**
+ * @brief   VRQ handler declaration.
+ * @details The handler receives the VRQ number in @p nvrq and the VRQ flags
+ *          in @p flags, the host clears the flags on delivery.
+ * @note    Handlers declared without parameters are also valid, the
+ *          arguments are ignored.
+ *
+ * @param[in] id        handler name, for example @p __sb_vector5
+ */
+#if defined(__cplusplus)
+#define SB_VRQ_HANDLER(id)                                                  \
+  extern "C" void id(uint32_t nvrq __attribute__((unused)),                 \
+                     uint32_t flags __attribute__((unused)))
+#else
+#define SB_VRQ_HANDLER(id)                                                  \
+  void id(uint32_t nvrq __attribute__((unused)),                            \
+          uint32_t flags __attribute__((unused)))
+#endif
 
 /**
  * @name   Messages-related macros
@@ -1004,20 +1053,6 @@ static inline void __sb_vrq_wait(void) {
 }
 
 /**
- * @brief   VRQ @p gcsts pseudo-instruction.
- *
- * @param[in] n         VRQ number
- * @return              The associated VRQ flags.
- *
- * @api
- */
-static inline uint32_t __sb_vrq_gcsts(uint32_t nvrq) {
-
-  __syscall1r(SB_FASTC_VRQ_GCSTS, nvrq);
-  return r0;
-}
-
-/**
  * @brief   VRQ @p setwt pseudo-instruction.
  *
  * @param[in] m         VRQs mask
@@ -1080,17 +1115,44 @@ static inline uint32_t __sb_vrq_clren(uint32_t m) {
  */
 static inline void __sb_vrq_disable(void) {
 
+#if SB_USER_CFG_FAST_VRQ == TRUE
+  __sb_parameters.sysblk->vrq_isr = SB_VRQ_ISR_DISABLED;
+
+  /* Memory accesses inside the critical zone must not be moved before the
+     global disable.*/
+  asm volatile ("" : : : "memory");
+#else
   __syscall0(SB_FASTC_VRQ_DISABLE);
+#endif
 }
 
 /**
  * @brief   VRQ @p enable pseudo-instruction.
+ * @note    If @p SB_USER_CFG_FAST_VRQ is enabled then the fastcall is only
+ *          invoked when enabled VRQs are pending.
  *
  * @api
  */
 static inline void __sb_vrq_enable(void) {
 
+#if SB_USER_CFG_FAST_VRQ == TRUE
+  volatile sb_sysblock_t *sysp = __sb_parameters.sysblk;
+
+  /* Memory accesses inside the critical zone must not be moved after the
+     global enable.*/
+  asm volatile ("" : : : "memory");
+
+  /* Global enable, from now on the host can deliver VRQs asynchronously.*/
+  sysp->vrq_isr = 0U;
+
+  /* VRQs triggered while disabled are only pending, the host delivers them
+     on fastcall return.*/
+  if ((sysp->vrq_wtmask & sysp->vrq_enmask) != 0U) {
+    __syscall0(SB_FASTC_VRQ_ENABLE);
+  }
+#else
   __syscall0(SB_FASTC_VRQ_ENABLE);
+#endif
 }
 
 /**
@@ -1102,8 +1164,12 @@ static inline void __sb_vrq_enable(void) {
  */
 static inline uint32_t __sb_vrq_getisr(void) {
 
+#if SB_USER_CFG_FAST_VRQ == TRUE
+  return __sb_parameters.sysblk->vrq_isr;
+#else
   __syscall0r(SB_FASTC_VRQ_GETISR);
   return r0;
+#endif
 }
 
 #endif /* SBUSER_H */

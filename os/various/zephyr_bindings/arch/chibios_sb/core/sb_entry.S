@@ -62,8 +62,11 @@ z_chibios_sb_header:
                 .thumb_func
                 .globl      __start
 __start:
-                ldr         r0, =z_interrupt_stacks + CONFIG_ISR_STACK_SIZE
-                mov         sp, r0
+                /* The system block address is the fourth word placed by
+                   the host on the startup stack.*/
+                ldr         r0, [sp, #12]
+                ldr         r1, =z_interrupt_stacks + CONFIG_ISR_STACK_SIZE
+                mov         sp, r1
                 bl          z_chibios_sb_prep_c
                 /* Not reached.*/
 

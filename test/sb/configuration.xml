@@ -65,6 +65,8 @@
 #define SB_TEST_ALLOWED_DELAY       sbTimeMS2I(2)
 
 extern volatile uint32_t sb_test_vrq_count;
+extern volatile uint32_t sb_test_vrq_nvrq;
+extern volatile uint32_t sb_test_vrq_flags;
 
 systime_t sb_test_wait_tick(void);
 msg_t sb_test_unassigned_fastcall(void);
@@ -84,12 +86,20 @@ uint32_t sb_test_get_pending(void);]]></value>
 volatile uint32_t sb_test_vrq_count;
 
 /*
+ * Arguments received by the test VRQ handler on its last activation.
+ */
+volatile uint32_t sb_test_vrq_nvrq;
+volatile uint32_t sb_test_vrq_flags;
+
+/*
  * Test VRQ handler.
  */
-CH_IRQ_HANDLER(SB_TEST_MK_VECTOR(SB_TEST_VRQ)) {
+SB_VRQ_HANDLER(SB_TEST_MK_VECTOR(SB_TEST_VRQ)) {
 
   CH_IRQ_PROLOGUE();
 
+  sb_test_vrq_nvrq  = nvrq;
+  sb_test_vrq_flags = flags;
   sb_test_vrq_count++;
 
   CH_IRQ_EPILOGUE();
@@ -191,6 +201,8 @@ test_println(" Hz");
 test_print("--- Sandbox local system tick:          ");
 test_println(PORT_USE_LOCAL_SYSTICK == TRUE ? "yes" : "no");
 #endif
+test_print("--- VRQ fast path:                      ");
+test_println(SB_USER_CFG_FAST_VRQ == TRUE ? "yes" : "no");
 test_print("--- Test VRQ:                           ");
 test_printn(SB_TEST_VRQ);
 test_println("");]]></value>
@@ -439,17 +451,22 @@ test_assert(sb_test_vrq_count == 0U, "spurious activation");]]></value>
             <step>
               <description>
                 <value>The test VRQ is made pending, the handler is
-                  expected to run once and the request to be
-                  cleared.</value>
+                  expected to run once and the request to be cleared. The
+                  handler is expected to receive the VRQ number and no
+                  flags.</value>
               </description>
               <tags>
                 <value />
               </tags>
               <code>
-                <value><![CDATA[(void)__sb_vrq_setwt(SB_TEST_VRQ_MASK);
+                <value><![CDATA[sb_test_vrq_nvrq  = 0xFFFFFFFFU;
+sb_test_vrq_flags = 0xFFFFFFFFU;
+(void)__sb_vrq_setwt(SB_TEST_VRQ_MASK);
 test_assert(sb_test_vrq_count == 1U, "not activated");
 test_assert((sb_test_get_pending() & SB_TEST_VRQ_MASK) == 0U,
-            "still pending");]]></value>
+            "still pending");
+test_assert(sb_test_vrq_nvrq == (uint32_t)SB_TEST_VRQ, "wrong VRQ number");
+test_assert(sb_test_vrq_flags == 0U, "unexpected flags");]]></value>
               </code>
             </step>
           </steps>

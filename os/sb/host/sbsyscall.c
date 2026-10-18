@@ -80,7 +80,6 @@ const port_syscall_t sb_fastcalls[SB_SYSC_BASE] = {
 #if SB_CFG_ENABLE_VRQ == TRUE
   [SB_FASTC_VRQ_SET_ALARM]                = sb_fastc_vrq_set_alarm,
   [SB_FASTC_VRQ_RESET_ALARM]              = sb_fastc_vrq_reset_alarm,
-  [SB_FASTC_VRQ_GCSTS]                    = sb_fastc_vrq_gcsts,
   [SB_FASTC_VRQ_SETWT]                    = sb_fastc_vrq_setwt,
   [SB_FASTC_VRQ_CLRWT]                    = sb_fastc_vrq_clrwt,
   [SB_FASTC_VRQ_SETEN]                    = sb_fastc_vrq_seten,

@@ -33,13 +33,6 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
-/**
- * @name    Virtual ISR register bit definitions
- * @{
- */
-#define SB_VRQ_ISR_DISABLED     1U
-/** @} */
-
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -72,18 +65,6 @@ typedef struct sb_vrqblock sb_vrqblock_t;
  */
 struct sb_vrqblock {
   /**
-   * @brief   Mask of enabled virtual IRQ flags.
-   */
-  sb_vrqmask_t                  enmask;
-  /**
-   * @brief   Mask of pending virtual IRQ flags.
-   */
-  sb_vrqmask_t                  wtmask;
-  /**
-   * @brief   Global virtual IRQ status register.
-   */
-  uint32_t                      isr;
-  /**
    * @brief   Reference to sh SB thread while waiting for VRQs.
    */
   thread_reference_t            trp;
@@ -114,7 +95,6 @@ extern "C" {
   void sb_fastc_vrq_set_alarm(sb_class_t *sbp, struct port_extctx *ectxp);
   void sb_fastc_vrq_reset_alarm(sb_class_t *sbp, struct port_extctx *ectxp);
   void sb_sysc_vrq_wait(sb_class_t *sbp, struct port_extctx *ectxp);
-  void sb_fastc_vrq_gcsts(sb_class_t *sbp, struct port_extctx *ectxp);
   void sb_fastc_vrq_setwt(sb_class_t *sbp, struct port_extctx *ectxp);
   void sb_fastc_vrq_clrwt(sb_class_t *sbp, struct port_extctx *ectxp);
   void sb_fastc_vrq_seten(sb_class_t *sbp, struct port_extctx *ectxp);

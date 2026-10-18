@@ -252,15 +252,15 @@ static sb_sync_context_t sb_sync_context;
 static void test_vrq_ignored(sb_class_t *sbp) {
   const sb_vrqnum_t nvrq = 31U;
   uint32_t flags;
-  sb_vrqmask_t wtmask;
+
+  /* No system block outside a sandbox execution.*/
+  chDbgAssert(sbp->sysblk == NULL, "system block present");
 
   chSysLock();
   flags = sbp->vrq.flags[nvrq];
-  wtmask = sbp->vrq.wtmask;
   sbVRQSetFlagsI(sbp, nvrq, 0xA5A5A5A5U);
   sbVRQTriggerS(sbp, nvrq);
   chDbgAssert(sbp->vrq.flags[nvrq] == flags, "VRQ flags changed");
-  chDbgAssert(sbp->vrq.wtmask == wtmask, "VRQ triggered");
   chSysUnlock();
 }
 
@@ -270,14 +270,14 @@ static void test_vrq_running(sb_class_t *sbp) {
 
   chSysLock();
   sbp->vrq.flags[nvrq] = 0U;
-  sbp->vrq.wtmask &= ~vrqmask;
+  sbp->sysblk->vrq_wtmask &= ~vrqmask;
   sbVRQSetFlagsI(sbp, nvrq, 0xA5A5A5A5U);
   sbVRQTriggerS(sbp, nvrq);
   chDbgAssert(sbp->vrq.flags[nvrq] == 0xA5A5A5A5U,
               "VRQ flags rejected");
-  chDbgAssert((sbp->vrq.wtmask & vrqmask) != 0U, "VRQ rejected");
+  chDbgAssert((sbp->sysblk->vrq_wtmask & vrqmask) != 0U, "VRQ rejected");
   sbp->vrq.flags[nvrq] = 0U;
-  sbp->vrq.wtmask &= ~vrqmask;
+  sbp->sysblk->vrq_wtmask &= ~vrqmask;
   chSysUnlock();
 }
 
@@ -320,7 +320,7 @@ static void stop_sb_worker(void) {
 
   chSysLock();
   flags = sbx1.vrq.flags[31U];
-  wtmask = sbx1.vrq.wtmask;
+  wtmask = sbx1.sysblk->vrq_wtmask;
   chSysUnlock();
 
   chThdTerminate(sb_worker_tp);
@@ -331,7 +331,7 @@ static void stop_sb_worker(void) {
               "sandbox memory not accessible");
   chSysLock();
   chDbgAssert(sbx1.vrq.flags[31U] == flags, "stale worker flags accepted");
-  chDbgAssert(sbx1.vrq.wtmask == wtmask, "stale worker VRQ accepted");
+  chDbgAssert(sbx1.sysblk->vrq_wtmask == wtmask, "stale worker VRQ accepted");
   chSysUnlock();
 }
 

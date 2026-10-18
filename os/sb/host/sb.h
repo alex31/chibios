@@ -284,6 +284,11 @@ struct sb_class {
    * @brief   Saved unprivileged PSP position.
    */
   uint32_t                      u_psp;
+  /**
+   * @brief   System block in the sandbox data area.
+   * @note    It holds the VRQ status and masks, the sandbox can write it.
+   */
+  sb_sysblock_t                 *sysblk;
 #if (SB_CFG_ENABLE_VRQ == TRUE) || defined(__DOXYGEN__)
   /**
    * @brief   Cached VRQ handler entry address.

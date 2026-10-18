@@ -183,7 +183,9 @@ typedef uint32_t TickType_t;
  * @brief   VRQ handler definition.
  * @details Handlers run with VRQs disabled on the stack of the interrupted
  *          task, they can use the FreeRTOS "FromISR" API and
- *          @p portYIELD_FROM_ISR().
+ *          @p portYIELD_FROM_ISR(). The handler receives the VRQ number in
+ *          @p ulVRQ and the VRQ flags in @p ulFlags, the host clears the
+ *          flags on delivery.
  * @note    @p n must be a decimal integer literal without suffixes, or a
  *          macro expanding to one, because it is pasted into the vector
  *          name. A handler with a malformed name is never invoked.
@@ -192,7 +194,9 @@ typedef uint32_t TickType_t;
  * @param[in] n         VRQ number
  */
 #define portVRQ_HANDLER(n)              portVRQ_HANDLER_PASTE(n)
-#define portVRQ_HANDLER_PASTE(n)        void __sb_vector##n(void)
+#define portVRQ_HANDLER_PASTE(n)                                            \
+  void __sb_vector##n(uint32_t ulVRQ __attribute__((unused)),               \
+                      uint32_t ulFlags __attribute__((unused)))
 /** @} */
 
 /**
@@ -323,21 +327,6 @@ portFORCE_INLINE static void vPortVRQTrigger(UBaseType_t uxVRQ) {
   configASSERT(uxVRQ < portVRQ_NUMBER);
 
   (void)__sb_vrq_setwt(1UL << uxVRQ);
-}
-
-/**
- * @brief   Returns and clears the flags associated to a VRQ.
- * @details Flags are set by the host, for example by VIO drivers, in order
- *          to report the reason of a VRQ.
- *
- * @param[in] uxVRQ     VRQ number
- * @return              The VRQ flags.
- */
-portFORCE_INLINE static uint32_t ulPortVRQGetFlags(UBaseType_t uxVRQ) {
-
-  configASSERT(uxVRQ < portVRQ_NUMBER);
-
-  return __sb_vrq_gcsts((uint32_t)uxVRQ);
 }
 
 #endif /* PORTMACRO_H */

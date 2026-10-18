@@ -46,10 +46,10 @@ hal_eth_driver_c ETHD2;
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
-static void eth_lld_serve_interrupt(hal_eth_driver_c *ethp, uint32_t nvrq) {
+static void eth_lld_serve_interrupt(hal_eth_driver_c *ethp, uint32_t sts) {
   eventflags_t flags;
 
-  flags = (eventflags_t)__sb_vrq_gcsts(nvrq);
+  flags = (eventflags_t)sts;
   ethp->lastflags = flags;
 
   if (flags == (eventflags_t)0U) {
@@ -89,11 +89,11 @@ static void eth_lld_apply_cfgbuf(hal_eth_driver_c *ethp,
 
 #if VIO_ETH_USE_VETH1 || defined(__DOXYGEN__)
 #if !defined(VIO_VETH1_SUPPRESS_ISR)
-CH_IRQ_HANDLER(MK_VECTOR(VIO_VETH1_IRQ)) {
+SB_VRQ_HANDLER(MK_VECTOR(VIO_VETH1_IRQ)) {
 
   CH_IRQ_PROLOGUE();
 
-  eth_lld_serve_interrupt(&ETHD1, VIO_VETH1_IRQ);
+  eth_lld_serve_interrupt(&ETHD1, flags);
 
   CH_IRQ_EPILOGUE();
 }
@@ -102,11 +102,11 @@ CH_IRQ_HANDLER(MK_VECTOR(VIO_VETH1_IRQ)) {
 
 #if VIO_ETH_USE_VETH2 || defined(__DOXYGEN__)
 #if !defined(VIO_VETH2_SUPPRESS_ISR)
-CH_IRQ_HANDLER(MK_VECTOR(VIO_VETH2_IRQ)) {
+SB_VRQ_HANDLER(MK_VECTOR(VIO_VETH2_IRQ)) {
 
   CH_IRQ_PROLOGUE();
 
-  eth_lld_serve_interrupt(&ETHD2, VIO_VETH2_IRQ);
+  eth_lld_serve_interrupt(&ETHD2, flags);
 
   CH_IRQ_EPILOGUE();
 }

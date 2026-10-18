@@ -78,12 +78,20 @@ const testsuite_t sb_test_suite = {
 volatile uint32_t sb_test_vrq_count;
 
 /*
+ * Arguments received by the test VRQ handler on its last activation.
+ */
+volatile uint32_t sb_test_vrq_nvrq;
+volatile uint32_t sb_test_vrq_flags;
+
+/*
  * Test VRQ handler.
  */
-CH_IRQ_HANDLER(SB_TEST_MK_VECTOR(SB_TEST_VRQ)) {
+SB_VRQ_HANDLER(SB_TEST_MK_VECTOR(SB_TEST_VRQ)) {
 
   CH_IRQ_PROLOGUE();
 
+  sb_test_vrq_nvrq  = nvrq;
+  sb_test_vrq_flags = flags;
   sb_test_vrq_count++;
 
   CH_IRQ_EPILOGUE();

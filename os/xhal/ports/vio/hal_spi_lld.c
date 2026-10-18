@@ -56,11 +56,9 @@ hal_spi_driver_c SPID2;
  * @brief   Shared end-of-rx service routine.
  *
  * @param[in] spip      pointer to the @p hal_spi_driver_c object
+ * @param[in] sts       VRQ flags
  */
-static void spi_lld_serve_interrupt(hal_spi_driver_c *spip, uint32_t nvrq) {
-  uint32_t sts;
-
-  sts = __sb_vrq_gcsts(nvrq);
+static void spi_lld_serve_interrupt(hal_spi_driver_c *spip, uint32_t sts) {
 
   if ((sts & (1U << HAL_DRV_STATE_ERROR)) != 0U) {
     /* Transfer error interrupt, discards all others.*/
@@ -87,11 +85,11 @@ static void spi_lld_serve_interrupt(hal_spi_driver_c *spip, uint32_t nvrq) {
 
 #if VIO_SPI_USE_VSPI1 || defined(__DOXYGEN__)
 #if !defined(VIO_VSPI1_SUPPRESS_ISR)
-CH_IRQ_HANDLER(MK_VECTOR(VIO_VSPI1_IRQ)) {
+SB_VRQ_HANDLER(MK_VECTOR(VIO_VSPI1_IRQ)) {
 
   CH_IRQ_PROLOGUE();
 
-  spi_lld_serve_interrupt(&SPID1, VIO_VSPI1_IRQ);
+  spi_lld_serve_interrupt(&SPID1, flags);
 
   CH_IRQ_EPILOGUE();
 }
@@ -100,11 +98,11 @@ CH_IRQ_HANDLER(MK_VECTOR(VIO_VSPI1_IRQ)) {
 
 #if VIO_SPI_USE_VSPI2 || defined(__DOXYGEN__)
 #if !defined(VIO_VSPI2_SUPPRESS_ISR)
-CH_IRQ_HANDLER(MK_VECTOR(VIO_VSPI2_IRQ)) {
+SB_VRQ_HANDLER(MK_VECTOR(VIO_VSPI2_IRQ)) {
 
   CH_IRQ_PROLOGUE();
 
-  spi_lld_serve_interrupt(&SPID2, VIO_VSPI2_IRQ);
+  spi_lld_serve_interrupt(&SPID2, flags);
 
   CH_IRQ_EPILOGUE();
 }
