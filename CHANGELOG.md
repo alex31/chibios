@@ -246,6 +246,13 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Fixed
 
+- [RP] Test 6 of the RP2040 and RP2350 `PIO-VALIDATION` tests (the RP2350 one
+  also built as `PIO-VALIDATION-RISCV`) waited for the end of its DMA stream on
+  the sticky `TXSTALL` flag, already set by the stall before the DMA started,
+  and stopped the state machine while the last word was still being shifted
+  out (63 of 64 words on the pin) while still reporting a pass; the flag is
+  now cleared once the FIFO is being fed
+  ([#531](https://github.com/chibios-upstream/chibios/pull/531)).
 - [RT] The tickless timer boundary test cases 3.4 and 3.5 of the RT test
   suite failed on applications with other armed virtual timers, such as the
   `RT-STM32-XSHELL` LED blinker; the cases now use the list coordinate of
