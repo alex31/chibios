@@ -253,6 +253,11 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
   out (63 of 64 words on the pin) while still reporting a pass; the flag is
   now cleared once the FIFO is being fed
   ([#531](https://github.com/chibios-upstream/chibios/pull/531)).
+- [RT] The tickless timer boundary test cases 3.4 and 3.5 of the RT test
+  suite failed on applications with other armed virtual timers, such as the
+  `RT-STM32-XSHELL` LED blinker; the cases now use the list coordinate of
+  their timers and skip the head saturation step when other timers are
+  armed ([#530](https://github.com/chibios-upstream/chibios/pull/530)).
 - [STM32] The instruction cache was never enabled on STM32H5 (classic and
   XHAL), STM32U5 (classic and XHAL, a regression from the previous U5 port,
   which enabled it) and STM32C5: the ports did not call `icache_init()`, so

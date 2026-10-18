@@ -67,6 +67,20 @@ static void timers_state_cb(virtual_timer_t *vtp, void *param) {
   (void)vtp;
   (void)param;
 }
+
+/* List coordinate of an armed timer, the sum of the deltas from the list
+   head, other timers can precede it.*/
+static sysinterval_t timers_list_coordinate(virtual_timer_t *vtp) {
+  ch_delta_list_t *dlp = &currcore->vtlist.dlist;
+  sysinterval_t coord = (sysinterval_t)0;
+
+  do {
+    dlp = ch_dlist_next(dlp);
+    coord += dlp->delta;
+  } while (dlp != &vtp->dlist);
+
+  return coord;
+}
 #endif
 
 /*===========================================================================*/
@@ -338,7 +352,8 @@ static const testcase_t rt_test_003_003 = {
  *
  * <h2>Description</h2>
  * The saturating boundary behavior of @p chVTGetTimersStateI() is
- * tested.
+ * tested. The first step requires an empty timers list, it is skipped
+ * if other timers are armed.
  *
  * <h2>Conditions</h2>
  * This test is only executed if the following preprocessor condition
@@ -349,10 +364,11 @@ static const testcase_t rt_test_003_003 = {
  * <h2>Test Steps</h2>
  * - [3.4.1] A maximum-interval timer is queried. Addition of the
  *   current tickless delta must saturate instead of wrapping to a
- *   short interval.
- * - [3.4.2] Timer processing is held past the tolerated deadline. The
- *   reported remaining interval must saturate at zero instead of
- *   wrapping.
+ *   short interval. The timer must be the only one in the list, the
+ *   step is skipped if other timers are armed.
+ * - [3.4.2] Timer processing is held past the tolerated deadline,
+ *   computed from the list coordinate of the timer. The reported
+ *   remaining interval must saturate at zero instead of wrapping.
  * .
  */
 
@@ -367,37 +383,48 @@ static void rt_test_003_004_teardown(void) {
 
 static void rt_test_003_004_execute(void) {
   sysinterval_t interval = (sysinterval_t)0;
-  bool pending;
+  sysinterval_t deadline;
+  bool empty, pending = false;
 
   /* [3.4.1] A maximum-interval timer is queried. Addition of the
      current tickless delta must saturate instead of wrapping to a
-     short interval.*/
+     short interval. The timer must be the only one in the list, the
+     step is skipped if other timers are armed.*/
   test_set_step(1);
   {
     chSysLock();
-    chVTDoSetI(&timers_state_vt, TIME_INFINITE, timers_state_cb, NULL);
-    pending = chVTGetTimersStateI(&interval);
-    chVTDoResetI(&timers_state_vt);
+    empty = ch_dlist_isempty(&currcore->vtlist.dlist);
+    if (empty) {
+      chVTDoSetI(&timers_state_vt, TIME_INFINITE, timers_state_cb, NULL);
+      pending = chVTGetTimersStateI(&interval);
+      chVTDoResetI(&timers_state_vt);
+    }
     chSysUnlock();
 
-    test_assert(pending, "timer not reported");
-    test_assert(interval > (TIME_MAX_INTERVAL / (sysinterval_t)2),
-                "interval addition wrapped");
+    if (empty) {
+      test_assert(pending, "timer not reported");
+      test_assert(interval > (TIME_MAX_INTERVAL / (sysinterval_t)2),
+                  "interval addition wrapped");
+    }
+    else {
+      test_println("--- Step skipped, other timers armed");
+    }
   }
   test_end_step(1);
 
-  /* [3.4.2] Timer processing is held past the tolerated deadline. The
-     reported remaining interval must saturate at zero instead of
-     wrapping.*/
+  /* [3.4.2] Timer processing is held past the tolerated deadline,
+     computed from the list coordinate of the timer. The reported
+     remaining interval must saturate at zero instead of wrapping.*/
   test_set_step(2);
   {
     chSysLock();
     chVTDoSetI(&timers_state_vt, currcore->vtlist.lastdelta,
                timers_state_cb, NULL);
+    deadline = timers_list_coordinate(&timers_state_vt) +
+               currcore->vtlist.lastdelta;
     do {
       interval = chTimeDiffX(currcore->vtlist.lasttime, chVTGetSystemTimeX());
-    } while (interval <= (timers_state_vt.dlist.delta +
-                          currcore->vtlist.lastdelta));
+    } while (interval <= deadline);
     pending = chVTGetTimersStateI(&interval);
     chVTDoResetI(&timers_state_vt);
     chSysUnlock();
@@ -433,7 +460,8 @@ static const testcase_t rt_test_003_004 = {
  * <h2>Test Steps</h2>
  * - [3.5.1] A timer is inserted after a nonempty list base has aged
  *   enough to make its requested delay unrepresentable. The overflow
- *   fault and saturated list coordinate are verified.
+ *   fault and the saturated list coordinate, the sum of the deltas
+ *   from the list head, are verified.
  * .
  */
 
@@ -451,15 +479,15 @@ static void rt_test_003_005_teardown(void) {
 
 static void rt_test_003_005_execute(void) {
   rfcu_mask_t mask;
-  sysinterval_t delay, listdelta, nowdelta;
+  sysinterval_t coord, delay, nowdelta;
 
   /* [3.5.1] A timer is inserted after a nonempty list base has aged
      enough to make its requested delay unrepresentable. The overflow
-     fault and saturated list coordinate are verified.*/
+     fault and the saturated list coordinate, the sum of the deltas
+     from the list head, are verified.*/
   test_set_step(1);
   {
     chSysLock();
-    (void) chRFCUGetAndClearFaultsI(CH_RFCU_ALL_FAULTS);
     chVTDoSetI(&timers_overflow_anchor, TIME_INFINITE,
                timers_state_cb, NULL);
     do {
@@ -467,16 +495,19 @@ static void rt_test_003_005_execute(void) {
                              chVTGetSystemTimeX());
     } while (nowdelta < (sysinterval_t)2);
     delay = TIME_INFINITE - nowdelta + (sysinterval_t)1;
+
+    /* The anchor itself overflows if other timers aged the list base.*/
+    (void) chRFCUGetAndClearFaultsI(CH_RFCU_ALL_FAULTS);
     chVTDoSetI(&timers_overflow_vt, delay, timers_state_cb, NULL);
     mask = chRFCUGetAndClearFaultsI(CH_RFCU_ALL_FAULTS);
-    listdelta = timers_overflow_vt.dlist.delta;
+    coord = timers_list_coordinate(&timers_overflow_vt);
     chVTDoResetI(&timers_overflow_vt);
     chVTDoResetI(&timers_overflow_anchor);
     chSysUnlock();
 
     test_assert((mask & CH_RFCU_VT_INTERVAL_OVERFLOW) != (rfcu_mask_t)0,
                 "overflow fault not reported");
-    test_assert(listdelta == TIME_INFINITE,
+    test_assert(coord == TIME_INFINITE,
                 "list coordinate not saturated");
   }
   test_end_step(1);
