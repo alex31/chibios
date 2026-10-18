@@ -186,6 +186,14 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Changed
 
+- [SB] Sandbox ABI revision, hosts and guests must be rebuilt together: the
+  host keeps the VRQ status and masks in a 32-byte system block at the top of
+  the sandbox data region, guests use it for userspace VRQ critical zones
+  (`SB_USER_CFG_FAST_VRQ`, enabled by default, a lock/unlock pair from ~122
+  to ~24 cycles on G474), and VRQ handlers receive the VRQ flags as an
+  argument; the `SB_FASTC_VRQ_GCSTS` fastcall and its guest wrappers are
+  removed, the Zephyr guest slot overlays exclude the block
+  ([#529](https://github.com/chibios-upstream/chibios/pull/529)).
 - [SB] The guest-side sandbox files (`os/sb/common`, `os/sb/user`, the
   ARMvx-M-SB VRQ entry code and `errcodes.h`) and the FreeRTOS ARMvx-M-SB port
   are relicensed from GPLv3 to the Apache License 2.0, so guests running on
