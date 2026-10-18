@@ -22,24 +22,198 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 - [SB] Zephyr kernel as a sandbox guest: Zephyr module in
   `os/various/zephyr_bindings` providing the `chibios_sb` architecture, SoC,
   board and tickless system timer, plus the `SB-CLIENT-ZEPHYR` self-test
-  client; it requires a Zephyr external architecture patch, provided in the
+  client and the `RT-SB-SWITCHED-XSHELL-ZEPHYR-MULTI` host demo; the Zephyr
+  tree is fetched into `ext/zephyr` as described in `ext/zephyr_readme.md`,
+  and it requires a Zephyr external architecture patch, provided in the
   module until an equivalent change is available upstream
-  ([#521](https://github.com/chibios-upstream/chibios/pull/521)).
+  ([#521](https://github.com/chibios-upstream/chibios/pull/521),
+  [#522](https://github.com/chibios-upstream/chibios/pull/522),
+  [#523](https://github.com/chibios-upstream/chibios/pull/523)).
+- [SB] ChibiOS/NIL as a sandbox guest over the `ARMvx-M-SB` port, with XHAL
+  VIO drivers: the `SB-CLIENT-NIL-XHAL` guest demo and the
+  `RT-SB-SWITCHED-XSHELL-NIL-MULTI` host demo. `sbuser.h` provides the host
+  interval conventions as `SB_TIME_xxx` and leaves `TIME_xxx` to a ChibiOS
+  guest kernel, and the sandbox port requires a 32-bit system time
+  ([#519](https://github.com/chibios-upstream/chibios/pull/519)).
+- [SB] Sandbox test suite in `test/sb`, executed by the RT XSHELL sandbox
+  client when `XSHELL_CMD_TEST_SB_ENABLED` is `TRUE`: sandbox environment,
+  host services, VRQ delivery and boundary benchmarks. The null fastcall
+  `SB_FASTC_NOP` and the null syscall `SB_SYSC_NOP` (`sbNopFastcall()`,
+  `sbNopSyscall()`) are added as round-trip references
+  ([#517](https://github.com/chibios-upstream/chibios/pull/517)).
+- [RT] New RFCU fault `CH_RFCU_THD_MISSED_DEADLINE`, collected when
+  `chThdSleepUntilWindowed()` is called outside its `[prev, next)` window;
+  the function still returns immediately without sleeping
+  ([#276](https://github.com/chibios-upstream/chibios/pull/276)).
+- [NIL] `chMsgPoll()` and `chMsgPollS()` in NIL, matching the RT polling
+  interface. `chMsgWaitTimeout(TIME_IMMEDIATE)` with no sender now returns
+  immediately as documented, instead of entering a maximum-length timed wait
+  ([#312](https://github.com/chibios-upstream/chibios/pull/312)).
+- [HAL] Safety counter API (classic HAL and XHAL): `halSftGetCounterX()`,
+  `halSftGetCounterFrequencyX()`, `halSftIsCounterWithinX()`,
+  `HAL_SFT_US2CNT()`/`HAL_SFT_NS2CNT()`, `halSftDelayX()`/`halSftDelayFromX()`.
+  The register waits now use it, so on STM32C0, G0 and U0 a wait crossing the
+  16-bit counter wrap no longer times out right away; the STM32 OTGv1 driver and
+  STM32U5 OTG HS PHY startup delays use it instead of the OS realtime counter
+  ([#435](https://github.com/chibios-upstream/chibios/pull/435),
+  [#438](https://github.com/chibios-upstream/chibios/pull/438),
+  [#440](https://github.com/chibios-upstream/chibios/pull/440))
+  *(backported to 21.11.6, except #438 and #440)*.
+- [HAL] USB Mass Storage class driver (Bulk-Only Transport, SCSI) exporting a
+  `BaseBlockDevice` as a single logical unit, in `os/hal/lib/complex/usb_msd`:
+  an application thread loops on `msdServe()`, `msdMediumChangedI()` reports a
+  medium change, and `USB_USE_EP0_THREAD == FALSE` is required
+  ([#428](https://github.com/chibios-upstream/chibios/pull/428)).
+- [HAL] WSPI status polling (classic and XHAL): `wspiPollStatusTimeout()`
+  reads a status register until `(status & mask) == match` or a timeout
+  expires, in hardware on STM32 OCTOSPIv2/v3 and through a generic fallback
+  elsewhere. WSPI LLDs must now define `WSPI_LLD_SUPPORTS_STATUS_POLL`
+  ([#279](https://github.com/chibios-upstream/chibios/pull/279)).
+- [XHAL] STM32 XHAL platform integration of existing drivers: DAC, Ethernet,
+  SDMMC and RNG on STM32H7; ADC, DAC, I2C, SPI and RNG on STM32L4+, plus RTC
+  and SDMMC2 on STM32L4P5/Q5; RTC on STM32G0, U0 and U3; ADCv5, SPIv2 and
+  xWDGv1 on STM32U0; RTC, OCTOSPI (two instances) and OTG USB on STM32U5. The
+  STM32H7 and STM32L4+ ports now export the DWT-based safety timeout counter,
+  so positive register-wait timeouts expire on them
+  ([#338](https://github.com/chibios-upstream/chibios/pull/338),
+  [#340](https://github.com/chibios-upstream/chibios/pull/340),
+  [#401](https://github.com/chibios-upstream/chibios/pull/401),
+  [#406](https://github.com/chibios-upstream/chibios/pull/406)).
+- [XHAL] Crypto driver (`hal_crypto`) in XHAL: begin/update/final streams for
+  hash, MAC, cipher and AEAD, single calls for signature, asymmetric
+  encryption, key agreement and HKDF, caller-owned stream contexts and a key
+  model that also fits HSM backends. STM32 CRYPv1 LLD for STM32H7 with
+  AES-ECB/CBC, AES-GCM (96-bit nonces, not on STM32H74x/75x revision Y) and
+  SHA-256 streams, and the `test/xcrypto` test suite
+  ([#373](https://github.com/chibios-upstream/chibios/pull/373),
+  [#374](https://github.com/chibios-upstream/chibios/pull/374)).
+- [XHAL] STM32H755 dual-core demos `RT-XHAL-STM32H755ZIQ-DUAL-M7` and
+  `RT-XHAL-STM32H755ZIQ-DUAL-M4` for the NUCLEO-H755ZI-Q: one RT instance per
+  core in separate flash banks and RAM regions, the M7 initializing the shared
+  clocks and GPIOs and signaling readiness to the M4 through HSEM 31
+  ([#363](https://github.com/chibios-upstream/chibios/pull/363)).
+- [XHAL] New STM32 XHAL low level drivers: SPIv4 (STM32H5/U3/U5), SPIv3
+  (STM32H7), USBv2 (STM32C0/G0/H5/U0/U3), OTGv1 (STM32H7/L4+), ADCv4, FDCANv2
+  and QUADSPIv2 (STM32H7), ADCv7 (STM32U3, with dual mode), CANv1 (bxCAN, CAN1
+  on STM32L4+, with a three-argument `canSTM32SetFilters()` usable while the
+  driver is ready) and the STM32U0 embedded flash (EFL) driver
+  ([#336](https://github.com/chibios-upstream/chibios/pull/336),
+  [#342](https://github.com/chibios-upstream/chibios/pull/342),
+  [#343](https://github.com/chibios-upstream/chibios/pull/343),
+  [#344](https://github.com/chibios-upstream/chibios/pull/344),
+  [#347](https://github.com/chibios-upstream/chibios/pull/347)).
+- [XHAL] XHAL port for the TI AM67/J722S MCU-domain Cortex-R5F, the first TI
+  port in XHAL: `AM67R5F` startup device, ARMv7-R AM67 sub-port handling the
+  VIM interrupt manager, platform in `os/xhal/ports/TI/AM67`, DMTIMERv1 ST,
+  UARTv1 SIO and MCSPIv1 SPI drivers, the `T3_GEM_O1` board (T3 Gemstone O1)
+  and the `RT-XHAL-T3-GEM-O1` demo
+  ([#287](https://github.com/chibios-upstream/chibios/pull/287),
+  [#289](https://github.com/chibios-upstream/chibios/pull/289),
+  [#320](https://github.com/chibios-upstream/chibios/pull/320)).
+- [XHAL] Plain non-blocking byte queue (`plain_queue_t`, `qObjectInit()`,
+  `qResetI()`, `qPutI()`, `qGetI()`, `qReadI()`, `qWriteI()`) in the XHAL
+  queues module, now aggregated by the input and output queues; `qSpaceI()`
+  is removed
+  ([#266](https://github.com/chibios-upstream/chibios/pull/266)).
+- [STM32] Double-buffered bulk endpoints in the STM32 USBv1 and USBv2 USB
+  drivers (classic and XHAL), enabled by `STM32_USB_USE_DOUBLE_BUFFERING`
+  (default `FALSE`) and `ep_buffers = 2` on a unidirectional bulk endpoint, for
+  transfers of two or more packets (12-20% more IN throughput)
+  ([#431](https://github.com/chibios-upstream/chibios/pull/431)).
+- [STM32] USB audio test applications `testhal/STM32/multi/USB_AUDIO` (classic
+  HAL) and `testxhal/USB_AUDIO` (XHAL): a full-speed UAC1 device with a
+  microphone streaming a 440 Hz tone and a 48 kHz stereo speaker on an adaptive
+  isochronous OUT endpoint, played by DAC1 on PA4/PA5. Targets: NUCLEO-H723ZG
+  (OTGv1), NUCLEO-G474RE (USBv1) and NUCLEO-H563ZI (USBv2); `testxhal/USB_CDC`
+  also gains a NUCLEO-H723ZG target
+  ([#402](https://github.com/chibios-upstream/chibios/pull/402),
+  [#409](https://github.com/chibios-upstream/chibios/pull/409),
+  [#411](https://github.com/chibios-upstream/chibios/pull/411)).
+- [STM32] STM32U5F7 embedded flash (EFL) driver in the classic HAL, for the
+  4 MiB and the 2 MiB (dual-bank mode required) devices, with bank-swap aware
+  page mapping and ICACHE handling around program and erase; other STM32U5
+  devices and secure builds are rejected
+  ([#405](https://github.com/chibios-upstream/chibios/pull/405)).
+- [STM32] STM32U0 ADC support in the classic HAL through the ADCv5 driver. The
+  ADC section of the STM32U0 mcuconf template, which carried STM32U5 settings
+  and IRQ priorities invalid on the Cortex-M0+, is corrected
+  ([#403](https://github.com/chibios-upstream/chibios/pull/403)).
+- [STM32] STM32U5 Stop-mode clock retention (classic and XHAL):
+  `STM32_CFG_HSI16_STOP_ENABLE` (default `TRUE`, the previous behavior) and
+  `STM32_CFG_MSIK_STOP_ENABLE` (default `FALSE`) select whether HSI16 and
+  MSIK stay available to autonomous peripherals in Stop 0, 1 and 2
+  ([#272](https://github.com/chibios-upstream/chibios/pull/272)).
+  With `STM32_CFG_CLOCK_DYNAMIC`, the new `halClockResume()` restores the
+  clock configuration after Stop, checking (not rewriting) the retained state
+  ([#321](https://github.com/chibios-upstream/chibios/pull/321)).
+- [STM32] STM32H533xx support (classic and XHAL): registry, mcuconf and
+  xmcuconf templates, linker script and the `ST_NUCLEO64_H533RE` board. The
+  STM32H5xx CMSIS device headers are updated to ST version 1.7.0
+  ([#299](https://github.com/chibios-upstream/chibios/pull/299)).
+- [STM32] STM32U5F7 and STM32U5F9 support (classic and XHAL): clock-tree
+  variants, registry entries without the crypto blocks these devices lack,
+  STM32U595 mcuconf/xmcuconf template support and the `STM32U5FxxI.ld` and
+  `STM32U5FxxJ.ld` linker scripts for the 2 MiB and 4 MiB devices
+  ([#267](https://github.com/chibios-upstream/chibios/pull/267)).
+- [STM32] SYSTICKv3, an STM32U5 system timer on a Smart Run Domain LPTIM
+  (LPTIM1, LPTIM3 or LPTIM4, chosen with `STM32_ST_USE_TIMER`) in the classic
+  HAL, selected with `USE_ST_LPTIM=yes` in the makefile; SYSTICKv1 remains the
+  default. It supports the tickless mode only, with a 16-bit counter
+  ([#233](https://github.com/chibios-upstream/chibios/pull/233)).
+- [RP] GPT driver for the RP2350 on TIMER1: `GPTD1` to `GPTD4` on the four
+  alarms (`RP_GPT_USE_GPT1` to `RP_GPT_USE_GPT4`), counting at 1 MHz or an
+  exact divider of it, with continuous mode kept on the period grid and
+  missed periods merged into one event; the system timer stays on TIMER0
+  ([#447](https://github.com/chibios-upstream/chibios/pull/447)).
+- [SB] FreeRTOS as a sandbox guest: bindings in `os/various/freertos_bindings`
+  with the `ARMvx-M-SB` port and a VRQ API, FreeRTOS-Kernel V11.3.1 in
+  `ext/FreeRTOS-Kernel-11.3.1.7z`, the `SB-CLIENT-FREERTOS` client and the
+  `RT-SB-SWITCHED-XSHELL-FREERTOS-MULTI` host demo. Guests not using the XHAL
+  VIO port can use the `os/sb/user/sbuservio.h` VIO wrappers. FreeRTOS and RT
+  guests recover the tick periods elapsed while not running from host time
+  ([#501](https://github.com/chibios-upstream/chibios/pull/501),
+  [#505](https://github.com/chibios-upstream/chibios/pull/505),
+  [#508](https://github.com/chibios-upstream/chibios/pull/508),
+  [#514](https://github.com/chibios-upstream/chibios/pull/514),
+  [#515](https://github.com/chibios-upstream/chibios/pull/515)).
+- [SB] SIO-backed POSIX TTY for sandboxes: the `tty_i` terminal interface
+  (`os/xhal/include/hal_tty.h`) and its XHAL implementation over SIO in
+  `os/xhal/lib/complex/posix_tty-sio` (canonical/noncanonical input, echo,
+  flow control), exposed as a VFS character device, with `tcgetattr()`,
+  `tcsetattr()`, `sys/termios.h` and `sys/ioctl.h` for sandboxed apps. The
+  `RT-SB-DYNAMIC-RAMBOX-MULTI` demo loads `msh` from a ROMFS (`make mkfs`)
+  ([#308](https://github.com/chibios-upstream/chibios/pull/308),
+  [#309](https://github.com/chibios-upstream/chibios/pull/309),
+  [#319](https://github.com/chibios-upstream/chibios/pull/319)).
+- [ARMV7R] Cortex-R5 support in the ARMv7-R port (`ARM_CORE_CORTEX_R5`) with
+  a generic `ARMCR5` ARMCRx startup device. ARMCRx devices now declare fixed
+  `CORTEX_HAS_xxx` core capabilities in `crparams.h`, no longer overridable
+  from the build, and `CRT0_VBAR_INIT` is rejected on devices without VBAR
+  ([#273](https://github.com/chibios-upstream/chibios/pull/273),
+  [#285](https://github.com/chibios-upstream/chibios/pull/285)).
 - [STM32] OCTOSPIv3 WSPI driver for STM32U5, built on GPDMA (DMA3v1) rather
   than the OCTOSPIv2 MDMA path: the driver and its OCTOSPI IRQ handlers, the
   OCTOSPIM clock wiring, and the STM32U575/U595 mcuconf templates, with the
   transfer-complete ISR waiting for GPDMA idle before the portable ISR code;
-  CR-register options and the U5 OCTOSPI IRQ vectors followed
+  CR-register options and the U5 OCTOSPI IRQ vectors followed, and a
+  duplicate OCTOSPI IRQ registration that broke the U5 build with WSPI
+  enabled was removed
   ([#228](https://github.com/chibios-upstream/chibios/pull/228),
-  [#253](https://github.com/chibios-upstream/chibios/pull/253)).
+  [#253](https://github.com/chibios-upstream/chibios/pull/253),
+  [#268](https://github.com/chibios-upstream/chibios/pull/268)).
 - [STM32] STM32G0xx embedded flash (EFL) support for 256K and 512K devices
   (single-bank; dual-bank G0B1/G0C1 parts must be configured single-bank)
   ([#191](https://github.com/chibios-upstream/chibios/pull/191)).
 - [STM32] FDCAN timestamp counter (`TSCC`) configuration, exposed and
   programmed in configuration mode across classic FDCANv1/FDCANv2 and XHAL
   FDCANv1 ([#237](https://github.com/chibios-upstream/chibios/pull/237)).
-- [STM32] Configurable LSE startup time for STM32U5, independent of the shared
-  oscillator startup timeout
+- [STM32] Configurable oscillator startup timeouts:
+  `STM32_CFG_OSCILLATORS_STARTUP_TIME` is the deadline of the oscillators
+  started together on STM32C0, G0, G4, H5, U3 and U5 (classic and XHAL),
+  defaulting to the previous family value, so a board with a slow HSE can
+  raise it ([#271](https://github.com/chibios-upstream/chibios/pull/271)),
+  and STM32U5 gained a configurable LSE startup time, independent of the
+  shared oscillator startup timeout
   ([#240](https://github.com/chibios-upstream/chibios/pull/240)).
 - [STM32] Promoted the generated STM32G4 and STM32U3 clock-tree ports into XHAL
   (previous implementations retained as `_OLD`) and added STM32U5G support
@@ -106,11 +280,17 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
   Optional overclocking behind a second opt-in (`RP_ALLOW_OVERCLOCK`, default
   `FALSE`) with a mandatory explicit flash divider above the rated frequency
   and POWMAN core voltage control up to 1.30 V
-  ([#109](https://github.com/chibios-upstream/chibios/pull/109)).
+  ([#109](https://github.com/chibios-upstream/chibios/pull/109));
+  the regulator is unlocked before each voltage change
+  ([#357](https://github.com/chibios-upstream/chibios/pull/357)) and
+  `RP_CLOCK_DYNAMIC` is rejected at build time on the Hazard3 cores
+  ([#361](https://github.com/chibios-upstream/chibios/pull/361)).
 - [RP] Hazard3 RISC-V support for RP2350: RT/NIL ports, dual-core SMP, Xh3irq
   interrupt handling, periodic and tickless MTIME support, PMP stack guards,
   startup/HAL integration, demo, and hardware validation target
-  ([#90](https://github.com/chibios-upstream/chibios/pull/90)).
+  ([#90](https://github.com/chibios-upstream/chibios/pull/90)); the
+  RP2 port also builds with `CH_CFG_SMP_MODE` disabled
+  ([#355](https://github.com/chibios-upstream/chibios/pull/355)).
 - [STM32] STM32U5 support extended: EPOD booster clock handling and a generated clock
   tree, the STM32U575ZI-Nucleo144 board and RT-STM32-MULTI demo configuration,
   and the STM32U575xx mcuconf template and updater
@@ -133,7 +313,10 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 - [XHAL] Sensors subsystem in XHAL equivalent to EX for the old HAL.
 - [HAL] Thread mode for EP0 handling in the USB HAL driver.
 - [XHAL] ADC driver in XHAL.
-- [XHAL] RTC driver in XHAL.
+- [XHAL] RTC driver in XHAL, with optional periodic wakeup APIs
+  `rtcSetPeriodicWakeup()`/`rtcGetPeriodicWakeup()`, implemented by the
+  STM32 RTCv2 (STM32H7 with the legacy RTC, STM32L4R/S) and RTCv3 drivers
+  ([#341](https://github.com/chibios-upstream/chibios/pull/341)).
 - [SIM] EFL driver for the simulator and a simulator MFS test application.
 - [SIM] Simulator support for x86-64 on Posix/Linux.
 - [RP] UART driver (LLD) for the RP2040 port.
@@ -149,7 +332,10 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 - [ARMV7M] Faster context switch modes in the ARMv7-M and ARMv8-M ports, allowing to
   avoid saving the FP context for threads that do not use the FPU.
 - [ARMV8M] New ARMv8-M port aligned with the features of the ARMv7-M port for
-  sandboxing.
+  sandboxing, also usable with NIL; the shared `mpu_v8m.h` helpers now
+  disable the MPU and encode regions 8 to 15 correctly, and
+  `MPU_RBAR_AP_RW_NA` replaces the misnamed `MPU_RBAR_AP_RW_RO`
+  ([#325](https://github.com/chibios-upstream/chibios/pull/325)).
 - [XSHELL] XShell support for prompt change, multiple commands per line, line editing,
   user definable extra fields, init and execution hooks.
 - [VFS] Improved littlefs support: a file system can now be created at arbitrary
@@ -177,21 +363,116 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 - [SB] Enhanced Posix API for sandboxes leveraging the VFS integration.
 - [SB] Sandboxes and VFS integration: each sandbox can see its own VFS instance.
 - [RT] `MEM_IS_VALID_FUNCTION()` macro in RT and NIL.
-- [RT] `CH_CFG_HARDENING_LEVEL` option in RT.
+- [RT] `CH_CFG_HARDENING_LEVEL` option in RT, with cumulative levels: object
+  integrity checks and clearing on disposal (1), link pair consistency
+  checks (2) and validation of fetched pointers before use (3); list and
+  virtual timer links are accessed through checked accessors
+  ([#297](https://github.com/chibios-upstream/chibios/pull/297),
+  [#298](https://github.com/chibios-upstream/chibios/pull/298)).
 - [RT] `chXXXDispose()` functions for all objects in RT and NIL.
 - [RT] `MEM_NATURAL_ALIGN` macro in RT and NIL.
 - [RT] Static initializer for virtual timers in RT.
 - [OSLIB] New function `chHeapIntegrityCheck()`.
-- [OSLIB] Memory areas/pointers checker functions in OSLIB.
+- [OSLIB] Memory areas/pointers checker functions in OSLIB; the intersection
+  checks are symmetric and handle whole-address-space and address-zero
+  ranges, and the generic functions stay available with
+  `CH_CFG_USE_MEMCHECKS` disabled
+  ([#316](https://github.com/chibios-upstream/chibios/pull/316)).
 
 ### Changed
 
+- [NIL] `CH_CFG_USE_MUTEXES`, `CH_CFG_SMP_MODE` and `CH_DBG_STATISTICS`,
+  not available in NIL, are checked after `chconf.h` instead of being forced
+  to `FALSE` before it, where the assembler modules could still see the
+  `chconf.h` value: undefined means `FALSE` and enabling one is now a build
+  error. `CH_CFG_SMP_MODE` is added to the NIL configuration template
+  ([#519](https://github.com/chibios-upstream/chibios/pull/519)).
 - [SB] The guest-side sandbox files (`os/sb/common`, `os/sb/user`, the
   ARMvx-M-SB VRQ entry code and `errcodes.h`) and the FreeRTOS ARMvx-M-SB port
   are relicensed from GPLv3 to the Apache License 2.0, so guests running on
   bare metal or on non-ChibiOS kernels such as FreeRTOS are no longer bound by
   the GPL; license notices only, no code change
   ([#520](https://github.com/chibios-upstream/chibios/pull/520)).
+- [RT] The RT8 registry debugger descriptor (`ch_debug`) is redesigned after
+  its eight-byte header: 16-bit sizes and offsets, port identification, SMP
+  registries, saved core/FPU/MPU contexts and port extensions. Debuggers
+  select the layout from the kernel version, RT7 layouts are unchanged
+  ([#404](https://github.com/chibios-upstream/chibios/pull/404)).
+- [RT] `CH_CFG_IRQ_PROLOGUE_HOOK()` now runs after the ISR statistics, trace
+  and state-checker entry code and `CH_CFG_IRQ_EPILOGUE_HOOK()` before the
+  matching exit code, so balanced ISR locking inside the hooks agrees with
+  the state checker
+  ([#293](https://github.com/chibios-upstream/chibios/pull/293)).
+- [RT] The Runtime Faults Collection Unit (RFCU) is optional:
+  `CH_CFG_USE_RFCU` (default `TRUE`) must be defined in `chconf.h`. When
+  `FALSE`, the RFCU API, `CH_CFG_RUNTIME_FAULTS_HOOK` and `chrfcu.c` are left
+  out and the virtual timers fall back to debug assertions
+  ([#275](https://github.com/chibios-upstream/chibios/pull/275)).
+- [XHAL] XHAL drivers no longer serve interrupt events after `drvStop()` has
+  started or while no operation is running, so a late event can no longer
+  invoke the callback during a stop or overwrite `HAL_DRV_STATE_STOPPING`
+  with `READY`. SDC callbacks no longer run with the system lock held, as in
+  the other XHAL drivers, and the RP SIO, I2C and USB drivers assert that
+  `drvStop()` is called from the core that started them
+  ([#461](https://github.com/chibios-upstream/chibios/pull/461),
+  [#491](https://github.com/chibios-upstream/chibios/pull/491),
+  [#492](https://github.com/chibios-upstream/chibios/pull/492),
+  [#493](https://github.com/chibios-upstream/chibios/pull/493),
+  [#494](https://github.com/chibios-upstream/chibios/pull/494),
+  [#495](https://github.com/chibios-upstream/chibios/pull/495),
+  [#496](https://github.com/chibios-upstream/chibios/pull/496),
+  [#497](https://github.com/chibios-upstream/chibios/pull/497),
+  [#498](https://github.com/chibios-upstream/chibios/pull/498),
+  [#499](https://github.com/chibios-upstream/chibios/pull/499),
+  [#500](https://github.com/chibios-upstream/chibios/pull/500),
+  [#513](https://github.com/chibios-upstream/chibios/pull/513)).
+- [XHAL] `drvStop()` on an ADC or SPI driver now aborts a running conversion or
+  transfer and releases the waiting thread with `MSG_RESET`, which most low
+  level drivers left blocked. The `stop` virtual method of `hal_base_driver`
+  is now `stop(void *ip, driver_state_t prevstate)`; overriding driver
+  classes must add the parameter
+  ([#460](https://github.com/chibios-upstream/chibios/pull/460)).
+- [XHAL] STM32 XHAL interrupt priorities are set only by the platform-owned
+  `STM32_IRQ_<vector>_PRIORITY` settings; legacy per-driver ones such as
+  `STM32_SPI_SPI1_IRQ_PRIORITY` are no longer accepted, so custom `xmcuconf.h`
+  files must be regenerated and non-default priorities moved. ADC and WSPI DMA
+  interrupts take the priority of their peripheral vector, the STM32H7 WSPI
+  vectors that of `STM32_IRQ_MDMA_PRIORITY`
+  ([#337](https://github.com/chibios-upstream/chibios/pull/337)).
+- [STM32] The Ethernet PHY reset delay `BOARD_PHY_RESET_DELAY`, in core clock
+  dependent realtime counter cycles, is replaced by `BOARD_PHY_RESET_DELAY_US`,
+  in microseconds, in the classic MACv1/MACv2 and XHAL ETHv2 drivers; defining
+  the old name is now a build error. The classic STM32F1, F4, F7 and H7 ports
+  start the DWT cycle counter in `hal_lld_init()`, so polled delays in
+  `halInit()` no longer hang without a debugger
+  ([#443](https://github.com/chibios-upstream/chibios/pull/443)).
+- [STM32] STM32 OTGv1 isochronous endpoint support is now compiled only when
+  `STM32_USB_USE_ISOCHRONOUS` is `TRUE` (default `FALSE`), as in the USBv1/USBv2
+  drivers (classic and XHAL): applications using isochronous endpoints on an OTG
+  controller must enable it, otherwise such an endpoint is left inactive
+  ([#425](https://github.com/chibios-upstream/chibios/pull/425)).
+- [STM32] The bit rate switch field of the STM32 FDCAN `CANTxFrame` is renamed
+  from `BPS` to `BRS` (classic FDCANv1 and FDCANv2, XHAL FDCANv1); the frame
+  layout is unchanged, applications using `.BPS` must be updated
+  ([#300](https://github.com/chibios-upstream/chibios/pull/300)).
+- [SB] The sandbox ABI is defined in `os/sb/common/sbsysc.h`, usable from C
+  and assembler: guests use its `SB_FASTC_xxx`/`SB_SYSC_xxx` codes and the
+  host fastcall and syscall tables are built from them, replacing the
+  per-number `SB_SVCnnn_HANDLER` definitions. It also exports the VIO return
+  codes, VRQ flags, I2C errors and UART events. The XHAL VIO port uses the
+  `sbuservio.h` wrappers, whose prefixes do not collide with the XHAL API
+  ([#504](https://github.com/chibios-upstream/chibios/pull/504),
+  [#510](https://github.com/chibios-upstream/chibios/pull/510)).
+- [VFS] VFS file nodes no longer implement `random_stream_i`:
+  `vfsGetFileStream()` and the `getstream` method are replaced by file control
+  operations, `vfsControlFile()` and the `vfsFileControl()` method. Streams
+  driver tables are written with the `DRV_STREAMS_ELEMENT_xxx()` initializers
+  ([#308](https://github.com/chibios-upstream/chibios/pull/308)).
+- [ARM] The generic ARM port (`os/common/ports/ARM`) is limited to ARM7 and
+  ARM9: the Cortex-A5/A7/A8/A9 core selectors are removed, and
+  `PORT_SUPPORTS_RT` is now `FALSE`, the realtime counter always read zero on
+  ARM7/ARM9
+  ([#280](https://github.com/chibios-upstream/chibios/pull/280)).
 - [RT] Removed the optional `PORT_SYSTEM_STATE_ACQUIRE()`/`_RELEASE()` startup
   hooks (the only merged implementation was Hazard3's)
   ([#244](https://github.com/chibios-upstream/chibios/pull/244)).
@@ -202,7 +483,9 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 - [STM32] STM32 RTC clock validation hardened
   ([#197](https://github.com/chibios-upstream/chibios/pull/197)).
 - [RP] RP2350 EFL interrupt masking made architecture-neutral (Arm and RISC-V)
-  ([#139](https://github.com/chibios-upstream/chibios/pull/139)).
+  ([#139](https://github.com/chibios-upstream/chibios/pull/139)); on RISC-V,
+  `RP_EFL_XIP_SAFETY_LOCKOUT` is rejected at build time instead of linking
+  no-op hooks ([#356](https://github.com/chibios-upstream/chibios/pull/356)).
 - [SB] SB sandbox VFS root is now optional and explicitly externally owned.
   `sbSetFileSystem()` is renamed `sbSetRoot()` and a matching `sbGetRoot()`
   accessor is added. A `NULL` root is allowed, leaving the sandbox without a
@@ -264,12 +547,422 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
   the code executed from flash with the full wait states; the cache is now
   enabled at clock initialization, and the XHAL H5 xmcuconf templates default
   to the 2-way mode instead of the direct-mapped one
-  ([#527](https://github.com/chibios-upstream/chibios/pull/527)).
+  ([#527](https://github.com/chibios-upstream/chibios/pull/527))
+  *(backported to 21.11.6)*.
 - [SB] The RT/NIL `ARMvx-M-SB` sandbox port did not save FPSCR in the thread
   context of FPU builds, threads switched voluntarily could see the FPU
   rounding modes and flags of other threads; FPSCR is now saved as in the
   `ARMv7-M` port
   ([#526](https://github.com/chibios-upstream/chibios/pull/526)).
+- [RT] RT tracing: a halt on a secondary SMP core could write a halt record
+  through the trace buffer pointer of a not yet initialized instance; trace
+  readiness is now tracked per instance. `CH_DBG_TRACE_BUFFER_SIZE` must be
+  in the 1..65535 range when tracing is enabled, and `chTraceWrite()` and
+  `chTraceWriteI()` become empty, overridable macros when tracing is off
+  ([#296](https://github.com/chibios-upstream/chibios/pull/296)).
+- [RT] RT virtual timers and RFCU: with RFCU enabled, a skipped periodic
+  timer deadline still triggered the "skipped deadline" debug assertion
+  before the fault could be collected, the assertion is now only the
+  fallback when RFCU is disabled. A tickless first-alarm retry programmed
+  the alarm from a stale time base
+  ([#294](https://github.com/chibios-upstream/chibios/pull/294)).
+- [RT] RT and NIL events: `chEvtGetEventsX()` could return a stale value when
+  polled, it now reloads the field, and `chEvtUnregister()` no longer
+  accesses the event source through an incompatible listener pointer. Zero
+  wait masks are now rejected in both kernels
+  ([#286](https://github.com/chibios-upstream/chibios/pull/286)).
+- [RT] RT time measurement: an interval shorter than the calibrated overhead
+  wrapped around to a huge value, it is now recorded as zero. Calibration
+  ran once before the port initialization, possibly with a stopped counter,
+  it is now done per OS instance after it. `S2RTC()`, `MS2RTC()`, `US2RTC()`,
+  `RTC2S()`, `RTC2MS()` and `RTC2US()` rounded before scaling and returned
+  non-zero for zero cycles, they now compute over the whole value
+  ([#277](https://github.com/chibios-upstream/chibios/pull/277),
+  [#278](https://github.com/chibios-upstream/chibios/pull/278),
+  [#283](https://github.com/chibios-upstream/chibios/pull/283),
+  [#284](https://github.com/chibios-upstream/chibios/pull/284)).
+- [NIL] NIL tickless mode encoded finite timeouts incorrectly after a long
+  inactive interval and when a new full-range wait could not be represented
+  relative to the existing time origin; existing waits are now rebased when
+  needed. `chTimeAddX()` returns a wrapped `systime_t`, and non-smart builds
+  (`USE_SMART_BUILD=no`) no longer stop with a "missing separator" error in
+  `os/nil/nil.mk`
+  ([#323](https://github.com/chibios-upstream/chibios/pull/323))
+  *(backported to 21.11.6)*.
+- [OSLIB] OSLIB factory: object reference counters could overflow without
+  any diagnostic; `FACTORY_MAX_REFERENCES` is added and every reference
+  increment asserts room for another reference
+  ([#322](https://github.com/chibios-upstream/chibios/pull/322)).
+- [OSLIB] `chDelegateDispatchTimeout(TIME_IMMEDIATE)` passed `TIME_IMMEDIATE`
+  to `chMsgWaitTimeout()`, which the RT message API does not accept; an
+  immediate dispatch now polls with `chMsgPoll()` and returns `MSG_TIMEOUT`
+  on an empty queue, in RT and NIL. `chJobObjectInit()` limits the capacity
+  to 1..`SEMAPHORE_MAX_COUNT`
+  ([#313](https://github.com/chibios-upstream/chibios/pull/313),
+  [#314](https://github.com/chibios-upstream/chibios/pull/314)).
+- [OSLIB] OSLIB pipes: a reader or writer could miss the wakeup of a
+  concurrent transfer between its check and suspending, and a caller queued
+  on a direction lock could wait on, or refill, a pipe reset in the meantime;
+  counts and the reset state are now rechecked under the system lock.
+  `chPipeResume()` is now an out-of-line, thread-context function
+  ([#311](https://github.com/chibios-upstream/chibios/pull/311)).
+- [OSLIB] OSLIB mailboxes and objects FIFOs: `chMBPostAheadTimeoutS()` and
+  `chMBPostAheadI()` formed a pointer before the mailbox buffer when wrapping
+  the read pointer, and the objects FIFO receive functions stored the
+  received pointer through an incompatible `msg_t` lvalue, it is now
+  converted from a local `msg_t` on `MSG_OK` only
+  ([#302](https://github.com/chibios-upstream/chibios/pull/302)).
+- [OSLIB] OSLIB memory allocators: an oversized core memory request could
+  pass the arena bounds check through address wraparound, it is now rejected
+  before either arena boundary changes. `chHeapIntegrityCheck()` also
+  bounds-checks free-block headers and rejects overlapping free blocks
+  ([#301](https://github.com/chibios-upstream/chibios/pull/301)).
+- [OOP] `roRelease()` read the object after unlocking and possibly disposing
+  it, a use-after-free when the destructor frees the object; the decremented
+  count is now saved under the lock and returned
+  ([#327](https://github.com/chibios-upstream/chibios/pull/327)).
+- [OOP] The OOP null stream (`null_stream_c`) reported reads as successful:
+  `stmRead()` returned the requested size without writing the buffer and
+  `stmGet()` returned 4. Reads now report end of file, `stmRead()` returns
+  zero and `stmGet()` returns `STM_RESET`
+  ([#308](https://github.com/chibios-upstream/chibios/pull/308)).
+- [HAL] USB driver core fixes. Host GET_STATUS, SYNCH_FRAME and
+  CLEAR_FEATURE/SET_FEATURE(ENDPOINT_HALT) requests for an invalid endpoint are
+  now stalled instead of dereferencing NULL on RP or accessing past the STM32
+  USBv1/USBv2 endpoint registers. Also fixed: a NULL dereference with
+  `USB_USE_WAIT` when an endpoint callback disabled the endpoints, busy bits
+  lost to higher priority handlers and empty IN control replies timing out
+  ([#415](https://github.com/chibios-upstream/chibios/pull/415),
+  [#423](https://github.com/chibios-upstream/chibios/pull/423),
+  [#432](https://github.com/chibios-upstream/chibios/pull/432),
+  [#450](https://github.com/chibios-upstream/chibios/pull/450))
+  *(backported to 21.11.6)*.
+- [HAL] `sdcConnect()` asked MMC/eMMC cards for their relative card address
+  (RCA) with CMD3 as it does with SD cards, but MMC/eMMC cards expect the
+  host to assign it; MMC cards are now assigned RCA 2, SD cards are unchanged
+  ([#290](https://github.com/chibios-upstream/chibios/pull/290))
+  *(backported to 21.11.6)*.
+- [STM32] STM32L0xx `stm32_isr.h` redefined the DMA IRQ-sharing masks
+  `STM32_DMA1_CH4_CMASK` and `STM32_DMA1_CH5_CMASK`, already defined in the
+  registry, causing redefinition warnings on STM32L011 builds; the duplicate
+  is removed ([#509](https://github.com/chibios-upstream/chibios/pull/509))
+  *(backported to 21.11.6)*.
+- [STM32] The STM32F303, L07x, L422, L432 and WB55 mcuconf templates lacked the
+  USB settings `STM32_USB_USE_ISOCHRONOUS` and `STM32_USB_USE_FAST_COPY`, and
+  the G4x1/G4x4 templates `STM32_USB_USE_FAST_COPY`; they are added with the
+  driver defaults (`FALSE`)
+  ([#490](https://github.com/chibios-upstream/chibios/pull/490)).
+- [STM32] After a remote wakeup, STM32 USBv1 and USBv2 devices affected by the
+  ESOF timing erratum (STM32G4, L0, U0) could report a false suspend. Suspend
+  detection is now held off until the host resumes the bus, for at most the new
+  `STM32_USB_HOST_RESUME_TIMEOUT` (default 500 ms) (classic and XHAL)
+  ([#487](https://github.com/chibios-upstream/chibios/pull/487))
+  *(backported to 21.11.6)*.
+- [STM32] The STM32 OTGv1 full speed turnaround time (`GUSBCFG.TRDT`) was fixed
+  at 5, below the reference manual minimum, so below 32 MHz the core answered IN
+  tokens too late (an STM32L4 at 23.986 MHz did not enumerate). It now follows
+  `STM32_HCLK` (classic and XHAL), based on a patch by Bob Anderson
+  ([#486](https://github.com/chibios-upstream/chibios/pull/486))
+  *(backported to 21.11.6)*.
+- [STM32] On STM32C051, C071, C091 and C092 with `STM32_CLOCK_DYNAMIC`
+  (classic and XHAL), `halClockSwitchMode()` ignored the `RCC_CR` `SYSDIV`
+  divider, overstating the clock points used for baud rates, timers, timeouts,
+  `SystemCoreClock` and flash wait states; the divider is now applied
+  ([#481](https://github.com/chibios-upstream/chibios/pull/481))
+  *(backported to 21.11.6)*.
+- [STM32] The HAL timeout counter of STM32C0, G0 and U0 (TIM17 on C0 and G0,
+  TIM7 on U0) was stopped by the blanket APB reset in `stm32_clock_init()`
+  right after being started, so timeouts never expired and `halSftDelayX()`
+  never returned, hanging drivers such as STM32 USBv2; its prescaler also
+  kept the old rate across clock switches. The timer is now left out of the
+  reset and its prescaler follows each clock change (classic and XHAL)
+  ([#470](https://github.com/chibios-upstream/chibios/pull/470),
+  [#478](https://github.com/chibios-upstream/chibios/pull/478))
+  *(backported to 21.11.6)*.
+- [STM32] STM32C0 clock initialization and `halClockSwitchMode()` could run
+  SYSCLK above 24 MHz with zero flash wait states, the HSISYS divider taking
+  effect before the flash latency was set. The latency is now raised first and
+  lowered only once the target clock is active (classic and XHAL)
+  ([#476](https://github.com/chibios-upstream/chibios/pull/476))
+  *(backported to 21.11.6)*.
+- [STM32] TIM17, the HAL timeout counter on STM32G0, was not marked as used
+  (`STM32_TIM17_IS_USED`), so GPT, PWM or the ST could take it over, after
+  which timeouts never expired and `halSftDelayX()` never returned; such
+  configurations now fail at compile time (classic and XHAL)
+  ([#474](https://github.com/chibios-upstream/chibios/pull/474))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 SPIv1 and SPIv2 on DMAv2 devices (STM32F4, F7) could invoke
+  the completion callback after `spiStopTransfer()`, from a DMA event left
+  pending during the stop; DMA events are now ignored unless the driver is
+  `SPI_ACTIVE` ([#463](https://github.com/chibios-upstream/chibios/pull/463))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 USBv1 and USBv2 USB drivers (classic and XHAL):
+  CLEAR_FEATURE(ENDPOINT_HALT) did not reset the bulk and interrupt endpoint
+  data toggle to DATA0, so the next packet could be dropped as a duplicate, and
+  after clearing a halt set during a transfer, that transfer never completed.
+  Clearing a halt now resets the toggle and resumes the transfer; USBv2 endpoint
+  initialization restarts the toggles from DATA0
+  ([#412](https://github.com/chibios-upstream/chibios/pull/412),
+  [#448](https://github.com/chibios-upstream/chibios/pull/448))
+  *(backported to 21.11.6)*.
+- [STM32] Isochronous fixes in the STM32 OTGv1, USBv1 and USBv2 USB drivers
+  (classic and XHAL). OTGv1 gave a callback every other frame on incomplete OUT
+  transfers or rewrote an enabled endpoint; it now reports the missed frame
+  once, with no data. USBv1/USBv2 copied OUT packets with no transfer active
+  through a stale pointer and repeated IN packets instead of sending zero-length
+  packets; on USBv1 both handlers could serve an endpoint
+  ([#410](https://github.com/chibios-upstream/chibios/pull/410),
+  [#445](https://github.com/chibios-upstream/chibios/pull/445))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 ADCv4 (H7), ADCv6 (H5), ADCv7 (C5, U3) (classic and XHAL) and
+  XHAL ADCv3 (G4, L4+): regulator startup and calibration delays were sized from
+  the configured clock, too short after a run-time switch to a faster clock.
+  They now use `halSftDelayX()`, requiring the platform counter hooks
+  ([#439](https://github.com/chibios-upstream/chibios/pull/439)).
+- [STM32] STM32 USBv1 and USBv2 USB driver packet memory and interrupt fixes
+  (classic and XHAL): a final full OUT packet overflowing the receive buffer was
+  copied past its end, receive buffers above 62 bytes were undersized in packet
+  memory, overwriting the next buffer, unaligned SETUP packets faulted on
+  STM32F0, and stale events followed a bus reset. USBv2 now waits 800 ns before
+  reading OUT data from the packet memory (STM32H5, U0 errata)
+  ([#378](https://github.com/chibios-upstream/chibios/pull/378),
+  [#419](https://github.com/chibios-upstream/chibios/pull/419),
+  [#436](https://github.com/chibios-upstream/chibios/pull/436))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 USBv2 (C0, G0, H5, C5, U0, U3, U5) `usbStop()` left the
+  peripheral drawing about 0.9 mA and requested resume signalling while powering
+  it down; `usb_lld_stop()` now follows ST's stop sequence and resets the block
+  through RCC before gating its clock, which also leaves the D+ pull-up off. The
+  USBv1 and USBv2 `usb_lld_start()` now waits tSTARTUP before releasing the
+  transceiver reset (classic and XHAL)
+  ([#427](https://github.com/chibios-upstream/chibios/pull/427))
+  *(backported to 21.11.6)*.
+- [STM32] `adcSTM32SetCCR()` in STM32 ADCv5 (classic and XHAL; STM32C0, G0, U0
+  and WL) and classic ADCv1 (STM32L0) cleared the `ADC_CCR` prescaler set by
+  `adcStart()`, e.g. when enabling VREFINT, leaving the ADC clock undivided
+  (out of specification on a 56 MHz STM32U0); `PRESC` is now preserved
+  ([#426](https://github.com/chibios-upstream/chibios/pull/426))
+  *(backported to 21.11.6)*.
+- [STM32] The STM32 USBv1 and USBv2 USB drivers (classic and XHAL) enabled the
+  unserved ERR interrupt, which the floating bus of an unplugged device with the
+  D+ pull-up on (self-powered) raised continuously, starving every thread. ERR
+  is no longer enabled; bus errors are still recovered by retransmission
+  ([#421](https://github.com/chibios-upstream/chibios/pull/421))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 OTGv1 USB driver hardened with the XHAL fixes: `usbConnectBus()`
+  and `usbDisconnectBus()` work on stepping 1 devices (STM32F105/F107, F2,
+  F401/F405/F407/F411/F427/F429) without VBUS sensing or with a ULPI PHY,
+  `usbGetFrameNumberX()` works, and hardware timeouts make `usbStart()` fail
+  with `HAL_RET_HW_FAILURE` or disconnect the device. The driver needs the
+  safety counter hooks; preempted `halRegWait*X()` no longer time out falsely
+  ([#408](https://github.com/chibios-upstream/chibios/pull/408),
+  [#418](https://github.com/chibios-upstream/chibios/pull/418))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 OTGv1 USB driver EP0, FIFO and PHY timing fixes. OTG1 and OTG2
+  shared their EP0 state and SETUP buffer, so traffic on one could corrupt the
+  control transfers of the other. A reconfiguration disturbed EP0 and could
+  overlap the EP0 FIFO, IN FIFO depths were not rounded up, and the 4 Kbyte
+  STM32H7 OTG1 FIFO was limited to 1.25 Kbytes. An STM32H723 could hang at
+  start, and `STM32_USB_OTGFIFO_FILL_BASEPRI` dropped a stronger BASEPRI mask
+  ([#333](https://github.com/chibios-upstream/chibios/pull/333),
+  [#380](https://github.com/chibios-upstream/chibios/pull/380),
+  [#417](https://github.com/chibios-upstream/chibios/pull/417))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 DACv1 driver fixes ported from XHAL (F0, F1, F3, F37x, F4, F7,
+  G0, G4, H7, L0, L1, L4, L4+, WL). Stopping a CH2 conversion in single mode
+  turned CH1 on and left CH2 off; a DMA error released a NULL DMA stream; a
+  half-buffer callback stopping or restarting the conversion could dereference
+  the released group or get the old conversion's full-buffer event. DMA events
+  are now ignored with no conversion active
+  ([#414](https://github.com/chibios-upstream/chibios/pull/414))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 DACv2 driver fixes ported from XHAL (H5, U5, U3, C5). Dual mode
+  moved the wrong data in 12-bit (fixed with #410) and 8-bit modes. Double DMA,
+  HFSEL and the CH1 settings restored on stop were set wrongly, depth-one
+  conversions reported half-buffer events, and stopping or restarting from the
+  half-buffer callback could dereference the released group. Underrun interrupts
+  are now always enabled during conversions
+  ([#413](https://github.com/chibios-upstream/chibios/pull/413))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 ADCv3, ADCv5 and ADCv6 error handling: error interrupts were
+  only enabled for groups with an error callback, so a failed conversion
+  neither stopped nor woke a waiting thread, and errors were reported
+  outside an active conversion. In ADCv3/ADCv6 dual mode, slave overruns were
+  not detected; both ADCs are now captured and acknowledged before one
+  combined error notification, and an ADCv6 dual-mode build error is fixed
+  ([#395](https://github.com/chibios-upstream/chibios/pull/395),
+  [#397](https://github.com/chibios-upstream/chibios/pull/397),
+  [#399](https://github.com/chibios-upstream/chibios/pull/399))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 ADC drivers (ADCv1 to ADCv7, STM32F1, F37x and L1) handled DMA
+  events with no active conversion, so a late DMA error could enter the error
+  handler after the group was cleared and an inactive driver could receive
+  callbacks; DMA events are now ignored unless the driver is `ADC_ACTIVE`
+  ([#393](https://github.com/chibios-upstream/chibios/pull/393))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 ADCv3 in dual mode on STM32F3 halted on a debug assertion with
+  a correctly initialized slave ADC: the slave regulator check used the wrong
+  mask and now matches the master check
+  ([#390](https://github.com/chibios-upstream/chibios/pull/390))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 SPIv2 I2S: valid DMA stream assignments were rejected on
+  devices without DMAMUX, the SPI3 RX/TX DMAMUX request sources were not
+  programmed, and a DMA allocation failure in `i2sStart()` was not handled; on
+  that failure the driver is now left stopped and safe to retry
+  ([#388](https://github.com/chibios-upstream/chibios/pull/388))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 SPIv2: stopping a transfer in slave mode waited indefinitely
+  for BSY to clear, which needs the external clock, and read the remaining
+  frame count before RX DMA had stopped. Slave stops now halt both DMA streams
+  and reset the SPI; a new transfer can start without another `spiStart()`
+  ([#386](https://github.com/chibios-upstream/chibios/pull/386))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 SPIv3 (STM32H7) and SPIv4 (STM32H5, U3, U5, C5): DMA and
+  overrun interrupts were served while the driver was inactive, an RX DMA
+  error also dispatched a completion, and a circular full-buffer callback
+  still ran after the half callback stopped or restarted the transfer. SPIv4
+  reported the remaining count on stop in bytes instead of frames; SPIv3
+  `SPID6` is now placed in `.ram4_clear` for BDMA (`SPI_SPID6_MEMORY` overrides)
+  ([#382](https://github.com/chibios-upstream/chibios/pull/382),
+  [#384](https://github.com/chibios-upstream/chibios/pull/384))
+  *(backported to 21.11.6)*.
+- [STM32] STM32 FDCANv2 (STM32H7): stopping one controller or a failed start
+  could reset or gate the FDCAN clock shared with a running peer, and start
+  failures did not reach `canStart()`; the clock is now reference-counted and
+  `canStart()` returns configuration errors and timeouts. Classic-CAN frames
+  with DLC 9..15 copied more than eight bytes, the extended-filter type mask
+  was wrong, and stale filters stayed active after a table shrank or was cleared
+  ([#376](https://github.com/chibios-upstream/chibios/pull/376))
+  *(backported to 21.11.6)*.
+- [STM32] The STM32 USARTv1/v2/v3 Serial and UART drivers and the USARTv2 SIO
+  driver computed the baud rate from a kernel clock captured at init, stale
+  after a clock change with dynamic clock management, and the USARTv2/v3 SIO
+  drivers truncated the divider instead of rounding it. The rounded divider is
+  now computed at start from the current clock and the Serial drivers disable
+  the USART before writing it. The `clock` field of these structures is removed
+  ([#375](https://github.com/chibios-upstream/chibios/pull/375)).
+- [STM32] On dual-core STM32H7 devices (H745/H747/H755/H757) with assertions
+  enabled, the first `sioStart()` (USARTv3), `i2cStart()` (I2Cv3), XHAL ETH
+  initialization or DMA stream free (DMAv2) halted the system on a reset
+  before clock enable, or on disabling a never-enabled DMA controller clock.
+  Clocks are now enabled before resets and `dmaStreamFreeI()` disables only
+  the controller owning the freed stream (classic and XHAL)
+  ([#370](https://github.com/chibios-upstream/chibios/pull/370))
+  *(backported to 21.11.6, classic DMAv2, USARTv3 SIO and I2Cv3 fixes only)*.
+- [STM32] STM32H7A3/H7B3/H7B0 in the classic HAL: builds needing BDMA (e.g.
+  SPI6 or I2C4) failed to compile because the BDMA RCC helpers used the `BDMA`
+  bit names, which these devices call `BDMA2`, and the OCTOSPI interrupt
+  handlers and their NVIC setup were missing; both are fixed
+  ([#329](https://github.com/chibios-upstream/chibios/pull/329)).
+- [STM32] The DWT-based safety timeout counter of STM32U3 and STM32U5 (classic
+  and XHAL), STM32C5 and the XHAL STM32H5 took its frequency from HCLK values
+  that can be zero, stale or not yet reached at boot, so timeouts were scaled
+  wrongly during startup and clock switches; it now uses `SystemCoreClock`
+  ([#270](https://github.com/chibios-upstream/chibios/pull/270)).
+- [RP] RP UARTv1 SIO driver: `sioSynchronizeRXIdle()` could not return
+  `MSG_OK` and `SIO_EV_RXIDLE` was hidden from the event getters and
+  callbacks; the ISR now latches the idle state and the idle event
+  ([#467](https://github.com/chibios-upstream/chibios/pull/467)).
+  Reconfiguring a running driver with `sioStart()` wrote the baud rate and
+  line control with the UART enabled, which the PL011 does not allow; the
+  UART is now disabled first, and the line must be idle when reconfiguring
+  ([#469](https://github.com/chibios-upstream/chibios/pull/469)).
+- [RP] RP2040 RTCv1 driver: `rtcSetTime()` could leave the date at its reset
+  value, a `NULL` alarm specification was dereferenced instead of disabling
+  the alarm, and a disabled alarm could still be reported or fire
+  ([#113](https://github.com/chibios-upstream/chibios/pull/113)). A read
+  right after a set returned the previous date/time; the set now waits for
+  the new values, and the XHAL driver reports a never-set RTC as not set
+  ([#455](https://github.com/chibios-upstream/chibios/pull/455))
+  *(backported to 21.11.6)*.
+- [RP] RP DMAv1 interrupt service (classic and XHAL): a channel restarted
+  from another channel's callback could get the cancelled event and be
+  disabled (debug builds halted); pending bits are now re-read per channel
+  ([#452](https://github.com/chibios-upstream/chibios/pull/452)).
+  Releasing a channel from the other core could make the ISR call a `NULL`
+  handler ([#360](https://github.com/chibios-upstream/chibios/pull/360)), and
+  stopping an SPI driver there tripped a `dmaChannelFreeI()` assertion
+  ([#358](https://github.com/chibios-upstream/chibios/pull/358)).
+- [RP] RP TIMERv1 system timer (classic and XHAL): an alarm stopped or
+  re-armed after it fired could cause a spurious callback or a debug halt
+  (classic) or be lost (XHAL); the callback now runs only when the alarm is
+  pending ([#442](https://github.com/chibios-upstream/chibios/pull/442)).
+  A deadline already passed by less than `RP_ST_MISSED_WINDOW` (2^16) ticks
+  is re-armed 2 ticks ahead instead of waiting about 71 minutes for the wrap
+  ([#444](https://github.com/chibios-upstream/chibios/pull/444)).
+- [RP] RP GPIOv1 line mode programming (classic and XHAL) could briefly drive
+  a line in an unrequested state, because the output was enabled before the
+  IO mux write and the pad output disable (`PAL_RP_PAD_OD`); it is now enabled
+  after both, and re-applying an output mode keeps a driven line driven
+  ([#353](https://github.com/chibios-upstream/chibios/pull/353)).
+- [RP] RP DMAv1 (classic and XHAL) set the priority of a core's shared DMA
+  vector only on the core's first channel allocation, so priorities requested
+  later were dropped, depending on the driver start order. The vector now
+  runs at the most urgent priority requested by the core's allocations, and
+  `pioSmAllocI()` does the same for the PIO vectors. On Hazard3, debug builds
+  assert if an ISR-context allocation raises a live vector's priority
+  ([#351](https://github.com/chibios-upstream/chibios/pull/351),
+  [#352](https://github.com/chibios-upstream/chibios/pull/352)).
+- [RP] RP SPIv1 (classic and XHAL) read the dummy TX word of receive-only and
+  ignore operations from XIP flash in flash-linked builds, so one overlapping
+  a flash erase or program could fail its TX DMA (on the RP2350 the classic
+  driver ended it short, silently); the word is now placed in RAM
+  ([#350](https://github.com/chibios-upstream/chibios/pull/350)).
+- [SB] Sandbox FP context: `sbexc.S` did not include the port configuration,
+  silently excluding the FPU and ARMv8-M stack limit handling of its fault
+  exit path; with lazy FP stacking, VRQ delivery, syscalls and fault exits
+  switched frames without completing a pending FP save or restoring the new
+  frame's FP state. Pending saves are now completed before a frame switch and
+  sandboxes always start with an extended frame when the FPU is enabled
+  ([#305](https://github.com/chibios-upstream/chibios/pull/305)).
+- [VFS] The overlay driver called `roRelease()` on its file systems when a
+  mapping was unregistered or the overlay disposed, but file systems are not
+  reference counted; the calls are removed and the caller manages their
+  lifetime. New `vfsNodeGetOwner()` returns the file system owning a node
+  ([#328](https://github.com/chibios-upstream/chibios/pull/328)).
+- [VFS] The LittleFS driver translated `LFS_ERR_NOENT` to `CH_RET_INNER_ERROR`,
+  so a missing path could not be told apart from a file system or adapter
+  failure; it now returns `CH_RET_ENOENT`
+  ([#282](https://github.com/chibios-upstream/chibios/pull/282)).
+- [SIM] The POSIX simulator ports (SIMIA32, SIMX86_64) used `gettimeofday()`
+  for the realtime counter and the system tick, so host wall-clock
+  corrections could produce huge time measurements, stall the system tick or
+  trigger long catch-up bursts; they now use `CLOCK_MONOTONIC`, and
+  arbitrary tick frequencies no longer drift
+  ([#281](https://github.com/chibios-upstream/chibios/pull/281)).
+- [BUILD] `tools/updater/update_chconf_rt.sh` dropped the `PORT_xxx`
+  overrides of an application RT `chconf.h` when regenerating it and did
+  not preserve the spaces inside single-line values; both are now preserved
+  ([#308](https://github.com/chibios-upstream/chibios/pull/308)).
+- [ARMV6M] The post-IRQ `chSchDoPreemption()` call chain, which runs on the
+  stack of the preempted thread, could silently overflow thread working areas
+  at `-O0`. The `PORT_INT_REQUIRED_STACK` default is raised from 64 to 80 in
+  the ARMv6-M, ARMv6-M-ALT, ARMv7-M and ARMv8-M-ML ports (16 more bytes per
+  thread, NIL included), and the ARMv6-M and ARMv6-M-ALT
+  `PORT_IDLE_THREAD_STACK_SIZE` from 16 to 64
+  ([#441](https://github.com/chibios-upstream/chibios/pull/441),
+  [#459](https://github.com/chibios-upstream/chibios/pull/459))
+  *(backported to 21.11.6, except #441)*.
+- [ARMV7M] The ARMv7-M port did not preserve FPSCR across thread context
+  switches, so a thread could resume from a kernel call with a different FPU
+  rounding mode; FPSCR is now part of the thread context and new threads
+  start from `FPDSCR`. The RVCT guard page code imported `_port_set_region`
+  instead of `__port_set_region`
+  ([#331](https://github.com/chibios-upstream/chibios/pull/331)).
+- [ARMV7M] ARMv7-M-ALT could leave the MPU stack guard page on the previously
+  running thread when a switch through SVC resumed a preempted thread; the
+  incoming guard is now set before releasing the kernel lock. The static MPU
+  region initializers lacked `MPU_RBAR_VALID` and did not select their
+  intended regions, `PORT_MPU_INITIALIZE` defaults to `FALSE` on devices
+  without an MPU, and NIL can be built on ARMv7-M-ALT
+  ([#330](https://github.com/chibios-upstream/chibios/pull/330)).
+- [ARMV8M] ARMv8-M-ML: in advanced (BASEPRI) mode the thread working area did
+  not reserve the second exception frame needed when a fast interrupt
+  arrives during a context switch. The startup PSPLIM stayed active with
+  stack checking disabled and could raise STKOF faults. FPSCR was not
+  preserved across context switches, it is now saved per thread and
+  initialized from `FPDSCR`
+  ([#332](https://github.com/chibios-upstream/chibios/pull/332)).
 - [XHAL] SPI transfer-start failures now restore the driver to `READY` instead
   of leaving it `ACTIVE` with no transfer in progress, allowing immediate
   retries and avoiding waits for a nonexistent transfer
@@ -282,7 +975,8 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
   *(backported to 21.11.6)*.
 - [STM32] STM32 SPIv3 and SPIv4 did not fully deactivate the peripheral on
   `spiStop()`; the control, configuration and interrupt-enable registers are
-  now cleared ([#231](https://github.com/chibios-upstream/chibios/pull/231)).
+  now cleared ([#231](https://github.com/chibios-upstream/chibios/pull/231))
+  *(backported to 21.11.6)*.
 - [STM32] Dynamic clock-tree register writes on STM32U5 and STM32U3 were
   safety-verified against complete register values even where the registers
   hold read-only or hardware-controlled fields; the readback now covers only
@@ -359,8 +1053,16 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
   ([#198](https://github.com/chibios-upstream/chibios/pull/198)).
 - [STM32] STM32C5xx DMA3 request map corrected
   ([#142](https://github.com/chibios-upstream/chibios/pull/142)).
-- [RP] RP USB buffer control is now published before the buffer is handed to the
-  controller ([#214](https://github.com/chibios-upstream/chibios/pull/214)).
+- [RP] RP USB driver fixes (classic and XHAL): buffer control is published
+  before the buffer is handed to the controller, with a delay that is long
+  enough on the RP2350 Cortex-M33; isochronous buffer sizes and the IN
+  double-buffer offset are encoded correctly; `usb_lld_start()` keeps the
+  controller registers at their reset values, preserving the RP2350 PHY
+  trims and silicon fixes
+  ([#214](https://github.com/chibios-upstream/chibios/pull/214),
+  [#354](https://github.com/chibios-upstream/chibios/pull/354),
+  [#359](https://github.com/chibios-upstream/chibios/pull/359),
+  [#434](https://github.com/chibios-upstream/chibios/pull/434)).
 - [HAL] Serial over USB input remained inactive after a USB suspend/wakeup cycle on
   STM32 OTG devices. The generic USB driver terminates all pending
   transactions on suspend and the OTG LLD also disables the endpoints in
