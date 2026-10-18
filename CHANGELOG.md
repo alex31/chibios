@@ -246,6 +246,13 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Fixed
 
+- [RP] Test 6 of the RP2040 and RP2350 `PIO-VALIDATION` tests (the RP2350 one
+  also built as `PIO-VALIDATION-RISCV`) waited for the end of its DMA stream on
+  the sticky `TXSTALL` flag, already set by the stall before the DMA started,
+  and stopped the state machine while the last word was still being shifted
+  out (63 of 64 words on the pin) while still reporting a pass; the flag is
+  now cleared once the FIFO is being fed
+  ([#531](https://github.com/chibios-upstream/chibios/pull/531)).
 - [STM32] The instruction cache was never enabled on STM32H5 (classic and
   XHAL), STM32U5 (classic and XHAL, a regression from the previous U5 port,
   which enabled it) and STM32C5: the ports did not call `icache_init()`, so
