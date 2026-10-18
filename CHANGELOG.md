@@ -246,6 +246,13 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Fixed
 
+- [STM32] The instruction cache was never enabled on STM32H5 (classic and
+  XHAL), STM32U5 (classic and XHAL, a regression from the previous U5 port,
+  which enabled it) and STM32C5: the ports did not call `icache_init()`, so
+  the code executed from flash with the full wait states; the cache is now
+  enabled at clock initialization, and the XHAL H5 xmcuconf templates default
+  to the 2-way mode instead of the direct-mapped one
+  ([#527](https://github.com/chibios-upstream/chibios/pull/527)).
 - [SB] The RT/NIL `ARMvx-M-SB` sandbox port did not save FPSCR in the thread
   context of FPU builds, threads switched voluntarily could see the FPU
   rounding modes and flags of other threads; FPSCR is now saved as in the
