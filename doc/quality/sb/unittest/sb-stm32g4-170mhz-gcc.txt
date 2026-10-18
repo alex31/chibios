@@ -1,0 +1,73 @@
+
+*** ChibiOS/SB Test Suite
+***
+*** Compiled:     Oct 18 2026 - 08:06:56
+*** Platform:     SandBox
+*** Test Board:   Sandbox application
+***
+*** Text size:    85096 bytes
+*** RO data size: 21680 bytes
+*** Data size:    256 bytes
+*** BSS size:     9632 bytes
+
+============================================================================
+=== Test Sequence 1 (Information)
+----------------------------------------------------------------------------
+--- Test Case 1.1 (Sandbox Info)
+--- Host time frequency:                10000 Hz
+--- Sandbox tick frequency:             1000 Hz
+--- Sandbox local system tick:          no
+--- VRQ fast path:                      yes
+--- Test VRQ:                           31
+--- Result: SUCCESS
+============================================================================
+=== Test Sequence 2 (Host services)
+----------------------------------------------------------------------------
+--- Test Case 2.1 (Unassigned codes)
+--- Result: SUCCESS
+----------------------------------------------------------------------------
+--- Test Case 2.2 (Null calls)
+--- Result: SUCCESS
+----------------------------------------------------------------------------
+--- Test Case 2.3 (Host system time)
+--- Result: SUCCESS
+============================================================================
+=== Test Sequence 3 (Virtual IRQs)
+----------------------------------------------------------------------------
+--- Test Case 3.1 (Software-triggered VRQ)
+--- Result: SUCCESS
+----------------------------------------------------------------------------
+--- Test Case 3.2 (Per-VRQ enable)
+--- Result: SUCCESS
+----------------------------------------------------------------------------
+--- Test Case 3.3 (Global VRQ disable)
+--- Result: SUCCESS
+----------------------------------------------------------------------------
+--- Test Case 3.4 (VRQ wait)
+--- Result: SUCCESS
+============================================================================
+=== Test Sequence 4 (Benchmarks)
+----------------------------------------------------------------------------
+--- Test Case 4.1 (Null fastcall performance)
+--- Score : 2767476 fastcalls/S
+--- Result: SUCCESS
+----------------------------------------------------------------------------
+--- Test Case 4.2 (System time fastcall performance)
+--- Score : 2482958 fastcalls/S
+--- Result: SUCCESS
+----------------------------------------------------------------------------
+--- Test Case 4.3 (Null syscall performance)
+--- Score : 1117644 syscalls/S
+--- Result: SUCCESS
+----------------------------------------------------------------------------
+--- Test Case 4.4 (Software-triggered VRQ performance)
+--- Score : 601990 VRQs/S
+--- Result: SUCCESS
+----------------------------------------------------------------------------
+--- Test Case 4.5 (Critical zone performance)
+--- Score : 7033209 lock/unlock cycles/S
+--- Result: SUCCESS
+----------------------------------------------------------------------------
+
+Final result: SUCCESS
+
