@@ -244,8 +244,9 @@ exactly where deterministic state is wanted.
 
 ## 4. VRQ pending check on syscall return (minor)
 
-`__sb_vrq_check_pending()` (`host/sbvrq.c`) loads `vrq.isr`, `vrq.wtmask`,
-`vrq.enmask` and masks them on every syscall return. The mutation sites
+`__sb_vrq_check_pending()` (`host/sbvrq.c`) loads `vrq_isr`, `vrq_wtmask`
+and `vrq_enmask` from the system block and masks them on every syscall
+return. The mutation sites
 are few and slow-path; a single precomputed "deliverable" word maintained
 at post/enable/mask time reduces the hot path to one load + branch.
 
