@@ -121,6 +121,30 @@ static void cmd_sbcrash(xshell_t *xshp, int argc, char *argv[], char *envp[]) {
   }
 }
 
+static void cmd_sbsvccrash(xshell_t *xshp, int argc, char *argv[],
+                           char *envp[]) {
+
+  (void)argv;
+  (void)envp;
+
+  if (argc > 1) {
+    xshellUsage(xshp, "sbsvccrash");
+    return;
+  }
+
+  chprintf(xshp->stream, "\r\n\nCrashing on SVC...\r\n");
+  chThdSleepMilliseconds(10);
+
+  /* Test for exception on SVC, the exception frame cannot be stacked. A
+     single asm block so that no stack access is placed in between.*/
+  asm volatile ("mov     r0, #64\n\t"
+                "mov     sp, r0\n\t"
+                "svc     %[nr]"
+                : : [nr] "i" (SB_SYSC_VRQ_WAIT) : "r0", "memory");
+  while (true) {
+  }
+}
+
 static void cmd_sbexit(xshell_t *xshp, int argc, char *argv[], char *envp[]) {
 
   (void)argv;
@@ -140,6 +164,7 @@ static const xshell_command_t commands[] = {
   {"halt", cmd_halt},
   {"write", cmd_write},
   {"sbcrash", cmd_sbcrash},
+  {"sbsvccrash", cmd_sbsvccrash},
   {"sbexit", cmd_sbexit},
   {NULL, NULL}
 };
