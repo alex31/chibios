@@ -16,7 +16,8 @@
 		reg = <0x08060000 DT_SIZE_K(128)>;
 	};
 
-	/* The last 32 bytes are the system block of the host.*/
+	/* The last 32 bytes are the system block of the host,
+	   SB_SYSBLOCK_ALIGN in sbsysc.h.*/
 	sb_data: memory@2001c000 {
 		compatible = "mmio-sram";
 		reg = <0x2001c000 (DT_SIZE_K(16) - 32)>;

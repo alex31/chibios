@@ -42,6 +42,11 @@
   *(type *)(void *)(sp) = (type)(p);                                        \
 } while (false)
 
+/* The system block is part of the sandbox ABI, guests reserve exactly
+   SB_SYSBLOCK_ALIGN bytes for it at the top of their data region.*/
+__CH_STATIC_ASSERT(sb_sysblock_size,
+                   sizeof (sb_sysblock_t) == SB_SYSBLOCK_ALIGN);
+
 /*===========================================================================*/
 /* Module exported variables.                                                */
 /*===========================================================================*/

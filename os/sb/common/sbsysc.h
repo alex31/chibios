@@ -50,7 +50,8 @@
 #define SB_ABI_VERSION          1U
 
 /**
- * @brief   Alignment of the system block.
+ * @brief   Alignment and size of the system block.
+ * @note    Guests reserve this space at the top of their data region.
  */
 #define SB_SYSBLOCK_ALIGN       32U
 

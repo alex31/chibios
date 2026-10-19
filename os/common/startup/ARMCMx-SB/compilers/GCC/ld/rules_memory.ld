@@ -14,7 +14,8 @@
     limitations under the License.
 */
 
-/* Size of the system block, see sb_sysblock_t in sbsysc.h.*/
+/* Size of the system block, SB_SYSBLOCK_ALIGN in sbsysc.h, the host checks
+   that sb_sysblock_t has this size.*/
 __sb_sysblock_size__ = 32;
 
 SECTIONS
