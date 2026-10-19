@@ -251,16 +251,28 @@ static sb_sync_context_t sb_sync_context;
 
 static void test_vrq_ignored(sb_class_t *sbp) {
   const sb_vrqnum_t nvrq = 31U;
+  const sb_vrqmask_t vrqmask = (sb_vrqmask_t)(1U << nvrq);
   uint32_t flags;
 
-  /* No system block outside a sandbox execution.*/
-  chDbgAssert(sbp->sysblk == NULL, "system block present");
+  /* The system block exists from the sandbox start to its finalization,
+     here it is only present while the sandbox is stopping.*/
+  chDbgAssert((sbp->sysblk != NULL) ==
+              (sbGetStateX(sbp) == SB_STATE_STOPPING),
+              "system block lifecycle");
 
   chSysLock();
   flags = sbp->vrq.flags[nvrq];
+
+  /* Clearing the pending bit, so that an accepted trigger is visible.*/
+  if (sbp->sysblk != NULL) {
+    sbp->sysblk->vrq_wtmask &= ~vrqmask;
+  }
+
   sbVRQSetFlagsI(sbp, nvrq, 0xA5A5A5A5U);
   sbVRQTriggerS(sbp, nvrq);
   chDbgAssert(sbp->vrq.flags[nvrq] == flags, "VRQ flags changed");
+  chDbgAssert((sbp->sysblk == NULL) ||
+              ((sbp->sysblk->vrq_wtmask & vrqmask) == 0U), "VRQ triggered");
   chSysUnlock();
 }
 
