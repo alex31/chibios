@@ -53,7 +53,8 @@ int sbRunElfAt(int argc, char *argv[], char *envp[], void *base) {
   /* Checking header.*/
   if ((sbhp->hdr_magic1 != SB_HDR_MAGIC1) ||
       (sbhp->hdr_magic2 != SB_HDR_MAGIC2) ||
-      (sbhp->hdr_size != sizeof (sb_header_t))) {
+      (sbhp->hdr_size != sizeof (sb_header_t)) ||
+      (sbhp->hdr_abi != SB_ABI_VERSION)) {
     errno = ENOEXEC;
     return -1;
   }

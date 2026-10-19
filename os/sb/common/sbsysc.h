@@ -42,6 +42,14 @@
 /** @} */
 
 /**
+ * @brief   Sandbox ABI version.
+ * @details It is stored in the sandbox image header and it is incremented
+ *          on incompatible changes of the interface between host and
+ *          guests, the host rejects images built for a different version.
+ */
+#define SB_ABI_VERSION          1U
+
+/**
  * @brief   Alignment of the system block.
  */
 #define SB_SYSBLOCK_ALIGN       32U

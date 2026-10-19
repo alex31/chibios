@@ -155,7 +155,7 @@ privileged side, this fixes the unprivileged side (and is the only one
 of the two that benefits fastcalls).
 
 Caveat: this is a guest-visible ABI break, sandbox binaries must be
-rebuilt. Needs a config option or an SB ABI version bump.
+rebuilt. Needs a config option or an `SB_ABI_VERSION` increment.
 
 Required hardening (recorded in the security note, point 3): the number
 becomes a 32-bit guest-controlled value instead of a one-byte immediate,

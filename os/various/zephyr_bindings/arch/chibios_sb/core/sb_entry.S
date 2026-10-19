@@ -32,9 +32,9 @@
 
 /*--------------------------------------------------------------------------*
  * Sandbox header, placed at the start of the code region by the linker
- * script. The host checks the magic numbers and the header size, then it
- * starts the sandbox at the entry vector. The exit vector is not used by
- * the host.
+ * script. The host checks the magic numbers, the header size and the ABI
+ * version, then it starts the sandbox at the entry vector. The exit vector
+ * is not used by the host.
  *--------------------------------------------------------------------------*/
                 .section    .sandbox, "ax"
                 .align      4
@@ -42,12 +42,13 @@
 z_chibios_sb_header:
                 .long       0xFE9154C0
                 .long       0x0C4519EF
-                .long       32
+                .long       36
                 .long       __start
                 .long       z_chibios_sb_exit
                 .long       z_chibios_sb_vrq
                 .long       0
                 .long       0
+                .long       SB_ABI_VERSION
 
                 .text
 

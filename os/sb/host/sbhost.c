@@ -324,6 +324,11 @@ static msg_t sb_check_header(const sb_header_t *sbhp,
     return CH_RET_ENOEXEC;
   }
 
+  /* Checking the sandbox ABI version.*/
+  if (sbhp->hdr_abi != SB_ABI_VERSION) {
+    return CH_RET_ENOEXEC;
+  }
+
   /* Checking header entry point.*/
   if (!chMemIsSpaceWithinX(code_area,
                            (const void *)sbhp->hdr_entry,
