@@ -337,6 +337,10 @@ void sb_fastc_vio_uart(sb_class_t *sbp, struct port_extctx *ectxp) {
   }
 }
 
+/* Handlers bound to their codes.*/
+SB_SVC_HANDLER(SB_FASTC_VIO_VUART, sb_fastc_vio_uart);
+SB_SVC_HANDLER(SB_SYSC_VIO_VUART, sb_sysc_vio_uart);
+
 #endif /* VIO_CFG_ENABLE_UART == TRUE */
 
 /** @} */

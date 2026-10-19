@@ -118,6 +118,19 @@
 /** @} */
 
 /**
+ * @name    Application-defined codes
+ * @note    These ranges are never used by ChibiOS, they are reserved to
+ *          the fastcalls and syscalls defined by the host application, see
+ *          @p SB_SVC_HANDLER().
+ * @{
+ */
+#define SB_FASTC_USER_BASE       64
+#define SB_FASTC_USER_NUM        32
+#define SB_SYSC_USER_BASE        192
+#define SB_SYSC_USER_NUM         32
+/** @} */
+
+/**
  * @name    Posix syscall sub-codes
  * @{
  */

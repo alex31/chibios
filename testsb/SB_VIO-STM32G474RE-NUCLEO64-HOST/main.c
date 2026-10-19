@@ -14,6 +14,8 @@
     limitations under the License.
 */
 
+#include <string.h>
+
 #include "ch.h"
 #include "hal.h"
 #include "sb.h"
@@ -204,6 +206,44 @@ static vio_conf_t vio_config1 = {
 /*===========================================================================*/
 /* SB-related.                                                               */
 /*===========================================================================*/
+
+/*
+ * Application-defined fastcall, returns the sum of R0 and R1.
+ */
+static void tsb_fastc_add(sb_class_t *sbp, struct port_extctx *ectxp) {
+
+  (void)sbp;
+
+  ectxp->r0 = ectxp->r0 + ectxp->r1;
+}
+
+/*
+ * Application-defined syscall, copies a host identification string into
+ * the sandbox buffer at R0 of size R1, returns the string length. The
+ * buffer is in sandbox memory, it must be validated before writing.
+ */
+static void tsb_sysc_host_info(sb_class_t *sbp, struct port_extctx *ectxp) {
+  static const char info[] = "ChibiOS/RT " CH_KERNEL_VERSION " sandbox host";
+  char *buf = (char *)ectxp->r0;
+  size_t size = (size_t)ectxp->r1;
+
+  if (!sb_is_valid_write_range(sbp, buf, size)) {
+    ectxp->r0 = (uint32_t)CH_RET_EFAULT;
+    return;
+  }
+
+  if (size < sizeof (info)) {
+    ectxp->r0 = (uint32_t)CH_RET_ERANGE;
+    return;
+  }
+
+  memcpy(buf, info, sizeof (info));
+  ectxp->r0 = (uint32_t)(sizeof (info) - 1U);
+}
+
+/* Application handlers bound to codes in the application ranges.*/
+SB_SVC_HANDLER(64, tsb_fastc_add);
+SB_SVC_HANDLER(192, tsb_sysc_host_info);
 
 /* Privileged stacks for sandboxes.*/
 static SB_STACK(sbx1stk);

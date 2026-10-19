@@ -400,6 +400,10 @@ void sb_fastc_vio_spi(sb_class_t *sbp, struct port_extctx *ectxp) {
   }
 }
 
+/* Handlers bound to their codes.*/
+SB_SVC_HANDLER(SB_FASTC_VIO_VSPI, sb_fastc_vio_spi);
+SB_SVC_HANDLER(SB_SYSC_VIO_VSPI, sb_sysc_vio_spi);
+
 #endif /* VIO_CFG_ENABLE_SPI == TRUE */
 
 /** @} */

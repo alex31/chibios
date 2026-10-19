@@ -335,6 +335,10 @@ void sb_fastc_vio_i2c(sb_class_t *sbp, struct port_extctx *ectxp) {
   }
 }
 
+/* Handlers bound to their codes.*/
+SB_SVC_HANDLER(SB_FASTC_VIO_VI2C, sb_fastc_vio_i2c);
+SB_SVC_HANDLER(SB_SYSC_VIO_VI2C, sb_sysc_vio_i2c);
+
 #endif /* VIO_CFG_ENABLE_I2C == TRUE */
 
 /** @} */

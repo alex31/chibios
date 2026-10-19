@@ -124,6 +124,9 @@ void sb_fastc_vio_gpio(sb_class_t *sbp, struct port_extctx *ectxp) {
   }
 }
 
+/* Handlers bound to their codes.*/
+SB_SVC_HANDLER(SB_FASTC_VIO_VGPIO, sb_fastc_vio_gpio);
+
 #endif /* VIO_CFG_ENABLE_GPIO == TRUE */
 
 /** @} */

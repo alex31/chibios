@@ -22,6 +22,10 @@
 #include "oop_chprintf.h"
 #include "xshell.h"
 
+/* Application-defined calls of the testsb host.*/
+#define TSB_FASTC_ADD           64
+#define TSB_SYSC_HOST_INFO      192
+
 static hal_buffered_sio_c bsio1;
 static uint8_t rxbuf[32];
 static uint8_t txbuf[32];
@@ -329,6 +333,40 @@ static void cmd_sbcrash(xshell_t *xshp, int argc, char *argv[], char *envp[]) {
   }
 }
 
+static void cmd_userapi(xshell_t *xshp, int argc, char *argv[], char *envp[]) {
+  char buf[48];
+  msg_t msg;
+
+  (void)argv;
+  (void)envp;
+
+  if (argc > 1) {
+    xshellUsage(xshp, "userapi");
+    return;
+  }
+
+  /* Application-defined fastcall.*/
+  chprintf(xshp->stream, "fastcall 40 + 2: %u\r\n",
+           (unsigned)sbFastcall2(TSB_FASTC_ADD, 40U, 2U));
+
+  /* Application-defined syscall, valid buffer.*/
+  msg = (msg_t)sbSyscall2(TSB_SYSC_HOST_INFO, buf, sizeof (buf));
+  chprintf(xshp->stream, "syscall: %d \"%s\"\r\n",
+           (int)msg, (msg >= 0) ? buf : "");
+
+  /* Buffer too small.*/
+  msg = (msg_t)sbSyscall2(TSB_SYSC_HOST_INFO, buf, 4U);
+  chprintf(xshp->stream, "syscall, small buffer: %d\r\n", (int)msg);
+
+  /* Buffer outside the sandbox, in host RAM.*/
+  msg = (msg_t)sbSyscall2(TSB_SYSC_HOST_INFO, 0x20000000U, sizeof (buf));
+  chprintf(xshp->stream, "syscall, host address: %d\r\n", (int)msg);
+
+  /* Unassigned application code.*/
+  msg = (msg_t)sbFastcall0(SB_FASTC_USER_BASE + 1);
+  chprintf(xshp->stream, "unassigned fastcall: %d\r\n", (int)msg);
+}
+
 static void cmd_sbexit(xshell_t *xshp, int argc, char *argv[], char *envp[]) {
 
   (void)argv;
@@ -350,6 +388,7 @@ static const xshell_command_t commands[] = {
   {"halt", cmd_halt},
   {"sbcrash", cmd_sbcrash},
   {"sbexit", cmd_sbexit},
+  {"userapi", cmd_userapi},
   {NULL, NULL}
 };
 

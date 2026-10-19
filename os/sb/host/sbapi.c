@@ -27,10 +27,6 @@
 #include "ch.h"
 #include "sb.h"
 
-#if defined(SB_INCLUDE_USERAPI)
-#include "sbuserapi.h"
-#endif
-
 /*===========================================================================*/
 /* Module local definitions.                                                 */
 /*===========================================================================*/
@@ -303,5 +299,21 @@ void sb_sysc_loadelf(sb_class_t *sbp, struct port_extctx *ectxp) {
   ectxp->r0 = CH_RET_ENOSYS;
 #endif
 }
+
+/* Handlers bound to their codes.*/
+SB_SVC_HANDLER(SB_FASTC_GET_SYSTIME, sb_fastc_get_systime);
+SB_SVC_HANDLER(SB_FASTC_GET_FREQUENCY, sb_fastc_get_frequency);
+SB_SVC_HANDLER(SB_FASTC_EVENT_BROADCAST, sb_fastc_broadcast_flags);
+SB_SVC_HANDLER(SB_FASTC_NOP, sb_fastc_nop);
+SB_SVC_HANDLER(SB_SYSC_EXIT, sb_sysc_exit);
+SB_SVC_HANDLER(SB_SYSC_SLEEP, sb_sysc_sleep);
+SB_SVC_HANDLER(SB_SYSC_SLEEP_UNTIL, sb_sysc_sleep_until_windowed);
+SB_SVC_HANDLER(SB_SYSC_MESSAGE_WAIT, sb_sysc_wait_message);
+SB_SVC_HANDLER(SB_SYSC_MESSAGE_REPLY, sb_sysc_reply_message);
+SB_SVC_HANDLER(SB_SYSC_EVENT_WAIT_ONE, sb_sysc_wait_one_timeout);
+SB_SVC_HANDLER(SB_SYSC_EVENT_WAIT_ANY, sb_sysc_wait_any_timeout);
+SB_SVC_HANDLER(SB_SYSC_EVENT_WAIT_ALL, sb_sysc_wait_all_timeout);
+SB_SVC_HANDLER(SB_SYSC_LOADELF, sb_sysc_loadelf);
+SB_SVC_HANDLER(SB_SYSC_NOP, sb_sysc_nop);
 
 /** @} */

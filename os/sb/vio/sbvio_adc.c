@@ -316,6 +316,10 @@ void sb_fastc_vio_adc(sb_class_t *sbp, struct port_extctx *ectxp) {
   }
 }
 
+/* Handlers bound to their codes.*/
+SB_SVC_HANDLER(SB_FASTC_VIO_VADC, sb_fastc_vio_adc);
+SB_SVC_HANDLER(SB_SYSC_VIO_VADC, sb_sysc_vio_adc);
+
 #endif /* VIO_CFG_ENABLE_ADC == TRUE */
 
 /** @} */
