@@ -42,7 +42,9 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
-#define FPU     0xE000EF30
+#define FPU                     0xE000EF30
+#define SCB_SHCSR               0xE000ED24
+#define SHCSR_SVCALLPENDED      (1 << 15)
 
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
@@ -131,6 +133,15 @@ UsageFault_Handler:
  */
 .Lexit_thd:
                 mov.w       r4, lr
+
+                /* A fault on the stacking of an SVC exception leaves the
+                   SVC pending, it would be taken on the exit frame below,
+                   in privileged mode. The SVC of the terminating sandbox
+                   is discarded.*/
+                ldr         r2, =SCB_SHCSR
+                ldr         r3, [r2]
+                bic.w       r3, r3, #SHCSR_SVCALLPENDED
+                str         r3, [r2]
 
 #if CORTEX_USE_FPU
                 /* Discarding any lazy save to the faulting sandbox stack
