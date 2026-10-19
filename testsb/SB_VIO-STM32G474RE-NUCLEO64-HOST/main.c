@@ -85,10 +85,10 @@ static vio_gpt_units_t sb1_gpt_units = {
 static const adc_conversion_groups_t sb1_adc_groups = {
   .grpsnum                     = 2U,
   .grps                        = {
+    /* Linear conversions, software triggered.*/
     [0] = {
       .num_channels            = 2U,
-      .cfgr                    = ADC_CFGR_EXTEN_RISING |
-                                 ADC_CFGR_EXTSEL_SRC(12),
+      .cfgr                    = 0U,
       .cfgr2                   = 0U,
       .tr1                     = ADC_TR_DISABLED,
       .tr2                     = ADC_TR_DISABLED,
@@ -108,6 +108,7 @@ static const adc_conversion_groups_t sb1_adc_groups = {
         0U
       }
     },
+    /* Circular conversions, triggered by the TIM4 TRGO (GPTD4).*/
     [1] = {
       .num_channels            = 2U,
       .cfgr                    = ADC_CFGR_EXTEN_RISING |
