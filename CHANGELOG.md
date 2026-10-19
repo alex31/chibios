@@ -547,6 +547,11 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Fixed
 
+- [SB] The sandbox cleanup stopped the VIO UART units while data accepted by
+  the TX FIFO was still being transmitted, the last characters written by a
+  sandbox before exiting were lost or truncated; the cleanup now waits for
+  the end of the transmission, for at most 100 ms per unit
+  ([#534](https://github.com/chibios-upstream/chibios/pull/534)).
 - [RP] Test 6 of the RP2040 and RP2350 `PIO-VALIDATION` tests (the RP2350 one
   also built as `PIO-VALIDATION-RISCV`) waited for the end of its DMA stream on
   the sticky `TXSTALL` flag, already set by the stall before the DMA started,

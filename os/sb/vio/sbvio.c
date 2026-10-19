@@ -50,6 +50,12 @@ __CH_STATIC_ASSERT(sb_vio_vrq_flags,
    (SB_VIO_FL_COMPLETE == (1U << HAL_DRV_STATE_COMPLETE)) &&
    (SB_VIO_FL_ERROR == (1U << HAL_DRV_STATE_ERROR))));
 
+/**
+ * @brief   Maximum time waited for the end of a UART transmission on
+ *          sandbox cleanup, in milliseconds.
+ */
+#define VIO_UART_DRAIN_TIME_MS              100U
+
 /*===========================================================================*/
 /* Module exported variables.                                                */
 /*===========================================================================*/
@@ -156,6 +162,18 @@ void __sb_vio_cleanup(sb_class_t *sbp) {
       const vio_uart_unit_t *unitp = &vioconf->uarts->units[i];
 
       drvSetCallbackX(unitp->siop, NULL);
+
+      /* The data already accepted by the TX FIFO is transmitted before
+         stopping the unit, within a bounded time.*/
+      if (drvGetStateX(unitp->siop) == HAL_DRV_STATE_READY) {
+        unsigned ms = VIO_UART_DRAIN_TIME_MS;
+
+        while (sioIsTXOngoingX(unitp->siop) && (ms > 0U)) {
+          chThdSleepMilliseconds(1);
+          ms--;
+        }
+      }
+
       drvStop(unitp->siop);
       drvSetArgumentX(unitp->siop, NULL);
     }

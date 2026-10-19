@@ -83,11 +83,6 @@
 typedef unsigned elf_secnum_t;
 
 /**
- * @brief   Type of a symbol number.
- */
-//typedef unsigned elf_symnum_t;
-
-/**
  * @brief   Type of a loadable section info structure.
  */
 typedef struct {
@@ -103,7 +98,6 @@ typedef struct {
 typedef struct elf_load_context {
   vfs_file_node_c           *fnp;
   const memory_area_t       *map;
-//  uint32_t                  entry;
   elf_secnum_t              sections_num;
   vfs_offset_t              sections_off;
   bool                      rel_movw_found;
@@ -294,7 +288,8 @@ static msg_t allocate_load_section(elf_load_context_t *ctxp,
   }
 
   /* Loading section data.*/
-  ret = vfsSetFilePosition(ctxp->fnp, (vfs_offset_t)shp->sh_offset, VFS_SEEK_SET);
+  ret = vfsSetFilePosition(ctxp->fnp, (vfs_offset_t)shp->sh_offset,
+                           VFS_SEEK_SET);
   CH_RETURN_ON_ERROR(ret);
   ret = vfs_read_exact(ctxp->fnp, (void *)esip->area.base, esip->area.size);
   CH_RETURN_ON_ERROR(ret);
@@ -530,7 +525,6 @@ msg_t sbElfLoad(vfs_file_node_c *fnp, const memory_area_t *map) {
     }
 
     /* Storing info required later.*/
-//    ctx.entry        = u.h.e_entry;
     ctx.sections_num = (unsigned)u.h.e_shnum;
     ctx.sections_off = (vfs_offset_t)u.h.e_shoff;
   }
@@ -543,11 +537,13 @@ msg_t sbElfLoad(vfs_file_node_c *fnp, const memory_area_t *map) {
 
       /* Reading the header.*/
       ret = vfsSetFilePosition(ctx.fnp,
-                               ctx.sections_off + ((vfs_offset_t)i *
-                                                   (vfs_offset_t)sizeof (elf32_section_header_t)),
+                               ctx.sections_off +
+                               ((vfs_offset_t)i *
+                                (vfs_offset_t)sizeof (elf32_section_header_t)),
                                VFS_SEEK_SET);
       CH_RETURN_ON_ERROR(ret);
-      ret = vfs_read_exact(ctx.fnp, (void *)&u.sh, sizeof (elf32_section_header_t));
+      ret = vfs_read_exact(ctx.fnp, (void *)&u.sh,
+                           sizeof (elf32_section_header_t));
       CH_RETURN_ON_ERROR(ret);
 
       /* Empty sections are not processed.*/
@@ -686,11 +682,13 @@ msg_t sbElfGetAllocation(vfs_file_node_c *fnp, size_t *sizep) {
 
       /* Reading the header.*/
       ret = vfsSetFilePosition(fnp,
-                               sections_off + ((vfs_offset_t)i *
-                                               (vfs_offset_t)sizeof (elf32_section_header_t)),
+                               sections_off +
+                               ((vfs_offset_t)i *
+                                (vfs_offset_t)sizeof (elf32_section_header_t)),
                                VFS_SEEK_SET);
       CH_RETURN_ON_ERROR(ret);
-      ret = vfs_read_exact(fnp, (void *)&u.sh, sizeof (elf32_section_header_t));
+      ret = vfs_read_exact(fnp, (void *)&u.sh,
+                           sizeof (elf32_section_header_t));
       CH_RETURN_ON_ERROR(ret);
 
       /* Empty sections are not processed.*/

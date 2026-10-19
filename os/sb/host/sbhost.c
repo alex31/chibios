@@ -184,12 +184,14 @@ static bool get_mpu_settings(const sb_memory_region_t *mrp,
     static const uint8_t srd_upper[] = {0x00U, 0x80U, 0xC0U, 0xE0U,
                                         0xF0U, 0xF8U, 0xFCU, 0xFEU};
     srd = (uint32_t)srd_lower[(area_base - region_base) / subregion_size] |
-          (uint32_t)srd_upper[(region_base + region_size - area_end) / subregion_size];
+          (uint32_t)srd_upper[(region_base + region_size - area_end) /
+                              subregion_size];
   }
 
   /* MPU registers settings.*/
   mpur->rbar = region_base;
-  mpur->rasr = (srd << 8) | ((__CLZ(__RBIT(region_size)) -1U) << 1) | MPU_RASR_ENABLE;
+  mpur->rasr = (srd << 8) | ((__CLZ(__RBIT(region_size)) - 1U) << 1) |
+               MPU_RASR_ENABLE;
 
   /* Region attributes.*/
   if (sb_reg_is_writable(mrp)) {
@@ -492,7 +494,8 @@ static thread_t *sb_start_unprivileged(sb_class_t *sbp,
   thread_descriptor_t td = {
     .name       = name,
     .wbase      = stkbase,
-    .wend       = stkbase + (SB_CFG_PRIVILEGED_STACK_SIZE / sizeof (stkline_t)),
+    .wend       = stkbase + (SB_CFG_PRIVILEGED_STACK_SIZE /
+                             sizeof (stkline_t)),
     .prio       = prio,
     .funcp      = sb_unprivileged_trampoline,
     .arg        = NULL,
@@ -831,7 +834,8 @@ msg_t sbExecStatic(sb_class_t *sbp, tprio_t prio,
   sbp->is_dynamic = false;
 
   /* Everything OK, starting the unprivileged thread inside the sandbox.*/
-  if (sb_start_unprivileged(sbp, argv[0], prio, stkbase, sbhp->hdr_entry) == NULL) {
+  if (sb_start_unprivileged(sbp, argv[0], prio, stkbase,
+                            sbhp->hdr_entry) == NULL) {
     ret = CH_RET_ENOMEM;
     goto failed;
   }
@@ -843,7 +847,8 @@ failed:
   return ret;
 }
 
-#if (PORT_SWITCHED_REGIONS_NUMBER > 0) && (CH_CFG_USE_HEAP == TRUE) || defined(__DOXYGEN__)
+#if ((PORT_SWITCHED_REGIONS_NUMBER > 0) && (CH_CFG_USE_HEAP == TRUE)) ||    \
+    defined(__DOXYGEN__)
 /**
  * @brief   Execute an elf file within a dynamic sandbox.
  *
@@ -917,7 +922,8 @@ msg_t sbExecDynamic(sb_class_t *sbp, tprio_t prio, size_t heapsize,
   }
 
   /* Allocating an area for the privileged stack.*/
-  stkbase = chHeapAllocAligned(NULL, SB_CFG_PRIVILEGED_STACK_SIZE, PORT_STACK_ALIGN);
+  stkbase = chHeapAllocAligned(NULL, SB_CFG_PRIVILEGED_STACK_SIZE,
+                               PORT_STACK_ALIGN);
   if (stkbase == NULL) {
     ret = CH_RET_ENOMEM;
     goto skip2;
@@ -961,7 +967,8 @@ msg_t sbExecDynamic(sb_class_t *sbp, tprio_t prio, size_t heapsize,
   sbp->regions[0].attributes = SB_REG_IS_CODE_AND_DATA;
 
   /* Everything OK, starting the unprivileged thread inside the sandbox.*/
-  if (sb_start_unprivileged(sbp, argv[0], prio, stkbase, sbhp->hdr_entry) == NULL) {
+  if (sb_start_unprivileged(sbp, argv[0], prio, stkbase,
+                            sbhp->hdr_entry) == NULL) {
     ret = CH_RET_ENOMEM;
     goto skip3;
   }

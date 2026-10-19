@@ -76,7 +76,8 @@ extern "C" {
                      const char *argv[], const char *envp[]);
 #if (PORT_SWITCHED_REGIONS_NUMBER > 0) && (CH_CFG_USE_HEAP == TRUE)
   msg_t sbExecDynamic(sb_class_t *sbp, tprio_t prio, size_t heapsize,
-                      const char *path, const char *argv[], const char *envp[]);
+                      const char *path, const char *argv[],
+                      const char *envp[]);
 #endif
 #endif
 #if CH_CFG_USE_MESSAGES == TRUE
@@ -221,10 +222,12 @@ static inline void sbSetRoot(sb_class_t *sbp, vfs_root_c *rootp) {
  *
  * @api
  */
-static inline void sbRegisterDescriptor(sb_class_t *sbp, int fd, vfs_node_c *np) {
+static inline void sbRegisterDescriptor(sb_class_t *sbp, int fd,
+                                        vfs_node_c *np) {
 
   chDbgAssert(sbp->state == SB_STATE_STOPPED, "invalid lifecycle state");
-  chDbgAssert(sb_is_available_descriptor(&sbp->io, fd), "invalid file descriptor");
+  chDbgAssert(sb_is_available_descriptor(&sbp->io, fd),
+              "invalid file descriptor");
 
   sbp->io.vfs_nodes[fd]  = np;
 }

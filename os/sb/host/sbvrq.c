@@ -49,11 +49,12 @@
 
    This guard fails the build if a port or priority reconfiguration ever
    breaks that ordering, rather than silently reopening the lost-update race.
-   The ALT ports define CORTEX_MAX_KERNEL_PRIORITY == CORTEX_PRIORITY_SVCALL + 1
-   so the invariant holds. (Lower numeric value == higher priority.) */
+   The ALT ports define CORTEX_MAX_KERNEL_PRIORITY as
+   CORTEX_PRIORITY_SVCALL + 1, so the invariant holds (a lower numeric value
+   is a higher priority).*/
 #if defined(CORTEX_PRIORITY_SVCALL) && defined(CORTEX_MAX_KERNEL_PRIORITY)
 #if CORTEX_PRIORITY_SVCALL >= CORTEX_MAX_KERNEL_PRIORITY
-#error "VRQ state atomicity requires SVCall to out-prioritize every kernel-preempting IRQ (CORTEX_PRIORITY_SVCALL < CORTEX_MAX_KERNEL_PRIORITY)"
+#error "CORTEX_PRIORITY_SVCALL must be lower than CORTEX_MAX_KERNEL_PRIORITY"
 #endif
 #endif
 
@@ -117,13 +118,6 @@ static inline void vrq_initctx(sb_class_t *sbp,
 
   /* Building the return context.*/
   ectxp->r0     = nvrq;
-#if 0
-  ectxp->r1     = 0U;
-  ectxp->r2     = 0U;
-  ectxp->r3     = 0U;
-  ectxp->r12    = 0U;
-  ectxp->lr_thd = 0U;
-#endif
 
   /* Moving the VRQ flags in R1, the pending bit and the flags are cleared
      together.*/
@@ -145,14 +139,13 @@ static void vrq_pushctx_other(sb_class_t *sbp, sb_sysblock_t *sysp,
 
   /* Any lazy FP save was completed when this thread was switched out.*/
 
-  /* Current stack frame position.*/
-//  ectxp = (struct port_extctx *)sbp->u_psp;
-
   /* Position of the new stack frame, it depends on FPU settings and state.*/
-  ectxp = (struct port_extctx *)((uintptr_t)sbp->thread.ctx.sp - sizeof (struct port_extctx));
+  ectxp = (struct port_extctx *)((uintptr_t)sbp->thread.ctx.sp -
+                                 sizeof (struct port_extctx));
 
   /* Checking if the new frame is within the sandbox else failure.*/
-  if (!chMemIsSpaceWithinX(sbp->u_data, (void *)ectxp, sizeof (struct port_extctx))) {
+  if (!chMemIsSpaceWithinX(sbp->u_data, (void *)ectxp,
+                           sizeof (struct port_extctx))) {
     /* Making the sandbox return on a privileged address, this
        will cause a fault and sandbox termination.*/
     ectxp = vrq_set_doomed(sbp);
@@ -162,7 +155,6 @@ static void vrq_pushctx_other(sb_class_t *sbp, sb_sysblock_t *sysp,
     vrq_initctx(sbp, sysp, ectxp, nvrq);
   }
 
-//  sbp->u_psp = (uint32_t)ectxp;
   sbp->thread.ctx.sp = ectxp;
 }
 
@@ -184,7 +176,8 @@ static void vrq_pushctx_this(sb_class_t *sbp, uint32_t psp,
   ectxp = (struct port_extctx *)(psp - sizeof (struct port_extctx));
 
   /* Checking if the new frame is within the sandbox else failure.*/
-  if (!chMemIsSpaceWithinX(sbp->u_data, (void *)ectxp, sizeof (struct port_extctx))) {
+  if (!chMemIsSpaceWithinX(sbp->u_data, (void *)ectxp,
+                           sizeof (struct port_extctx))) {
     /* Making the sandbox return on a privileged address, this
        will cause a fault and sandbox termination.*/
     ectxp = vrq_set_doomed(sbp);

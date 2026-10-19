@@ -283,7 +283,8 @@ void sb_fastc_vio_adc(sb_class_t *sbp, struct port_extctx *ectxp) {
           msg = adcStartConversionLinearI(unitp->adcp, grpnum, samples, depth);
         }
         else {
-          msg = adcStartConversionCircularI(unitp->adcp, grpnum, samples, depth);
+          msg = adcStartConversionCircularI(unitp->adcp, grpnum, samples,
+                                            depth);
         }
         chSysUnlockFromISR();
         CH_IRQ_EPILOGUE();
