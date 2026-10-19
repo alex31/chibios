@@ -81,6 +81,10 @@ typedef struct {
    * @brief   Used-defined parameters, defaulted to zero.
    */
   uint32_t                      user[2];
+  /**
+   * @brief   Sandbox ABI version, @p SB_ABI_VERSION.
+   */
+  uint32_t                      hdr_abi;
 } sb_header_t;
 
 /*===========================================================================*/

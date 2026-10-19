@@ -173,6 +173,20 @@ ULIBDIR =
 # List all user libraries here
 ULIBS =
 
+# Release host for the sandbox benchmarks, "make BENCHMARK=yes": -O2 and
+# the kernel state checker, checks and assertions disabled, built in
+# separate directories. The sandbox images are not affected.
+ifeq ($(BENCHMARK),yes)
+  USE_OPT  := $(patsubst -Og,-O2,$(USE_OPT))
+  BUILDDIR := $(BUILDDIR)-benchmark
+  DEPDIR   := $(DEPDIR)-benchmark
+  DBGDEFS  := -DCH_DBG_SYSTEM_STATE_CHECK=FALSE \
+              -DCH_DBG_ENABLE_CHECKS=FALSE \
+              -DCH_DBG_ENABLE_ASSERTS=FALSE
+  UDEFS    += $(DBGDEFS)
+  UADEFS   += $(DBGDEFS)
+endif
+
 #
 # End of user section
 ##############################################################################

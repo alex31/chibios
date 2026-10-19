@@ -24,8 +24,8 @@
  * @note    Units, configurations and VRQ numbers are assigned by the host
  *          configuration, the guest must use the same numbering.
  * @note    Asynchronous operations signal completion on the VRQ assigned
- *          to the unit, the VRQ flags are returned by
- *          @p ulPortVRQGetFlags() or @p __sb_vrq_gcsts(). Events, errors and
+ *          to the unit, the VRQ flags are passed to the VRQ handler, see
+ *          @p SB_VRQ_HANDLER() in @p sbuser.h. Events, errors and
  *          flags are defined in @p sbsysc.h: @p SB_VIO_FL_xxx,
  *          @p SB_VGPT_FL_PERIOD, @p SB_VETH_FL_xxx, @p SB_VUART_EV_xxx and
  *          @p SB_VI2C_xxx.

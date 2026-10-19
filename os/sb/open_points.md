@@ -10,6 +10,7 @@ not separate backlogs:
 - [Lifecycle and restart protocol](note_sb_lifecycle.md)
 - [SVC and MPU optimizations](note_svc_mpu_optimizations.md)
 - [TTY integration and signal delivery](note_sb_tty.md)
+- [System block and userspace VRQ critical zones](note_sb_system_block.md)
 
 ## Completed baseline
 
@@ -53,6 +54,13 @@ The following work is complete and must not be reintroduced as an open item:
   Apache-2.0 license, retaining the existing host/guest ABI. The XHAL TTY
   no longer depends on the sandbox header directory. Concurrent drains use
   a thread queue, including reset/stop wakeups and delayed-caller handling.
+- The sandbox system block, 32 bytes at the top of the data region, holds
+  the VRQ status and masks. Guests use it for userspace VRQ critical zones
+  (`SB_USER_CFG_FAST_VRQ`, enabled by default, the enable is a function
+  unless `SB_USER_CFG_FAST_VRQ_INLINE` is set), and VRQ handlers receive the
+  VRQ flags as an argument. `SB_FASTC_VRQ_GCSTS` was removed and code 119 is
+  retired. Guests must be rebuilt for hosts with the block; see
+  [note_sb_system_block.md](note_sb_system_block.md).
 
 ## Priority 1: security and isolation
 
@@ -97,8 +105,9 @@ transport are in [note_sb_tty.md](note_sb_tty.md).
 
 - Reserve one signal-delivery VRQ and define its sandbox-visible pending
   signal bits. The proposed transport reuses `sbVRQSetFlagsI()`,
-  `sbVRQTriggerI()` and `__sb_vrq_gcsts()`; no additional event queue is
-  required. A name such as `SB_VRQ_SIGNALS` is provisional.
+  `sbVRQTriggerI()` and the `flags` argument of the VRQ handler; no
+  additional event queue is required. A name such as `SB_VRQ_SIGNALS` is
+  provisional.
 - Connect the TTY callback to this transport, mapping `INTR`, `QUIT` and
   `SUSP` into the common signal ABI. Preserve callback context, VRQ masking
   and lifecycle rules described in the design note.
@@ -177,6 +186,8 @@ Detailed designs are in
   immediate from guest code. Clamp the 32-bit guest value with `uxtb` before
   table indexing and batch this with an SB ABI revision.
 - Precompute the deliverable-VRQ word used on syscall return.
+- Userspace VRQ critical zones: evaluate the deferred VRQ replay; see
+  [note_sb_system_block.md](note_sb_system_block.md).
 - If SVCall is later moved into the kernel priority band, audit every handler
   for the required locking contract first.
 

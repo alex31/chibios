@@ -381,6 +381,17 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Changed
 
+- [SB] Sandbox ABI revision, hosts and guests must be rebuilt together, the
+  image header carries the ABI version (`hdr_abi`, `SB_ABI_VERSION`) and
+  hosts reject images built for another version: the host keeps the VRQ
+  status and masks in a 32-byte system block at the top of the sandbox data
+  region, guests use it for userspace VRQ critical zones
+  (`SB_USER_CFG_FAST_VRQ`, enabled by default, a lock/unlock pair from ~122
+  to ~32 cycles on G474, ~24 with the enable inlined by
+  `SB_USER_CFG_FAST_VRQ_INLINE`), and VRQ handlers receive the VRQ flags as
+  an argument; the `SB_FASTC_VRQ_GCSTS` fastcall and its guest wrappers are
+  removed, the Zephyr guest slot overlays exclude the block
+  ([#529](https://github.com/chibios-upstream/chibios/pull/529)).
 - [NIL] `CH_CFG_USE_MUTEXES`, `CH_CFG_SMP_MODE` and `CH_DBG_STATISTICS`,
   not available in NIL, are checked after `chconf.h` instead of being forced
   to `FALSE` before it, where the assembler modules could still see the

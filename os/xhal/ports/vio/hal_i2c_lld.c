@@ -51,12 +51,9 @@ hal_i2c_driver_c I2CD1;
  * @brief   Shared I2C service routine.
  *
  * @param[in] i2cp      pointer to the @p hal_i2c_driver_c object
- * @param[in] nvrq      virtual IRQ number
+ * @param[in] sts       VRQ flags
  */
-static void i2c_lld_serve_interrupt(hal_i2c_driver_c *i2cp, uint32_t nvrq) {
-  uint32_t sts;
-
-  sts = __sb_vrq_gcsts(nvrq);
+static void i2c_lld_serve_interrupt(hal_i2c_driver_c *i2cp, uint32_t sts) {
 
   if ((sts & (1U << HAL_DRV_STATE_ERROR)) != 0U) {
     i2cp->errors |= (i2cflags_t)vi2cGetAndClearErrors(i2cp->nvi2c);
@@ -75,11 +72,11 @@ static void i2c_lld_serve_interrupt(hal_i2c_driver_c *i2cp, uint32_t nvrq) {
 
 #if VIO_I2C_USE_VI2C1 || defined(__DOXYGEN__)
 #if !defined(VIO_VI2C1_SUPPRESS_ISR)
-CH_IRQ_HANDLER(MK_VECTOR(VIO_VI2C1_IRQ)) {
+SB_VRQ_HANDLER(MK_VECTOR(VIO_VI2C1_IRQ)) {
 
   CH_IRQ_PROLOGUE();
 
-  i2c_lld_serve_interrupt(&I2CD1, VIO_VI2C1_IRQ);
+  i2c_lld_serve_interrupt(&I2CD1, flags);
 
   CH_IRQ_EPILOGUE();
 }

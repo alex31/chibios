@@ -147,10 +147,10 @@ Flag collection, mapping and publication can take place within one ISR
 system-lock interval. The driver invokes its callback from ISR context
 outside the system lock; the bridge acquires and releases that lock itself.
 
-The guest handler retrieves and clears the accumulated flags using
-`__sb_vrq_gcsts()`. The bitmap represents pending signals, not a mask of
-blocked signals. Repeated occurrences of one signal coalesce; different
-signals retain separate bits. The transport provides neither counts nor
+The guest handler receives the accumulated flags as its `flags` argument,
+the host clears them when it delivers the VRQ. The bitmap represents
+pending signals, not a mask of blocked signals. Repeated occurrences of one
+signal coalesce; different signals retain separate bits. The transport provides neither counts nor
 ordering and needs no additional message queue.
 
 The existing per-VRQ enable and global delivery masks still apply. Any

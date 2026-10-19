@@ -32,10 +32,13 @@
 /* Module local definitions.                                                 */
 /*===========================================================================*/
 
-/* The read-modify-write sequences on the shared VRQ state (vrq.isr,
-   vrq.wtmask, vrq.flags[]) in the fastcall handlers below are NOT explicitly
-   locked: their atomicity against the asynchronous producers (sbVRQTriggerI()
-   and sbVRQSetFlagsI(), both I-class) rests entirely on a priority invariant.
+/* The read-modify-write sequences on the shared VRQ state (vrq_isr,
+   vrq_wtmask and vrq_enmask in the system block, vrq.flags[]) in the
+   fastcall handlers below are NOT explicitly locked: their atomicity
+   against the asynchronous producers (sbVRQTriggerI() and sbVRQSetFlagsI(),
+   both I-class) rests entirely on a priority invariant. The system block is
+   in sandbox memory, the sandbox cannot interrupt these sequences and the
+   values it writes there are untrusted but harmless.
    The handlers run at the SVCall priority, while any IRQ allowed to call an
    I-class function sits at CORTEX_MAX_KERNEL_PRIORITY or below (numerically
    higher, i.e. less urgent). SVCall therefore out-prioritizes every VRQ
@@ -102,14 +105,15 @@ static inline struct port_extctx *vrq_set_doomed(sb_class_t *sbp) {
 
 CC_FORCE_INLINE
 static inline void vrq_initctx(sb_class_t *sbp,
+                               sb_sysblock_t *sysp,
                                struct port_extctx *ectxp,
                                sb_vrqnum_t nvrq) {
 
   /* Clearing served VRQ.*/
-  sbp->vrq.wtmask &= ~(1U << nvrq);
+  sysp->vrq_wtmask &= ~(1U << nvrq);
 
   /* Disabling VRQs globally during processing.*/
-  sbp->vrq.isr = SB_VRQ_ISR_DISABLED;
+  sysp->vrq_isr = SB_VRQ_ISR_DISABLED;
 
   /* Building the return context.*/
   ectxp->r0     = nvrq;
@@ -120,6 +124,12 @@ static inline void vrq_initctx(sb_class_t *sbp,
   ectxp->r12    = 0U;
   ectxp->lr_thd = 0U;
 #endif
+
+  /* Moving the VRQ flags in R1, the pending bit and the flags are cleared
+     together.*/
+  ectxp->r1             = sbp->vrq.flags[nvrq];
+  sbp->vrq.flags[nvrq]  = 0U;
+
   ectxp->pc     = sbp->vrq_entry;
   ectxp->xpsr   = 0x01000000U;
 #if CORTEX_USE_FPU == TRUE
@@ -129,7 +139,8 @@ static inline void vrq_initctx(sb_class_t *sbp,
 
 /* Encouraging a tail call on this function.*/
 CC_NO_INLINE
-static void vrq_pushctx_other(sb_class_t *sbp, sb_vrqnum_t nvrq) {
+static void vrq_pushctx_other(sb_class_t *sbp, sb_sysblock_t *sysp,
+                              sb_vrqnum_t nvrq) {
   struct port_extctx *ectxp;
 
   /* Any lazy FP save was completed when this thread was switched out.*/
@@ -148,7 +159,7 @@ static void vrq_pushctx_other(sb_class_t *sbp, sb_vrqnum_t nvrq) {
   }
   else {
     /* Creating a new context for the VRQ handler return.*/
-    vrq_initctx(sbp, ectxp, nvrq);
+    vrq_initctx(sbp, sysp, ectxp, nvrq);
   }
 
 //  sbp->u_psp = (uint32_t)ectxp;
@@ -157,7 +168,8 @@ static void vrq_pushctx_other(sb_class_t *sbp, sb_vrqnum_t nvrq) {
 
 /* Encouraging a tail call on this function.*/
 CC_NO_INLINE
-static void vrq_pushctx_this(sb_class_t *sbp, uint32_t psp, sb_vrqnum_t nvrq) {
+static void vrq_pushctx_this(sb_class_t *sbp, uint32_t psp,
+                             sb_sysblock_t *sysp, sb_vrqnum_t nvrq) {
   struct port_extctx *ectxp;
 
 #if (CORTEX_USE_FPU == TRUE) && (PORT_USE_FPU_FAST_SWITCHING > 0)
@@ -179,7 +191,7 @@ static void vrq_pushctx_this(sb_class_t *sbp, uint32_t psp, sb_vrqnum_t nvrq) {
   }
   else {
     /* Creating a new context for the VRQ handler return.*/
-    vrq_initctx(sbp, ectxp, nvrq);
+    vrq_initctx(sbp, sysp, ectxp, nvrq);
   }
   __set_PSP((uint32_t)ectxp);
 #if defined(PORT_ARCHITECTURE_ARM_V8M_MAINLINE)
@@ -188,19 +200,30 @@ static void vrq_pushctx_this(sb_class_t *sbp, uint32_t psp, sb_vrqnum_t nvrq) {
 }
 
 CC_NO_INLINE
-static void vrq_fastc_check_pending(struct port_extctx *ectxp, sb_class_t *sbp) {
+static void vrq_fastc_check_pending(sb_class_t *sbp, struct port_extctx *ectxp,
+                                    sb_sysblock_t *sysp) {
 
   /* Processing pending VRQs if enabled.*/
-  if (((sbp->vrq.isr & SB_VRQ_ISR_DISABLED) == 0U)) {
+  if (((sysp->vrq_isr & SB_VRQ_ISR_DISABLED) == 0U)) {
     sb_vrqmask_t active_mask;
 
-    active_mask = sbp->vrq.wtmask & sbp->vrq.enmask;
+    active_mask = sysp->vrq_wtmask & sysp->vrq_enmask;
     if (active_mask != 0U) {
 
       /* Creating a return context.*/
-      vrq_pushctx_this(sbp, (uint32_t)ectxp, __CLZ(__RBIT(active_mask)));
+      vrq_pushctx_this(sbp, (uint32_t)ectxp, sysp, __CLZ(__RBIT(active_mask)));
     }
   }
+}
+
+/* Chained VRQ delivery on VRQ return, separated from the common return
+   path so that the latter does not need saved registers. The context of
+   the returning handler is reused for the highest priority pending VRQ.*/
+CC_NO_INLINE
+static void vrq_return_chain(sb_class_t *sbp, struct port_extctx *ectxp,
+                             sb_sysblock_t *sysp, sb_vrqmask_t active_mask) {
+
+  vrq_initctx(sbp, sysp, ectxp, __CLZ(__RBIT(active_mask)));
 }
 
 static void delay_cb(virtual_timer_t *vtp, void *arg) {
@@ -257,6 +280,7 @@ void sbVRQSetFlagsI(sb_class_t *sbp, sb_vrqnum_t nvrq, uint32_t flags) {
  * @sclass
  */
 void sbVRQTriggerS(sb_class_t *sbp, sb_vrqnum_t nvrq) {
+  sb_sysblock_t *sysp = sbp->sysblk;
   const sb_vrqnum_t vrq_num =
     (sb_vrqnum_t)(sizeof sbp->vrq.flags / sizeof sbp->vrq.flags[0]);
   sb_vrqmask_t active_mask;
@@ -273,10 +297,10 @@ void sbVRQTriggerS(sb_class_t *sbp, sb_vrqnum_t nvrq) {
   chDbgAssert(sbp->thread.owner == currcore, "different core");
 
   /* Adding VRQ mask to the pending mask.*/
-  sbp->vrq.wtmask |= (sb_vrqmask_t)(1U << nvrq);
+  sysp->vrq_wtmask |= (sb_vrqmask_t)(1U << nvrq);
 
   /* Per-VRQ enables control both wakeup and delivery.*/
-  active_mask = sbp->vrq.wtmask & sbp->vrq.enmask;
+  active_mask = sysp->vrq_wtmask & sysp->vrq_enmask;
   if (active_mask != 0U) {
 
     /* Waking a VRQ waiter independently of the global delivery mask.
@@ -288,7 +312,7 @@ void sbVRQTriggerS(sb_class_t *sbp, sb_vrqnum_t nvrq) {
 
     /* Only delivering handlers if VRQs are globally enabled. Privileged
        contexts defer delivery until syscall return.*/
-    if ((sbp->vrq.isr & SB_VRQ_ISR_DISABLED) == 0U) {
+    if ((sysp->vrq_isr & SB_VRQ_ISR_DISABLED) == 0U) {
 
       /* Checking if it has been called from this sandbox thread by
          a syscall handler.*/
@@ -304,7 +328,7 @@ void sbVRQTriggerS(sb_class_t *sbp, sb_vrqnum_t nvrq) {
 
           /* Unprivileged mode, creating a return context on the sandbox
              thread.*/
-          vrq_pushctx_other(sbp, __CLZ(__RBIT(active_mask)));
+          vrq_pushctx_other(sbp, sysp, __CLZ(__RBIT(active_mask)));
         }
       }
     }
@@ -325,6 +349,7 @@ void sbVRQTriggerS(sb_class_t *sbp, sb_vrqnum_t nvrq) {
  * @iclass
  */
 void sbVRQTriggerI(sb_class_t *sbp, sb_vrqnum_t nvrq) {
+  sb_sysblock_t *sysp = sbp->sysblk;
   const sb_vrqnum_t vrq_num =
     (sb_vrqnum_t)(sizeof sbp->vrq.flags / sizeof sbp->vrq.flags[0]);
   sb_vrqmask_t active_mask;
@@ -341,10 +366,10 @@ void sbVRQTriggerI(sb_class_t *sbp, sb_vrqnum_t nvrq) {
   chDbgAssert(sbp->thread.owner == currcore, "different core");
 
   /* Adding VRQ mask to the pending mask.*/
-  sbp->vrq.wtmask |= (sb_vrqmask_t)(1U << nvrq);
+  sysp->vrq_wtmask |= (sb_vrqmask_t)(1U << nvrq);
 
   /* Per-VRQ enables control both wakeup and delivery.*/
-  active_mask = sbp->vrq.wtmask & sbp->vrq.enmask;
+  active_mask = sysp->vrq_wtmask & sysp->vrq_enmask;
   if (active_mask != 0U) {
 
     /* Waking a VRQ waiter independently of the global delivery mask.
@@ -356,7 +381,7 @@ void sbVRQTriggerI(sb_class_t *sbp, sb_vrqnum_t nvrq) {
 
     /* Only delivering handlers if VRQs are globally enabled. Privileged
        contexts defer delivery until syscall return.*/
-    if ((sbp->vrq.isr & SB_VRQ_ISR_DISABLED) == 0U) {
+    if ((sysp->vrq_isr & SB_VRQ_ISR_DISABLED) == 0U) {
 
       /* Checking if it happened to preempt this sandbox thread.*/
       if (sbp->thread.state == CH_STATE_CURRENT) {
@@ -365,7 +390,7 @@ void sbVRQTriggerI(sb_class_t *sbp, sb_vrqnum_t nvrq) {
         if ((__get_CONTROL() & 1U) != 0U) {
 
           /* Creating a return context.*/
-          vrq_pushctx_this(sbp, __get_PSP(), __CLZ(__RBIT(active_mask)));
+          vrq_pushctx_this(sbp, __get_PSP(), sysp, __CLZ(__RBIT(active_mask)));
         }
       }
       else {
@@ -376,7 +401,7 @@ void sbVRQTriggerI(sb_class_t *sbp, sb_vrqnum_t nvrq) {
 
           /* Unprivileged mode, creating a return context on the sandbox
              thread.*/
-          vrq_pushctx_other(sbp, __CLZ(__RBIT(active_mask)));
+          vrq_pushctx_other(sbp, sysp, __CLZ(__RBIT(active_mask)));
         }
       }
     }
@@ -424,13 +449,14 @@ void sb_fastc_vrq_reset_alarm(sb_class_t *sbp, struct port_extctx *ectxp) {
 }
 
 void sb_sysc_vrq_wait(sb_class_t *sbp, struct port_extctx *ectxp) {
+  sb_sysblock_t *sysp = sbp->sysblk;
   sb_vrqmask_t active_mask;
 
   (void)ectxp;
 
   chSysLock();
 
-  active_mask = sbp->vrq.wtmask & sbp->vrq.enmask;
+  active_mask = sysp->vrq_wtmask & sysp->vrq_enmask;
   if (active_mask == 0U) {
     chThdSuspendS(&sbp->vrq.trp);
   }
@@ -438,93 +464,84 @@ void sb_sysc_vrq_wait(sb_class_t *sbp, struct port_extctx *ectxp) {
   chSysUnlock();
 }
 
-void sb_fastc_vrq_gcsts(sb_class_t *sbp, struct port_extctx *ectxp) {
-  uint32_t nvrq = ectxp->r0;
-  const uint32_t vrq_num =
-    (uint32_t)(sizeof (sbp->vrq.flags) / sizeof (sbp->vrq.flags[0]));
-
-  if (nvrq >= vrq_num) {
-    ectxp->r0 = (uint32_t)CH_RET_EINVAL;
-    return;
-  }
-
-  /* Cast because vrq.flags[] could be configured to be a smaller type.*/
-  ectxp->r0 = (uint32_t)sbp->vrq.flags[nvrq];
-  sbp->vrq.flags[nvrq] = 0U;
-
-  /* No need to check for pending VRQs.*/
-}
-
 void sb_fastc_vrq_setwt(sb_class_t *sbp, struct port_extctx *ectxp) {
+  sb_sysblock_t *sysp = sbp->sysblk;
   uint32_t m;
 
   m = ectxp->r0;
-  ectxp->r0 = sbp->vrq.wtmask;
-  sbp->vrq.wtmask |= m;
+  ectxp->r0 = sysp->vrq_wtmask;
+  sysp->vrq_wtmask |= m;
 
-  vrq_fastc_check_pending(ectxp, sbp);
+  vrq_fastc_check_pending(sbp, ectxp, sysp);
 }
 
 void sb_fastc_vrq_clrwt(sb_class_t *sbp, struct port_extctx *ectxp) {
+  sb_sysblock_t *sysp = sbp->sysblk;
   uint32_t m;
 
   m = ectxp->r0;
-  ectxp->r0 = sbp->vrq.wtmask;
-  sbp->vrq.wtmask &= ~m;
+  ectxp->r0 = sysp->vrq_wtmask;
+  sysp->vrq_wtmask &= ~m;
 
   /* No need to check for pending VRQs.*/
 }
 
 void sb_fastc_vrq_seten(sb_class_t *sbp, struct port_extctx *ectxp) {
+  sb_sysblock_t *sysp = sbp->sysblk;
   uint32_t m;
 
   m = ectxp->r0;
-  ectxp->r0 = sbp->vrq.enmask;
-  sbp->vrq.enmask |= m;
+  ectxp->r0 = sysp->vrq_enmask;
+  sysp->vrq_enmask |= m;
 
-  vrq_fastc_check_pending(ectxp, sbp);
+  vrq_fastc_check_pending(sbp, ectxp, sysp);
 }
 
 void sb_fastc_vrq_clren(sb_class_t *sbp, struct port_extctx *ectxp) {
+  sb_sysblock_t *sysp = sbp->sysblk;
   uint32_t m;
 
   m = ectxp->r0;
-  ectxp->r0 = sbp->vrq.enmask;
-  sbp->vrq.enmask &= ~m;
+  ectxp->r0 = sysp->vrq_enmask;
+  sysp->vrq_enmask &= ~m;
 
   /* No need to check for pending VRQs.*/
 }
 
 void sb_fastc_vrq_disable(sb_class_t *sbp, struct port_extctx *ectxp) {
+  sb_sysblock_t *sysp = sbp->sysblk;
 
   (void)ectxp;
 
-  sbp->vrq.isr = SB_VRQ_ISR_DISABLED;
+  sysp->vrq_isr = SB_VRQ_ISR_DISABLED;
 
   /* No need to check for pending VRQs.*/
 }
 
 void sb_fastc_vrq_enable(sb_class_t *sbp, struct port_extctx *ectxp) {
+  sb_sysblock_t *sysp = sbp->sysblk;
   sb_vrqmask_t active_mask;
 
-  sbp->vrq.isr = 0U;
+  sysp->vrq_isr = 0U;
   asm ("" : : : "memory");
-  active_mask = sbp->vrq.enmask & sbp->vrq.wtmask;
+  active_mask = sysp->vrq_enmask & sysp->vrq_wtmask;
   if (unlikely(active_mask != 0U)) {
 
     /* Creating a return context.*/
-    vrq_pushctx_this(sbp, (uint32_t)ectxp, __CLZ(__RBIT(active_mask)));
+    vrq_pushctx_this(sbp, (uint32_t)ectxp, sysp, __CLZ(__RBIT(active_mask)));
   }
 }
 
 void sb_fastc_vrq_getisr(sb_class_t *sbp, struct port_extctx *ectxp) {
+  sb_sysblock_t *sysp = sbp->sysblk;
 
-  ectxp->r0 = sbp->vrq.isr;
+  ectxp->r0 = sysp->vrq_isr;
 
   /* No need to check for pending VRQs.*/
 }
 
 void sb_fastc_vrq_return(sb_class_t *sbp, struct port_extctx *ectxp) {
+  sb_sysblock_t *sysp = sbp->sysblk;
   register sb_vrqmask_t active_mask;
 
 #if CORTEX_USE_FPU == TRUE
@@ -533,26 +550,11 @@ void sb_fastc_vrq_return(sb_class_t *sbp, struct port_extctx *ectxp) {
   FPU->FPCCR &= ~FPU_FPCCR_LSPACT_Msk;
 #endif
 
-  active_mask = sbp->vrq.wtmask & sbp->vrq.enmask;
+  active_mask = sysp->vrq_wtmask & sysp->vrq_enmask;
   if (active_mask != 0U) {
-    sb_vrqnum_t nvrq = __CLZ(__RBIT(active_mask));
 
-    sbp->vrq.wtmask &= ~(1U << nvrq);
-
-    /* Building the return context.*/
-    ectxp->r0     = nvrq;
-#if 0
-    ectxp->r1     = 0U;
-    ectxp->r2     = 0U;
-    ectxp->r3     = 0U;
-    ectxp->r12    = 0U;
-    ectxp->lr_thd = 0U;
-#endif
-    ectxp->pc     = sbp->vrq_entry;
-    ectxp->xpsr   = 0x01000000U;
-#if CORTEX_USE_FPU == TRUE
-    ectxp->fpscr  = FPU->FPDSCR;
-#endif
+    /* Chaining the next pending VRQ on the current context.*/
+    vrq_return_chain(sbp, ectxp, sysp, active_mask);
   }
   else {
 
@@ -564,7 +566,7 @@ void sb_fastc_vrq_return(sb_class_t *sbp, struct port_extctx *ectxp) {
     ectxp++;
 
     /* Re-enabling VRQs globally.*/
-    sbp->vrq.isr = 0U;
+    sysp->vrq_isr = 0U;
 
     /* Keeping the current return context.*/
     __set_PSP((uint32_t)ectxp);
@@ -583,16 +585,17 @@ void sb_fastc_vrq_return(sb_class_t *sbp, struct port_extctx *ectxp) {
  * @notapi
  */
 void __sb_vrq_check_pending(sb_class_t *sbp, struct port_extctx *ectxp) {
+  sb_sysblock_t *sysp = sbp->sysblk;
 
   /* Processing pending VRQs if enabled.*/
-  if (((sbp->vrq.isr & SB_VRQ_ISR_DISABLED) == 0U)) {
+  if (((sysp->vrq_isr & SB_VRQ_ISR_DISABLED) == 0U)) {
     sb_vrqmask_t active_mask;
 
-    active_mask = sbp->vrq.wtmask & sbp->vrq.enmask;
+    active_mask = sysp->vrq_wtmask & sysp->vrq_enmask;
     if (active_mask != 0U) {
 
       /* Creating a return context.*/
-      vrq_pushctx_this(sbp, (uint32_t)ectxp, __CLZ(__RBIT(active_mask)));
+      vrq_pushctx_this(sbp, (uint32_t)ectxp, sysp, __CLZ(__RBIT(active_mask)));
       return;
     }
   }

@@ -96,13 +96,17 @@ __sb_in_vrq:
 
         .text
 
-        .align      2
+        /* The VRQ entry is on the hot path of every VRQ, aligning it to
+           a flash line avoids extra wait states when executing from flash.*/
+        .align      5
         .globl      __crt0_vrq
 __crt0_vrq:
         ldr.w       r3, =__sb_in_vrq
         mov.w       r2, #1
         str.w       r2, [r3]
 
+        /* R0 and R1 are passed unchanged to the vector, they contain the
+           VRQ number and the VRQ flags.*/
         ldr.w       r2, =__sb_vectors
         ldr.w       r2, [r2, r0, lsl #2]
         blx         r2

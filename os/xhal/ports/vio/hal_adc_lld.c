@@ -55,12 +55,9 @@ static const hal_adc_config_t default_config = {
  * @brief   Shared VADC interrupt service routine.
  *
  * @param[in] adcp      pointer to the @p hal_adc_driver_c object
- * @param[in] nvrq      VADC virtual IRQ number
+ * @param[in] sts       VRQ flags
  */
-static void adc_lld_serve_interrupt(hal_adc_driver_c *adcp, uint32_t nvrq) {
-  uint32_t sts;
-
-  sts = __sb_vrq_gcsts(nvrq);
+static void adc_lld_serve_interrupt(hal_adc_driver_c *adcp, uint32_t sts) {
 
   if ((sts & (1U << HAL_DRV_STATE_ERROR)) != 0U) {
     adcerror_t errors = (adcerror_t)vadcGetAndClearErrors(adcp->nvadc);
@@ -102,11 +99,11 @@ static void adc_lld_serve_interrupt(hal_adc_driver_c *adcp, uint32_t nvrq) {
 
 #if VIO_ADC_USE_VADC1 || defined(__DOXYGEN__)
 #if !defined(VIO_VADC1_SUPPRESS_ISR)
-CH_IRQ_HANDLER(MK_VECTOR(VIO_VADC1_IRQ)) {
+SB_VRQ_HANDLER(MK_VECTOR(VIO_VADC1_IRQ)) {
 
   CH_IRQ_PROLOGUE();
 
-  adc_lld_serve_interrupt(&ADCD1, VIO_VADC1_IRQ);
+  adc_lld_serve_interrupt(&ADCD1, flags);
 
   CH_IRQ_EPILOGUE();
 }

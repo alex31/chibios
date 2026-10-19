@@ -110,12 +110,13 @@
                 .globl      __sandbox
 __sandbox:      .long       0xFE9154C0
                 .long       0x0C4519EF
-                .long       32
+                .long       36
                 .long       __crt0_entry
                 .long       __crt0_exit
                 .long       __crt0_vrq
                 .long       0
                 .long       0
+                .long       SB_ABI_VERSION
 
                 .section    .heap_rsvd, "aw"
 

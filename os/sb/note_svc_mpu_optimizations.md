@@ -155,7 +155,7 @@ privileged side, this fixes the unprivileged side (and is the only one
 of the two that benefits fastcalls).
 
 Caveat: this is a guest-visible ABI break, sandbox binaries must be
-rebuilt. Needs a config option or an SB ABI version bump.
+rebuilt. Needs a config option or an `SB_ABI_VERSION` increment.
 
 Required hardening (recorded in the security note, point 3): the number
 becomes a 32-bit guest-controlled value instead of a one-byte immediate,
@@ -244,8 +244,9 @@ exactly where deterministic state is wanted.
 
 ## 4. VRQ pending check on syscall return (minor)
 
-`__sb_vrq_check_pending()` (`host/sbvrq.c`) loads `vrq.isr`, `vrq.wtmask`,
-`vrq.enmask` and masks them on every syscall return. The mutation sites
+`__sb_vrq_check_pending()` (`host/sbvrq.c`) loads `vrq_isr`, `vrq_wtmask`
+and `vrq_enmask` from the system block and masks them on every syscall
+return. The mutation sites
 are few and slow-path; a single precomputed "deliverable" word maintained
 at post/enable/mask time reduces the hot path to one load + branch.
 

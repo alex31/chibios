@@ -42,6 +42,11 @@
   *(type *)(void *)(sp) = (type)(p);                                        \
 } while (false)
 
+/* The system block is part of the sandbox ABI, guests reserve exactly
+   SB_SYSBLOCK_ALIGN bytes for it at the top of their data region.*/
+__CH_STATIC_ASSERT(sb_sysblock_size,
+                   sizeof (sb_sysblock_t) == SB_SYSBLOCK_ALIGN);
+
 /*===========================================================================*/
 /* Module exported variables.                                                */
 /*===========================================================================*/
@@ -324,6 +329,11 @@ static msg_t sb_check_header(const sb_header_t *sbhp,
     return CH_RET_ENOEXEC;
   }
 
+  /* Checking the sandbox ABI version.*/
+  if (sbhp->hdr_abi != SB_ABI_VERSION) {
+    return CH_RET_ENOEXEC;
+  }
+
   /* Checking header entry point.*/
   if (!chMemIsSpaceWithinX(code_area,
                            (const void *)sbhp->hdr_entry,
@@ -344,13 +354,20 @@ static msg_t sb_check_header(const sb_header_t *sbhp,
 static size_t sb_init_environment(sb_class_t *sbp, const memory_area_t *up,
                                   const char *argv[], const char *envp[]) {
   void *usp, *uargv, *uenvp;
-  size_t totsize, envsize, argsize, parsize;
+  sb_sysblock_t *sysp;
+  size_t totsize, sysize, envsize, argsize, parsize;
   int uargc, uenvc;
 
   chDbgCheck(MEM_IS_ALIGNED(up->base, PORT_STACK_ALIGN));
 
   /* Setting up an initial stack for the sandbox.*/
   usp = up->base + up->size;
+
+  /* Allocating space for the system block, it is the topmost item.*/
+  usp = (void *)MEM_ALIGN_PREV((uint8_t *)usp - sizeof (sb_sysblock_t),
+                               SB_SYSBLOCK_ALIGN);
+  sysp = (sb_sysblock_t *)usp;
+  sysize = (size_t)((up->base + up->size) - (uint8_t *)usp);
 
   /* Allocating space for environment variables.*/
   envsize = sb_strv_getsize(envp, &uenvc);
@@ -372,17 +389,22 @@ static size_t sb_init_environment(sb_class_t *sbp, const memory_area_t *up,
   PUSHSPACE(usp, parsize);
 
   /* Total pushed data size.*/
-  totsize = envsize + argsize + parsize;
+  totsize = sysize + envsize + argsize + parsize;
 
   /* Checking stack allocation.*/
-  if (!chMemIsSpaceWithinX(up, usp, envsize + argsize + parsize)) {
+  if (!chMemIsSpaceWithinX(up, usp, totsize)) {
     return (size_t)0;
   }
+
+  /* Initializing the system block, VRQs are initially disabled.*/
+  memset((void *)sysp, 0, sizeof (sb_sysblock_t));
+  sysp->vrq_isr = SB_VRQ_ISR_DISABLED;
+  sbp->sysblk   = sysp;
 
   /* Initializing stack.*/
   sb_strv_copy(envp, uenvp, uenvc);
   sb_strv_copy(argv, uargv, uargc);
-  *((uint32_t *)usp + 3) = (uint32_t)0x55555555;
+  *((uint32_t *)usp + 3) = (uint32_t)sysp;
   *((uint32_t *)usp + 2) = (uint32_t)uenvp;
   *((uint32_t *)usp + 1) = (uint32_t)uargv;
   *((uint32_t *)usp + 0) = (uint32_t)uargc;
@@ -448,6 +470,7 @@ static void sb_start_failed(sb_class_t *sbp) {
   chSysLock();
   chDbgAssert(sbp->state == SB_STATE_STARTING, "invalid lifecycle state");
   sbp->state = SB_STATE_STOPPED;
+  sbp->sysblk = NULL;
   chSysUnlock();
 }
 
@@ -460,9 +483,9 @@ static thread_t *sb_start_unprivileged(sb_class_t *sbp,
 
 #if SB_CFG_ENABLE_VRQ == TRUE
   /* Clearing VRQ-related information that could be leftovers of previous
-     sandbox executions.*/
+     sandbox executions, the VRQ status and masks are in the system block
+     initialized with the environment.*/
   memset((void *)&sbp->vrq, 0, sizeof sbp->vrq);
-  sbp->vrq.isr = SB_VRQ_ISR_DISABLED;
 #endif
 
   /* Creating a thread on the unprivileged handler.*/
@@ -654,9 +677,11 @@ bool sbFinalize(sb_class_t *sbp) {
      dynamic sandbox memory, so a new start cannot race with disposal.*/
   chThdRelease(&sbp->thread);
 
+  /* The system block is in the released sandbox memory.*/
   chSysLock();
   chDbgAssert(sbp->state == SB_STATE_STOPPING, "invalid lifecycle state");
   sbp->state = SB_STATE_STOPPED;
+  sbp->sysblk = NULL;
   chSysUnlock();
 
   return true;
@@ -868,6 +893,10 @@ msg_t sbExecDynamic(sb_class_t *sbp, tprio_t prio, size_t heapsize,
 
   /* Adding the specified extra heap space.*/
   umap->size += heapsize;
+
+  /* Adding space for the system block, the area top is aligned to at
+     least SB_SYSBLOCK_ALIGN by the MPU alignment below.*/
+  umap->size += MEM_ALIGN_NEXT(sizeof (sb_sysblock_t), SB_SYSBLOCK_ALIGN);
 
   /* Adding space for arguments, environment variables and parameters.*/
   size = sb_strv_getsize(envp, NULL) +   /* Space for environment.   */
