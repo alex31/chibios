@@ -327,9 +327,8 @@ block.
 ## Results
 
 STM32G474RE at 170 MHz, `RT-SB-SWITCHED-XSHELL-FREERTOS-MULTI`, GCC 14.3.1,
-host debug checks disabled, `-O2` hosts with the same guest code. The demo
-was building the host with `-Og` and the debug checks enabled, it now uses
-`-O2` with the checks disabled. The default guest is built with
+release hosts built with `make BENCHMARK=yes` (`-O2`, host debug checks
+disabled) and the same guest code. The default guest is built with
 `SB_USER_CFG_FAST_VRQ` disabled, the fast guest with it enabled, which is
 now the default.
 

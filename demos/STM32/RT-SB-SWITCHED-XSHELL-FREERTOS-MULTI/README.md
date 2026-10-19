@@ -67,6 +67,11 @@ support and the sandbox images for the FPU, a host built with FPU support
 also runs sandbox images not using it. Clean the host and the sandbox
 projects when changing this option.
 
+The host is built with `-Og` and the kernel debug checks enabled.
+`make BENCHMARK=yes` builds a release host for the sandbox benchmarks, with
+`-O2` and the kernel state checker, checks and assertions disabled, under
+`build/<target>-benchmark/`. The sandbox images are the same in both builds.
+
 `make clean` cleans the host only. The sandbox images are cleaned from their
 own projects.
 
