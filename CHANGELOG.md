@@ -547,6 +547,12 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Fixed
 
+- [SB] A sandbox executing an SVC with an invalid stack pointer was not
+  terminated: the SVC left pending by the failed exception stacking was taken
+  on the fault exit frame and resumed the sandbox with the kernel lock held,
+  debug hosts halted with `SV#4`; the pending SVC is now discarded
+  ([#535](https://github.com/chibios-upstream/chibios/pull/535))
+  *(backported to 21.11.6)*.
 - [SB] The sandbox cleanup stopped the VIO UART units while data accepted by
   the TX FIFO was still being transmitted, the last characters written by a
   sandbox before exiting were lost or truncated; the cleanup now waits for
