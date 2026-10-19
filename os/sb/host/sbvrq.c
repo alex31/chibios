@@ -217,26 +217,13 @@ static void vrq_fastc_check_pending(sb_class_t *sbp, struct port_extctx *ectxp,
 }
 
 /* Chained VRQ delivery on VRQ return, separated from the common return
-   path so that the latter does not need saved registers.*/
+   path so that the latter does not need saved registers. The context of
+   the returning handler is reused for the highest priority pending VRQ.*/
 CC_NO_INLINE
 static void vrq_return_chain(sb_class_t *sbp, struct port_extctx *ectxp,
                              sb_sysblock_t *sysp, sb_vrqmask_t active_mask) {
-  sb_vrqnum_t nvrq = __CLZ(__RBIT(active_mask));
 
-  /* Building the return context.*/
-  ectxp->pc     = sbp->vrq_entry;
-  ectxp->xpsr   = 0x01000000U;
-#if CORTEX_USE_FPU == TRUE
-  ectxp->fpscr  = FPU->FPDSCR;
-#endif
-
-  /* Moving the VRQ flags in R1.*/
-  ectxp->r1             = sbp->vrq.flags[nvrq];
-  sbp->vrq.flags[nvrq]  = 0U;
-
-  /* Serving the highest priority pending VRQ.*/
-  sysp->vrq_wtmask &= ~(1U << nvrq);
-  ectxp->r0     = nvrq;
+  vrq_initctx(sbp, sysp, ectxp, __CLZ(__RBIT(active_mask)));
 }
 
 static void delay_cb(virtual_timer_t *vtp, void *arg) {
