@@ -884,6 +884,10 @@ msg_t sbExecDynamic(sb_class_t *sbp, tprio_t prio, size_t heapsize,
   /* Adding the specified extra heap space.*/
   umap->size += heapsize;
 
+  /* Adding space for the system block, the area top is aligned to at
+     least SB_SYSBLOCK_ALIGN by the MPU alignment below.*/
+  umap->size += MEM_ALIGN_NEXT(sizeof (sb_sysblock_t), SB_SYSBLOCK_ALIGN);
+
   /* Adding space for arguments, environment variables and parameters.*/
   size = sb_strv_getsize(envp, NULL) +   /* Space for environment.   */
          sb_strv_getsize(argv, NULL) +   /* Space for arguments.     */
