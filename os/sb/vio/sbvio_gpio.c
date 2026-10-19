@@ -82,19 +82,22 @@ void sb_fastc_vio_gpio(sb_class_t *sbp, struct port_extctx *ectxp) {
     case SB_VGPIO_SET:
       if ((unitp->permissions & VIO_GPIO_PERM_WRITE) != 0U) {
         uint32_t val = palReadGroup(unitp->port, unitp->mask, unitp->offset);
-        palWriteGroup(unitp->port, unitp->mask, unitp->offset, ectxp->r1 | val);
+        palWriteGroup(unitp->port, unitp->mask, unitp->offset,
+                      ectxp->r1 | val);
       }
       break;
     case SB_VGPIO_CLEAR:
       if ((unitp->permissions & VIO_GPIO_PERM_WRITE) != 0U) {
         uint32_t val = palReadGroup(unitp->port, unitp->mask, unitp->offset);
-        palWriteGroup(unitp->port, unitp->mask, unitp->offset, val & ~ectxp->r1);
+        palWriteGroup(unitp->port, unitp->mask, unitp->offset,
+                      val & ~ectxp->r1);
       }
       break;
     case SB_VGPIO_TOGGLE:
       if ((unitp->permissions & VIO_GPIO_PERM_WRITE) != 0U) {
         uint32_t val = palReadGroup(unitp->port, unitp->mask, unitp->offset);
-        palWriteGroup(unitp->port, unitp->mask, unitp->offset, ectxp->r1 ^ val);
+        palWriteGroup(unitp->port, unitp->mask, unitp->offset,
+                      ectxp->r1 ^ val);
       }
       break;
     case SB_VGPIO_READLATCH:

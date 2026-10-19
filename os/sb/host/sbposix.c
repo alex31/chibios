@@ -76,7 +76,8 @@ static uint32_t sb_io_stat(sb_class_t *sbp,
     return (uint32_t)CH_RET_ENOSYS;
   }
 
-  if (sb_check_string(sbp, (void *)path, VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
+  if (sb_check_string(sbp, (void *)path,
+                      VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
     return (uint32_t)CH_RET_EFAULT;
   }
 
@@ -104,7 +105,8 @@ static uint32_t sb_io_open(sb_class_t *sbp, const char *path, int flags) {
     return (uint32_t)CH_RET_ENOSYS;
   }
 
-  if (sb_check_string(sbp, (void *)path, VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
+  if (sb_check_string(sbp, (void *)path,
+                      VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
     return (uint32_t)CH_RET_EFAULT;
   }
 
@@ -306,7 +308,8 @@ static uint32_t sb_io_write(sb_class_t *sbp,
                                 count);
 }
 
-static uint32_t sb_io_lseek(sb_class_t *sbp, int fd, off_t offset, int whence) {
+static uint32_t sb_io_lseek(sb_class_t *sbp, int fd, off_t offset,
+                            int whence) {
   vfs_offset_t pos;
 
   if ((whence != SEEK_SET) && (whence != SEEK_CUR) && (whence != SEEK_END)) {
@@ -332,10 +335,12 @@ static uint32_t sb_io_lseek(sb_class_t *sbp, int fd, off_t offset, int whence) {
     return (uint32_t)pos;
   }
 
-  return (uint32_t)vfsGetFilePosition((struct vfs_file_node *)sbp->io.vfs_nodes[fd]);
+  return (uint32_t)vfsGetFilePosition((struct vfs_file_node *)
+                                      sbp->io.vfs_nodes[fd]);
 }
 
-static uint32_t sb_io_getdents(sb_class_t *sbp, int fd, void *buf, size_t count) {
+static uint32_t sb_io_getdents(sb_class_t *sbp, int fd, void *buf,
+                               size_t count) {
   vfs_shared_buffer_t *shbuf;
   vfs_direntry_info_t *dip;
   msg_t ret;
@@ -386,7 +391,8 @@ static uint32_t sb_io_getdents(sb_class_t *sbp, int fd, void *buf, size_t count)
         break;
       }
 
-      ret = vfsReadDirectoryNext((vfs_directory_node_c *)sbp->io.vfs_nodes[fd], dip);
+      ret = vfsReadDirectoryNext((vfs_directory_node_c *)sbp->io.vfs_nodes[fd],
+                                 dip);
       if (ret <= 0) {
         /* Note, zero means no more directory entries available.*/
         break;
@@ -426,7 +432,8 @@ static uint32_t sb_io_chdir(sb_class_t *sbp, const char *path) {
     return (uint32_t)CH_RET_ENOSYS;
   }
 
-  if (sb_check_string(sbp, (void *)path, VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
+  if (sb_check_string(sbp, (void *)path,
+                      VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
     return (uint32_t)CH_RET_EFAULT;
   }
 
@@ -454,7 +461,8 @@ static uint32_t sb_io_unlink(sb_class_t *sbp, const char *path) {
     return (uint32_t)CH_RET_ENOSYS;
   }
 
-  if (sb_check_string(sbp, (void *)path, VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
+  if (sb_check_string(sbp, (void *)path,
+                      VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
     return (uint32_t)CH_RET_EFAULT;
   }
 
@@ -469,11 +477,13 @@ static uint32_t sb_io_rename(sb_class_t *sbp,
     return (uint32_t)CH_RET_ENOSYS;
   }
 
-  if (sb_check_string(sbp, (void *)oldpath, VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
+  if (sb_check_string(sbp, (void *)oldpath,
+                      VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
     return (uint32_t)CH_RET_EFAULT;
   }
 
-  if (sb_check_string(sbp, (void *)newpath, VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
+  if (sb_check_string(sbp, (void *)newpath,
+                      VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
     return (uint32_t)CH_RET_EFAULT;
   }
 
@@ -486,7 +496,8 @@ static uint32_t sb_io_mkdir(sb_class_t *sbp, const char *path, mode_t mode) {
     return (uint32_t)CH_RET_ENOSYS;
   }
 
-  if (sb_check_string(sbp, (void *)path, VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
+  if (sb_check_string(sbp, (void *)path,
+                      VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
     return (uint32_t)CH_RET_EFAULT;
   }
 
@@ -499,7 +510,8 @@ static uint32_t sb_io_rmdir(sb_class_t *sbp, const char *path) {
     return (uint32_t)CH_RET_ENOSYS;
   }
 
-  if (sb_check_string(sbp, (void *)path, VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
+  if (sb_check_string(sbp, (void *)path,
+                      VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) {
     return (uint32_t)CH_RET_EFAULT;
   }
 

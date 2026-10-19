@@ -287,7 +287,8 @@ void sb_sysc_loadelf(sb_class_t *sbp, struct port_extctx *ectxp) {
     return;
   }
 
-  if ((sb_check_string(sbp, (void *)fname, VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) ||
+  if ((sb_check_string(sbp, (void *)fname,
+                       VFS_CFG_PATHLEN_MAX + 1) == (size_t)0) ||
        !MEM_IS_ALIGNED(buf, MEM_NATURAL_ALIGN) ||
        !MEM_IS_ALIGNED(size, MEM_NATURAL_ALIGN) ||
        !sb_is_valid_write_range(sbp, buf, size)) {

@@ -98,12 +98,18 @@ typedef struct {
  * @{
  */
 #define sb_reg_get_type(r)      ((r)->attributes & SB_REG_TYPE_MASK)
-#define sb_reg_is_unused(r)     (bool)(sb_reg_get_type(r) == SB_REG_TYPE_UNUSED)
-#define sb_reg_is_device(r)     (bool)(sb_reg_get_type(r) == SB_REG_TYPE_DEVICE)
-#define sb_reg_is_memory(r)     (bool)(sb_reg_get_type(r) == SB_REG_TYPE_MEMORY)
-#define sb_reg_is_writable(r)   (bool)(((r)->attributes & SB_REG_ATTR_WRITABLE) != 0U)
-#define sb_reg_is_executable(r) (bool)(((r)->attributes & SB_REG_ATTR_EXECUTABLE) != 0U)
-#define sb_reg_is_cacheable(r)  (bool)(((r)->attributes & SB_REG_ATTR_CACHEABLE) != 0U)
+#define sb_reg_is_unused(r)                                                 \
+  (bool)(sb_reg_get_type(r) == SB_REG_TYPE_UNUSED)
+#define sb_reg_is_device(r)                                                 \
+  (bool)(sb_reg_get_type(r) == SB_REG_TYPE_DEVICE)
+#define sb_reg_is_memory(r)                                                 \
+  (bool)(sb_reg_get_type(r) == SB_REG_TYPE_MEMORY)
+#define sb_reg_is_writable(r)                                               \
+  (bool)(((r)->attributes & SB_REG_ATTR_WRITABLE) != 0U)
+#define sb_reg_is_executable(r)                                             \
+  (bool)(((r)->attributes & SB_REG_ATTR_EXECUTABLE) != 0U)
+#define sb_reg_is_cacheable(r)                                              \
+  (bool)(((r)->attributes & SB_REG_ATTR_CACHEABLE) != 0U)
 /** @} */
 
 /*===========================================================================*/
@@ -116,7 +122,8 @@ extern "C" {
   bool sb_is_valid_read_range(sb_class_t *sbp, const void *start, size_t size);
   bool sb_is_valid_write_range(sb_class_t *sbp, void *start, size_t size);
   size_t sb_check_string(sb_class_t *sbp, const char *s, size_t max);
-  size_t sb_check_pointers_array(sb_class_t *sbp, const void *pp[], size_t max);
+  size_t sb_check_pointers_array(sb_class_t *sbp, const void *pp[],
+                                 size_t max);
   size_t sb_check_strings_array(sb_class_t *sbp, const char *pp[], size_t max);
 #ifdef __cplusplus
 }
