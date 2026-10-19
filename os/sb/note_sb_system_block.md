@@ -154,7 +154,8 @@ proxy functions access the block directly:
 - `__sb_vrq_enable()`: compiler barrier, stores `vrq_isr = 0`, then invokes
   the `SB_FASTC_VRQ_ENABLE` fastcall only if `vrq_wtmask & vrq_enmask` is
   not zero. Delivering a pending VRQ requires the host to push the exception
-  context, so the fastcall cannot be removed from that case.
+  context, so the fastcall cannot be removed from that case. The enable is
+  a function by default, `SB_USER_CFG_FAST_VRQ_INLINE` inlines it.
 - `__sb_vrq_getisr()`: loads `vrq_isr`.
 - The other VRQ operations (pending and enable mask changes, flags, wait,
   return) remain fastcalls, they are infrequent or require delivery.
@@ -357,9 +358,22 @@ allocation of the VRQ paths.
 `__crt0_vrq` placement mattered: when its code crossed a flash/ART line it
 cost ~47 cycles per VRQ, it is now aligned to 32 bytes.
 
-The fast enable is inlined at every critical zone exit, the RT XSHELL client
-grows by 8.5 KB, mostly in the RT and OSLIB test suites. An out-of-line
-enable would trade a few cycles for size.
+The fast enable was first inlined at every critical zone exit. The RT
+XSHELL client then grows by 8.5 KB, mostly in the RT and OSLIB test suites,
+so the enable is now a function by default and `SB_USER_CFG_FAST_VRQ_INLINE`
+selects the inline one. `make BENCHMARK=yes` hosts, cycles at 170 MHz:
+
+| RT XSHELL client          | Fastcalls | Fast, function | Fast, inline |
+|---------------------------|-----------|----------------|--------------|
+| Text size (bytes)         | 98224     | 101360         | 106820       |
+| Critical zone             | 126       | 32             | 24           |
+| Messages #1               | 527       | 269            | 242          |
+| Context switch            | 80        | 69             | 68           |
+| Virtual timer set/reset   | 109       | 63             | 60           |
+| Semaphore wait + signal   | 252       | 83             | 89           |
+| Mutex lock + unlock       | 312       | 113            | 113          |
+
+The tables above were measured with the inline enable.
 
 The complete reports of this demo, G474 and H563, are in
 `doc/quality/sb/unittest`.

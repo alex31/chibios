@@ -52,4 +52,20 @@
 /* Module exported functions.                                                */
 /*===========================================================================*/
 
+#if (SB_USER_CFG_FAST_VRQ == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   VRQ fast enable.
+ * @details Out-of-line version of @p __sb_vrq_fast_enable_inline(), it is
+ *          used by @p __sb_vrq_enable() if @p SB_USER_CFG_FAST_VRQ_INLINE
+ *          is disabled.
+ * @note    It is never inlined, also with link time optimizations.
+ *
+ * @notapi
+ */
+__attribute__((noinline)) void __sb_vrq_fast_enable(void) {
+
+  __sb_vrq_fast_enable_inline();
+}
+#endif
+
 /** @} */

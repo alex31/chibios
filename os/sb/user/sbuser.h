@@ -72,6 +72,19 @@
 #define SB_USER_CFG_FAST_VRQ                TRUE
 #endif
 
+/**
+ * @brief   Inlines the VRQ fast enable.
+ * @details If enabled then the VRQ fast enable is inlined at each call
+ *          site, else it is a function. The inline enable is faster but
+ *          it makes larger the guests having many critical zones, on
+ *          STM32G474 a critical zone takes 24 cycles instead of 32 and the
+ *          RT XSHELL client is 5.4 KB larger.
+ * @note    Only effective if @p SB_USER_CFG_FAST_VRQ is enabled.
+ */
+#if !defined(SB_USER_CFG_FAST_VRQ_INLINE) || defined(__DOXYGEN__)
+#define SB_USER_CFG_FAST_VRQ_INLINE         FALSE
+#endif
+
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
@@ -322,7 +335,9 @@ extern sb_parameters_t __sb_parameters;
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+#if SB_USER_CFG_FAST_VRQ == TRUE
+  void __sb_vrq_fast_enable(void);
+#endif
 #ifdef __cplusplus
 }
 #endif
@@ -1126,16 +1141,18 @@ static inline void __sb_vrq_disable(void) {
 #endif
 }
 
+#if (SB_USER_CFG_FAST_VRQ == TRUE) || defined(__DOXYGEN__)
 /**
- * @brief   VRQ @p enable pseudo-instruction.
- * @note    If @p SB_USER_CFG_FAST_VRQ is enabled then the fastcall is only
- *          invoked when enabled VRQs are pending.
+ * @brief   VRQ fast enable.
+ * @details Global enable through the system block, the fastcall is only
+ *          invoked when enabled VRQs became pending while disabled.
+ * @note    It is inlined by @p __sb_vrq_enable() if
+ *          @p SB_USER_CFG_FAST_VRQ_INLINE is enabled, else it is invoked
+ *          through the @p __sb_vrq_fast_enable() function.
  *
- * @api
+ * @notapi
  */
-static inline void __sb_vrq_enable(void) {
-
-#if SB_USER_CFG_FAST_VRQ == TRUE
+static inline void __sb_vrq_fast_enable_inline(void) {
   volatile sb_sysblock_t *sysp = __sb_parameters.sysblk;
 
   /* Memory accesses inside the critical zone must not be moved after the
@@ -1150,6 +1167,24 @@ static inline void __sb_vrq_enable(void) {
   if ((sysp->vrq_wtmask & sysp->vrq_enmask) != 0U) {
     __syscall0(SB_FASTC_VRQ_ENABLE);
   }
+}
+#endif
+
+/**
+ * @brief   VRQ @p enable pseudo-instruction.
+ * @note    If @p SB_USER_CFG_FAST_VRQ is enabled then the fastcall is only
+ *          invoked when enabled VRQs are pending.
+ *
+ * @api
+ */
+static inline void __sb_vrq_enable(void) {
+
+#if SB_USER_CFG_FAST_VRQ == TRUE
+#if SB_USER_CFG_FAST_VRQ_INLINE == TRUE
+  __sb_vrq_fast_enable_inline();
+#else
+  __sb_vrq_fast_enable();
+#endif
 #else
   __syscall0(SB_FASTC_VRQ_ENABLE);
 #endif

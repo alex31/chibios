@@ -192,8 +192,9 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
   status and masks in a 32-byte system block at the top of the sandbox data
   region, guests use it for userspace VRQ critical zones
   (`SB_USER_CFG_FAST_VRQ`, enabled by default, a lock/unlock pair from ~122
-  to ~24 cycles on G474), and VRQ handlers receive the VRQ flags as an
-  argument; the `SB_FASTC_VRQ_GCSTS` fastcall and its guest wrappers are
+  to ~32 cycles on G474, ~24 with the enable inlined by
+  `SB_USER_CFG_FAST_VRQ_INLINE`), and VRQ handlers receive the VRQ flags as
+  an argument; the `SB_FASTC_VRQ_GCSTS` fastcall and its guest wrappers are
   removed, the Zephyr guest slot overlays exclude the block
   ([#529](https://github.com/chibios-upstream/chibios/pull/529)).
 - [SB] The guest-side sandbox files (`os/sb/common`, `os/sb/user`, the

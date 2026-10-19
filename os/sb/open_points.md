@@ -56,7 +56,8 @@ The following work is complete and must not be reintroduced as an open item:
   a thread queue, including reset/stop wakeups and delayed-caller handling.
 - The sandbox system block, 32 bytes at the top of the data region, holds
   the VRQ status and masks. Guests use it for userspace VRQ critical zones
-  (`SB_USER_CFG_FAST_VRQ`, enabled by default), and VRQ handlers receive the
+  (`SB_USER_CFG_FAST_VRQ`, enabled by default, the enable is a function
+  unless `SB_USER_CFG_FAST_VRQ_INLINE` is set), and VRQ handlers receive the
   VRQ flags as an argument. `SB_FASTC_VRQ_GCSTS` was removed and code 119 is
   retired. Guests must be rebuilt for hosts with the block; see
   [note_sb_system_block.md](note_sb_system_block.md).
@@ -185,9 +186,8 @@ Detailed designs are in
   immediate from guest code. Clamp the 32-bit guest value with `uxtb` before
   table indexing and batch this with an SB ABI revision.
 - Precompute the deliverable-VRQ word used on syscall return.
-- Userspace VRQ critical zones: evaluate an out-of-line fast enable, the
-  inline one adds 8.5 KB to the RT XSHELL client, and the deferred VRQ
-  replay; see [note_sb_system_block.md](note_sb_system_block.md).
+- Userspace VRQ critical zones: evaluate the deferred VRQ replay; see
+  [note_sb_system_block.md](note_sb_system_block.md).
 - If SVCall is later moved into the kernel priority band, audit every handler
   for the required locking contract first.
 

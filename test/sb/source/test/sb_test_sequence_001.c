@@ -72,6 +72,8 @@ static void sb_test_001_001_execute(void) {
 #endif
     test_print("--- VRQ fast path:                      ");
     test_println(SB_USER_CFG_FAST_VRQ == TRUE ? "yes" : "no");
+    test_print("--- VRQ fast enable inline:             ");
+    test_println(SB_USER_CFG_FAST_VRQ_INLINE == TRUE ? "yes" : "no");
     test_print("--- Test VRQ:                           ");
     test_printn(SB_TEST_VRQ);
     test_println("");
