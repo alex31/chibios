@@ -605,6 +605,9 @@ void sb_sysc_stdio(sb_class_t *sbp, struct port_extctx *ectxp) {
   }
 }
 
+/* Handlers bound to their codes.*/
+SB_SVC_HANDLER(SB_SYSC_POSIX, sb_sysc_stdio);
+
 #endif /* SB_CFG_ENABLE_VFS == TRUE */
 
 /** @} */

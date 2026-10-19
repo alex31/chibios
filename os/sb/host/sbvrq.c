@@ -606,6 +606,19 @@ void __sb_vrq_check_pending(sb_class_t *sbp, struct port_extctx *ectxp) {
 #endif
 }
 
+/* Handlers bound to their codes.*/
+SB_SVC_HANDLER(SB_FASTC_VRQ_SET_ALARM, sb_fastc_vrq_set_alarm);
+SB_SVC_HANDLER(SB_FASTC_VRQ_RESET_ALARM, sb_fastc_vrq_reset_alarm);
+SB_SVC_HANDLER(SB_FASTC_VRQ_SETWT, sb_fastc_vrq_setwt);
+SB_SVC_HANDLER(SB_FASTC_VRQ_CLRWT, sb_fastc_vrq_clrwt);
+SB_SVC_HANDLER(SB_FASTC_VRQ_SETEN, sb_fastc_vrq_seten);
+SB_SVC_HANDLER(SB_FASTC_VRQ_CLREN, sb_fastc_vrq_clren);
+SB_SVC_HANDLER(SB_FASTC_VRQ_DISABLE, sb_fastc_vrq_disable);
+SB_SVC_HANDLER(SB_FASTC_VRQ_ENABLE, sb_fastc_vrq_enable);
+SB_SVC_HANDLER(SB_FASTC_VRQ_GETISR, sb_fastc_vrq_getisr);
+SB_SVC_HANDLER(SB_FASTC_VRQ_RETURN, sb_fastc_vrq_return);
+SB_SVC_HANDLER(SB_SYSC_VRQ_WAIT, sb_sysc_vrq_wait);
+
 #endif /* SB_CFG_ENABLE_VRQ == TRUE */
 
 /** @} */

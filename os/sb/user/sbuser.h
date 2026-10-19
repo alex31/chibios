@@ -320,6 +320,84 @@ typedef uint32_t eventflags_t;
 /** @} */
 
 /**
+ * @name    Generic calls
+ * @brief   Calls of fastcalls and syscalls by code, meant for the ones
+ *          defined by the host application in the ranges starting at
+ *          @p SB_FASTC_USER_BASE and @p SB_SYSC_USER_BASE.
+ * @note    The code must be an integer constant expression, a code of the
+ *          wrong kind is rejected at compile time.
+ * @note    The value of each macro is the @p uint32_t returned by the host
+ *          in R0, the parameters are passed in R0-R3.
+ * @{
+ */
+#define __sb_fastc_check(code)                                              \
+  (void)sizeof (char[((code) < SB_SYSC_BASE) ? 1 : -1])
+
+#define __sb_sysc_check(code)                                               \
+  (void)sizeof (char[((code) >= SB_SYSC_BASE) ? 1 : -1])
+
+#define sbFastcall0(code) ({                                                \
+  __sb_fastc_check(code);                                                   \
+  __syscall0r(code);                                                        \
+  r0;                                                                       \
+})
+
+#define sbFastcall1(code, p1) ({                                            \
+  __sb_fastc_check(code);                                                   \
+  __syscall1r(code, p1);                                                    \
+  r0;                                                                       \
+})
+
+#define sbFastcall2(code, p1, p2) ({                                        \
+  __sb_fastc_check(code);                                                   \
+  __syscall2r(code, p1, p2);                                                \
+  r0;                                                                       \
+})
+
+#define sbFastcall3(code, p1, p2, p3) ({                                    \
+  __sb_fastc_check(code);                                                   \
+  __syscall3r(code, p1, p2, p3);                                            \
+  r0;                                                                       \
+})
+
+#define sbFastcall4(code, p1, p2, p3, p4) ({                                \
+  __sb_fastc_check(code);                                                   \
+  __syscall4r(code, p1, p2, p3, p4);                                        \
+  r0;                                                                       \
+})
+
+#define sbSyscall0(code) ({                                                 \
+  __sb_sysc_check(code);                                                    \
+  __syscall0r(code);                                                        \
+  r0;                                                                       \
+})
+
+#define sbSyscall1(code, p1) ({                                             \
+  __sb_sysc_check(code);                                                    \
+  __syscall1r(code, p1);                                                    \
+  r0;                                                                       \
+})
+
+#define sbSyscall2(code, p1, p2) ({                                         \
+  __sb_sysc_check(code);                                                    \
+  __syscall2r(code, p1, p2);                                                \
+  r0;                                                                       \
+})
+
+#define sbSyscall3(code, p1, p2, p3) ({                                     \
+  __sb_sysc_check(code);                                                    \
+  __syscall3r(code, p1, p2, p3);                                            \
+  r0;                                                                       \
+})
+
+#define sbSyscall4(code, p1, p2, p3, p4) ({                                 \
+  __sb_sysc_check(code);                                                    \
+  __syscall4r(code, p1, p2, p3, p4);                                        \
+  r0;                                                                       \
+})
+/** @} */
+
+/**
  * @brief   VRQ return pseudo-instruction.
  *
  * @api

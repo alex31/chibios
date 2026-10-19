@@ -348,6 +348,10 @@ void sb_fastc_vio_gpt(sb_class_t *sbp, struct port_extctx *ectxp) {
   }
 }
 
+/* Handlers bound to their codes.*/
+SB_SVC_HANDLER(SB_FASTC_VIO_VGPT, sb_fastc_vio_gpt);
+SB_SVC_HANDLER(SB_SYSC_VIO_VGPT, sb_sysc_vio_gpt);
+
 #endif /* VIO_CFG_ENABLE_GPT == TRUE */
 
 /** @} */

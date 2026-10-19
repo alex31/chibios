@@ -52,6 +52,32 @@ typedef void (*port_syscall_t)(sb_class_t *sbp, struct port_extctx *ectx);
 /* Module macros.                                                            */
 /*===========================================================================*/
 
+/**
+ * @brief   Binds a handler to a fastcall or syscall code.
+ * @details The handler becomes the strong definition of the table entry
+ *          @p __sb_svcN, which is otherwise a weak alias of the not
+ *          implemented handler. It is used by the host modules and by the
+ *          application, two handlers bound to the same code are a link
+ *          error.
+ * @note    It must be placed in the translation unit defining the handler.
+ * @note    @p n must be a decimal integer literal without suffixes, or a
+ *          macro expanding to one, because it is pasted into the entry
+ *          name. The codes in the ranges starting at
+ *          @p SB_FASTC_USER_BASE and @p SB_SYSC_USER_BASE are never used by
+ *          ChibiOS.
+ *
+ * @param[in] n         fastcall or syscall code
+ * @param[in] handler   handler function name
+ */
+#define SB_SVC_HANDLER(n, handler)      __SB_SVC_HANDLER(n, handler)
+#define __SB_SVC_HANDLER(n, handler)                                        \
+  __CH_STATIC_ASSERT(__sb_svc##n##_code, (n) <= 255);                       \
+  __CH_STATIC_ASSERT(__sb_svc##n##_type,                                    \
+                     __builtin_types_compatible_p(__typeof__(&handler),     \
+                                                  port_syscall_t));         \
+  void __sb_svc##n(sb_class_t *sbp, struct port_extctx *ectxp)              \
+    __attribute__((alias(#handler)))
+
 /*===========================================================================*/
 /* External declarations.                                                    */
 /*===========================================================================*/

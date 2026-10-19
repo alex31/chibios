@@ -338,6 +338,10 @@ void sb_fastc_vio_eth(sb_class_t *sbp, struct port_extctx *ectxp) {
   }
 }
 
+/* Handlers bound to their codes.*/
+SB_SVC_HANDLER(SB_FASTC_VIO_VETH, sb_fastc_vio_eth);
+SB_SVC_HANDLER(SB_SYSC_VIO_VETH, sb_sysc_vio_eth);
+
 #endif /* VIO_CFG_ENABLE_ETH == TRUE */
 
 /** @} */

@@ -8,6 +8,13 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Added
 
+- [SB] Application-defined sandbox fastcalls and syscalls: the host table
+  entries are weak aliases of the not implemented handler and
+  `SB_SVC_HANDLER()` binds a handler to a code, for the host modules and for
+  the application; the codes 64 to 95 and 192 to 223 are never used by
+  ChibiOS, guests invoke them with `sbFastcallN()` and `sbSyscallN()`, and
+  two handlers bound to the same code are a link error
+  ([#533](https://github.com/chibios-upstream/chibios/pull/533)).
 - [SB] FPU support in the FreeRTOS, ThreadX and Zephyr sandbox guests: the
   context switch also preserves FPSCR, the Zephyr guest is built for the FPU
   with `CONFIG_FPU`, the self-test clients check the FPU registers and
