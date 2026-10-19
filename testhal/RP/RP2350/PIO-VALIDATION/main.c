@@ -723,6 +723,14 @@ int main(void) {
   chprintf(chp, "      level: %u\r\n", lvl);
   report("TX FIFO fills", lvl >= 1U);
 
+  /* TXSTALL is sticky and was already set by the stall on the empty FIFO
+     before the DMA started, it is cleared once the FIFO is being fed.
+     From here the DMA keeps the FIFO fed until the end of the stream (the
+     SM drains one word per 3.2 ms), so the next stall seen by the drain
+     wait below is the one after the last word has left the OSR, not the
+     moment that word moves from the FIFO into the OSR.*/
+  pioClearDebugX(smp);
+
   edges = count_edges(TEST_GPIO);
   chprintf(chp, "      edges: %u\r\n", edges);
   report("DMA-paced pattern in window",
