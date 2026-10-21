@@ -199,7 +199,7 @@ struct hal_serial_usb_driver {
    */
   hal_usb_service_c *       prev;
   /**
-   * @brief       Active CDC service configuration.
+   * @brief       CDC service configuration, given at object initialization.
    */
   const hal_usb_cdc_config_t * config;
   /**
@@ -243,7 +243,8 @@ struct hal_serial_usb_driver {
    */
   USBEndpointConfig         int_in_epc;
   /**
-   * @brief       Mutable CDC service ownership metadata.
+   * @brief       CDC service ownership metadata, built at object
+   *              initialization and never changed.
    */
   hal_usb_service_info_t    svcinfo;
   /**
@@ -301,7 +302,8 @@ struct hal_serial_usb_driver {
 extern "C" {
 #endif
   /* Methods of hal_serial_usb_driver_c.*/
-  void *__sdu_objinit_impl(void *ip, const void *vmt);
+  void *__sdu_objinit_impl(void *ip, const void *vmt,
+                           const SerialUSBConfig *config);
   void __sdu_dispose_impl(void *ip);
   void __sdu_unbind_impl(void *ip);
   void __sdu_configured_impl(void *ip);
@@ -316,7 +318,7 @@ extern "C" {
   const sdu_linecoding_t *sduGetLineCodingX(void *ip);
   event_source_t *sduGetEventSourceX(void *ip);
   hal_usb_service_c *sduGetServiceX(void *ip);
-  msg_t sduStart(void *ip, const SerialUSBConfig *config);
+  msg_t sduStart(void *ip);
   void sduStop(void *ip);
 #ifdef __cplusplus
 }
@@ -335,15 +337,18 @@ extern "C" {
  *
  * @param[out]    self          Pointer to a @p hal_serial_usb_driver_c
  *                              instance to be initialized.
+ * @param[in]     config        Driver configuration, it determines the service
+ *                              ownership metadata.
  * @return                      Pointer to the initialized object.
  *
  * @objinit
  */
 CC_FORCE_INLINE
-static inline hal_serial_usb_driver_c *sduObjectInit(hal_serial_usb_driver_c *self) {
+static inline hal_serial_usb_driver_c *sduObjectInit(hal_serial_usb_driver_c *self,
+                                                     const SerialUSBConfig *config) {
   extern const struct hal_serial_usb_driver_vmt __hal_serial_usb_driver_vmt;
 
-  return __sdu_objinit_impl(self, &__hal_serial_usb_driver_vmt);
+  return __sdu_objinit_impl(self, &__hal_serial_usb_driver_vmt, config);
 }
 /** @} */
 

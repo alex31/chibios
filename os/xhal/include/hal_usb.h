@@ -670,7 +670,9 @@ typedef struct hal_usb_service_info hal_usb_service_info_t;
  * @brief       USB service ownership metadata.
  * @details     This structure identifies the interfaces and endpoints managed
  *              by a USB service instance. Endpoint zero is never owned by a
- *              service.
+ *              service. The driver keeps one configuration per endpoint
+ *              number, so two services cannot own the same endpoint number,
+ *              not even in different directions.
  */
 struct hal_usb_service_info {
   /**
@@ -1327,7 +1329,8 @@ static inline msg_t usbServiceOnSetup(void *ip, bool *handledp) {
  * @brief       Initializes the base USB service part of a derived object.
  *
  * @param[in,out] ip            Pointer to a @p hal_usb_service_c instance.
- * @param[in]     infop         Service ownership metadata.
+ * @param[in]     infop         Service ownership metadata, it must not change
+ *                              while the service exists.
  * @param[in]     vmt           VMT of the concrete derived service.
  * @return                      Pointer to the initialized object.
  *

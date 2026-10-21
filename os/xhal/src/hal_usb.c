@@ -82,14 +82,11 @@ static bool usbbnd_service_conflict(const hal_usb_service_info_t *ap,
   if (usbbnd_if_conflict(ap, bp)) {
     return true;
   }
-  if ((ap->in_ep_mask & bp->in_ep_mask) != 0U) {
-    return true;
-  }
-  if ((ap->out_ep_mask & bp->out_ep_mask) != 0U) {
-    return true;
-  }
 
-  return false;
+  /* The driver keeps one configuration per endpoint number, the directions
+     are not owned separately.*/
+  return ((ap->in_ep_mask | ap->out_ep_mask) &
+          (bp->in_ep_mask | bp->out_ep_mask)) != 0U;
 }
 
 /**
@@ -605,6 +602,11 @@ msg_t usbBinderRegisterService(void *ip, hal_usb_service_c *servicep) {
   chDbgAssert((servicep->next == NULL) && (servicep->prev == NULL),
                 "service already linked");
   chDbgAssert(usbServiceGetInfoX(servicep) != NULL, "missing service info");
+  /* Only endpoints 1 to USB_MAX_ENDPOINTS can be owned.*/
+  chDbgAssert(((usbServiceGetInfoX(servicep)->in_ep_mask |
+                usbServiceGetInfoX(servicep)->out_ep_mask) &
+               ~((2U << (unsigned)USB_MAX_ENDPOINTS) - 2U)) == 0U,
+              "invalid endpoints in service info");
 
   for (sp = self->services; sp != NULL; sp = sp->next) {
     chDbgAssert(sp != servicep, "service already registered");
