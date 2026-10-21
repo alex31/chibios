@@ -77,6 +77,44 @@ static bool usbbnd_if_conflict(const hal_usb_service_info_t *ap,
   return (abase < blimit) && (bbase < alimit);
 }
 
+/**
+ * @brief       Returns the service owning an interface, @p NULL if none.
+ *
+ */
+static hal_usb_service_c *usbbnd_get_if_owner(hal_usb_binder_c *binderp,
+                                              uint8_t ifn) {
+  hal_usb_service_c *servicep;
+
+  for (servicep = binderp->services; servicep != NULL;
+       servicep = servicep->next) {
+    if (usbServiceOwnsInterfaceX(servicep, ifn)) {
+      return servicep;
+    }
+  }
+
+  return NULL;
+}
+
+/**
+ * @brief       Returns the service owning an endpoint direction, @p NULL if
+ *              none.
+ *
+ */
+static hal_usb_service_c *usbbnd_get_ep_owner(hal_usb_binder_c *binderp,
+                                              usbep_t ep, bool in) {
+  hal_usb_service_c *servicep;
+
+  for (servicep = binderp->services; servicep != NULL;
+       servicep = servicep->next) {
+    if (in ? usbServiceOwnsInEndpointX(servicep, ep) :
+             usbServiceOwnsOutEndpointX(servicep, ep)) {
+      return servicep;
+    }
+  }
+
+  return NULL;
+}
+
 static bool usbbnd_service_conflict(const hal_usb_service_info_t *ap,
                                     const hal_usb_service_info_t *bp) {
   if (usbbnd_if_conflict(ap, bp)) {
@@ -833,6 +871,59 @@ void usbBinderOutI(void *ip, usbep_t ep) {
 }
 
 /**
+ * @brief       Offers a host endpoint halt clear to the endpoint owner.
+ * @details     Invoked by the endpoint-zero worker on a
+ *              CLEAR_FEATURE(ENDPOINT_HALT) request, before the halt is
+ *              cleared.
+ *
+ * @param[in,out] ip            Pointer to a @p hal_usb_binder_c instance.
+ * @param[in]     ep            Endpoint number.
+ * @param[in]     in            @p true for the IN direction.
+ * @return                      @p true if the owning service keeps the
+ *                              endpoint halted.
+ *
+ * @iclass
+ */
+bool usbBinderClearHaltI(void *ip, usbep_t ep, bool in) {
+  hal_usb_binder_c *self = (hal_usb_binder_c *)ip;
+  hal_usb_service_c *servicep;
+
+  chDbgCheckClassI();
+  chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
+
+  servicep = usbbnd_get_ep_owner(self, ep, in);
+  if (servicep == NULL) {
+    return false;
+  }
+
+  return usbServiceOnClearHaltI(servicep, ep, in);
+}
+
+/**
+ * @brief       Notifies the endpoint owner of a host endpoint halt clear.
+ * @details     Invoked by the endpoint-zero worker after clearing the halt on
+ *              a CLEAR_FEATURE(ENDPOINT_HALT) request.
+ *
+ * @param[in,out] ip            Pointer to a @p hal_usb_binder_c instance.
+ * @param[in]     ep            Endpoint number.
+ * @param[in]     in            @p true for the IN direction.
+ *
+ * @iclass
+ */
+void usbBinderHaltClearedI(void *ip, usbep_t ep, bool in) {
+  hal_usb_binder_c *self = (hal_usb_binder_c *)ip;
+  hal_usb_service_c *servicep;
+
+  chDbgCheckClassI();
+  chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
+
+  servicep = usbbnd_get_ep_owner(self, ep, in);
+  if (servicep != NULL) {
+    usbServiceOnHaltClearedI(servicep, ep, in);
+  }
+}
+
+/**
  * @brief       Dispatches an endpoint-zero request through a USB binder.
  *
  * @param[in,out] ip            Pointer to a @p hal_usb_binder_c instance.
@@ -1312,6 +1403,39 @@ void __usbsvc_out_impl(void *ip, usbep_t ep) {
 }
 
 /**
+ * @brief       Implementation of method @p usbServiceOnClearHaltI().
+ * @note        This function is meant to be used by derived classes.
+ *
+ * @param[in,out] ip            Pointer to a @p hal_usb_service_c instance.
+ * @param[in]     ep            Endpoint number.
+ * @param[in]     in            @p true for the IN direction.
+ * @return                      @p true to keep the endpoint halted.
+ */
+bool __usbsvc_clear_halt_impl(void *ip, usbep_t ep, bool in) {
+  hal_usb_service_c *self = (hal_usb_service_c *)ip;
+  (void)self;
+  (void)ep;
+  (void)in;
+
+  return false;
+}
+
+/**
+ * @brief       Implementation of method @p usbServiceOnHaltClearedI().
+ * @note        This function is meant to be used by derived classes.
+ *
+ * @param[in,out] ip            Pointer to a @p hal_usb_service_c instance.
+ * @param[in]     ep            Endpoint number.
+ * @param[in]     in            @p true for the IN direction.
+ */
+void __usbsvc_halt_cleared_impl(void *ip, usbep_t ep, bool in) {
+  hal_usb_service_c *self = (hal_usb_service_c *)ip;
+  (void)self;
+  (void)ep;
+  (void)in;
+}
+
+/**
  * @brief       Implementation of method @p usbServiceOnSetup().
  * @note        This function is meant to be used by derived classes.
  *
@@ -1568,21 +1692,39 @@ void __usbbnd_out_impl(void *ip, usbep_t ep) {
 msg_t __usbbnd_setup_impl(void *ip, bool *handledp) {
   hal_usb_binder_c *self = (hal_usb_binder_c *)ip;
   hal_usb_service_c *servicep;
+  const uint8_t *req;
 
   *handledp = false;
-  for (servicep = self->services; servicep != NULL; servicep = servicep->next) {
-    msg_t msg;
-    bool handled;
+  req = usbEp0GetRequestX(self->usbp);
+  switch (req[0] & USB_RTYPE_RECIPIENT_MASK) {
+  case USB_RTYPE_RECIPIENT_INTERFACE:
+    servicep = usbbnd_get_if_owner(self, req[4]);
+    break;
+  case USB_RTYPE_RECIPIENT_ENDPOINT:
+    servicep = usbbnd_get_ep_owner(self, (usbep_t)(req[4] & 0x0FU),
+                                   (req[4] & 0x80U) != 0U);
+    break;
+  default:
+    for (servicep = self->services; servicep != NULL;
+         servicep = servicep->next) {
+      msg_t msg;
+      bool handled;
 
-    handled = false;
-    msg = usbServiceSetup(servicep, &handled);
-    if ((msg != HAL_RET_SUCCESS) || handled) {
-      *handledp = handled;
-      return msg;
+      handled = false;
+      msg = usbServiceSetup(servicep, &handled);
+      if ((msg != HAL_RET_SUCCESS) || handled) {
+        *handledp = handled;
+        return msg;
+      }
     }
+    return HAL_RET_SUCCESS;
   }
 
-  return HAL_RET_SUCCESS;
+  if (servicep == NULL) {
+    return HAL_RET_SUCCESS;
+  }
+
+  return usbServiceSetup(servicep, handledp);
 }
 /** @} */
 
@@ -2340,6 +2482,10 @@ bool usbEp0IsCurrentI(void *ip) {
 
 /**
  * @brief       Handles the current standard endpoint-zero request.
+ * @details     Interface descriptors, SYNCH_FRAME and the other standard
+ *              requests not handled here are left to the binder, which routes
+ *              them to the owning service. The owner of an endpoint can keep
+ *              its halt on CLEAR_FEATURE(ENDPOINT_HALT).
  *
  * @param[in,out] ip            Pointer to a @p hal_usb_driver_c instance.
  * @param[out]    handledp      Standard-request handled flag.
@@ -2461,8 +2607,6 @@ msg_t usbEp0HandleStandardRequest(void *ip, bool *handledp) {
     break;
   case (uint32_t)USB_RTYPE_RECIPIENT_DEVICE |
        ((uint32_t)USB_REQ_GET_DESCRIPTOR << 8):
-  case (uint32_t)USB_RTYPE_RECIPIENT_INTERFACE |
-       ((uint32_t)USB_REQ_GET_DESCRIPTOR << 8):
     if (self->binder == NULL) {
       usbEp0Stall(self);
       break;
@@ -2524,8 +2668,6 @@ msg_t usbEp0HandleStandardRequest(void *ip, bool *handledp) {
     break;
   case (uint32_t)USB_RTYPE_RECIPIENT_INTERFACE |
        ((uint32_t)USB_REQ_GET_STATUS << 8):
-  case (uint32_t)USB_RTYPE_RECIPIENT_ENDPOINT |
-       ((uint32_t)USB_REQ_SYNCH_FRAME << 8):
     msg = usbEp0Reply(self, zero_status, 2U);
     break;
   case (uint32_t)USB_RTYPE_RECIPIENT_ENDPOINT |
@@ -2567,14 +2709,23 @@ msg_t usbEp0HandleStandardRequest(void *ip, bool *handledp) {
         chSysUnlock();
         return MSG_RESET;
       }
-      if (ep != 0U) {
+      /* The owning service can keep the halt, the request is acknowledged
+         anyway.*/
+      if ((ep != 0U) &&
+          ((self->binder == NULL) ||
+           !usbBinderClearHaltI(self->binder, ep, in))) {
         if (in) {
           usb_lld_clear_in(self, ep);
         }
         else {
           usb_lld_clear_out(self, ep);
         }
+        if (self->binder != NULL) {
+          usbBinderHaltClearedI(self->binder, ep, in);
+        }
       }
+      /* The halt hooks can wake threads.*/
+      chSchRescheduleS();
       chSysUnlock();
       msg = usbEp0Acknowledge(self);
     }

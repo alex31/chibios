@@ -157,6 +157,8 @@ struct hal_serial_usb_driver_vmt {
   void (*sof)(void *ip);
   void (*in)(void *ip, usbep_t ep);
   void (*out)(void *ip, usbep_t ep);
+  bool (*clear_halt)(void *ip, usbep_t ep, bool in);
+  void (*halt_cleared)(void *ip, usbep_t ep, bool in);
   msg_t (*setup)(void *ip, bool *handledp);
   /* From hal_usb_cdc_service_c.*/
   void (*configured)(void *ip);

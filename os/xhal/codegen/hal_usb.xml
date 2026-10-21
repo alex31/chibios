@@ -624,6 +624,43 @@ return HAL_RET_SUCCESS;]]></implementation>
 (void)self;
 (void)ep;]]></implementation>
             </method>
+            <method name="usbServiceOnClearHaltI" shortname="clear_halt"
+              ctype="bool">
+              <brief>Service-specific endpoint halt clear hook.</brief>
+              <details>Invoked when the host clears the halt of an owned
+                endpoint with CLEAR_FEATURE(ENDPOINT_HALT), before the halt
+                is cleared. Returning @p true keeps the endpoint halted, the
+                request is acknowledged anyway, for example until a
+                class-specific reset recovery.</details>
+              <param name="ep" ctype="usbep_t" dir="in">Endpoint number.</param>
+              <param name="in" ctype="bool" dir="in">
+                @p true for the IN direction.
+              </param>
+              <return>@p true to keep the endpoint halted.</return>
+              <iclass />
+              <implementation><![CDATA[
+(void)self;
+(void)ep;
+(void)in;
+
+return false;]]></implementation>
+            </method>
+            <method name="usbServiceOnHaltClearedI" shortname="halt_cleared"
+              ctype="void">
+              <brief>Service-specific endpoint halt cleared notification
+                hook.</brief>
+              <details>Invoked after the host cleared the halt of an owned
+                endpoint, transfers can be restarted from here.</details>
+              <param name="ep" ctype="usbep_t" dir="in">Endpoint number.</param>
+              <param name="in" ctype="bool" dir="in">
+                @p true for the IN direction.
+              </param>
+              <iclass />
+              <implementation><![CDATA[
+(void)self;
+(void)ep;
+(void)in;]]></implementation>
+            </method>
             <method name="usbServiceOnSetup" shortname="setup" ctype="msg_t">
               <brief>Service-specific endpoint-zero request hook.</brief>
               <param name="handledp" ctype="bool *" dir="out">
@@ -910,27 +947,49 @@ for (servicep = self->services; servicep != NULL; servicep = servicep->next) {
             </method>
             <method name="usbBinderOnSetup" shortname="setup" ctype="msg_t">
               <brief>Default endpoint-zero request dispatcher.</brief>
+              <details>Interface and endpoint requests go to the service
+                owning the interface or the endpoint, unowned ones are not
+                handled. Device and other requests go to every service in
+                registration order, until one handles them.</details>
               <param name="handledp" ctype="bool *" dir="out">
                 Handled flag.
               </param>
               <return>The operation status.</return>
               <implementation><![CDATA[
 hal_usb_service_c *servicep;
+const uint8_t *req;
 
 *handledp = false;
-for (servicep = self->services; servicep != NULL; servicep = servicep->next) {
-  msg_t msg;
-  bool handled;
+req = usbEp0GetRequestX(self->usbp);
+switch (req[0] & USB_RTYPE_RECIPIENT_MASK) {
+case USB_RTYPE_RECIPIENT_INTERFACE:
+  servicep = usbbnd_get_if_owner(self, req[4]);
+  break;
+case USB_RTYPE_RECIPIENT_ENDPOINT:
+  servicep = usbbnd_get_ep_owner(self, (usbep_t)(req[4] & 0x0FU),
+                                 (req[4] & 0x80U) != 0U);
+  break;
+default:
+  for (servicep = self->services; servicep != NULL;
+       servicep = servicep->next) {
+    msg_t msg;
+    bool handled;
 
-  handled = false;
-  msg = usbServiceSetup(servicep, &handled);
-  if ((msg != HAL_RET_SUCCESS) || handled) {
-    *handledp = handled;
-    return msg;
+    handled = false;
+    msg = usbServiceSetup(servicep, &handled);
+    if ((msg != HAL_RET_SUCCESS) || handled) {
+      *handledp = handled;
+      return msg;
+    }
   }
+  return HAL_RET_SUCCESS;
 }
 
-return HAL_RET_SUCCESS;]]></implementation>
+if (servicep == NULL) {
+  return HAL_RET_SUCCESS;
+}
+
+return usbServiceSetup(servicep, handledp);]]></implementation>
             </method>
           </virtual>
           <inline>
@@ -1547,6 +1606,10 @@ return ep0_is_current_i(self);]]></implementation>
             </method>
             <method name="usbEp0HandleStandardRequest" ctype="msg_t">
               <brief>Handles the current standard endpoint-zero request.</brief>
+              <details>Interface descriptors, SYNCH_FRAME and the other
+                standard requests not handled here are left to the binder,
+                which routes them to the owning service. The owner of an
+                endpoint can keep its halt on CLEAR_FEATURE(ENDPOINT_HALT).</details>
               <param name="handledp" ctype="bool *" dir="out">
                 Standard-request handled flag.
               </param>
@@ -1665,8 +1728,6 @@ case (uint32_t)USB_RTYPE_RECIPIENT_DEVICE |
   break;
 case (uint32_t)USB_RTYPE_RECIPIENT_DEVICE |
      ((uint32_t)USB_REQ_GET_DESCRIPTOR << 8):
-case (uint32_t)USB_RTYPE_RECIPIENT_INTERFACE |
-     ((uint32_t)USB_REQ_GET_DESCRIPTOR << 8):
   if (self->binder == NULL) {
     usbEp0Stall(self);
     break;
@@ -1728,8 +1789,6 @@ case (uint32_t)USB_RTYPE_RECIPIENT_DEVICE |
   break;
 case (uint32_t)USB_RTYPE_RECIPIENT_INTERFACE |
      ((uint32_t)USB_REQ_GET_STATUS << 8):
-case (uint32_t)USB_RTYPE_RECIPIENT_ENDPOINT |
-     ((uint32_t)USB_REQ_SYNCH_FRAME << 8):
   msg = usbEp0Reply(self, zero_status, 2U);
   break;
 case (uint32_t)USB_RTYPE_RECIPIENT_ENDPOINT |
@@ -1771,14 +1830,23 @@ case (uint32_t)USB_RTYPE_RECIPIENT_ENDPOINT |
       chSysUnlock();
       return MSG_RESET;
     }
-    if (ep != 0U) {
+    /* The owning service can keep the halt, the request is acknowledged
+       anyway.*/
+    if ((ep != 0U) &&
+        ((self->binder == NULL) ||
+         !usbBinderClearHaltI(self->binder, ep, in))) {
       if (in) {
         usb_lld_clear_in(self, ep);
       }
       else {
         usb_lld_clear_out(self, ep);
       }
+      if (self->binder != NULL) {
+        usbBinderHaltClearedI(self->binder, ep, in);
+      }
     }
+    /* The halt hooks can wake threads.*/
+    chSchRescheduleS();
     chSysUnlock();
     msg = usbEp0Acknowledge(self);
   }
@@ -2513,6 +2581,60 @@ chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
 usbBinderOnOutI(self, ep);
 ]]></implementation>
       </function>
+      <function name="usbBinderClearHaltI" ctype="bool">
+        <brief>Offers a host endpoint halt clear to the endpoint owner.</brief>
+        <details>Invoked by the endpoint-zero worker on a
+          CLEAR_FEATURE(ENDPOINT_HALT) request, before the halt is
+          cleared.</details>
+        <param name="ip" ctype="void *" dir="both">
+          Pointer to a @p hal_usb_binder_c instance.
+        </param>
+        <param name="ep" ctype="usbep_t" dir="in">Endpoint number.</param>
+        <param name="in" ctype="bool" dir="in">
+          @p true for the IN direction.
+        </param>
+        <return>@p true if the owning service keeps the endpoint
+          halted.</return>
+        <iclass />
+        <implementation><![CDATA[
+hal_usb_binder_c *self = (hal_usb_binder_c *)ip;
+hal_usb_service_c *servicep;
+
+chDbgCheckClassI();
+chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
+
+servicep = usbbnd_get_ep_owner(self, ep, in);
+if (servicep == NULL) {
+  return false;
+}
+
+return usbServiceOnClearHaltI(servicep, ep, in);]]></implementation>
+      </function>
+      <function name="usbBinderHaltClearedI" ctype="void">
+        <brief>Notifies the endpoint owner of a host endpoint halt
+          clear.</brief>
+        <details>Invoked by the endpoint-zero worker after clearing the halt
+          on a CLEAR_FEATURE(ENDPOINT_HALT) request.</details>
+        <param name="ip" ctype="void *" dir="both">
+          Pointer to a @p hal_usb_binder_c instance.
+        </param>
+        <param name="ep" ctype="usbep_t" dir="in">Endpoint number.</param>
+        <param name="in" ctype="bool" dir="in">
+          @p true for the IN direction.
+        </param>
+        <iclass />
+        <implementation><![CDATA[
+hal_usb_binder_c *self = (hal_usb_binder_c *)ip;
+hal_usb_service_c *servicep;
+
+chDbgCheckClassI();
+chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
+
+servicep = usbbnd_get_ep_owner(self, ep, in);
+if (servicep != NULL) {
+  usbServiceOnHaltClearedI(servicep, ep, in);
+}]]></implementation>
+      </function>
       <function name="usbBinderSetup" ctype="msg_t">
         <brief>Dispatches an endpoint-zero request through a USB binder.</brief>
         <param name="ip" ctype="void *" dir="both">
@@ -2840,6 +2962,42 @@ bbase  = (unsigned)bp->if_base;
 blimit = bbase + (unsigned)bp->if_count;
 
 return (abase < blimit) && (bbase < alimit);]]></implementation>
+      </function>
+      <function name="usbbnd_get_if_owner" ctype="hal_usb_service_c *">
+        <brief>Returns the service owning an interface, @p NULL if
+          none.</brief>
+        <param name="binderp" ctype="hal_usb_binder_c *" dir="in"></param>
+        <param name="ifn" ctype="uint8_t" dir="in"></param>
+        <implementation><![CDATA[
+hal_usb_service_c *servicep;
+
+for (servicep = binderp->services; servicep != NULL;
+     servicep = servicep->next) {
+  if (usbServiceOwnsInterfaceX(servicep, ifn)) {
+    return servicep;
+  }
+}
+
+return NULL;]]></implementation>
+      </function>
+      <function name="usbbnd_get_ep_owner" ctype="hal_usb_service_c *">
+        <brief>Returns the service owning an endpoint direction, @p NULL if
+          none.</brief>
+        <param name="binderp" ctype="hal_usb_binder_c *" dir="in"></param>
+        <param name="ep" ctype="usbep_t" dir="in"></param>
+        <param name="in" ctype="bool" dir="in"></param>
+        <implementation><![CDATA[
+hal_usb_service_c *servicep;
+
+for (servicep = binderp->services; servicep != NULL;
+     servicep = servicep->next) {
+  if (in ? usbServiceOwnsInEndpointX(servicep, ep) :
+           usbServiceOwnsOutEndpointX(servicep, ep)) {
+    return servicep;
+  }
+}
+
+return NULL;]]></implementation>
       </function>
       <function name="usbbnd_service_conflict" ctype="bool">
         <param name="ap" ctype="const hal_usb_service_info_t *" dir="in"></param>
