@@ -109,6 +109,26 @@ static void usb_post_events_i(hal_usb_driver_c *usbp, usbeventflags_t flags) {
 }
 
 /**
+ * @brief       Delivers a pending unconfigure notification to the services.
+ * @details     The notification is delivered once, only if the services are
+ *              configured and not yet unconfigured or reset.
+ *
+ * @param[in,out] usbp          USB driver instance.
+ *
+ * @iclass
+ */
+static void usb_unconfigure_services_i(hal_usb_driver_c *usbp) {
+  chDbgCheckClassI();
+
+  if (usbp->svcconfigured) {
+    usbp->svcconfigured = false;
+    if (usbp->binder != NULL) {
+      usbBinderUnconfigureI(usbp->binder);
+    }
+  }
+}
+
+/**
  * @brief       Resets the setup state machine.
  * @note        Invoked under lock, a higher priority USB handler can preempt
  *              the caller and update the other busy bits.
@@ -898,6 +918,8 @@ void _usb_reset(hal_usb_driver_c *usbp) {
       return;
     }
     chSysLockFromISR();
+    /* For the services a reset is also an unconfigure notification.*/
+    usbp->svcconfigured = false;
     if (usbp->binder != NULL) {
       usbBinderResetI(usbp->binder);
     }
@@ -1577,6 +1599,7 @@ void *__usb_objinit_impl(void *ip, const void *vmt) {
   self->status        = 0U;
   self->address       = 0U;
   self->configuration = 0U;
+  self->svcconfigured = false;
   self->saved_state   = HAL_DRV_STATE_STOP;
   for (i = 0U; i <= (unsigned)USB_MAX_ENDPOINTS; i++) {
     self->epc[i] = NULL;
@@ -1641,6 +1664,7 @@ msg_t __usb_start_impl(void *ip, const void *config) {
   self->status        = 0U;
   self->address       = 0U;
   self->configuration = 0U;
+  self->svcconfigured = false;
   self->saved_state   = HAL_DRV_STATE_STOP;
   for (i = 0U; i <= (unsigned)USB_MAX_ENDPOINTS; i++) {
     self->epc[i] = NULL;
@@ -1664,17 +1688,20 @@ msg_t __usb_start_impl(void *ip, const void *config) {
  */
 void __usb_stop_impl(void *ip, driver_state_t prevstate) {
   hal_usb_driver_c *self = (hal_usb_driver_c *)ip;
+  hal_usb_binder_c *binderp;
   unsigned i;
 
   (void)prevstate;
 
   usb_lld_stop(self);
-  if (self->binder != NULL) {
-    usbBinderUnbind(self->binder);
-    self->binder = NULL;
-  }
-  /* EP0 has a waiter even when USB_USE_SYNCHRONIZATION is disabled.*/
+
+  /* Services are unconfigured and the waiters woken before unbinding, the
+     EP0 worker can be inside a service request hook. EP0 has a waiter even
+     when USB_USE_SYNCHRONIZATION is disabled.*/
   chSysLock();
+  usb_unconfigure_services_i(self);
+  binderp = self->binder;
+  self->binder = NULL;
   self->events        = (usbeventflags_t)0U;
   self->transmitting  = 0U;
   self->receiving     = 0U;
@@ -1706,6 +1733,11 @@ void __usb_stop_impl(void *ip, driver_state_t prevstate) {
   }
   chSchRescheduleS();
   chSysUnlock();
+
+  /* The unbind hooks are API functions and run outside the lock.*/
+  if (binderp != NULL) {
+    usbBinderUnbind(binderp);
+  }
 }
 
 /**
@@ -1816,8 +1848,11 @@ msg_t usbUnbind(void *ip) {
     chSysUnlock();
     return HAL_RET_INV_STATE;
   }
+  /* A hardware failure can leave the services configured.*/
+  usb_unconfigure_services_i(self);
   binderp = self->binder;
   self->binder = NULL;
+  chSchRescheduleS();
   chSysUnlock();
 
   /* The driver no longer refers to the binder, the unbind hooks are API
@@ -2107,6 +2142,10 @@ msg_t usbTransmit(void *ip, usbep_t ep, const uint8_t *buf, size_t n) {
  *              polling for stop must sleep between retries to let the
  *              application handle @p USB_FLAGS_HW_FAILURE and call @p
  *              drvStop().
+ * @note        On a hardware failure, configured services receive the
+ *              unconfigure notification from this function, in the caller
+ *              context. It must be called by the EP0 worker only, outside any
+ *              service hook.
  *
  * @param[in,out] ip            Pointer to a @p hal_usb_driver_c instance.
  * @return                      @p MSG_OK if a setup packet is available, @p
@@ -2124,6 +2163,10 @@ msg_t usbEp0WaitSetup(void *ip) {
 
   chSysLock();
   if (self->state == USB_ERROR) {
+    /* The fault handler does not call service hooks, the services are
+       unconfigured here, outside any service code.*/
+    usb_unconfigure_services_i(self);
+    chSchRescheduleS();
     chSysUnlock();
     return HAL_RET_HW_FAILURE;
   }
@@ -2152,6 +2195,12 @@ msg_t usbEp0WaitSetup(void *ip) {
   }
   else {
     self->ep0reset = 0U;
+    /* The state is checked, not the message: after a restart a stale
+       failure must not unconfigure the new session.*/
+    if (self->state == USB_ERROR) {
+      usb_unconfigure_services_i(self);
+      chSchRescheduleS();
+    }
   }
   chSysUnlock();
 
@@ -2420,10 +2469,9 @@ msg_t usbEp0HandleStandardRequest(void *ip, bool *handledp) {
     }
     if (self->state == USB_ACTIVE) {
       usbDisableEndpointsI(self);
-      if (self->binder != NULL) {
-        usbBinderUnconfigureI(self->binder);
-      }
+      usb_unconfigure_services_i(self);
       if (self->state == USB_ERROR) {
+        chSchRescheduleS();
         chSysUnlock();
         return HAL_RET_HW_FAILURE;
       }
@@ -2435,14 +2483,21 @@ msg_t usbEp0HandleStandardRequest(void *ip, bool *handledp) {
       self->configuration = req[2];
       self->state = USB_ACTIVE;
       if (self->binder != NULL) {
+        self->svcconfigured = true;
         usbBinderConfigureI(self->binder);
       }
       if (self->state == USB_ERROR) {
+        /* Failure inside the configure hooks, all of them returned and the
+           services can be unconfigured now.*/
+        usb_unconfigure_services_i(self);
+        chSchRescheduleS();
         chSysUnlock();
         return HAL_RET_HW_FAILURE;
       }
       usb_post_events_i(self, USB_FLAGS_CONFIGURED);
     }
+    /* Unconfigure and configure hooks can wake threads.*/
+    chSchRescheduleS();
     chSysUnlock();
     msg = usbEp0Acknowledge(self);
     break;
