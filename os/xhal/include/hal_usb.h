@@ -36,21 +36,6 @@
 /*===========================================================================*/
 
 /**
- * @name    Endpoint direction helpers
- * @{
- */
-/**
- * @brief       Builds an OUT endpoint address.
- */
-#define USB_ENDPOINT_OUT                    (ep)
-
-/**
- * @brief       Builds an IN endpoint address.
- */
-#define USB_ENDPOINT_IN                     ((ep) | 0x80U)
-/** @} */
-
-/**
  * @name    Request type encoding
  * @{
  */
@@ -257,6 +242,27 @@
 /*===========================================================================*/
 /* Module macros.                                                            */
 /*===========================================================================*/
+
+/**
+ * @name    Endpoint address helpers
+ * @{
+ */
+/**
+ * @brief       Builds an OUT endpoint address.
+ *
+ * @param[in]     ep            Endpoint number.
+ */
+#define USB_ENDPOINT_OUT(ep)                                                \
+  (ep)
+
+/**
+ * @brief       Builds an IN endpoint address.
+ *
+ * @param[in]     ep            Endpoint number.
+ */
+#define USB_ENDPOINT_IN(ep)                                                 \
+  ((ep) | 0x80U)
+/** @} */
 
 /**
  * @name    Low level driver helper macros
