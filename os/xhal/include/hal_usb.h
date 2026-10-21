@@ -696,8 +696,14 @@ struct hal_usb_service_info {
  *              managed by a USB binder. A service exposes static ownership
  *              metadata together with USB-specific lifecycle and dispatch
  *              hooks, but it does not own the USB peripheral lifecycle. The
- *              virtual methods carrying the @p I suffix must be invoked with
- *              the system lock already held by the caller.
+ *              bind and unbind hooks are invoked from thread context, outside
+ *              the system lock. The virtual methods carrying the @p I suffix
+ *              are invoked with the system lock held, from thread or ISR
+ *              context. Once configured, a service receives an unconfigure or
+ *              reset notification before it is configured again or unbound,
+ *              this also happens when the driver is stopped, when the binder
+ *              is unbound and after a hardware failure. The service releases
+ *              its workers and waiters on this notification.
  *
  * @name        Class @p hal_usb_service_c structures
  * @{
@@ -767,9 +773,10 @@ struct hal_usb_service {
  * @details     A binder is the device-composition object sitting between a USB
  *              driver instance and one or more USB services. The binder owns
  *              the final descriptors and dispatches USB events to the
- *              registered services. The virtual methods carrying the @p I
- *              suffix must be invoked with the system lock already held by the
- *              caller.
+ *              registered services. The bind and unbind hooks are invoked from
+ *              thread context, outside the system lock. The virtual methods
+ *              carrying the @p I suffix are invoked with the system lock held,
+ *              from thread or ISR context.
  *
  * @name        Class @p hal_usb_binder_c structures
  * @{
@@ -845,7 +852,10 @@ struct hal_usb_binder {
  *              event does not clear the fault. The application must serialize
  *              recovery with its USB workers, call @p drvStop(), then @p
  *              drvStart(), rebind its binder and reconnect after the required
- *              disconnect interval. Services remain bound until stop; no
+ *              disconnect interval. Configured services are unconfigured after
+ *              a failure, not by the fault handler: by @p usbEp0WaitSetup() in
+ *              the EP0 worker or, at the latest, by @p drvStop() or @p
+ *              usbUnbind(). Services remain bound until stop or unbind; no
  *              successful transfer or bus-reset callback is synthesized for a
  *              hardware failure.
  *
@@ -1010,6 +1020,12 @@ struct hal_usb_driver {
    * @brief       Current USB device configuration.
    */
   uint8_t                   configuration;
+  /**
+   * @brief       Services configured and not yet unconfigured.
+   * @note        Set when the configure notification is delivered, cleared
+   *              when the unconfigure or reset notification is delivered.
+   */
+  bool                      svcconfigured;
   /**
    * @brief       State of the driver when a suspend happened.
    */
@@ -1195,6 +1211,9 @@ static inline void usbServiceOnConfigureI(void *ip) {
 
 /**
  * @brief       Service-specific unconfigure notification hook.
+ * @note        Also invoked by @p drvStop(), by @p usbUnbind() and after a
+ *              hardware failure. In these cases the endpoints are no longer
+ *              usable: transfers are not completed and must not be restarted.
  *
  * @param[in,out] ip            Pointer to a @p hal_usb_service_c instance.
  *

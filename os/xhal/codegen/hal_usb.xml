@@ -502,9 +502,15 @@ USB_CONFIG_EXT_FIELDS]]></verbatim>
         <details><![CDATA[This class represents a reusable USB function or
           service managed by a USB binder. A service exposes static ownership
           metadata together with USB-specific lifecycle and dispatch hooks, but
-          it does not own the USB peripheral lifecycle. The virtual methods
-          carrying the @p I suffix must be invoked with the system lock
-          already held by the caller.]]></details>
+          it does not own the USB peripheral lifecycle. The bind and unbind
+          hooks are invoked from thread context, outside the system lock. The
+          virtual methods carrying the @p I suffix are invoked with the system
+          lock held, from thread or ISR context.
+          Once configured, a service receives an unconfigure or reset
+          notification before it is configured again or unbound, this also
+          happens when the driver is stopped, when the binder is unbound and
+          after a hardware failure. The service releases its workers and
+          waiters on this notification.]]></details>
         <fields>
           <field name="binder" ctype="struct hal_usb_binder *">
             <brief>Binder currently owning the service, can be @p NULL.</brief>
@@ -568,6 +574,10 @@ return HAL_RET_SUCCESS;]]></implementation>
             <method name="usbServiceOnUnconfigureI" shortname="unconfigure"
               ctype="void">
               <brief>Service-specific unconfigure notification hook.</brief>
+              <note>Also invoked by @p drvStop(), by @p usbUnbind() and after
+                a hardware failure. In these cases the endpoints are no longer
+                usable: transfers are not completed and must not be
+                restarted.</note>
               <iclass />
               <implementation><![CDATA[
 (void)self;]]></implementation>
@@ -733,8 +743,10 @@ return (bool)((self->info->out_ep_mask &
         <details><![CDATA[A binder is the device-composition object sitting
           between a USB driver instance and one or more USB services. The
           binder owns the final descriptors and dispatches USB events to the
-          registered services. The virtual methods carrying the @p I suffix
-          must be invoked with the system lock already held by the caller.]]></details>
+          registered services. The bind and unbind hooks are invoked from
+          thread context, outside the system lock. The virtual methods
+          carrying the @p I suffix are invoked with the system lock held,
+          from thread or ISR context.]]></details>
         <fields>
           <field name="usbp" ctype="hal_usb_driver_c *">
             <brief>Currently bound USB driver, can be @p NULL.</brief>
@@ -979,8 +991,11 @@ return self->arg;]]></implementation>
           not clear the fault. The application must serialize recovery with
           its USB workers, call @p drvStop(), then @p drvStart(), rebind its
           binder and reconnect after the required disconnect interval.
-          Services remain bound until stop; no successful transfer or bus-reset
-          callback is synthesized for a hardware failure.</details>
+          Configured services are unconfigured after a failure, not by the
+          fault handler: by @p usbEp0WaitSetup() in the EP0 worker or, at the
+          latest, by @p drvStop() or @p usbUnbind(). Services remain bound
+          until stop or unbind; no successful transfer or bus-reset callback
+          is synthesized for a hardware failure.</details>
         <fields>
           <field name="events" ctype="volatile usbeventflags_t">
             <brief>Cached USB event flags.</brief>
@@ -1054,6 +1069,11 @@ return self->arg;]]></implementation>
           <field name="configuration" ctype="uint8_t">
             <brief>Current USB device configuration.</brief>
           </field>
+          <field name="svcconfigured" ctype="bool">
+            <brief>Services configured and not yet unconfigured.</brief>
+            <note>Set when the configure notification is delivered, cleared
+              when the unconfigure or reset notification is delivered.</note>
+          </field>
           <field name="saved_state" ctype="usbstate_t">
             <brief>State of the driver when a suspend happened.</brief>
           </field>
@@ -1068,32 +1088,12 @@ usb_lld_driver_fields;]]></verbatim>
         <methods>
           <objinit callsuper="true">
             <implementation><![CDATA[
-unsigned i;
-
-self->events        = (usbeventflags_t)0U;
-self->binder        = NULL;
-self->transmitting  = 0U;
-self->receiving     = 0U;
+/* The fields after the base class ones are zeroed, the LLD initializes its
+   own fields after this function.*/
+memset((uint8_t *)self + offsetof(hal_usb_driver_c, events), 0,
+       sizeof (hal_usb_driver_c) - offsetof(hal_usb_driver_c, events));
 self->ep0state      = USB_EP0_STP_WAITING;
-self->ep0next       = NULL;
-self->ep0n          = 0U;
-self->ep0endcb      = NULL;
-self->ep0thread     = NULL;
-self->ep0seq        = 0U;
-self->ep0rseq       = 0U;
-self->ep0setup      = 0U;
-self->ep0reset      = 0U;
-self->status        = 0U;
-self->address       = 0U;
-self->configuration = 0U;
-self->saved_state   = HAL_DRV_STATE_STOP;
-for (i = 0U; i <= (unsigned)USB_MAX_ENDPOINTS; i++) {
-  self->epc[i] = NULL;
-}
-for (i = 0U; i < (unsigned)USB_MAX_ENDPOINTS; i++) {
-  self->in_params[i] = NULL;
-  self->out_params[i] = NULL;
-}]]></implementation>
+self->saved_state   = HAL_DRV_STATE_STOP;]]></implementation>
           </objinit>
           <dispose>
             <implementation><![CDATA[
@@ -1145,8 +1145,11 @@ if ((self->state == USB_SELECTED) ||
   chSysUnlock();
   return HAL_RET_INV_STATE;
 }
+/* A hardware failure can leave the services configured.*/
+usb_unconfigure_services_i(self);
 binderp = self->binder;
 self->binder = NULL;
+chSchRescheduleS();
 chSysUnlock();
 
 /* The driver no longer refers to the binder, the unbind hooks are API
@@ -1388,6 +1391,10 @@ return msg;]]></implementation>
                 a worker polling for stop must sleep between retries to let
                 the application handle @p USB_FLAGS_HW_FAILURE and call
                 @p drvStop().</note>
+              <note>On a hardware failure, configured services receive the
+                unconfigure notification from this function, in the caller
+                context. It must be called by the EP0 worker only, outside
+                any service hook.</note>
               <return>@p MSG_OK if a setup packet is available, @p MSG_RESET
                 on cancellation, or @p HAL_RET_HW_FAILURE if the controller
                 has failed.</return>
@@ -1399,6 +1406,10 @@ chDbgCheck(self != NULL);
 
 chSysLock();
 if (self->state == USB_ERROR) {
+  /* The fault handler does not call service hooks, the services are
+     unconfigured here, outside any service code.*/
+  usb_unconfigure_services_i(self);
+  chSchRescheduleS();
   chSysUnlock();
   return HAL_RET_HW_FAILURE;
 }
@@ -1427,6 +1438,12 @@ if (msg == MSG_OK) {
 }
 else {
   self->ep0reset = 0U;
+  /* The state is checked, not the message: after a restart a stale
+     failure must not unconfigure the new session.*/
+  if (self->state == USB_ERROR) {
+    usb_unconfigure_services_i(self);
+    chSchRescheduleS();
+  }
 }
 chSysUnlock();
 
@@ -1657,10 +1674,9 @@ case (uint32_t)USB_RTYPE_RECIPIENT_DEVICE |
   }
   if (self->state == USB_ACTIVE) {
     usbDisableEndpointsI(self);
-    if (self->binder != NULL) {
-      usbBinderUnconfigureI(self->binder);
-    }
+    usb_unconfigure_services_i(self);
     if (self->state == USB_ERROR) {
+      chSchRescheduleS();
       chSysUnlock();
       return HAL_RET_HW_FAILURE;
     }
@@ -1672,14 +1688,21 @@ case (uint32_t)USB_RTYPE_RECIPIENT_DEVICE |
     self->configuration = req[2];
     self->state = USB_ACTIVE;
     if (self->binder != NULL) {
+      self->svcconfigured = true;
       usbBinderConfigureI(self->binder);
     }
     if (self->state == USB_ERROR) {
+      /* Failure inside the configure hooks, all of them returned and the
+         services can be unconfigured now.*/
+      usb_unconfigure_services_i(self);
+      chSchRescheduleS();
       chSysUnlock();
       return HAL_RET_HW_FAILURE;
     }
     usb_post_events_i(self, USB_FLAGS_CONFIGURED);
   }
+  /* Unconfigure and configure hooks can wake threads.*/
+  chSchRescheduleS();
   chSysUnlock();
   msg = usbEp0Acknowledge(self);
   break;
@@ -1908,6 +1931,7 @@ self->ep0reset      = 0U;
 self->status        = 0U;
 self->address       = 0U;
 self->configuration = 0U;
+self->svcconfigured = false;
 self->saved_state   = HAL_DRV_STATE_STOP;
 for (i = 0U; i <= (unsigned)USB_MAX_ENDPOINTS; i++) {
   self->epc[i] = NULL;
@@ -1922,17 +1946,20 @@ return msg;]]></implementation>
             </method>
             <method shortname="stop">
               <implementation><![CDATA[
+hal_usb_binder_c *binderp;
 unsigned i;
 
 (void)prevstate;
 
 usb_lld_stop(self);
-if (self->binder != NULL) {
-  usbBinderUnbind(self->binder);
-  self->binder = NULL;
-}
-/* EP0 has a waiter even when USB_USE_SYNCHRONIZATION is disabled.*/
+
+/* Services are unconfigured and the waiters woken before unbinding, the
+   EP0 worker can be inside a service request hook. EP0 has a waiter even
+   when USB_USE_SYNCHRONIZATION is disabled.*/
 chSysLock();
+usb_unconfigure_services_i(self);
+binderp = self->binder;
+self->binder = NULL;
 self->events        = (usbeventflags_t)0U;
 self->transmitting  = 0U;
 self->receiving     = 0U;
@@ -1963,7 +1990,12 @@ for (i = 0U; i <= (unsigned)USB_MAX_ENDPOINTS; i++) {
   self->epc[i] = NULL;
 }
 chSchRescheduleS();
-chSysUnlock();]]></implementation>
+chSysUnlock();
+
+/* The unbind hooks are API functions and run outside the lock.*/
+if (binderp != NULL) {
+  usbBinderUnbind(binderp);
+}]]></implementation>
             </method>
             <method shortname="setcfg">
               <implementation><![CDATA[
@@ -2565,6 +2597,8 @@ for (i = 0U; i <= (unsigned)USB_MAX_ENDPOINTS; i++) {
     return;
   }
   chSysLockFromISR();
+  /* For the services a reset is also an unconfigure notification.*/
+  usbp->svcconfigured = false;
   if (usbp->binder != NULL) {
     usbBinderResetI(usbp->binder);
   }
@@ -2812,6 +2846,25 @@ chDbgCheckClassI();
 
 if (usbp->state != USB_ERROR) {
   usbp->events |= flags;
+}]]></implementation>
+      </function>
+      <function name="usb_unconfigure_services_i" ctype="void">
+        <brief>Delivers a pending unconfigure notification to the
+          services.</brief>
+        <details>The notification is delivered once, only if the services
+          are configured and not yet unconfigured or reset.</details>
+        <param name="usbp" ctype="hal_usb_driver_c *" dir="both">
+          USB driver instance.
+        </param>
+        <iclass />
+        <implementation><![CDATA[
+chDbgCheckClassI();
+
+if (usbp->svcconfigured) {
+  usbp->svcconfigured = false;
+  if (usbp->binder != NULL) {
+    usbBinderUnconfigureI(usbp->binder);
+  }
 }]]></implementation>
       </function>
       <function name="setup_reset_i" ctype="void">
