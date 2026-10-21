@@ -129,6 +129,27 @@ static void usb_unconfigure_services_i(hal_usb_driver_c *usbp) {
 }
 
 /**
+ * @brief       Leaves the configured state.
+ * @details     The endpoints are disabled and the services unconfigured. On a
+ *              hardware failure the driver stays in @p USB_ERROR.
+ *
+ * @param[in,out] usbp          USB driver instance.
+ *
+ * @iclass
+ */
+static void usb_unconfigure_device_i(hal_usb_driver_c *usbp) {
+  chDbgCheckClassI();
+
+  usbDisableEndpointsI(usbp);
+  usb_unconfigure_services_i(usbp);
+  if (usbp->state != USB_ERROR) {
+    usbp->configuration = 0U;
+    usbp->state = USB_SELECTED;
+    usb_post_events_i(usbp, USB_FLAGS_UNCONFIGURED);
+  }
+}
+
+/**
  * @brief       Resets the setup state machine.
  * @note        Invoked under lock, a higher priority USB handler can preempt
  *              the caller and update the other busy bits.
@@ -207,14 +228,18 @@ static bool ep0_is_current_i(hal_usb_driver_c *usbp) {
 }
 
 static void set_address(hal_usb_driver_c *usbp) {
-#if USB_SET_ADDRESS_MODE == USB_LATE_SET_ADDRESS
-  usbp->address = usbp->ep0req[2];
-  usb_lld_set_address(usbp);
-#endif
   chSysLockFromISR();
-  usb_post_events_i(usbp, USB_FLAGS_ADDRESS);
+  /* Bus events must not undo the lifecycle transition made by drvStop().*/
+  if ((usbp->state == HAL_DRV_STATE_READY) || (usbp->state == USB_SELECTED)) {
+#if USB_SET_ADDRESS_MODE == USB_LATE_SET_ADDRESS
+    usbp->address = usbp->ep0req[2];
+    usb_lld_set_address(usbp);
+#endif
+    /* Address zero is the default state.*/
+    usbp->state = (usbp->address != 0U) ? USB_SELECTED : HAL_DRV_STATE_READY;
+    usb_post_events_i(usbp, USB_FLAGS_ADDRESS);
+  }
   chSysUnlockFromISR();
-  usbp->state = USB_SELECTED;
 }
 
 static msg_t ep0_reply_or_ack(hal_usb_driver_c *usbp, const uint8_t *buf,
@@ -283,9 +308,13 @@ static msg_t ep0_receive_or_status(hal_usb_driver_c *usbp, uint8_t *buf,
   }
 
   max = (size_t)get_hword(&usbp->ep0req[6]);
-  if (n > max) {
-    n = max;
+  if (n < max) {
+    /* The host would send more than the buffer holds.*/
+    setup_error_i(usbp);
+    chSysUnlock();
+    return MSG_RESET;
   }
+  n = max;
 
   usbp->ep0next = buf;
   usbp->ep0n = n;
@@ -1089,9 +1118,7 @@ void _usb_ep0out(hal_usb_driver_c *usbp, usbep_t ep) {
     chSysUnlockFromISR();
     return;
   case USB_EP0_OUT_WAITING_STS:
-    if (usbGetReceiveTransactionSizeX(usbp, 0U) != 0U) {
-      break;
-    }
+    /* A status stage carrying data is accepted as a zero size one.*/
     if (usbp->ep0endcb != NULL) {
       usbp->ep0endcb(usbp);
     }
@@ -2054,6 +2081,8 @@ msg_t usbReceive(void *ip, usbep_t ep, uint8_t *buf, size_t n) {
   hal_usb_driver_c *self = (hal_usb_driver_c *)ip;
   msg_t msg;
 
+  chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
+
   chSysLock();
   if (self->state == USB_ERROR) {
     chSysUnlock();
@@ -2085,6 +2114,8 @@ msg_t usbReceive(void *ip, usbep_t ep, uint8_t *buf, size_t n) {
 msg_t usbTransmit(void *ip, usbep_t ep, const uint8_t *buf, size_t n) {
   hal_usb_driver_c *self = (hal_usb_driver_c *)ip;
   msg_t msg;
+
+  chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
 
   chSysLock();
   if (self->state == USB_ERROR) {
@@ -2205,6 +2236,9 @@ msg_t usbEp0Reply(void *ip, const uint8_t *buf, size_t n) {
 
 /**
  * @brief       Receives the data phase of the current endpoint-zero request.
+ * @note        A buffer smaller than the data stage announced by the request
+ *              cannot receive it: the request is stalled and @p MSG_RESET
+ *              returned.
  *
  * @param[in,out] ip            Pointer to a @p hal_usb_driver_c instance.
  * @param[out]    buf           Receive buffer.
@@ -2404,12 +2438,22 @@ msg_t usbEp0HandleStandardRequest(void *ip, bool *handledp) {
       chSysUnlock();
       return MSG_RESET;
     }
+    if (self->state == USB_ACTIVE) {
+      usb_unconfigure_device_i(self);
+      if (self->state == USB_ERROR) {
+        chSchRescheduleS();
+        chSysUnlock();
+        return HAL_RET_HW_FAILURE;
+      }
+    }
 #if USB_SET_ADDRESS_MODE == USB_EARLY_SET_ADDRESS
     self->address = req[2];
     usb_lld_set_address(self);
 #endif
     /* Commit before another SETUP or reset can replace the request state.*/
     self->ep0endcb = set_address;
+    /* The unconfigure hooks can wake threads.*/
+    chSchRescheduleS();
     chSysUnlock();
     msg = usbEp0Acknowledge(self);
     break;
@@ -2447,16 +2491,12 @@ msg_t usbEp0HandleStandardRequest(void *ip, bool *handledp) {
       return MSG_RESET;
     }
     if (self->state == USB_ACTIVE) {
-      usbDisableEndpointsI(self);
-      usb_unconfigure_services_i(self);
+      usb_unconfigure_device_i(self);
       if (self->state == USB_ERROR) {
         chSchRescheduleS();
         chSysUnlock();
         return HAL_RET_HW_FAILURE;
       }
-      self->configuration = 0U;
-      self->state = USB_SELECTED;
-      usb_post_events_i(self, USB_FLAGS_UNCONFIGURED);
     }
     if (req[2] != 0U) {
       self->configuration = req[2];
@@ -2584,7 +2624,7 @@ msg_t usbEp0HandleStandardRequest(void *ip, bool *handledp) {
 bool usbStallReceiveI(void *ip, usbep_t ep) {
   hal_usb_driver_c *self = (hal_usb_driver_c *)ip;
   chDbgCheckClassI();
-  chDbgCheck(self != NULL);
+  chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
 
   if (((self->receiving &
         (uint16_t)((unsigned)1U << (unsigned)ep))) != 0U) {
@@ -2608,7 +2648,7 @@ bool usbStallReceiveI(void *ip, usbep_t ep) {
 bool usbStallTransmitI(void *ip, usbep_t ep) {
   hal_usb_driver_c *self = (hal_usb_driver_c *)ip;
   chDbgCheckClassI();
-  chDbgCheck(self != NULL);
+  chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
 
   if (((self->transmitting &
         (uint16_t)((unsigned)1U << (unsigned)ep))) != 0U) {
@@ -2621,6 +2661,8 @@ bool usbStallTransmitI(void *ip, usbep_t ep) {
 
 /**
  * @brief       Starts the host wake-up procedure.
+ * @note        Nothing is done unless the device is suspended and the host
+ *              enabled the remote wake-up feature.
  *
  * @param[in,out] ip            Pointer to a @p hal_usb_driver_c instance.
  *
@@ -2630,7 +2672,7 @@ void usbWakeupHost(void *ip) {
   hal_usb_driver_c *self = (hal_usb_driver_c *)ip;
   chDbgCheck(self != NULL);
 
-  if (self->state == USB_SUSPENDED) {
+  if ((self->state == USB_SUSPENDED) && ((self->status & 2U) != 0U)) {
     usb_lld_wakeup_host(self);
   }
 }

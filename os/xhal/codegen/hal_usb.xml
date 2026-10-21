@@ -12,14 +12,6 @@
       <include style="regular">hal_base_driver.h</include>
     </includes_always>
     <definitions_early>
-      <group description="Endpoint direction helpers">
-        <define name="USB_ENDPOINT_OUT" value="(ep)">
-          <brief>Builds an OUT endpoint address.</brief>
-        </define>
-        <define name="USB_ENDPOINT_IN" value="((ep) | 0x80U)">
-          <brief>Builds an IN endpoint address.</brief>
-        </define>
-      </group>
       <group description="Request type encoding">
         <define name="USB_RTYPE_DIR_MASK" value="0x80U" />
         <define name="USB_RTYPE_DIR_HOST2DEV" value="0x00U" />
@@ -137,6 +129,18 @@
       </config>
     </configs>
     <macros>
+      <group description="Endpoint address helpers">
+        <macro name="USB_ENDPOINT_OUT">
+          <brief>Builds an OUT endpoint address.</brief>
+          <param name="ep" dir="in">Endpoint number.</param>
+          <implementation><![CDATA[(ep)]]></implementation>
+        </macro>
+        <macro name="USB_ENDPOINT_IN">
+          <brief>Builds an IN endpoint address.</brief>
+          <param name="ep" dir="in">Endpoint number.</param>
+          <implementation><![CDATA[((ep) | 0x80U)]]></implementation>
+        </macro>
+      </group>
       <group description="Low level driver helper macros">
         <macro name="_usb_isr_invoke_event_cb">
           <brief>Common ISR code, USB event notification.</brief>
@@ -1329,6 +1333,8 @@ usb_lld_start_in(self, ep);]]></implementation>
                 <implementation><![CDATA[
 msg_t msg;
 
+chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
+
 chSysLock();
 if (self->state == USB_ERROR) {
   chSysUnlock();
@@ -1356,6 +1362,8 @@ return msg;]]></implementation>
                 <api />
                 <implementation><![CDATA[
 msg_t msg;
+
+chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
 
 chSysLock();
 if (self->state == USB_ERROR) {
@@ -1464,6 +1472,9 @@ return ep0_reply_or_ack(self, buf, n);]]></implementation>
             </method>
             <method name="usbEp0Receive" ctype="msg_t">
               <brief>Receives the data phase of the current endpoint-zero request.</brief>
+              <note>A buffer smaller than the data stage announced by the
+                request cannot receive it: the request is stalled and
+                @p MSG_RESET returned.</note>
               <param name="buf" ctype="uint8_t *" dir="out">Receive buffer.</param>
               <param name="n" ctype="size_t" dir="in">Receive size.</param>
               <return>The operation status.</return>
@@ -1630,12 +1641,22 @@ case (uint32_t)USB_RTYPE_RECIPIENT_DEVICE |
     chSysUnlock();
     return MSG_RESET;
   }
+  if (self->state == USB_ACTIVE) {
+    usb_unconfigure_device_i(self);
+    if (self->state == USB_ERROR) {
+      chSchRescheduleS();
+      chSysUnlock();
+      return HAL_RET_HW_FAILURE;
+    }
+  }
 #if USB_SET_ADDRESS_MODE == USB_EARLY_SET_ADDRESS
   self->address = req[2];
   usb_lld_set_address(self);
 #endif
   /* Commit before another SETUP or reset can replace the request state.*/
   self->ep0endcb = set_address;
+  /* The unconfigure hooks can wake threads.*/
+  chSchRescheduleS();
   chSysUnlock();
   msg = usbEp0Acknowledge(self);
   break;
@@ -1673,16 +1694,12 @@ case (uint32_t)USB_RTYPE_RECIPIENT_DEVICE |
     return MSG_RESET;
   }
   if (self->state == USB_ACTIVE) {
-    usbDisableEndpointsI(self);
-    usb_unconfigure_services_i(self);
+    usb_unconfigure_device_i(self);
     if (self->state == USB_ERROR) {
       chSchRescheduleS();
       chSysUnlock();
       return HAL_RET_HW_FAILURE;
     }
-    self->configuration = 0U;
-    self->state = USB_SELECTED;
-    usb_post_events_i(self, USB_FLAGS_UNCONFIGURED);
   }
   if (req[2] != 0U) {
     self->configuration = req[2];
@@ -1803,7 +1820,7 @@ return msg;]]></implementation>
               <iclass />
               <implementation><![CDATA[
 chDbgCheckClassI();
-chDbgCheck(self != NULL);
+chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
 
 if (((self->receiving &
       (uint16_t)((unsigned)1U << (unsigned)ep))) != 0U) {
@@ -1820,7 +1837,7 @@ return false;]]></implementation>
               <iclass />
               <implementation><![CDATA[
 chDbgCheckClassI();
-chDbgCheck(self != NULL);
+chDbgCheck((self != NULL) && (ep <= (usbep_t)USB_MAX_ENDPOINTS));
 
 if (((self->transmitting &
       (uint16_t)((unsigned)1U << (unsigned)ep))) != 0U) {
@@ -1832,11 +1849,13 @@ return false;]]></implementation>
             </method>
             <method name="usbWakeupHost" ctype="void">
               <brief>Starts the host wake-up procedure.</brief>
+              <note>Nothing is done unless the device is suspended and the
+                host enabled the remote wake-up feature.</note>
               <api />
               <implementation><![CDATA[
 chDbgCheck(self != NULL);
 
-if (self->state == USB_SUSPENDED) {
+if ((self->state == USB_SUSPENDED) && ((self->status & 2U) != 0U)) {
   usb_lld_wakeup_host(self);
 }]]></implementation>
             </method>
@@ -2758,9 +2777,7 @@ case USB_EP0_OUT_RX:
   chSysUnlockFromISR();
   return;
 case USB_EP0_OUT_WAITING_STS:
-  if (usbGetReceiveTransactionSizeX(usbp, 0U) != 0U) {
-    break;
-  }
+  /* A status stage carrying data is accepted as a zero size one.*/
   if (usbp->ep0endcb != NULL) {
     usbp->ep0endcb(usbp);
   }
@@ -2867,6 +2884,25 @@ if (usbp->svcconfigured) {
   }
 }]]></implementation>
       </function>
+      <function name="usb_unconfigure_device_i" ctype="void">
+        <brief>Leaves the configured state.</brief>
+        <details>The endpoints are disabled and the services unconfigured.
+          On a hardware failure the driver stays in @p USB_ERROR.</details>
+        <param name="usbp" ctype="hal_usb_driver_c *" dir="both">
+          USB driver instance.
+        </param>
+        <iclass />
+        <implementation><![CDATA[
+chDbgCheckClassI();
+
+usbDisableEndpointsI(usbp);
+usb_unconfigure_services_i(usbp);
+if (usbp->state != USB_ERROR) {
+  usbp->configuration = 0U;
+  usbp->state = USB_SELECTED;
+  usb_post_events_i(usbp, USB_FLAGS_UNCONFIGURED);
+}]]></implementation>
+      </function>
       <function name="setup_reset_i" ctype="void">
         <brief>Resets the setup state machine.</brief>
         <note>Invoked under lock, a higher priority USB handler can preempt
@@ -2951,14 +2987,18 @@ return usbp->ep0rseq == usbp->ep0seq;]]></implementation>
       <function name="set_address" ctype="void">
         <param name="usbp" ctype="hal_usb_driver_c *" dir="both"></param>
         <implementation><![CDATA[
-#if USB_SET_ADDRESS_MODE == USB_LATE_SET_ADDRESS
-usbp->address = usbp->ep0req[2];
-usb_lld_set_address(usbp);
-#endif
 chSysLockFromISR();
-usb_post_events_i(usbp, USB_FLAGS_ADDRESS);
-chSysUnlockFromISR();
-usbp->state = USB_SELECTED;]]></implementation>
+/* Bus events must not undo the lifecycle transition made by drvStop().*/
+if ((usbp->state == HAL_DRV_STATE_READY) || (usbp->state == USB_SELECTED)) {
+#if USB_SET_ADDRESS_MODE == USB_LATE_SET_ADDRESS
+  usbp->address = usbp->ep0req[2];
+  usb_lld_set_address(usbp);
+#endif
+  /* Address zero is the default state.*/
+  usbp->state = (usbp->address != 0U) ? USB_SELECTED : HAL_DRV_STATE_READY;
+  usb_post_events_i(usbp, USB_FLAGS_ADDRESS);
+}
+chSysUnlockFromISR();]]></implementation>
       </function>
       <function name="ep0_reply_or_ack" ctype="msg_t">
         <param name="usbp" ctype="hal_usb_driver_c *" dir="both"></param>
@@ -3031,9 +3071,13 @@ if ((usbp->state == HAL_DRV_STATE_STOP) ||
 }
 
 max = (size_t)get_hword(&usbp->ep0req[6]);
-if (n > max) {
-  n = max;
+if (n < max) {
+  /* The host would send more than the buffer holds.*/
+  setup_error_i(usbp);
+  chSysUnlock();
+  return MSG_RESET;
 }
+n = max;
 
 usbp->ep0next = buf;
 usbp->ep0n = n;
