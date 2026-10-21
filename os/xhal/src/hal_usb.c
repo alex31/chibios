@@ -1581,33 +1581,12 @@ void *__usb_objinit_impl(void *ip, const void *vmt) {
   __drv_objinit_impl(self, vmt);
 
   /* Initialization code.*/
-  unsigned i;
-
-  self->events        = (usbeventflags_t)0U;
-  self->binder        = NULL;
-  self->transmitting  = 0U;
-  self->receiving     = 0U;
+  /* The fields after the base class ones are zeroed, the LLD initializes its
+     own fields after this function.*/
+  memset((uint8_t *)self + offsetof(hal_usb_driver_c, events), 0,
+         sizeof (hal_usb_driver_c) - offsetof(hal_usb_driver_c, events));
   self->ep0state      = USB_EP0_STP_WAITING;
-  self->ep0next       = NULL;
-  self->ep0n          = 0U;
-  self->ep0endcb      = NULL;
-  self->ep0thread     = NULL;
-  self->ep0seq        = 0U;
-  self->ep0rseq       = 0U;
-  self->ep0setup      = 0U;
-  self->ep0reset      = 0U;
-  self->status        = 0U;
-  self->address       = 0U;
-  self->configuration = 0U;
-  self->svcconfigured = false;
   self->saved_state   = HAL_DRV_STATE_STOP;
-  for (i = 0U; i <= (unsigned)USB_MAX_ENDPOINTS; i++) {
-    self->epc[i] = NULL;
-  }
-  for (i = 0U; i < (unsigned)USB_MAX_ENDPOINTS; i++) {
-    self->in_params[i] = NULL;
-    self->out_params[i] = NULL;
-  }
 
   return self;
 }
