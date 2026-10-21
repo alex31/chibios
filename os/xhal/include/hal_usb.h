@@ -739,6 +739,8 @@ struct hal_usb_service_vmt {
   void (*sof)(void *ip);
   void (*in)(void *ip, usbep_t ep);
   void (*out)(void *ip, usbep_t ep);
+  bool (*clear_halt)(void *ip, usbep_t ep, bool in);
+  void (*halt_cleared)(void *ip, usbep_t ep, bool in);
   msg_t (*setup)(void *ip, bool *handledp);
 };
 
@@ -1066,6 +1068,8 @@ extern "C" {
   void __usbsvc_sof_impl(void *ip);
   void __usbsvc_in_impl(void *ip, usbep_t ep);
   void __usbsvc_out_impl(void *ip, usbep_t ep);
+  bool __usbsvc_clear_halt_impl(void *ip, usbep_t ep, bool in);
+  void __usbsvc_halt_cleared_impl(void *ip, usbep_t ep, bool in);
   msg_t __usbsvc_setup_impl(void *ip, bool *handledp);
   /* Methods of hal_usb_binder_c.*/
   void *__usbbnd_objinit_impl(void *ip, const void *vmt);
@@ -1142,6 +1146,8 @@ extern "C" {
   void usbBinderSOFI(void *ip);
   void usbBinderInI(void *ip, usbep_t ep);
   void usbBinderOutI(void *ip, usbep_t ep);
+  bool usbBinderClearHaltI(void *ip, usbep_t ep, bool in);
+  void usbBinderHaltClearedI(void *ip, usbep_t ep, bool in);
   msg_t usbBinderSetup(void *ip, bool *handledp);
   void usbInit(void);
   void _usb_error_i(hal_usb_driver_c *usbp);
@@ -1304,6 +1310,46 @@ static inline void usbServiceOnOutI(void *ip, usbep_t ep) {
   hal_usb_service_c *self = (hal_usb_service_c *)ip;
 
   self->vmt->out(ip, ep);
+}
+
+/**
+ * @brief       Service-specific endpoint halt clear hook.
+ * @details     Invoked when the host clears the halt of an owned endpoint with
+ *              CLEAR_FEATURE(ENDPOINT_HALT), before the halt is cleared.
+ *              Returning @p true keeps the endpoint halted, the request is
+ *              acknowledged anyway, for example until a class-specific reset
+ *              recovery.
+ *
+ * @param[in,out] ip            Pointer to a @p hal_usb_service_c instance.
+ * @param[in]     ep            Endpoint number.
+ * @param[in]     in            @p true for the IN direction.
+ * @return                      @p true to keep the endpoint halted.
+ *
+ * @iclass
+ */
+CC_FORCE_INLINE
+static inline bool usbServiceOnClearHaltI(void *ip, usbep_t ep, bool in) {
+  hal_usb_service_c *self = (hal_usb_service_c *)ip;
+
+  return self->vmt->clear_halt(ip, ep, in);
+}
+
+/**
+ * @brief       Service-specific endpoint halt cleared notification hook.
+ * @details     Invoked after the host cleared the halt of an owned endpoint,
+ *              transfers can be restarted from here.
+ *
+ * @param[in,out] ip            Pointer to a @p hal_usb_service_c instance.
+ * @param[in]     ep            Endpoint number.
+ * @param[in]     in            @p true for the IN direction.
+ *
+ * @iclass
+ */
+CC_FORCE_INLINE
+static inline void usbServiceOnHaltClearedI(void *ip, usbep_t ep, bool in) {
+  hal_usb_service_c *self = (hal_usb_service_c *)ip;
+
+  self->vmt->halt_cleared(ip, ep, in);
 }
 
 /**
@@ -1634,6 +1680,10 @@ static inline void usbBinderOnOutI(void *ip, usbep_t ep) {
 
 /**
  * @brief       Default endpoint-zero request dispatcher.
+ * @details     Interface and endpoint requests go to the service owning the
+ *              interface or the endpoint, unowned ones are not handled. Device
+ *              and other requests go to every service in registration order,
+ *              until one handles them.
  *
  * @param[in,out] ip            Pointer to a @p hal_usb_binder_c instance.
  * @param[out]    handledp      Handled flag.

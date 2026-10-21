@@ -335,18 +335,20 @@ static const hal_usb_service_info_t audio_service_info = {
 };
 
 static const struct hal_usb_service_vmt audio_service_vmt = {
-  .dispose     = __usbsvc_dispose_impl,
-  .bind        = __usbsvc_bind_impl,
-  .unbind      = __usbsvc_unbind_impl,
-  .reset       = audio_reset,
-  .configure   = audio_configure,
-  .unconfigure = audio_clear,
-  .suspend     = audio_suspend,
-  .wakeup      = __usbsvc_wakeup_impl,
-  .sof         = audio_sof,
-  .in          = audio_in,
-  .out         = audio_out,
-  .setup       = audio_setup
+  .dispose      = __usbsvc_dispose_impl,
+  .bind         = __usbsvc_bind_impl,
+  .unbind       = __usbsvc_unbind_impl,
+  .reset        = audio_reset,
+  .configure    = audio_configure,
+  .unconfigure  = audio_clear,
+  .suspend      = audio_suspend,
+  .wakeup       = __usbsvc_wakeup_impl,
+  .sof          = audio_sof,
+  .in           = audio_in,
+  .out          = audio_out,
+  .clear_halt   = __usbsvc_clear_halt_impl,
+  .halt_cleared = __usbsvc_halt_cleared_impl,
+  .setup        = audio_setup
 };
 
 void audioObjectInit(void) {
