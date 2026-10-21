@@ -482,7 +482,9 @@ USB_CONFIG_EXT_FIELDS]]></verbatim>
         <brief>USB service ownership metadata.</brief>
         <details><![CDATA[This structure identifies the interfaces and
           endpoints managed by a USB service instance. Endpoint zero is never
-          owned by a service.]]></details>
+          owned by a service. The driver keeps one configuration per endpoint
+          number, so two services cannot own the same endpoint number, not
+          even in different directions.]]></details>
         <fields>
           <field name="if_base" ctype="uint8_t">
             <brief>First interface number owned by the service.</brief>
@@ -643,7 +645,8 @@ return HAL_RET_SUCCESS;]]></implementation>
                 object.</brief>
               <param name="infop" ctype="const hal_usb_service_info_t *"
                 dir="in">
-                Service ownership metadata.
+                Service ownership metadata, it must not change while the
+                service exists.
               </param>
               <param name="vmt" ctype="const struct hal_usb_service_vmt *"
                 dir="in">
@@ -2294,6 +2297,11 @@ chDbgAssert(usbServiceGetBinderX(servicep) == NULL, "service already bound");
 chDbgAssert((servicep->next == NULL) && (servicep->prev == NULL),
               "service already linked");
 chDbgAssert(usbServiceGetInfoX(servicep) != NULL, "missing service info");
+/* Only endpoints 1 to USB_MAX_ENDPOINTS can be owned.*/
+chDbgAssert(((usbServiceGetInfoX(servicep)->in_ep_mask |
+              usbServiceGetInfoX(servicep)->out_ep_mask) &
+             ~((2U << (unsigned)USB_MAX_ENDPOINTS) - 2U)) == 0U,
+            "invalid endpoints in service info");
 
 for (sp = self->services; sp != NULL; sp = sp->next) {
   chDbgAssert(sp != servicep, "service already registered");
@@ -2840,14 +2848,11 @@ return (abase < blimit) && (bbase < alimit);]]></implementation>
 if (usbbnd_if_conflict(ap, bp)) {
   return true;
 }
-if ((ap->in_ep_mask & bp->in_ep_mask) != 0U) {
-  return true;
-}
-if ((ap->out_ep_mask & bp->out_ep_mask) != 0U) {
-  return true;
-}
 
-return false;]]></implementation>
+/* The driver keeps one configuration per endpoint number, the directions
+   are not owned separately.*/
+return ((ap->in_ep_mask | ap->out_ep_mask) &
+        (bp->in_ep_mask | bp->out_ep_mask)) != 0U;]]></implementation>
       </function>
       <function name="usb_post_events_i" ctype="void">
         <brief>Posts cached USB events unless a hardware failure is latched.</brief>
