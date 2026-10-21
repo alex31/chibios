@@ -969,12 +969,15 @@ struct hal_usb_driver {
   thread_reference_t        ep0thread;
   /**
    * @brief       Current EP0 sequence number.
+   * @note        Incremented by every SETUP, bus reset, fault and stop, it is
+   *              never reset.
    */
-  uint8_t                   ep0seq;
+  uint32_t                  ep0seq;
   /**
-   * @brief       EP0 sequence number owned by the worker thread.
+   * @brief       EP0 sequence number of the request taken by the worker
+   *              thread.
    */
-  uint8_t                   ep0rseq;
+  uint32_t                  ep0rseq;
   /**
    * @brief       Pending setup notification for the worker thread.
    */
@@ -985,8 +988,16 @@ struct hal_usb_driver {
   uint8_t                   ep0reset;
   /**
    * @brief       Setup packet buffer.
+   * @note        Written by every SETUP packet, the worker thread uses @p
+   *              ep0req instead.
    */
   uint8_t                   setup[8];
+  /**
+   * @brief       Request taken by the worker thread.
+   * @note        Copied from @p setup by @p usbEp0WaitSetup(), a later SETUP
+   *              packet does not change it.
+   */
+  uint8_t                   ep0req[8];
   /**
    * @brief       Current USB device status.
    */
@@ -1074,6 +1085,8 @@ extern "C" {
   msg_t usbEp0Receive(void *ip, uint8_t *buf, size_t n);
   msg_t usbEp0Acknowledge(void *ip);
   void usbEp0Stall(void *ip);
+  const uint8_t *usbEp0GetRequestX(void *ip);
+  bool usbEp0IsCurrentI(void *ip);
   msg_t usbEp0HandleStandardRequest(void *ip, bool *handledp);
   bool usbStallReceiveI(void *ip, usbep_t ep);
   bool usbStallTransmitI(void *ip, usbep_t ep);

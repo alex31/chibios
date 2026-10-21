@@ -476,13 +476,13 @@ void __cdcsvc_out_impl(void *ip, usbep_t ep) {
  */
 msg_t __cdcsvc_setup_impl(void *ip, bool *handledp) {
   hal_usb_cdc_service_c *self = (hal_usb_cdc_service_c *)ip;
-  uint8_t *setup;
+  const uint8_t *setup;
 
   chDbgAssert((handledp != NULL) && (self->config != NULL),
                 "invalid setup context");
 
   *handledp = false;
-  setup = self->config->usbp->setup;
+  setup = usbEp0GetRequestX(self->config->usbp);
   if ((setup[0] & USB_RTYPE_TYPE_MASK) != USB_RTYPE_TYPE_CLASS) {
     return HAL_RET_SUCCESS;
   }
