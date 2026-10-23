@@ -93,6 +93,16 @@
 #define TEST_CFG_SIZE_REPORT                TRUE
 #endif
 
+/**
+ * @brief   Assertion messages.
+ * @details If set to @p FALSE the assertion messages are not stored and a
+ *          failure reports only the test case and the step. This saves
+ *          memory on targets placing the constant data in RAM.
+ */
+#if !defined(TEST_CFG_ASSERT_MESSAGES) || defined(__DOXYGEN__)
+#define TEST_CFG_ASSERT_MESSAGES            TRUE
+#endif
+
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
@@ -213,6 +223,21 @@ typedef struct {
 #define test_end_step(step) (void)(step);
 
 /**
+ * @brief   Assertion message selector.
+ * @details The message is replaced by an empty string if
+ *          @p TEST_CFG_ASSERT_MESSAGES is @p FALSE.
+ *
+ * @param[in] msg       the assertion message
+ *
+ * @notapi
+ */
+#if (TEST_CFG_ASSERT_MESSAGES == TRUE) || defined(__DOXYGEN__)
+#define __test_msg(msg) (msg)
+#else
+#define __test_msg(msg) ""
+#endif
+
+/**
  * @brief   Test failure enforcement.
  * @note    This function can only be called from test_case execute context.
  *
@@ -221,7 +246,7 @@ typedef struct {
  * @api
  */
 #define test_fail(msg) {                                                    \
-  __test_fail(msg);                                                         \
+  __test_fail(__test_msg(msg));                                             \
   return;                                                                   \
 }
 
@@ -235,7 +260,7 @@ typedef struct {
  * @api
  */
 #define test_assert(condition, msg) {                                       \
-  if (__test_assert(condition, msg))                                        \
+  if (__test_assert(condition, __test_msg(msg)))                            \
     return;                                                                 \
 }
 
@@ -249,7 +274,7 @@ typedef struct {
  * @api
  */
 #define test_assert_sequence(expected, msg) {                               \
-  if (__test_assert_sequence(expected, msg))                                \
+  if (__test_assert_sequence(expected, __test_msg(msg)))                    \
     return;                                                                 \
 }
 
@@ -265,7 +290,7 @@ typedef struct {
  */
 #define test_assert_lock(condition, msg) {                                  \
   chSysLock();                                                              \
-  if (__test_assert(condition, msg)) {                                      \
+  if (__test_assert(condition, __test_msg(msg))) {                          \
     chSysUnlock();                                                          \
     return;                                                                 \
   }                                                                         \
@@ -283,7 +308,7 @@ typedef struct {
  * @api
  */
 #define test_assert_time_window(start, end, msg) {                          \
-  if (__test_assert_time_window(start, end, msg))                           \
+  if (__test_assert_time_window(start, end, __test_msg(msg)))               \
     return;                                                                 \
 }
 #endif /* TEST_CFG_CHIBIOS_SUPPORT == TRUE */
