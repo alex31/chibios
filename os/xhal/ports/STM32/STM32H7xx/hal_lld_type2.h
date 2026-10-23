@@ -2564,7 +2564,7 @@
 #define STM32_USART2CLK             STM32_LSE_CK
 #define STM32_USART3CLK             STM32_LSE_CK
 #define STM32_UART4CLK              STM32_LSE_CK
-#define STM32_UART6CLK              STM32_LSE_CK
+#define STM32_UART5CLK              STM32_LSE_CK
 #define STM32_UART7CLK              STM32_LSE_CK
 #define STM32_UART8CLK              STM32_LSE_CK
 #else
