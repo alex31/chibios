@@ -138,7 +138,7 @@
  * @note    20us minimum delta for MTIME tickless mode.
  */
 #if !defined(CH_CFG_ST_TIMEDELTA)
-#define CH_CFG_ST_TIMEDELTA                 20
+#define CH_CFG_ST_TIMEDELTA                 50
 #endif
 
 /** @} */
