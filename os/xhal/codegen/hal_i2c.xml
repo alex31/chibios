@@ -177,12 +177,25 @@ I2C_DRIVER_EXT_INIT_HOOK(self);
               <brief>Starts an I2C master transmit transaction.</brief>
               <details>When @p rxbytes is greater than zero, a receive phase
                 follows the transmit phase using a repeated start.</details>
+              <note>A transfer is only started on a free bus, a busy bus is
+                reported and not waited for. The bus is busy while another
+                master is using it or while the STOP closing a stopped or
+                timed out transfer is still in progress.</note>
+              <note>The end of a transfer, completion or error, is signaled
+                to the callback and to the waiting thread only after its
+                closing STOP has completed, a transfer started from the
+                callback does not find the bus busy because of the previous
+                one.</note>
               <param name="addr" ctype="i2caddr_t" dir="in">Slave address.</param>
               <param name="txbuf" ctype="const uint8_t *" dir="in">Transmit buffer.</param>
               <param name="txbytes" ctype="size_t" dir="in">Number of bytes to transmit.</param>
               <param name="rxbuf" ctype="uint8_t *" dir="out">Receive buffer.</param>
               <param name="rxbytes" ctype="size_t" dir="in">Number of bytes to receive.</param>
               <return>The operation status.</return>
+              <retval value="HAL_RET_SUCCESS">If the transfer has been
+                started.</retval>
+              <retval value="HAL_RET_HW_BUSY">If the bus is busy, the transfer
+                has not been started and can be retried.</retval>
               <iclass />
               <implementation><![CDATA[
 msg_t msg;
@@ -205,10 +218,23 @@ return msg;]]></implementation>
             </method>
             <method name="i2cStartMasterReceiveI" ctype="msg_t">
               <brief>Starts an I2C master receive transaction.</brief>
+              <note>A transfer is only started on a free bus, a busy bus is
+                reported and not waited for. The bus is busy while another
+                master is using it or while the STOP closing a stopped or
+                timed out transfer is still in progress.</note>
+              <note>The end of a transfer, completion or error, is signaled
+                to the callback and to the waiting thread only after its
+                closing STOP has completed, a transfer started from the
+                callback does not find the bus busy because of the previous
+                one.</note>
               <param name="addr" ctype="i2caddr_t" dir="in">Slave address.</param>
               <param name="rxbuf" ctype="uint8_t *" dir="out">Receive buffer.</param>
               <param name="rxbytes" ctype="size_t" dir="in">Number of bytes to receive.</param>
               <return>The operation status.</return>
+              <retval value="HAL_RET_SUCCESS">If the transfer has been
+                started.</retval>
+              <retval value="HAL_RET_HW_BUSY">If the bus is busy, the transfer
+                has not been started and can be retried.</retval>
               <iclass />
               <implementation><![CDATA[
 msg_t msg;
@@ -324,6 +350,13 @@ return msg;]]></implementation>
                 <param name="rxbytes" ctype="size_t" dir="in">Number of bytes to receive.</param>
                 <param name="timeout" ctype="sysinterval_t" dir="in">Synchronization timeout.</param>
                 <return>The operation status.</return>
+                <retval value="MSG_OK">If the transfer completed.</retval>
+                <retval value="MSG_RESET">If the transfer failed or was stopped,
+                  the errors are returned by @p i2cGetErrorsX().</retval>
+                <retval value="MSG_TIMEOUT">If the transfer timed out, the
+                  driver is left in the @p I2C_LOCKED state.</retval>
+                <retval value="HAL_RET_HW_BUSY">If the bus is busy, the transfer
+                  has not been started and can be retried.</retval>
                 <api />
                 <implementation><![CDATA[
 msg_t msg;
@@ -344,6 +377,13 @@ return msg;]]></implementation>
                 <param name="rxbytes" ctype="size_t" dir="in">Number of bytes to receive.</param>
                 <param name="timeout" ctype="sysinterval_t" dir="in">Synchronization timeout.</param>
                 <return>The operation status.</return>
+                <retval value="MSG_OK">If the transfer completed.</retval>
+                <retval value="MSG_RESET">If the transfer failed or was stopped,
+                  the errors are returned by @p i2cGetErrorsX().</retval>
+                <retval value="MSG_TIMEOUT">If the transfer timed out, the
+                  driver is left in the @p I2C_LOCKED state.</retval>
+                <retval value="HAL_RET_HW_BUSY">If the bus is busy, the transfer
+                  has not been started and can be retried.</retval>
                 <api />
                 <implementation><![CDATA[
 msg_t msg;
@@ -405,6 +445,8 @@ __cbdrv_invoke_cb(self);]]></implementation>
             </condition>
             <method name="__i2c_complete_isr" ctype="void">
               <brief>Signals I2C transfer completion.</brief>
+              <note>Low level drivers invoke it only once the closing STOP of
+                the transfer has completed and the bus is free.</note>
               <notapi />
               <implementation><![CDATA[
 self->state = HAL_DRV_STATE_READY;
@@ -412,6 +454,8 @@ __i2c_wakeup_isr(self, MSG_OK);]]></implementation>
             </method>
             <method name="__i2c_error_isr" ctype="void">
               <brief>Signals I2C transfer error.</brief>
+              <note>Low level drivers invoke it only once the closing STOP of
+                the transfer has completed and the bus is free.</note>
               <notapi />
               <implementation><![CDATA[
 self->state = HAL_DRV_STATE_READY;
