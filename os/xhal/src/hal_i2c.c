@@ -225,6 +225,14 @@ const struct hal_i2c_driver_vmt __hal_i2c_driver_vmt = {
  * @brief       Starts an I2C master transmit transaction.
  * @details     When @p rxbytes is greater than zero, a receive phase follows
  *              the transmit phase using a repeated start.
+ * @note        A transfer is only started on a free bus, a busy bus is
+ *              reported and not waited for. The bus is busy while another
+ *              master is using it or while the STOP closing a stopped or timed
+ *              out transfer is still in progress.
+ * @note        The end of a transfer, completion or error, is signaled to the
+ *              callback and to the waiting thread only after its closing STOP
+ *              has completed, a transfer started from the callback does not
+ *              find the bus busy because of the previous one.
  *
  * @param[in,out] ip            Pointer to a @p hal_i2c_driver_c instance.
  * @param[in]     addr          Slave address.
@@ -233,6 +241,9 @@ const struct hal_i2c_driver_vmt __hal_i2c_driver_vmt = {
  * @param[out]    rxbuf         Receive buffer.
  * @param[in]     rxbytes       Number of bytes to receive.
  * @return                      The operation status.
+ * @retval HAL_RET_SUCCESS      If the transfer has been started.
+ * @retval HAL_RET_HW_BUSY      If the bus is busy, the transfer has not been
+ *                              started and can be retried.
  *
  * @iclass
  */
@@ -260,12 +271,23 @@ msg_t i2cStartMasterTransmitI(void *ip, i2caddr_t addr, const uint8_t *txbuf,
 
 /**
  * @brief       Starts an I2C master receive transaction.
+ * @note        A transfer is only started on a free bus, a busy bus is
+ *              reported and not waited for. The bus is busy while another
+ *              master is using it or while the STOP closing a stopped or timed
+ *              out transfer is still in progress.
+ * @note        The end of a transfer, completion or error, is signaled to the
+ *              callback and to the waiting thread only after its closing STOP
+ *              has completed, a transfer started from the callback does not
+ *              find the bus busy because of the previous one.
  *
  * @param[in,out] ip            Pointer to a @p hal_i2c_driver_c instance.
  * @param[in]     addr          Slave address.
  * @param[out]    rxbuf         Receive buffer.
  * @param[in]     rxbytes       Number of bytes to receive.
  * @return                      The operation status.
+ * @retval HAL_RET_SUCCESS      If the transfer has been started.
+ * @retval HAL_RET_HW_BUSY      If the bus is busy, the transfer has not been
+ *                              started and can be retried.
  *
  * @iclass
  */
@@ -408,6 +430,13 @@ msg_t i2cSynchronize(void *ip, sysinterval_t timeout) {
  * @param[in]     rxbytes       Number of bytes to receive.
  * @param[in]     timeout       Synchronization timeout.
  * @return                      The operation status.
+ * @retval MSG_OK               If the transfer completed.
+ * @retval MSG_RESET            If the transfer failed or was stopped, the
+ *                              errors are returned by @p i2cGetErrorsX().
+ * @retval MSG_TIMEOUT          If the transfer timed out, the driver is left
+ *                              in the @p I2C_LOCKED state.
+ * @retval HAL_RET_HW_BUSY      If the bus is busy, the transfer has not been
+ *                              started and can be retried.
  *
  * @api
  */
@@ -436,6 +465,13 @@ msg_t i2cMasterTransmitTimeout(void *ip, i2caddr_t addr, const uint8_t *txbuf,
  * @param[in]     rxbytes       Number of bytes to receive.
  * @param[in]     timeout       Synchronization timeout.
  * @return                      The operation status.
+ * @retval MSG_OK               If the transfer completed.
+ * @retval MSG_RESET            If the transfer failed or was stopped, the
+ *                              errors are returned by @p i2cGetErrorsX().
+ * @retval MSG_TIMEOUT          If the transfer timed out, the driver is left
+ *                              in the @p I2C_LOCKED state.
+ * @retval HAL_RET_HW_BUSY      If the bus is busy, the transfer has not been
+ *                              started and can be retried.
  *
  * @api
  */

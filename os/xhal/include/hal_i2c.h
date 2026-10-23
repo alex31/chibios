@@ -459,6 +459,8 @@ static inline void __i2c_wakeup_isr(void *ip, msg_t msg) {
 
 /**
  * @brief       Signals I2C transfer completion.
+ * @note        Low level drivers invoke it only once the closing STOP of the
+ *              transfer has completed and the bus is free.
  *
  * @param[in,out] ip            Pointer to a @p hal_i2c_driver_c instance.
  *
@@ -473,6 +475,8 @@ static inline void __i2c_complete_isr(void *ip) {
 
 /**
  * @brief       Signals I2C transfer error.
+ * @note        Low level drivers invoke it only once the closing STOP of the
+ *              transfer has completed and the bus is free.
  *
  * @param[in,out] ip            Pointer to a @p hal_i2c_driver_c instance.
  *
