@@ -13,7 +13,7 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
   the test case and the step. The AVR RT and OSLIB test suite demos use it:
   AVR keeps the constant data in RAM, and with the messages they no longer
   fitted in the 8K of their devices
-  ([#NNN](https://github.com/chibios-upstream/chibios/pull/NNN)).
+  ([#552](https://github.com/chibios-upstream/chibios/pull/552)).
 - [SB] Sandbox PIDs: each start of a sandbox gets a new positive PID, valid
   until `sbFinalize()`, returned by `sbGetPidX()` on the host so that objects
   referring to one execution can detect a restart; guests get it with
