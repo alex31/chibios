@@ -178,22 +178,22 @@
 /**
  * @brief   Maximum APB1 clock frequency.
  */
-#define STM32_CDPCLK_MAX                (STM32_HCLK_MAX)
+#define STM32_PCLK1_MAX                 (STM32_HCLK_MAX)
 
 /**
  * @brief   Maximum APB2 clock frequency.
  */
-#define STM32_PCLK1_MAX                 (STM32_HCLK_MAX)
+#define STM32_PCLK2_MAX                 (STM32_HCLK_MAX)
 
 /**
  * @brief   Maximum APB3 clock frequency.
  */
-#define STM32_PCLK2_MAX                 (STM32_HCLK_MAX)
+#define STM32_PCLK3_MAX                 (STM32_HCLK_MAX)
 
 /**
  * @brief   Maximum APB4 clock frequency.
  */
-#define STM32_SRDPCLK_MAX               (STM32_HCLK_MAX)
+#define STM32_PCLK4_MAX                 (STM32_HCLK_MAX)
 
 /**
  * @brief   Maximum SPI1, SPI2 and SPI3 clock frequency.
@@ -2229,33 +2229,31 @@
 #define STM32_CORE_CK               STM32_CORE1_CK
 
 /**
- * @brief   CD PCLK clock.
+ * @brief   CD PCLK3 clock.
  */
 #if (STM32_CDPPRE == STM32_CDPPRE_DIV1) || defined(__DOXYGEN__)
-#define STM32_CDPCLK                (STM32_HCLK / 1U)
+#define STM32_PCLK3                 (STM32_HCLK / 1U)
 #elif STM32_CDPPRE == STM32_CDPPRE_DIV2
-#define STM32_CDPCLK                (STM32_HCLK / 2U)
+#define STM32_PCLK3                 (STM32_HCLK / 2U)
 #elif STM32_CDPPRE == STM32_CDPPRE_DIV4
-#define STM32_CDPCLK                (STM32_HCLK / 4U)
+#define STM32_PCLK3                 (STM32_HCLK / 4U)
 #elif STM32_CDPPRE == STM32_CDPPRE_DIV8
-#define STM32_CDPCLK                (STM32_HCLK / 8U)
+#define STM32_PCLK3                 (STM32_HCLK / 8U)
 #elif STM32_CDPPRE == STM32_CDPPRE_DIV16
-#define STM32_CDPCLK                (STM32_HCLK / 16U)
+#define STM32_PCLK3                 (STM32_HCLK / 16U)
 #else
 #error "invalid STM32_CDPPRE value specified"
 #endif
 
 /*
- * D1 PCLK3 frequency check.
+ * CD PCLK3 frequency check.
  */
-#if 0
 #if STM32_PCLK3 > STM32_PCLK3_MAX
 #error "STM32_PCLK3 exceeding maximum frequency (STM32_PCLK3_MAX)"
 #endif
-#endif
 
 /**
- * @brief   CD PCLK clock.
+ * @brief   CD PCLK1 clock.
  */
 #if (STM32_CDPPRE1 == STM32_CDPPRE1_DIV1) || defined(__DOXYGEN__)
 #define STM32_PCLK1                 (STM32_HCLK / 1U)
@@ -2272,7 +2270,7 @@
 #endif
 
 /*
- * @brief   CD PCLK1 frequency check.
+ * CD PCLK1 frequency check.
  */
 #if STM32_PCLK1 > STM32_PCLK1_MAX
 #error "STM32_PCLK1 exceeding maximum frequency (STM32_PCLK1_MAX)"
@@ -2296,34 +2294,34 @@
 #endif
 
 /*
- * @brief   CD PCLK2 frequency check.
+ * CD PCLK2 frequency check.
  */
 #if STM32_PCLK2 > STM32_PCLK2_MAX
 #error "STM32_PCLK2 exceeding maximum frequency (STM32_PCLK2_MAX)"
 #endif
 
 /**
- * @brief   SRD PCLK clock.
+ * @brief   SRD PCLK4 clock.
  */
 #if (STM32_SRDPPRE == STM32_SRDPPRE_DIV1) || defined(__DOXYGEN__)
-#define STM32_SRDPCLK               (STM32_HCLK / 1U)
+#define STM32_PCLK4                 (STM32_HCLK / 1U)
 #elif STM32_SRDPPRE == STM32_SRDPPRE_DIV2
-#define STM32_SRDPCLK               (STM32_HCLK / 2U)
+#define STM32_PCLK4                 (STM32_HCLK / 2U)
 #elif STM32_SRDPPRE == STM32_SRDPPRE_DIV4
-#define STM32_SRDPCLK               (STM32_HCLK / 4U)
+#define STM32_PCLK4                 (STM32_HCLK / 4U)
 #elif STM32_SRDPPRE == STM32_SRDPPRE_DIV8
-#define STM32_SRDPCLK               (STM32_HCLK / 8U)
+#define STM32_PCLK4                 (STM32_HCLK / 8U)
 #elif STM32_SRDPPRE == STM32_SRDPPRE_DIV16
-#define STM32_SRDPCLK               (STM32_HCLK / 16U)
+#define STM32_PCLK4                 (STM32_HCLK / 16U)
 #else
 #error "invalid STM32_SRDPPRE value specified"
 #endif
 
 /*
- * SRD PCLK frequency check.
+ * SRD PCLK4 frequency check.
  */
-#if STM32_SRDPCLK > STM32_SRDPCLK_MAX
-#error "STM32_SRDPCLK exceeding maximum frequency (STM32_SRDPCLK_MAX)"
+#if STM32_PCLK4 > STM32_PCLK4_MAX
+#error "STM32_PCLK4 exceeding maximum frequency (STM32_PCLK4_MAX)"
 #endif
 
 /**
@@ -2573,7 +2571,7 @@
 #define STM32_USART2CLK             STM32_LSE_CK
 #define STM32_USART3CLK             STM32_LSE_CK
 #define STM32_UART4CLK              STM32_LSE_CK
-#define STM32_UART6CLK              STM32_LSE_CK
+#define STM32_UART5CLK              STM32_LSE_CK
 #define STM32_UART7CLK              STM32_LSE_CK
 #define STM32_UART8CLK              STM32_LSE_CK
 #else

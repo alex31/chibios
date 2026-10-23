@@ -567,6 +567,18 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Fixed
 
+- [STM32] STM32H7A3/H7B3/H7B0 (classic and XHAL): the APB3 and APB4 clocks
+  were named `STM32_CDPCLK` and `STM32_SRDPCLK` while the clock tree used
+  `STM32_PCLK4` for LPTIM2-5, LPUART1, SPI6, I2C4 and DFSDM2, so builds using
+  one of those peripherals on its default bus clock failed to compile, the
+  `RT-STM32-MULTI` H7A3 demo among them. The clocks are now `STM32_PCLK3` and
+  `STM32_PCLK4`, as on the other STM32H7 devices, and the APB3 frequency
+  check is enabled
+  ([#553](https://github.com/chibios-upstream/chibios/pull/553)).
+- [STM32] STM32H7 (classic and XHAL): with LSE selected as the USART2-8 clock
+  source, UART5 had no clock defined and its baud rate was computed from
+  PCLK1
+  ([#553](https://github.com/chibios-upstream/chibios/pull/553)).
 - [SB] A sandbox executing an SVC with an invalid stack pointer was not
   terminated: the SVC left pending by the failed exception stacking was taken
   on the fault exit frame and resumed the sandbox with the kernel lock held,
