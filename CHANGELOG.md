@@ -401,7 +401,7 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
   and `STM32_I2C_I2Cx_IRQ_PRIORITY` by `STM32_IRQ_I2Cx_PRIORITY`; the
   `update_mcuconf_stm32wb55xx.sh` and `update_mcuconf_stm32wlxx.sh` updaters
   convert existing files
-  ([#NNN](https://github.com/chibios-upstream/chibios/pull/NNN)).
+  ([#550](https://github.com/chibios-upstream/chibios/pull/550)).
 - [SB] Sandbox ABI revision, hosts and guests must be rebuilt together, the
   image header carries the ABI version (`hdr_abi`, `SB_ABI_VERSION`) and
   hosts reject images built for another version: the host keeps the VRQ
