@@ -201,6 +201,10 @@ typedef struct hal_i2c_config I2CConfig;
 /* Inclusion of LLD header.*/
 #include "hal_i2c_lld.h"
 
+#if !defined(I2C_LLD_SUPPORTS_STOP_DETECTION)
+#error "I2C_LLD_SUPPORTS_STOP_DETECTION not defined in I2C LLD driver"
+#endif
+
 /**
  * @brief       Driver configuration structure.
  */
@@ -459,8 +463,9 @@ static inline void __i2c_wakeup_isr(void *ip, msg_t msg) {
 
 /**
  * @brief       Signals I2C transfer completion.
- * @note        Low level drivers invoke it only once the closing STOP of the
- *              transfer has completed and the bus is free.
+ * @note        Low level drivers defining @p I2C_LLD_SUPPORTS_STOP_DETECTION
+ *              as @p TRUE invoke it only once the closing STOP of the transfer
+ *              has completed and the bus is free.
  *
  * @param[in,out] ip            Pointer to a @p hal_i2c_driver_c instance.
  *
@@ -475,8 +480,9 @@ static inline void __i2c_complete_isr(void *ip) {
 
 /**
  * @brief       Signals I2C transfer error.
- * @note        Low level drivers invoke it only once the closing STOP of the
- *              transfer has completed and the bus is free.
+ * @note        Low level drivers defining @p I2C_LLD_SUPPORTS_STOP_DETECTION
+ *              as @p TRUE invoke it only once the closing STOP of the transfer
+ *              has completed and the bus is free.
  *
  * @param[in,out] ip            Pointer to a @p hal_i2c_driver_c instance.
  *

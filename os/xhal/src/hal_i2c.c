@@ -229,10 +229,14 @@ const struct hal_i2c_driver_vmt __hal_i2c_driver_vmt = {
  *              reported and not waited for. The bus is busy while another
  *              master is using it or while the STOP closing a stopped or timed
  *              out transfer is still in progress.
- * @note        The end of a transfer, completion or error, is signaled to the
- *              callback and to the waiting thread only after its closing STOP
- *              has completed, a transfer started from the callback does not
- *              find the bus busy because of the previous one.
+ * @note        If the low level driver defines @p
+ *              I2C_LLD_SUPPORTS_STOP_DETECTION as @p TRUE, the end of a
+ *              transfer, completion or error, is signaled to the callback and
+ *              to the waiting thread only after its closing STOP has
+ *              completed, a transfer started from the callback does not find
+ *              the bus busy because of the previous one. Otherwise the end is
+ *              signaled when the STOP is requested and such a start can return
+ *              @p HAL_RET_HW_BUSY.
  *
  * @param[in,out] ip            Pointer to a @p hal_i2c_driver_c instance.
  * @param[in]     addr          Slave address.
@@ -275,10 +279,14 @@ msg_t i2cStartMasterTransmitI(void *ip, i2caddr_t addr, const uint8_t *txbuf,
  *              reported and not waited for. The bus is busy while another
  *              master is using it or while the STOP closing a stopped or timed
  *              out transfer is still in progress.
- * @note        The end of a transfer, completion or error, is signaled to the
- *              callback and to the waiting thread only after its closing STOP
- *              has completed, a transfer started from the callback does not
- *              find the bus busy because of the previous one.
+ * @note        If the low level driver defines @p
+ *              I2C_LLD_SUPPORTS_STOP_DETECTION as @p TRUE, the end of a
+ *              transfer, completion or error, is signaled to the callback and
+ *              to the waiting thread only after its closing STOP has
+ *              completed, a transfer started from the callback does not find
+ *              the bus busy because of the previous one. Otherwise the end is
+ *              signaled when the STOP is requested and such a start can return
+ *              @p HAL_RET_HW_BUSY.
  *
  * @param[in,out] ip            Pointer to a @p hal_i2c_driver_c instance.
  * @param[in]     addr          Slave address.
@@ -313,6 +321,9 @@ msg_t i2cStartMasterReceiveI(void *ip, i2caddr_t addr, uint8_t *rxbuf,
 
 /**
  * @brief       Stops an ongoing I2C master transaction.
+ * @note        No callback is invoked for a stopped transfer and its closing
+ *              STOP completes after the return, a transfer started before then
+ *              is rejected with @p HAL_RET_HW_BUSY.
  *
  * @param[in,out] ip            Pointer to a @p hal_i2c_driver_c instance.
  * @return                      The operation status.
@@ -344,6 +355,9 @@ msg_t i2cStopTransferI(void *ip) {
 
 /**
  * @brief       Stops an ongoing I2C master transaction.
+ * @note        No callback is invoked for a stopped transfer and its closing
+ *              STOP completes after the return, a transfer started before then
+ *              is rejected with @p HAL_RET_HW_BUSY.
  *
  * @param[in,out] ip            Pointer to a @p hal_i2c_driver_c instance.
  * @return                      The operation status.
