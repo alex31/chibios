@@ -81,6 +81,9 @@
 
 #endif /* STM32_TARGET_CORE == 1 */
 
+#include "stm32_i2c1.inc"
+#include "stm32_i2c3.inc"
+
 #include "stm32_usart1.inc"
 #include "stm32_usart2.inc"
 #include "stm32_lpuart1.inc"
@@ -123,6 +126,9 @@ void irqInit(void) {
   tim16_irq_init();
   tim17_irq_init();
 
+  i2c1_irq_init();
+  i2c3_irq_init();
+
   usart1_irq_init();
   usart2_irq_init();
   lpuart1_irq_init();
@@ -155,6 +161,9 @@ void irqDeinit(void) {
   tim2_irq_deinit();
   tim16_irq_deinit();
   tim17_irq_deinit();
+
+  i2c1_irq_deinit();
+  i2c3_irq_deinit();
 
   usart1_irq_deinit();
   usart2_irq_deinit();

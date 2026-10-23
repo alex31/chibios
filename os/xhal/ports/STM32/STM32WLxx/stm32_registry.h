@@ -142,7 +142,11 @@
 #endif /* defined(STM32WL55xx) || defined(STM32WL54xx) */
 
 /* I2C attributes.*/
+#if STM32_TARGET_CORE == 1
 #define STM32_I2C_SINGLE_IRQ                FALSE
+#else
+#define STM32_I2C_SINGLE_IRQ                TRUE
+#endif
 #define STM32_HAS_I2C1                      TRUE
 #define STM32_HAS_I2C3                      TRUE
 #define STM32_HAS_I2C2                      FALSE
