@@ -8,9 +8,9 @@ The demo runs on an ADICUP360 board.
 
 ** The Demo **
 
-The demo flashes the two on-board LEDs using a thread, by pressing the button 
-located on the board (BOOT) the test procedure is activated with output on the 
-serial port SD0 (UART0, mapped on the User COM port).
+The demo flashes the two on-board LEDs using a thread, the serial port SD0
+(UART0, mapped on the User COM port) is started. The RT and OSLIB test suites
+are not included, they do not fit in the 8K RAM of the ADuCM360.
 
 ** Board setup **
 
