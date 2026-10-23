@@ -36,6 +36,14 @@
  */
 #define I2C_SUPPORTS_SLAVE_MODE             FALSE
 
+/**
+ * @brief   This I2C LLD does not signal the end of a transfer after its
+ *          closing STOP.
+ * @details The end of a transfer is signaled when the host driver signals
+ *          it, the timing depends on the host driver.
+ */
+#define I2C_LLD_SUPPORTS_STOP_DETECTION     FALSE
+
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/

@@ -109,7 +109,11 @@
 #define I2C_LOCKED                         (HAL_DRV_STATE_ERROR + 2U)
 
 /* Inclusion of LLD header.*/
-#include "hal_i2c_lld.h"]]></verbatim>
+#include "hal_i2c_lld.h"
+
+#if !defined(I2C_LLD_SUPPORTS_STOP_DETECTION)
+#error "I2C_LLD_SUPPORTS_STOP_DETECTION not defined in I2C LLD driver"
+#endif]]></verbatim>
       <struct name="hal_i2c_config">
         <brief>Driver configuration structure.</brief>
         <fields>
@@ -181,11 +185,14 @@ I2C_DRIVER_EXT_INIT_HOOK(self);
                 reported and not waited for. The bus is busy while another
                 master is using it or while the STOP closing a stopped or
                 timed out transfer is still in progress.</note>
-              <note>The end of a transfer, completion or error, is signaled
-                to the callback and to the waiting thread only after its
-                closing STOP has completed, a transfer started from the
-                callback does not find the bus busy because of the previous
-                one.</note>
+              <note>If the low level driver defines
+                @p I2C_LLD_SUPPORTS_STOP_DETECTION as @p TRUE, the end of a
+                transfer, completion or error, is signaled to the callback
+                and to the waiting thread only after its closing STOP has
+                completed, a transfer started from the callback does not find
+                the bus busy because of the previous one. Otherwise the end
+                is signaled when the STOP is requested and such a start can
+                return @p HAL_RET_HW_BUSY.</note>
               <param name="addr" ctype="i2caddr_t" dir="in">Slave address.</param>
               <param name="txbuf" ctype="const uint8_t *" dir="in">Transmit buffer.</param>
               <param name="txbytes" ctype="size_t" dir="in">Number of bytes to transmit.</param>
@@ -222,11 +229,14 @@ return msg;]]></implementation>
                 reported and not waited for. The bus is busy while another
                 master is using it or while the STOP closing a stopped or
                 timed out transfer is still in progress.</note>
-              <note>The end of a transfer, completion or error, is signaled
-                to the callback and to the waiting thread only after its
-                closing STOP has completed, a transfer started from the
-                callback does not find the bus busy because of the previous
-                one.</note>
+              <note>If the low level driver defines
+                @p I2C_LLD_SUPPORTS_STOP_DETECTION as @p TRUE, the end of a
+                transfer, completion or error, is signaled to the callback
+                and to the waiting thread only after its closing STOP has
+                completed, a transfer started from the callback does not find
+                the bus busy because of the previous one. Otherwise the end
+                is signaled when the STOP is requested and such a start can
+                return @p HAL_RET_HW_BUSY.</note>
               <param name="addr" ctype="i2caddr_t" dir="in">Slave address.</param>
               <param name="rxbuf" ctype="uint8_t *" dir="out">Receive buffer.</param>
               <param name="rxbytes" ctype="size_t" dir="in">Number of bytes to receive.</param>
@@ -255,6 +265,9 @@ return msg;]]></implementation>
             </method>
             <method name="i2cStopTransferI" ctype="msg_t">
               <brief>Stops an ongoing I2C master transaction.</brief>
+              <note>No callback is invoked for a stopped transfer and its
+                closing STOP completes after the return, a transfer started
+                before then is rejected with @p HAL_RET_HW_BUSY.</note>
               <return>The operation status.</return>
               <iclass />
               <implementation><![CDATA[
@@ -280,6 +293,9 @@ return msg;]]></implementation>
             </method>
             <method name="i2cStopTransfer" ctype="msg_t">
               <brief>Stops an ongoing I2C master transaction.</brief>
+              <note>No callback is invoked for a stopped transfer and its
+                closing STOP completes after the return, a transfer started
+                before then is rejected with @p HAL_RET_HW_BUSY.</note>
               <return>The operation status.</return>
               <api />
               <implementation><![CDATA[
@@ -445,8 +461,10 @@ __cbdrv_invoke_cb(self);]]></implementation>
             </condition>
             <method name="__i2c_complete_isr" ctype="void">
               <brief>Signals I2C transfer completion.</brief>
-              <note>Low level drivers invoke it only once the closing STOP of
-                the transfer has completed and the bus is free.</note>
+              <note>Low level drivers defining
+                @p I2C_LLD_SUPPORTS_STOP_DETECTION as @p TRUE invoke it only
+                once the closing STOP of the transfer has completed and the
+                bus is free.</note>
               <notapi />
               <implementation><![CDATA[
 self->state = HAL_DRV_STATE_READY;
@@ -454,8 +472,10 @@ __i2c_wakeup_isr(self, MSG_OK);]]></implementation>
             </method>
             <method name="__i2c_error_isr" ctype="void">
               <brief>Signals I2C transfer error.</brief>
-              <note>Low level drivers invoke it only once the closing STOP of
-                the transfer has completed and the bus is free.</note>
+              <note>Low level drivers defining
+                @p I2C_LLD_SUPPORTS_STOP_DETECTION as @p TRUE invoke it only
+                once the closing STOP of the transfer has completed and the
+                bus is free.</note>
               <notapi />
               <implementation><![CDATA[
 self->state = HAL_DRV_STATE_READY;

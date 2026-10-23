@@ -41,6 +41,14 @@
 #define I2C_SUPPORTS_SLAVE_MODE             FALSE
 
 /**
+ * @brief   This I2C LLD does not signal the end of a transfer after its
+ *          closing STOP.
+ * @details The end of a transfer is signaled when the STOP is requested, a
+ *          transfer started from the callback can find the bus busy.
+ */
+#define I2C_LLD_SUPPORTS_STOP_DETECTION     FALSE
+
+/**
  * @name    TIMINGR register definitions
  * @{
  */

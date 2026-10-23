@@ -38,6 +38,15 @@
  */
 #define I2C_SUPPORTS_SLAVE_MODE             FALSE
 
+/**
+ * @brief   This I2C LLD does not signal the end of a transfer after its
+ *          closing STOP.
+ * @details The normal end of a transfer is signaled on the STOP detection,
+ *          the end of a failed transfer is not verified to follow the
+ *          STOP yet.
+ */
+#define I2C_LLD_SUPPORTS_STOP_DETECTION     FALSE
+
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
