@@ -101,9 +101,6 @@ include $(CHIBIOS)/os/hal/osal/rt-nil/osal.mk
 include $(CHIBIOS)/os/rt/rt.mk
 include $(CHIBIOS)/os/common/ports/ARMv7-M/compilers/GCC/mk/port.mk
 # Other files (optional).
-include $(CHIBIOS)/os/test/test.mk
-include $(CHIBIOS)/test/rt/rt_test.mk
-include $(CHIBIOS)/test/oslib/oslib_test.mk
 include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 include $(CHIBIOS)/os/various/shell/shell.mk
 
@@ -113,7 +110,6 @@ LDSCRIPT= $(STARTUPLD)/STM32F103xB.ld
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CSRC = $(ALLCSRC) \
-       $(TESTSRC) \
        usbcfg.c main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -144,7 +140,7 @@ TCPPSRC =
 ASMSRC = $(ALLASMSRC)
 ASMXSRC = $(ALLXASMSRC)
 
-INCDIR = $(ALLINC) $(TESTINC)
+INCDIR = $(ALLINC)
 
 #
 # Project, sources and paths
@@ -194,7 +190,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = -DSHELL_CMD_TEST_ENABLED=FALSE
 
 # Define ASM defines here
 UADEFS =

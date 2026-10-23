@@ -16,8 +16,6 @@
 
 #include "ch.h"
 #include "hal.h"
-#include "rt_test_root.h"
-#include "oslib_test_root.h"
 
 /*
  * Blinker thread #1.
@@ -82,14 +80,9 @@ int main(void) {
 
   /*
    * Normal main() thread activity, in this demo it does nothing except
-   * sleeping in a loop and check the button state, when the button is
-   * pressed the test procedure is launched.
+   * sleeping in a loop.
    */
   while (true) {
-    if (palReadPad(GPIOA, GPIOA_BUTTON)) {
-      test_execute((BaseSequentialStream *)&SD1, &rt_test_suite);
-      test_execute((BaseSequentialStream *)&SD1, &oslib_test_suite);
-    }
     chThdSleepMilliseconds(500);
   }
 }
