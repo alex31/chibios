@@ -567,6 +567,13 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Fixed
 
+- [RP] At `-O0`, `__port_smp_halt_from_ram()`, the RAM-resident remote-panic
+  halt of the `ARMv6-M` (RP2040) and `ARMv8-M-ML-ALT` (RP2350) RP2 SMP back
+  ends, called an out-of-line `port_get_core_id()` in flash, against its
+  contract of not relying on flash; no in-tree path reaches it with XIP
+  disabled. It now reads `SIO->CPUID` directly, and the other optimization
+  levels generate the same code as before
+  ([#556](https://github.com/chibios-upstream/chibios/pull/556)).
 - [STM32] STM32H7A3/H7B3/H7B0 (classic and XHAL): the APB3 and APB4 clocks
   were named `STM32_CDPCLK` and `STM32_SRDPCLK` while the clock tree used
   `STM32_PCLK4` for LPTIM2-5, LPUART1, SPI6, I2C4 and DFSDM2, so builds using
