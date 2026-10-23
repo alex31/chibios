@@ -183,7 +183,7 @@ CPPWARN =
 #
 
 # List all user C define here, like -D_DEBUG=1.
-UDEFS = -DTEST_CFG_SIZE_REPORT=0
+UDEFS = -DTEST_CFG_SIZE_REPORT=0 -DTEST_CFG_ASSERT_MESSAGES=FALSE
 
 # Define ASM defines here.
 UADEFS =
