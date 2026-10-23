@@ -102,19 +102,19 @@
 /*
  * I2C units.
  */
-#define STM32_I2C1_EVENT_HANDLER            VectorB8
-#define STM32_I2C1_ERROR_HANDLER            VectorBC
-#define STM32_I2C2_EVENT_HANDLER            VectorC0
-#define STM32_I2C2_ERROR_HANDLER            VectorC4
-#define STM32_I2C3_EVENT_HANDLER            Vector100
-#define STM32_I2C3_ERROR_HANDLER            Vector104
+#define STM32_I2C1_EV_HANDLER               VectorB8
+#define STM32_I2C1_ER_HANDLER               VectorBC
+#define STM32_I2C2_EV_HANDLER               VectorC0
+#define STM32_I2C2_ER_HANDLER               VectorC4
+#define STM32_I2C3_EV_HANDLER               Vector100
+#define STM32_I2C3_ER_HANDLER               Vector104
 
-#define STM32_I2C1_EVENT_NUMBER             30
-#define STM32_I2C1_ERROR_NUMBER             31
-#define STM32_I2C2_EVENT_NUMBER             32
-#define STM32_I2C2_ERROR_NUMBER             33
-#define STM32_I2C3_EVENT_NUMBER             48
-#define STM32_I2C3_ERROR_NUMBER             49
+#define STM32_I2C1_EV_NUMBER                30
+#define STM32_I2C1_ER_NUMBER                31
+#define STM32_I2C2_EV_NUMBER                32
+#define STM32_I2C2_ER_NUMBER                33
+#define STM32_I2C3_EV_NUMBER                48
+#define STM32_I2C3_ER_NUMBER                49
 
 /*
  * TIM units.

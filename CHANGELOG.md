@@ -394,6 +394,14 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Changed
 
+- [STM32] STM32WB and STM32WL use the I2Cv4 driver instead of I2Cv2, with
+  one DMA channel per I2C through DMAMUX and the I2C interrupts served by the
+  platform. In `mcuconf.h`, `STM32_I2C_I2Cx_RX_DMA_STREAM` and
+  `STM32_I2C_I2Cx_TX_DMA_STREAM` are replaced by `STM32_I2C_I2Cx_DMA_CHANNEL`,
+  and `STM32_I2C_I2Cx_IRQ_PRIORITY` by `STM32_IRQ_I2Cx_PRIORITY`; the
+  `update_mcuconf_stm32wb55xx.sh` and `update_mcuconf_stm32wlxx.sh` updaters
+  convert existing files
+  ([#550](https://github.com/chibios-upstream/chibios/pull/550)).
 - [SB] Sandbox ABI revision, hosts and guests must be rebuilt together, the
   image header carries the ABI version (`hdr_abi`, `SB_ABI_VERSION`) and
   hosts reject images built for another version: the host keeps the VRQ
