@@ -400,6 +400,13 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 
 ### Changed
 
+- [RP] The RP2040 and RP2350 demo and test configurations set
+  `CH_CFG_ST_TIMEDELTA` to 50 instead of 20, 50 microseconds at their 1 MHz
+  system tick, except `testrt/VT_STORM`. Their tickless wakeup executes from
+  flash through the XIP cache, so whether RT test 6.1 met the 20 microsecond
+  window depended on the code layout. Tickless timeouts shorter than 50
+  microseconds are now rounded up to 50
+  ([#555](https://github.com/chibios-upstream/chibios/pull/555)).
 - [STM32] STM32WB and STM32WL use the I2Cv4 driver instead of I2Cv2, with
   one DMA channel per I2C through DMAMUX and the I2C interrupts served by the
   platform. In `mcuconf.h`, `STM32_I2C_I2Cx_RX_DMA_STREAM` and
