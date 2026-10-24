@@ -17,7 +17,7 @@
 */
 
 /**
- * @file    ARMv6-M/smp/rp2/chcoresmp.h
+ * @file    ARMv6-M/smp/rp2/chcoresmp.c
  * @brief   ARMv6-M RP2 SMP code.
  *
  * @addtogroup ARMV6M_CORE_SMP_RP2
@@ -143,7 +143,10 @@ void __port_smp_halt_from_ram(void) {
   const char *reason = "remote panic";
 
   __disable_irq();
-  oip = currcore;
+  /* Not currcore: SIO->CPUID is read directly because port_get_core_id()
+     is a static inline whose out-of-line copy would live in flash, which
+     can be unreachable here.*/
+  oip = ch_system.instances[SIO->CPUID];
 
   if (oip != NULL) {
     oip->dbg.panic_msg = reason;
