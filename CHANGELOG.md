@@ -9,9 +9,10 @@ applied to a maintenance branch are marked *(backported to 21.11.6)*.
 ### Added
 
 - [BUILD] `ASMXSRC_EXCLUDE` variable in the ARMCMx GCC and LLVM build rules:
-  makefiles included before the rules can now remove files listed by other
-  makefiles from `ASMXSRC`, such as the standard vector table replaced by a
-  port ([#558](https://github.com/chibios-upstream/chibios/pull/558)).
+  makefiles included before the rules can now leave files listed by other
+  makefiles out of the build, such as the standard vector table replaced by
+  a port; `ASMXSRC` itself is not modified
+  ([#558](https://github.com/chibios-upstream/chibios/pull/558)).
 - [TEST] `TEST_CFG_ASSERT_MESSAGES` option in the test framework: set to
   `FALSE`, the assertion messages are not stored and a failure reports only
   the test case and the step. The AVR RT and OSLIB test suite demos use it:
